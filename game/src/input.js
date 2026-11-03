@@ -1,0 +1,120 @@
+// 輸入：鍵盤＋觸控，統一成同一組狀態。
+// move: -1..1；attack: 按住中；jump / drop / dash / skill: 這一幀剛按下（讀完要用 consume 清掉）
+
+export const input = { move: 0, attack: false, jumpHeld: false, jump: false, drop: false, dash: false, skill: false, ult: false, down: false };
+
+const pressed = { jump: 0, drop: 0, dash: 0, skill: 0, ult: 0 };
+// 按下的瞬間如果角色剛好動不了，保留一小段時間（輸入緩衝），手感會比較跟手
+const BUFFER = 0.15;
+const press = (k) => (pressed[k] = BUFFER);
+
+export function tickInput(dt) {
+  for (const k in pressed) {
+    input[k] = pressed[k] > 0;
+    pressed[k] = Math.max(0, pressed[k] - dt);
+  }
+  input.move = clampMove(keyMove() + touch.move);
+  input.attack = keys.attack || touch.attack;
+  input.down = keys.down;
+}
+/** 這個動作已經用掉了，清除緩衝。 */
+export const consume = (k) => { pressed[k] = 0; input[k] = false; };
+const clampMove = (v) => Math.max(-1, Math.min(1, v));
+
+// ---- 鍵盤
+const keys = { left: false, right: false, down: false, attack: false };
+const MAP = {
+  KeyA: "left", ArrowLeft: "left", KeyD: "right", ArrowRight: "right", KeyS: "down", ArrowDown: "down",
+  KeyJ: "attack", KeyX: "attack",
+};
+const keyMove = () => (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+addEventListener("keydown", (e) => {
+  if (e.repeat) return;
+  const k = MAP[e.code];
+  if (k) keys[k] = true;
+  if (e.code === "KeyW" || e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyZ") {
+    if (keys.down) press("drop");
+    else press("jump");
+    input.jumpHeld = true;
+  }
+  if (e.code === "KeyK" || e.code === "ShiftLeft" || e.code === "KeyC") press("dash");
+  if (e.code === "KeyU" || e.code === "KeyV") press("skill");
+  if (e.code === "KeyL" || e.code === "KeyB") press("ult");
+  if (k || ["Space", "ArrowUp", "ArrowDown"].includes(e.code)) e.preventDefault();
+});
+addEventListener("keyup", (e) => {
+  const k = MAP[e.code];
+  if (k) keys[k] = false;
+  if (e.code === "KeyW" || e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyZ") input.jumpHeld = false;
+});
+addEventListener("blur", () => { for (const k in keys) keys[k] = false; touch.attack = false; touch.move = 0; });
+
+// ---- 觸控
+const touch = { move: 0, attack: false };
+const DEAD = 10;        // 拖動多少 px 才開始走
+const FULL = 38;        // 拖動多少 px 算全速
+const FOLLOW = 60;      // 手指拖超過這個距離，搖桿中心跟著手指走（浮動搖桿）
+const SWIPE = 26;       // 往上／往下快滑多少 px 算一次
+const SWIPE_TIME = 0.18;
+
+export function initTouch() {
+  const zone = document.getElementById("leftZone");
+  const base = document.getElementById("stickBase"), knob = document.getElementById("stickKnob");
+  let id = null, ax = 0, ay = 0, hist = [];
+  const showStick = (x, y, kx) => {
+    base.style.left = ax + "px";
+    base.style.top = ay + "px";
+    knob.style.transform = `translate(${kx}px, ${Math.max(-30, Math.min(30, y - ay))}px)`;
+  };
+  zone.addEventListener("pointerdown", (e) => {
+    if (id !== null) return;
+    id = e.pointerId;
+    try { zone.setPointerCapture(id); } catch {}
+    const r = zone.getBoundingClientRect();
+    ax = e.clientX - r.left;
+    ay = e.clientY - r.top;
+    hist = [{ y: e.clientY, t: e.timeStamp }];
+    base.classList.add("on");
+    showStick(ax, ay, 0);
+    document.getElementById("hintLeft").style.opacity = 0;
+  });
+  zone.addEventListener("pointermove", (e) => {
+    if (e.pointerId !== id) return;
+    const r = zone.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    let dx = x - ax;
+    if (Math.abs(dx) > FOLLOW) { ax += dx - Math.sign(dx) * FOLLOW; dx = x - ax; }
+    touch.move = Math.abs(dx) < DEAD ? 0 : Math.sign(dx) * Math.min(1, (Math.abs(dx) - DEAD) / (FULL - DEAD) * 0.6 + 0.4);
+    // 垂直快滑：跟一小段時間前的位置比
+    const now = e.timeStamp;
+    hist.push({ y: e.clientY, t: now });
+    while (hist.length > 2 && now - hist[0].t > SWIPE_TIME * 1000) hist.shift();
+    const dy = e.clientY - hist[0].y;
+    if (dy < -SWIPE) { press("jump"); input.jumpHeld = true; hist = [{ y: e.clientY, t: now }]; ay = y; }
+    else if (dy > SWIPE) { press("drop"); hist = [{ y: e.clientY, t: now }]; ay = y; }
+    showStick(ax, y, Math.max(-34, Math.min(34, dx)));
+  });
+  const end = (e) => {
+    if (e.pointerId !== id) return;
+    id = null;
+    touch.move = 0;
+    input.jumpHeld = false;
+    base.classList.remove("on");
+  };
+  zone.addEventListener("pointerup", end);
+  zone.addEventListener("pointercancel", end);
+
+  for (const btn of document.querySelectorAll(".btn")) {
+    const k = btn.dataset.key;
+    btn.addEventListener("pointerdown", (e) => {
+      try { btn.setPointerCapture(e.pointerId); } catch {}
+      btn.classList.add("on");
+      if (k === "attack") touch.attack = true;
+      else press(k);
+      navigator.vibrate?.(8);
+    });
+    const up = () => { btn.classList.remove("on"); if (k === "attack") touch.attack = false; };
+    btn.addEventListener("pointerup", up);
+    btn.addEventListener("pointercancel", up);
+  }
+  addEventListener("contextmenu", (e) => e.preventDefault());
+}

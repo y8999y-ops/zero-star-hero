@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0d0b14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>零星勇者</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="screen"></canvas>
+
+  <div id="hud">
+    <div class="hpbox">
+      <i class="ic heart"></i>
+      <div class="bars">
+        <div class="hp"><div class="hp-fill" id="hpFill"></div><span id="hpText">100</span></div>
+        <div class="xp"><div class="xp-fill" id="xpFill"></div></div>
+        <div class="ub" id="ubBar"><div class="ub-fill" id="ubFill"></div></div>
+      </div>
+      <b class="lv" id="lvText">Lv 1</b>
+    </div>
+    <div class="coins"><i class="ic coin"></i><span id="coins">0</span></div>
+    <div class="kills">擊倒 <span id="kills">0</span></div>
+  </div>
+  <button id="btnBag" title="背包（I）"><i class="dot" id="bagDot"></i></button>
+  <div id="feed"></div>
+  <div id="flash"></div>
+  <div id="combo"><b id="comboN">0</b><span>COMBO</span></div>
+  <div id="toast"></div>
+  <div id="ultName">零星墜落</div>
+  <div id="hint"></div>
+  <div id="fps"></div>
+
+  <div id="touch">
+    <div id="leftZone"><div id="stickBase"><div id="stickKnob"></div></div></div>
+    <div id="rightPad">
+      <button id="btnUlt" class="btn ult" data-key="ult" aria-label="大招"><i id="ultFill"></i></button>
+      <button id="btnSkill" class="btn small" data-key="skill" aria-label="火球"><i id="skillCd"></i></button>
+      <button id="btnDash" class="btn mid" data-key="dash" aria-label="閃避"></button>
+      <button id="btnAtk" class="btn big" data-key="attack" aria-label="攻擊"></button>
+    </div>
+    <div id="hintLeft">左右拖動＝移動　往上滑＝跳　往下滑＝穿過平台</div>
+  </div>
+
+  <div id="inv" class="hidden">
+    <div id="invBox">
+      <div class="pn" id="invHero">
+        <div class="ttl"><b>勇者</b><span id="invLv">Lv 1</span></div>
+        <div class="xpbar"><i id="invXp"></i><span id="invXpText"></span></div>
+        <div id="doll"><div class="col" id="dollL"></div><canvas id="portrait" width="48" height="64"></canvas><div class="col" id="dollR"></div></div>
+        <div id="invStats" class="inset"></div>
+      </div>
+      <div class="pn" id="invBag">
+        <div class="ttl"><b>背包</b><span id="bagN"></span><span class="cur"><i class="ic coin"></i><span id="invCoins"></span><i class="ic scrap"></i><span id="invScrap"></span></span></div>
+        <div id="grid"></div>
+        <div class="row">
+          <button class="pbtn" id="btnSort">整理</button>
+          <button class="pbtn red" id="btnSalvageAll">拆解垃圾</button>
+          <button class="pbtn" id="btnAuto">自動拆解：關</button>
+        </div>
+        <div id="invSay"></div>
+      </div>
+      <div class="pn" id="invDetail"></div>
+      <button id="invClose" aria-label="關閉"></button>
+    </div>
+  </div>
+
+  <div id="start" class="overlay">
+    <h1>零星勇者</h1>
+    <p class="sub">第一章　1-1 墜落之底</p>
+    <button id="startBtn">點擊開始</button>
+    <div class="help">
+      <div><b>手機</b>：左半邊拖動移動、往上滑跳（空中再滑二段跳）、往下滑穿過平台；右邊按住「攻擊」自動連段</div>
+      <div><b>電腦</b>：A / D 移動　W 或空白鍵 跳　S＋跳 穿過平台　J 攻擊（按住連段）　K 閃避　U 火球　L 大招　I 背包</div>
+    </div>
+  </div>
+  <div id="clear" class="overlay hidden">
+    <h1>STAGE CLEAR</h1>
+    <p class="sub">1-1 墜落之底</p>
+    <div id="clearStats"></div>
+    <div id="clearLoot"></div>
+    <p id="clearLine"></p>
+    <div class="row"><button id="bagBtn2" class="pbtn">打開背包</button><button id="againBtn">再刷一次</button></div>
+  </div>
+  <div id="rotate" class="overlay"><p>請把手機轉成橫向 ↻</p></div>
+</div>
+<script>
+  // 直接雙擊 index.html（file://）時瀏覽器會擋掉遊戲程式，改顯示說明
+  if (location.protocol === "file:") document.getElementById("start").innerHTML =
+    '<h1>零星勇者</h1><p class="sub">不能直接打開這個檔案</p><div class="help">請回到「像素小遊戲」資料夾，雙擊 <b>開始遊戲.bat</b>，<br>它會自動用瀏覽器打開遊戲。玩完把黑色視窗關掉就好。</div>';
+</script>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

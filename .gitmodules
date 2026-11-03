@@ -1,0 +1,3 @@
+[submodule "pixelfx"]
+	path = pixelfx
+	url = https://github.com/patch-gg/pixelfx.git

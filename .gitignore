@@ -1,0 +1,11 @@
+# 依賴與暫存
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+
+# Claude Code 本機設定
+.claude/settings.local.json
+
+# 草稿工具產生的預覽圖（需要的會另存到 docs/）
+game/tools/drafts/*.png
