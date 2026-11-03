@@ -44,5 +44,5 @@ export function absorbCore(forms, id) {
 let n = 0;
 export const makeCore = (id) => ({
   uid: "core" + Date.now().toString(36) + (n++).toString(36), kind: "formcore", form: id,
-  name: FORMS[id].name + "的核", icon: "star", rarity: 3, ilvl: 1, affixes: [], stats: {},
+  name: FORMS[id].name + "的核", icon: "core_" + id, rarity: 3, ilvl: 1, affixes: [], stats: {},
 });

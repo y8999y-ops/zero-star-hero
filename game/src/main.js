@@ -161,7 +161,7 @@ function absorb(it) {
     if (player.form === it.form) player.setForm(it.form, res.lv);
   } else {
     const f = profile.forms.owned[it.form];
-    feed({ name: it.name, icon: "star", rarity: 3 }, `${F.name} ${f.xp}/${coresToLevel(f.lv)}`);
+    feed({ name: it.name, icon: it.icon, rarity: 3 }, `${F.name} ${f.xp}/${coresToLevel(f.lv)}`);
   }
   save(profile);
   buildFormHud();

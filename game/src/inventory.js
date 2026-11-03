@@ -10,7 +10,7 @@ import { paintStar, POSES } from "./star.js";
 const $ = (id) => document.getElementById(id);
 const AUTO = ["關", "垃圾", "普通以下"];
 const KIND_ORDER = { weapon: 0, head: 1, body: 2, hands: 3, feet: 4, acc: 5, junk: 6 };
-const SLOT_ICON = { weapon: "sword", head: "helm", body: "shirt", hands: "glove", feet: "boot", acc1: "ring", acc2: "amulet" };
+const SLOT_ICON = { weapon: "core_dawn", head: "crown", body: "star", hands: "glove", feet: "boot", acc1: "shard", acc2: "shard" };
 
 /**
  * profile：存檔資料（會直接修改）。onChange()：裝備或背包改變後呼叫（重算數值、存檔）。

@@ -49,6 +49,71 @@ function painter() {
   };
 }
 
+// ---- 星核（寶石）的四種切法。1 亮（左上）、2 中、3 暗（右下）、4 最暗，w 白色高光；中間一顆十字小星光＝星核在發光
+// 參考：Kyrise 16×16、DB32 RPG Items 的寶石（面分明、左上亮右下暗、白色高光點）、PixelFX pickups/gem-spin 與 crystal-shard、
+// Clip Studio「Coloring Gems and Crystals」（面朝光最亮、稜線分面）。
+const GEM = {
+  round: [   // 圓形切割（12×12）
+    "....1112....",
+    "..11111222..",
+    ".11w112222 .",
+    ".1w1122222 .",
+    "11112w2223 3",
+    "1112www2233.",
+    "122222w2233.",
+    "1222222223 4",
+    ".22222222 4.",
+    ".322222233 .",
+    "..33333334..",
+    "....3444....",
+  ],
+  sharp: [   // 菱形（11×11），45° 邊
+    ".....1.....",
+    "....112....",
+    "...11122...",
+    "..1w11222..",
+    ".1w112w222.",
+    "11112www223",
+    ".2222w2223.",
+    "..2222233..",
+    "...22333...",
+    "....334....",
+    ".....4.....",
+  ],
+  tall: [    // 長六角（8×13）
+    "...12...",
+    "..1122..",
+    ".111222.",
+    "11w12223",
+    "1w112223",
+    "1112w223",
+    "112www23",
+    "1112w223",
+    "12222223",
+    "12222233",
+    ".222233.",
+    "..2333..",
+    "...34...",
+  ],
+  square: [  // 方形墊切（12×11）
+    "..11111222..",
+    ".11w111222 .",
+    "11w11112222 ",
+    "111112w22223",
+    "11112www2223",
+    "112222w22233",
+    "122222222233",
+    "122222222333",
+    "222222222334",
+    ".3222222334.",
+    "..33333444..",
+  ],
+};
+function gem(p, shape, x, y, [c1, c2, c3, c4]) {
+  const map = { 1: c1, 2: c2, 3: c3, 4: c4, w: "w" };
+  p.art(x, y, GEM[shape].map((r) => [...r].map((ch) => (ch === " " ? c3 : map[ch] ?? ".")).join("")));
+}
+
 // 劍：刀身從右上斜到左下，護手和刀身垂直
 function swordShape(p, { blade = ["w", "s", "S"], len = 8, guard = ["g", "G"], gl = 5, grip = 3 } = {}) {
   const w = blade.length, top = 2;
@@ -63,6 +128,62 @@ function swordShape(p, { blade = ["w", "s", "S"], len = 8, guard = ["g", "G"], g
 }
 
 const DRAW = {
+  // ---- 星核：每種一個顏色＋切法
+  core_rust(p) { gem(p, "round", 2, 2, ["o", "O", "Q", "j"]); },
+  core_dawn(p) { gem(p, "round", 2, 2, ["h", "g", "G", "H"]); },
+  core_heavy(p) { gem(p, "square", 2, 3, ["s", "S", "d", "n"]); },
+  core_meteor(p) { gem(p, "square", 2, 3, ["p", "P", "x", "n"]); },
+  core_sharp(p) { gem(p, "sharp", 3, 3, ["r", "R", "q", "x"]); },
+  core_shadow(p) { gem(p, "sharp", 3, 3, ["P", "x", "n", "k"]); },
+  core_long(p) { gem(p, "tall", 4, 2, ["t", "T", "u", "n"]); },
+  core_comet(p) { gem(p, "tall", 4, 2, ["c", "C", "n", "x"]); },
+  core_dull(p) { gem(p, "square", 2, 3, ["e", "E", "m", "j"]); },
+  core_rock(p) { gem(p, "square", 2, 3, ["y", "Y", "z", "j"]); },
+  // 很吵的星核（傳說）：金色寶石張著嘴在講話
+  core_noisy(p) {
+    gem(p, "round", 2, 2, ["h", "g", "G", "H"]);
+    p.art(5, 6, ["n...n.", "......", ".qqqq.", ".qrrq."]);
+  },
+  // ---- 魔物核：圓的核心，帶著那種魔物的特徵
+  core_slime(p) {
+    gem(p, "round", 2, 1, ["e", "E", "m", "m"]);
+    p.art(6, 5, ["n..n"]);
+    p.px(7, 13, "E"); p.px(7, 14, "m"); p.px(9, 13, "m");   // 從底下往下滴
+  },
+  core_can(p) {
+    gem(p, "round", 2, 2, ["s", "S", "d", "n"]);
+    p.rect(3, 5, 12, 5, "w");   // 罐蓋的亮邊
+    p.rect(3, 6, 12, 6, "d");
+    p.art(6, 4, ["h..h"]);       // 縫裡偷看的眼睛
+    p.px(10, 10, "O"); p.px(11, 10, "Q");
+  },
+  // ---- 空欄位的剪影：星冠（皇冠）、碎片（水晶碎片）
+  crown(p) {
+    p.art(1, 4, [
+      ".h....h....h.",
+      ".hg..hgG..gG.",
+      ".hgggggggggG.",
+      ".hgrgggCgggG.",
+      ".hgggggggggG.",
+      ".GGGGGGGGGGH.",
+    ]);
+  },
+  shard(p) {
+    p.art(4, 2, [
+      ".....tT",
+      "....ttT",
+      "...twTT",
+      "..ttTTu",
+      "..ttTTu",
+      ".twtTTu",
+      ".ttTTuu",
+      "ttTTTu.",
+      "ttTTuu.",
+      "tTTuu..",
+      "TTuu...",
+      ".uu....",
+    ]);
+  },
   // ---- 武器
   sword(p) { swordShape(p); },
   greatsword(p) { swordShape(p, { blade: ["w", "s", "S", "d"], len: 9, gl: 7, grip: 2 }); },

@@ -25,17 +25,17 @@ export const KIND_NAME = { weapon: "星核", head: "星冠", body: "星殼", han
 
 // 底材：lv 是最低物品等級，數值是 1 級時的基礎值（會隨物品等級成長）
 export const BASES = {
-  // 星核（舊的武器底材 id 保留，存檔裡的舊武器會直接變成對應的星核；圖示之後重畫）
-  sword1: { kind: "weapon", name: "鏽色星核", short: "鏽核", icon: "sword", atk: 12, lv: 1 },
-  sword2: { kind: "weapon", name: "晨光星核", short: "晨核", icon: "sword", atk: 15, lv: 6 },
-  great1: { kind: "weapon", name: "沉重星核", short: "重核", icon: "greatsword", atk: 19, lv: 1 },
-  great2: { kind: "weapon", name: "隕鐵星核", short: "隕核", icon: "greatsword", atk: 27, lv: 8 },
-  dagger1: { kind: "weapon", name: "尖銳星核", short: "尖核", icon: "dagger", atk: 8, crit: 8, lv: 1 },
-  dagger2: { kind: "weapon", name: "暗影星核", short: "影核", icon: "dagger", atk: 11, crit: 8, lv: 7 },
-  spear1: { kind: "weapon", name: "細長星核", short: "長核", icon: "spear", atk: 12, lv: 1 },
-  spear2: { kind: "weapon", name: "彗尾星核", short: "彗核", icon: "spear", atk: 17, lv: 7 },
-  hammer1: { kind: "weapon", name: "鈍光星核", short: "鈍核", icon: "hammer", atk: 18, lv: 1 },
-  hammer2: { kind: "weapon", name: "巨岩星核", short: "岩核", icon: "hammer", atk: 26, lv: 8 },
+  // 星核（舊的武器底材 id 保留，存檔裡的舊武器會直接變成對應的星核）
+  sword1: { kind: "weapon", name: "鏽色星核", short: "鏽核", icon: "core_rust", atk: 12, lv: 1 },
+  sword2: { kind: "weapon", name: "晨光星核", short: "晨核", icon: "core_dawn", atk: 15, lv: 6 },
+  great1: { kind: "weapon", name: "沉重星核", short: "重核", icon: "core_heavy", atk: 19, lv: 1 },
+  great2: { kind: "weapon", name: "隕鐵星核", short: "隕核", icon: "core_meteor", atk: 27, lv: 8 },
+  dagger1: { kind: "weapon", name: "尖銳星核", short: "尖核", icon: "core_sharp", atk: 8, crit: 8, lv: 1 },
+  dagger2: { kind: "weapon", name: "暗影星核", short: "影核", icon: "core_shadow", atk: 11, crit: 8, lv: 7 },
+  spear1: { kind: "weapon", name: "細長星核", short: "長核", icon: "core_long", atk: 12, lv: 1 },
+  spear2: { kind: "weapon", name: "彗尾星核", short: "彗核", icon: "core_comet", atk: 17, lv: 7 },
+  hammer1: { kind: "weapon", name: "鈍光星核", short: "鈍核", icon: "core_dull", atk: 18, lv: 1 },
+  hammer2: { kind: "weapon", name: "巨岩星核", short: "岩核", icon: "core_rock", atk: 26, lv: 8 },
   head1: { kind: "head", name: "破水桶", short: "水桶", icon: "bucket", def: 2, lv: 1 },
   head2: { kind: "head", name: "皮帽", short: "皮帽", icon: "cap", def: 4, lv: 4 },
   head3: { kind: "head", name: "鐵頭盔", short: "頭盔", icon: "helm", def: 7, lv: 10 },
@@ -84,7 +84,7 @@ export const AFFIXES = {
 export const UNIQUES = {
   slipper: { kind: "feet", name: "前任勇者的拖鞋", icon: "goldslipper", def: 4, text: "閃避後的下一擊必定暴擊；閃避距離 +50%", lore: "前任勇者逃跑時掉的。跑得很快。" },
   overtime: { kind: "acc", name: "加班證明", icon: "paper", text: "戰鬥越久傷害越高：每 10 秒 +5%，上限 +100%，戰鬥結束歸零", lore: "上面蓋著「已讀不回」的章。" },
-  noisy: { kind: "weapon", name: "很吵的星核", icon: "noisysword", atk: 18, text: "每 10 秒吐槽你一次，並給予隨機增益 5 秒", lore: "「拜託你認真打好嗎。」" },
+  noisy: { kind: "weapon", name: "很吵的星核", icon: "core_noisy", atk: 18, text: "每 10 秒吐槽你一次，並給予隨機增益 5 秒", lore: "「拜託你認真打好嗎。」" },
   hardhat: { kind: "head", name: "爆炸頭安全帽", icon: "hardhat", def: 6, text: "擊殺時爆炸機率 +25%，爆炸範圍 +50%", lore: "工地主任的遺物。施工中，請勿靠近。" },
 };
 

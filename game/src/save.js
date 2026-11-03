@@ -18,6 +18,7 @@ function migrateItem(it) {
   if (it.unique && UNIQUES[it.unique]) it.name = UNIQUES[it.unique].name;
   else if (BASES[it.base]) it.name = nameFor(it, it.name.includes("之") ? it.name.split("之")[0] : null);
   if (BASES[it.base]?.crit && !it.stats.crit) it.stats.crit = BASES[it.base].crit;
+  it.icon = it.unique ? UNIQUES[it.unique].icon : BASES[it.base]?.icon ?? it.icon;
   delete it.wtype;
 }
 
