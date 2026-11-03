@@ -194,7 +194,7 @@ export function createInventory(profile, { onChange, onClose }) {
     if (sel.where === "bag") btns += `<button class="pbtn red" data-act="salvage">拆解 <small>+${r.scrap}碎屑</small></button>`;
     const lore = it.unique ? `<div class="lore">${UNIQUES[it.unique].lore}</div>` : "";
     el.innerHTML = `<div class="dhead"><div class="slot r${it.rarity}"><img src="${iconURL(it.icon, 2)}"></div>
-      <div><div class="dname" style="color:${r.color}">${it.name}</div><div class="dsub">${r.name}・${kindLabel(it)}・物品等級 ${it.ilvl}</div></div></div>
+      <div><div class="dname" style="color:${r.color}">${it.name}${it.plus ? " +" + it.plus : ""}</div><div class="dsub">${r.name}・${kindLabel(it)}・物品等級 ${it.ilvl}</div></div></div>
       <div class="dlines">${lines || '<div class="ln">（什麼都沒有）</div>'}${lore}</div>${cmp}<div class="dbtns">${btns}</div>`;
     el.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", () => {
       const a = b.dataset.act;

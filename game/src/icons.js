@@ -157,6 +157,23 @@ const DRAW = {
     p.art(6, 4, ["h..h"]);       // 縫裡偷看的眼睛
     p.px(10, 10, "O"); p.px(11, 10, "Q");
   },
+  // 回城按鈕：小房子（屋頂、煙囪、亮著的窗）
+  home(p) {
+    p.art(1, 2, [
+      ".........RR...",
+      "......rr.RR...",
+      ".....rrrrRR...",
+      "....rrrrrrR...",
+      "...rrrrrrrrR..",
+      "..rrrrrrrrrRR.",
+      ".rRRRRRRRRRRRq",
+      "..llllllllbB..",
+      "..llhhllbbbB..",
+      "..llhhllbjjB..",
+      "..lllllbbjjB..",
+      "..bbbbbbbjjB..",
+    ]);
+  },
   // ---- 空欄位的剪影：星冠（皇冠）、碎片（水晶碎片）
   crown(p) {
     p.art(1, 4, [

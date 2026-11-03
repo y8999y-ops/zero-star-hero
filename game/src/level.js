@@ -335,9 +335,11 @@ export function sceneLights(camX, W, time) {
 }
 
 /** 腳下的地面高度：先找平台（只有從上方落下時），再退回地板。 */
+// 目前地圖的平台與寬度（城鎮會換成沒有平台、比較窄）
+export const geo = { platforms: PLATFORMS, w: LEVEL_W };
 export function groundAt(x, prevY, y, dropping) {
-  if (!dropping) for (const p of PLATFORMS) if (x >= p.x - 2 && x <= p.x + p.w + 2 && prevY <= p.y + 0.5 && y >= p.y) return p.y;
+  if (!dropping) for (const p of geo.platforms) if (x >= p.x - 2 && x <= p.x + p.w + 2 && prevY <= p.y + 0.5 && y >= p.y) return p.y;
   return y >= FLOOR ? FLOOR : null;
 }
 /** 是否站在平台上（不是地板）。 */
-export const onPlatform = (x, y) => PLATFORMS.some((p) => Math.abs(y - p.y) < 0.5 && x >= p.x - 2 && x <= p.x + p.w + 2);
+export const onPlatform = (x, y) => geo.platforms.some((p) => Math.abs(y - p.y) < 0.5 && x >= p.x - 2 && x <= p.x + p.w + 2);

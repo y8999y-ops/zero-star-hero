@@ -15,7 +15,7 @@ import { A, slashAnim } from "./assets.js";
 import { FORMS, formMul } from "./forms.js";
 import { reduction } from "./stats.js";
 import { spawn, hitStop, shake } from "./fx.js";
-import { groundAt, onPlatform, LEVEL_W, WALL } from "./level.js";
+import { groundAt, onPlatform, geo, WALL } from "./level.js";
 
 const RUN = 128, ACC_GROUND = 1500, ACC_AIR = 950, GRAV = 1000, MAX_FALL = 430;
 const JUMP_V = -335, JUMP2_V = -295, COYOTE = 0.08;
@@ -217,7 +217,7 @@ export class Player {
     const prevY = this.y;
     this.x += this.vx * dt;
     this.y += this.vy * dt;
-    this.x = Math.max(WALL + 7, Math.min(LEVEL_W - WALL - 7, this.x));
+    this.x = Math.max(WALL + 7, Math.min(geo.w - WALL - 7, this.x));
     const wasGrounded = this.grounded;
     const gy = this.vy >= 0 ? groundAt(this.x, prevY, this.y, this.dropT > 0) : null;
     if (gy !== null) {

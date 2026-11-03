@@ -8,8 +8,9 @@ const BACKUP = "zero-hero-save-v1-backup-ver1";
 const VER = 2;
 export const BAG_SIZE = 40;
 
+export const freshGuild = () => ({ registered: false, done: 0, quest: null });
 function fresh() {
-  return { ver: VER, lv: 1, xp: 0, coins: 0, scrap: 0, inv: [], equip: starterGear(), auto: 0, clears: 0, forms: freshForms() };
+  return { ver: VER, lv: 1, xp: 0, coins: 0, scrap: 0, inv: [], equip: starterGear(), auto: 0, clears: 0, forms: freshForms(), guild: freshGuild() };
 }
 
 // 舊武器 → 星核：底材 id 不變，只改名字（稀有裝備保留原本的隨機名字）、拿掉武器種類
@@ -33,7 +34,7 @@ export function load() {
         s.inv.forEach(migrateItem);
         s.ver = 2;
       }
-      return { ...fresh(), ...s, forms: s.forms ?? freshForms() };
+      return { ...fresh(), ...s, forms: s.forms ?? freshForms(), guild: s.guild ?? freshGuild() };
     }
   } catch {}
   return fresh();

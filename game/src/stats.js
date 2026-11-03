@@ -10,8 +10,9 @@ export function computeStats(equip, lv) {
   let wAtk = 4, def = 0, hpBase = 0, critBase = 0;
   for (const it of Object.values(equip)) {
     if (!it) continue;
-    if (it.kind === "weapon") wAtk = it.stats.atk ?? wAtk;
-    def += it.stats.def ?? 0;
+    const up = 1 + 0.08 * (it.plus ?? 0);   // 工坊強化，每 +1 基礎數值 +8%
+    if (it.kind === "weapon") wAtk = Math.round((it.stats.atk ?? wAtk) * up);
+    def += Math.round((it.stats.def ?? 0) * up);
     hpBase += it.stats.hp ?? 0;
     critBase += it.stats.crit ?? 0;
     for (const a of it.affixes) sum[a.id] = (sum[a.id] ?? 0) + a.v;

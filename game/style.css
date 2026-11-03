@@ -86,8 +86,8 @@ body.touch #touch { display: block; }
 .overlay h1 { margin: 0; font-size: 42px; letter-spacing: 6px; color: var(--gold); text-shadow: 0 4px 0 #5a2a00; }
 .overlay .sub { margin: 0; color: var(--dim); }
 .overlay .row { display: flex; gap: 10px; align-items: center; }
-#againBtn, #startBtn { font: inherit; font-size: 18px; font-weight: 700; padding: 0 22px; height: 48px; border: 12px solid transparent; border-image: var(--btn) 12 fill / 12px; image-rendering: pixelated; background: none; color: #3a1c04; text-shadow: 0 1px 0 #ffe9a0; cursor: pointer; line-height: 24px; }
-#againBtn:active, #startBtn:active { border-image-source: var(--btn-down); }
+#homeBtn, #startBtn { font: inherit; font-size: 18px; font-weight: 700; padding: 0 22px; height: 48px; border: 12px solid transparent; border-image: var(--btn) 12 fill / 12px; image-rendering: pixelated; background: none; color: #3a1c04; text-shadow: 0 1px 0 #ffe9a0; cursor: pointer; line-height: 24px; }
+#homeBtn:active, #startBtn:active { border-image-source: var(--btn-down); }
 .help { max-width: 620px; font-size: 13px; color: var(--dim); line-height: 1.7; }
 .help b { color: var(--ink); }
 #clearStats { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 6px; width: min(600px, 94%); }
@@ -186,3 +186,15 @@ body.touch #touch { display: block; }
 .fslot canvas { width: 40px; height: 34px; position: absolute; left: -3px; top: -3px; image-rendering: pixelated; }
 .fslot i { position: absolute; right: -4px; bottom: -6px; font: 700 10px/1 sans-serif; font-style: normal; color: var(--gold); text-shadow: 0 1px 0 #000; }
 .fslot.on { opacity: 1; filter: drop-shadow(0 0 4px #ffd84a); }
+
+/* 城鎮：對話框、回城按鈕、換場景的淡出 */
+#dlg { position: absolute; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(640px, 92%); padding: 10px 16px 12px; border: 12px solid transparent; border-image: var(--panel) 12 fill / 12px; image-rendering: pixelated; z-index: 4; }
+#dlgName { color: var(--gold); font-weight: 900; font-size: 15px; margin-bottom: 4px; }
+#dlgText { color: var(--ink); font-size: 16px; line-height: 1.6; min-height: 1.6em; }
+#dlg.more #dlgText::after { content: " ▼"; color: var(--gold); font-size: 12px; animation: dlgMore .6s steps(2) infinite; }
+@keyframes dlgMore { 50% { opacity: 0; } }
+#dlgOpts { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+#dlgOpts .pbtn { text-align: left; }
+#btnHome { position: absolute; top: max(8px, env(safe-area-inset-top)); right: max(64px, calc(env(safe-area-inset-right) + 56px)); width: 44px; height: 44px; border: 0; padding: 0; background: var(--ic-home, none) center / 100% no-repeat; image-rendering: pixelated; }
+#fade { position: absolute; inset: 0; background: #08060e; opacity: 0; pointer-events: none; transition: opacity .35s; z-index: 6; }
+#fade.on { opacity: 1; }

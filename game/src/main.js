@@ -4,7 +4,10 @@ import * as fireball from "../../pixelfx/src/fx/fire/fireball.js";
 import * as explosion from "../../pixelfx/src/fx/explosions/plasma-explosion.js";
 import { A, GLOW } from "./assets.js";
 import { input, tickInput, initTouch, consume } from "./input.js";
-import { drawLevel, drawForeground, drawAtmosphere, sceneLights, LEVEL_W, FLOOR, H, TORCHES, WALL } from "./level.js";
+import { drawLevel, drawForeground, drawAtmosphere, sceneLights, LEVEL_W, FLOOR, H, TORCHES, WALL, geo } from "./level.js";
+import { TOWN_W, townLights, drawTown, drawTownNpcs, nearby } from "./town.js";
+import { talk, ask, dialog } from "./dialog.js";
+import * as frogFx from "../../pixelfx/src/fx/critters/frog.js";
 import { computeLight, flash, updateLight } from "./light.js";
 import { spawn, updateFx, drawFx, juice, hitStop, shake, shakeOffset, fxCount } from "./fx.js";
 import { Player } from "./player.js";
@@ -26,7 +29,14 @@ import { paintStar, POSES } from "./star.js";
 import { ult, ULT_MAX, ULT_MULT, startUlt, updateUlt, ultLights, dimScene, drawUlt, drawCutIn, postUlt } from "./ult.js";
 
 installUiArt();
-const ENDLESS = new URLSearchParams(location.search).has("endless");
+// 場景：城鎮（碎星鎮）或關卡。換場景＝存檔後重新載入頁面（下一個場景記在 sessionStorage）。
+// ?endless 直接進無限模式、?stage 直接進 1-1（開發用）。第一次玩（還沒通關、還沒登記）先從 1-1 開始。
+const NEXT_KEY = "zero-hero-next", QS = new URLSearchParams(location.search);
+const nextScene = sessionStorage.getItem(NEXT_KEY);
+sessionStorage.removeItem(NEXT_KEY);
+const profile = load();
+const ENDLESS = nextScene ? nextScene === "endless" : QS.has("endless");
+const TOWN = nextScene ? nextScene === "town" : !QS.has("endless") && !QS.has("stage") && (profile.clears > 0 || profile.guild.registered);
 const STAGE = STAGE_1_1;
 
 const STEP = 1 / 60;
@@ -50,7 +60,8 @@ addEventListener("resize", resize);
 resize();
 
 // ---- 世界
-const player = ENDLESS ? new Player(200, FLOOR) : new Player(STAGE.start.x, STAGE.start.y);
+if (TOWN) { geo.platforms = []; geo.w = TOWN_W; }
+const player = TOWN ? new Player(120, FLOOR) : ENDLESS ? new Player(200, FLOOR) : new Player(STAGE.start.x, STAGE.start.y);
 const enemies = [];
 const coins = [];
 const shots = [];
@@ -58,7 +69,6 @@ const stats = { coins: 0, kills: 0, combo: 0, comboT: 0, best: 0, time: 0, death
 let camX = 0, started = false, director = null, cleared = false;
 
 // ---- 存檔與刷寶
-const profile = load();
 const drops = new Drops();
 const runLoot = [];   // 這一趟撿到的東西（通關畫面顯示）
 let slowT = 0;        // 傳說掉落時的慢動作
@@ -224,7 +234,7 @@ function updateUniques(dt) {
 }
 
 // ---- 終點前的寶箱：打完最後一場才能開
-const chest = ENDLESS ? null : { x: STAGE.exitX - 120, opened: false, fx: createFx(chestOpen, { x: STAGE.exitX - 120, y: FLOOR, light: 0.3 }), t: 0 };
+const chest = ENDLESS || TOWN ? null : { x: STAGE.exitX - 120, opened: false, fx: createFx(chestOpen, { x: STAGE.exitX - 120, y: FLOOR, light: 0.3 }), t: 0 };
 function updateChest(dt) {
   if (!chest) return;
   if (!chest.opened) {
@@ -248,8 +258,8 @@ function updateChest(dt) {
   }
 }
 
-for (const x of TORCHES) spawn(A.brazier, { x, y: FLOOR }, { layer: "back", keep: true }).update(Math.random() * 3);
-if (!ENDLESS) spawn(A.portal, { x: STAGE.exitX + 26, y: FLOOR }, { layer: "back", keep: true });
+if (!TOWN) for (const x of TORCHES) spawn(A.brazier, { x, y: FLOOR }, { layer: "back", keep: true }).update(Math.random() * 3);
+if (!ENDLESS && !TOWN) spawn(A.portal, { x: STAGE.exitX + 26, y: FLOOR }, { layer: "back", keep: true });
 
 // 關卡流程需要的操作
 const stageApi = {
@@ -341,6 +351,133 @@ const world = {
 };
 
 let boomDepth = 0;
+
+// ================= 城鎮：碎星鎮 =================
+// 公會等級：完成的任務數
+const RANKS = [["F", 0], ["E", 3], ["D", 8], ["C", 15], ["B", 25], ["A", 40], ["S", 60]];
+function rankOf(done) { let r = "F"; for (const [n, need] of RANKS) if (done >= need) r = n; return r; }
+const nextRank = (done) => RANKS.find(([, need]) => need > done);
+
+/** 換場景：存檔、淡出、重新載入 */
+function goScene(next) {
+  save(profile, true);
+  sessionStorage.setItem(NEXT_KEY, next);
+  $("fade").classList.add("on");
+  setTimeout(() => location.replace(location.pathname), 380);   // 拿掉網址上的開發用參數
+}
+
+let prevAtk = false, near = null, busy = false;
+if (TOWN) {
+  spawn(frogFx, { x: 548, y: FLOOR, seed: 3, light: 0.2 }, { keep: true, layer: "back" });
+}
+function townArrive() {
+  if (profile.guild.rankUp) {
+    toast(`系統：公會等級升到 ${profile.guild.rankUp} 級！`, 3);
+    delete profile.guild.rankUp;
+    save(profile);
+  } else toast("碎星鎮", 2);
+  if (!profile.guild.registered) sayQueue.push(["系統：這裡是碎星鎮。先去左邊的冒險者公會登記吧。", 3.2]);
+}
+function townTick(dt) {
+  updateLight(dt);
+  if (!dialog.open && !busy) {
+    // 城鎮不能戰鬥：攻擊鍵＝對話，技能、大招不能用
+    const atk = input.attack;
+    input.attack = false;
+    consume("skill"); consume("ult");
+    player.update(dt, world);
+    player.x = Math.max(20, Math.min(TOWN_W - 20, player.x));
+    near = nearby(player.x);
+    if (atk && !prevAtk && near && player.grounded) interact(near);
+    prevAtk = atk;
+  } else { player.vx = 0; prevAtk = true; }
+  drops.update(dt, player, 16, pickUp);
+  updateFx(dt);
+  const want = player.x - W / 2 + player.face * 30;
+  camX += (want - camX) * Math.min(1, 5 * dt);
+  camX = Math.max(0, Math.min(TOWN_W - W, camX));
+  updateSay(dt);
+}
+// 可以對話時，頭上出現一個跳動的「！」
+function drawPrompt() {
+  if (!near || dialog.open) return;
+  const bob = Math.floor(sceneClock * 4) % 2, x0 = Math.round(near.x) - frame.ox - 1, y0 = (near.place === "sign" ? 140 : FLOOR - 46) - bob - frame.oy;
+  const C1 = hex("#ffd84a") >>> 0, C0 = hex("#2a1626") >>> 0;
+  for (let y = -1; y <= 9; y++) for (let x = -1; x <= 3; x++) {
+    const on = x >= 0 && x <= 2 && ((y >= 0 && y <= 5) || (y >= 7 && y <= 8)) && (x === 1 || y <= 5);
+    const px = x0 + x, py = y0 + y;
+    if (px < 0 || py < 0 || px >= frame.w || py >= frame.h) continue;
+    if (on) frame.color[py * frame.w + px] = C1;
+  }
+  for (let y = 0; y <= 8; y++) if (y !== 6) { const px = x0 + 1, py = y0 + y; if (px >= 0 && py >= 0 && px < frame.w && py < frame.h) frame.color[py * frame.w + px] = C1; }
+  void C0;
+  showHint(document.body.classList.contains("touch") ? `點「攻擊」和${near.name}說話` : `J＝和${near.name}說話`, 0.2);
+}
+async function interact(n) {
+  busy = true;
+  try {
+    if (n.place === "guild") await guild(n.name);
+    else if (n.place === "workshop") await workshop(n.name);
+    else if (n.place === "inn") await inn(n.name);
+    else await talk("路標", ["「往 墜星之谷 →」", "系統：要出發的話，先去公會接任務。……沒有任務就跑去打怪，公會不給錢的。"]);
+  } finally { busy = false; }
+}
+async function guild(name) {
+  const G = profile.guild;
+  if (!G.registered) {
+    await talk(name, ["歡迎來到冒險者公會碎星鎮分部。我是櫃檯的波波。", "要登記冒險者嗎？請在這裡填寫……種族？"]);
+    await talk("系統", ["填「發光的五角形」應該就好。"]);
+    await talk(name, ["……好的，星星族。", "這是你的冒險者證，等級 F。完成任務就會升級喔。", "（推眼鏡）別擔心，大家一開始都是 F。……大部分的人啦。"]);
+    G.registered = true;
+    save(profile, true);
+  }
+  const rank = rankOf(G.done), nr = nextRank(G.done);
+  const v = await ask(name, `冒險者等級 ${rank}　已完成任務 ${G.done} 個。今天要接什麼任務？`, [
+    ["討伐：1-1 墜落之底（清光狂化魔物）", "stage"],
+    ["練功：無限討伐（打到你手痠為止）", "endless"],
+    ["問問升級的事", "rank"],
+    ["先不用", null],
+  ]);
+  if (v === "stage") { G.quest = "1-1"; await talk(name, ["任務受理。墜星之谷的狂化魔物越來越多了，請小心。"]); goScene("stage"); }
+  else if (v === "endless") { await talk(name, ["無限討伐不算正式任務，不過掉的東西都歸你。"]); goScene("endless"); }
+  else if (v === "rank") await talk(name, [nr ? `再完成 ${nr[1] - G.done} 個任務就能升到 ${nr[0]} 級。` : "你已經是 S 級了。……公會的天花板，就是你。", "升級後能接更難的任務，去更遠的地方。"]);
+}
+async function workshop(name) {
+  const core = profile.equip.weapon, p = core.plus ?? 0, scrap = 3 + p * 3, gold = 20 + p * 25;
+  const opts = [["整理背包、拆解裝備", "bag"]];
+  if (p < 10) opts.push([`強化星核 +${p} → +${p + 1}（${scrap} 碎屑、${gold} 金幣）`, "up"]);
+  opts.push(["沒事", null]);
+  const v = await ask(name, `……要打什麼？（身上：${profile.scrap} 碎屑、${profile.coins} 金幣）`, opts);
+  if (v === "bag") inv.show();
+  else if (v === "up") {
+    if (profile.scrap < scrap || profile.coins < gold) return talk(name, ["……材料不夠。去打點垃圾回來拆。"]);
+    profile.scrap -= scrap;
+    profile.coins -= gold;
+    core.plus = p + 1;
+    refreshStats();
+    flash(412, FLOOR - 20, 70, 3, 0.6, "#ff9a40");
+    shake(0.2, 2);
+    await talk(name, [`（鏘、鏘、鏘）……好了。星核 +${p + 1}。`, p + 1 >= 7 ? "……再敲下去，我的手會裂開。" : "下次再來。"]);
+  }
+}
+const INN_CHAT = [
+  "以前這裡只是隕石坑旁邊的小村子。星星掉下來以後，冒險者就變多了。",
+  "野外的史萊姆會咬人？哎呀，我家隔壁的史萊姆很乖的。是那些碎片害的啦。",
+  "岩叔看起來很兇，其實他會偷偷幫小孩修玩具喔。",
+  "波波每天都推眼鏡推一千次。我數過。",
+  "你是星星族？那你晚上會發光嗎？省電耶。",
+];
+async function inn(name) {
+  const v = await ask(name, "哎呀，歡迎光臨～要休息一下嗎？", [["休息（回滿血、存檔）", "rest"], ["聊天", "chat"], ["不用了", null]]);
+  if (v === "rest") {
+    player.hp = player.maxHp;
+    save(profile, true);
+    $("fade").classList.add("on");
+    await new Promise((r) => setTimeout(r, 500));
+    $("fade").classList.remove("on");
+    await talk(name, ["睡得好嗎？生命全滿，也幫你存好檔了。"]);
+  } else if (v === "chat") await talk(name, [INN_CHAT[Math.floor(Math.random() * INN_CHAT.length)]]);
+}
 const SHOT_PAL = {
   star: { fx: PAL.gold, boom: PAL.gold, accent: PAL.holy, light: "#ffd27a", r: 46, push: 3 },
   slime: { fx: PAL.poison, boom: PAL.poison, accent: PAL.leaf, light: "#7ee86a", r: 62, push: 5 },
@@ -424,6 +561,7 @@ function tick(dt) {
   if (juice.shakeT > 0) juice.shakeT -= dt;
   if (juice.freeze > 0) { juice.freeze -= dt; return; }   // 命中停頓：整個世界停住
   if (!started || inv.open) return;
+  if (TOWN) { townTick(dt); return; }
 
   updateLight(dt);
   if (cleared) { updateFx(dt); return; }
@@ -547,13 +685,14 @@ function render() {
   frame.light.fill(0);
   // 場景光影：火把、水晶、主角、飛行中的火球、稀有以上的掉寶光柱都是光源
   sceneClock += 1 / 60;
-  const lights = sceneLights(camX, W, sceneClock);
+  const lights = TOWN ? townLights(sceneClock) : sceneLights(camX, W, sceneClock);
   lights.push({ x: player.x, y: player.y - 10, r: 46, lv: 1.3, col: "#ffcf6a" });   // 星星主角自己會發光
   for (const s of shots) lights.push({ x: s.x, y: s.y, r: 64, lv: 3, col: (SHOT_PAL[s.form] ?? SHOT_PAL.star).light });
   for (const d of drops.list) if (d.landed && d.item.rarity >= R.rare) lights.push({ x: d.x, y: d.y - 10, r: d.item.rarity === R.legend ? 48 : 30, lv: 2, col: RARITY[d.item.rarity].color });
   ultLights(lights);
-  drawLevel(frame, computeLight(frame, lights));
-  drawAtmosphere(frame, sceneClock);
+  if (TOWN) drawTown(frame, computeLight(frame, lights), sceneClock);
+  else { drawLevel(frame, computeLight(frame, lights)); drawAtmosphere(frame, sceneClock); }
+  if (TOWN) { drawTownNpcs(frame, sceneClock); drawPrompt(); }
   if (chest && !chest.opened && Math.abs(chest.x - camX - W / 2) < W) chest.fx.draw(frame);
   // 大招時：先畫怪再暗場，法陣這些背景特效畫在暗場之後才會亮
   if (!ult.on) drawFx(frame, "back");
@@ -565,7 +704,7 @@ function render() {
   drawFx(frame, "front");
   drawUlt(frame);
   if (director?.lock) drawBarrier(director.lock);
-  drawForeground(frame);
+  if (!TOWN) drawForeground(frame);
   drawCutIn(frame);
   composite(frame, img.data, null, 0.8);   // 最後再整體壓一點發光
   postUlt(img.data);
@@ -664,6 +803,13 @@ function showClear() {
     ["通關時間", `${mm}:${ss}`], ["擊倒", stats.kills], ["金幣", stats.coins], ["最高連擊", stats.best], ["死亡次數", stats.deaths], ["撿到", runLoot.length + " 件"],
   ].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
   profile.clears++;
+  // 公會的任務：通關＝完成
+  if (profile.guild.quest) {
+    const before = rankOf(profile.guild.done);
+    profile.guild.done++;
+    profile.guild.quest = null;
+    if (rankOf(profile.guild.done) !== before) profile.guild.rankUp = rankOf(profile.guild.done);
+  }
   save(profile, true);
   const got = runLoot.filter((it) => it.rarity >= R.magic).sort((a, b) => b.rarity - a.rarity);
   $("clearLoot").innerHTML = got.length
@@ -672,7 +818,13 @@ function showClear() {
   $("clearLine").textContent = stats.deaths === 0 ? "系統：一次都沒死？……我收回「零星」那句話。一半。" : "系統：過是過了。死了幾次這件事，我會幫你保密的。";
   $("clear").classList.remove("hidden");
 }
-$("againBtn").addEventListener("click", () => { save(profile, true); location.reload(); });
+$("againBtn").addEventListener("click", () => goScene(ENDLESS ? "endless" : "stage"));
+$("homeBtn").addEventListener("click", () => goScene("town"));
+$("btnHome").addEventListener("click", async () => {
+  if (TOWN || dialog.open || !started) return;
+  if (await ask("系統", "要回碎星鎮嗎？這趟撿到的東西都會留著。", [["回城鎮", true], ["繼續打", false]])) goScene("town");
+});
+addEventListener("keydown", (e) => { if (e.code === "KeyH" && !TOWN && started && !dialog.open) $("btnHome").click(); });
 $("bagBtn2").addEventListener("click", () => inv.show());
 $("btnBag").addEventListener("click", () => inv.show());
 addEventListener("keydown", (e) => {
@@ -739,6 +891,7 @@ initTouch();
 function start() {
   if (started) return;
   started = true;
+  if (!TOWN) { $("btnHome").classList.remove("hidden"); $("btnHome").style.backgroundImage = `url(${iconURL("home", 3)})`; }
   $("start").classList.add("hidden");
   document.body.classList.add("playing");
   updateBagDot();
@@ -746,7 +899,8 @@ function start() {
   if (touch) {
     document.documentElement.requestFullscreen?.().then(() => screen.orientation?.lock?.("landscape")).catch(() => {});
   }
-  if (ENDLESS) toast("系統：無限模式。打到你手痠為止。");
+  if (TOWN) townArrive();
+  else if (ENDLESS) toast("系統：無限模式。打到你手痠為止。");
   else director = new Director(STAGE, stageApi, touch);
 }
 $("startBtn").addEventListener("click", start);

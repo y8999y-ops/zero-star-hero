@@ -54,7 +54,7 @@ export const BASES = {
 
 // 純垃圾：不能穿，只能拆解。撿到時系統會吐槽。
 export const JUNK = [
-  { id: "fishbone", name: "魚骨頭", icon: "fishbone", say: "系統：一根魚骨頭。你的拾荒魂在燃燒呢。" },
+  { id: "fishbone", name: "魚骨頭", icon: "fishbone", say: "系統：一根魚骨頭。你的收集魂在燃燒呢。" },
   { id: "bottle", name: "寶特瓶", icon: "bottle", say: "系統：寶特瓶。記得回收，勇者也要做環保。" },
   { id: "sock", name: "破襪子", icon: "sock", say: "系統：破襪子……只有一隻。另一隻呢？" },
   { id: "chopsticks", name: "斷掉的免洗筷", icon: "chopsticks", say: "系統：免洗筷，斷的。完美的垃圾。" },
@@ -89,7 +89,7 @@ export const UNIQUES = {
 };
 
 // 隨機名字：稀有裝備叫「○○之＋短名」
-const RARE_NAMES = ["社畜", "加班狂", "外送員", "失眠者", "禿頭勇者", "深淵", "午夜", "被拋棄者", "打工仔", "零星", "前男友", "房東", "末班車", "便利商店"];
+const RARE_NAMES = ["社畜", "加班狂", "外送員", "失眠者", "禿頭勇者", "深淵", "午夜", "墜星", "打工仔", "零星", "前男友", "房東", "末班車", "便利商店"];
 
 const pick = (a, r = Math.random) => a[Math.floor(r() * a.length)];
 const randInt = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
@@ -193,6 +193,7 @@ export function starterGear() {
 /** 一件物品的說明文字（給背包詳細欄位用）。 */
 export function describe(item) {
   const lines = [];
+  if (item.plus) lines.push(["unique", `工坊強化 +${item.plus}（基礎數值 +${item.plus * 8}%）`]);
   if (item.stats.atk) lines.push(["base", `星核攻擊 ${item.stats.atk}`]);
   if (item.stats.crit) lines.push(["base", `暴擊率 +${item.stats.crit}%`]);
   if (item.stats.def) lines.push(["base", `防禦 ${item.stats.def}`]);
