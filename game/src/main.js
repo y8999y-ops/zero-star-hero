@@ -5,7 +5,7 @@ import * as explosion from "../../pixelfx/src/fx/explosions/plasma-explosion.js"
 import { A, GLOW } from "./assets.js";
 import { input, tickInput, initTouch, consume } from "./input.js";
 import { drawLevel, drawForeground, drawAtmosphere, sceneLights, LEVEL_W, FLOOR, H, TORCHES, WALL, geo } from "./level.js";
-import { TOWN_W, townLights, drawTown, drawTownNpcs, nearby } from "./town.js";
+import { TOWN_W, townLights, drawTown, drawTownNpcs, drawTownFg, nearby } from "./town.js";
 import { talk, ask, dialog } from "./dialog.js";
 import * as frogFx from "../../pixelfx/src/fx/critters/frog.js";
 import { computeLight, flash, updateLight } from "./light.js";
@@ -455,7 +455,7 @@ async function workshop(name) {
     profile.coins -= gold;
     core.plus = p + 1;
     refreshStats();
-    flash(412, FLOOR - 20, 70, 3, 0.6, "#ff9a40");
+    flash(404, FLOOR - 20, 70, 3, 0.6, "#ff9a40");
     shake(0.2, 2);
     await talk(name, [`（鏘、鏘、鏘）……好了。星核 +${p + 1}。`, p + 1 >= 7 ? "……再敲下去，我的手會裂開。" : "下次再來。"]);
   }
@@ -703,6 +703,7 @@ function render() {
   player.draw(frame);
   drawFx(frame, "front");
   drawUlt(frame);
+  if (TOWN) drawTownFg(frame);
   if (director?.lock) drawBarrier(director.lock);
   if (!TOWN) drawForeground(frame);
   drawCutIn(frame);
