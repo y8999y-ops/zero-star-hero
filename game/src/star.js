@@ -1,12 +1,16 @@
 // 主角「胖星」（B1 不透明版）：轉生成星星碎片的勇者。遵守規則v2：整數網格、1px 外框、硬邊、精簡色盤。
 // 參考與做法見 docs/素材參考.md「新主角：星星碎片」。
 //
-// 組成：身體（胖胖的圓角星，兩個側角＝手臂、兩個下角＝腿）＋兩隻圓手套＋兩隻鞋子＋青色領巾＋眼睛＋肚子裡的閃光。
-// 手套和鞋子是分開的零件，可以移動；離開原位時用身體色的「連接段」接回角上，像橡膠一樣伸長（打拳、跑步）。
+// 組成：身體（胖胖的圓角星）＋兩隻鞋子＋青色領巾＋眼睛＋肚子裡的閃光。兩個側角本身就是手（使用者指定：不另外伸手出來）。
+// 手＝角：每個側角是「身體上的底邊＋尖端」圍成的凸多邊形，尖端可以移動，角就跟著變長、變尖、往上翹（出拳＝角往前刺）。
+// 鞋子是分開的零件，抬腳時用身體色的連接段接回下角。
 // 姿勢（pose）是一組參數，不是骨架：
 //   body: 0 普通、-1 壓扁（少一列）、1 拉長（多一列）    lean: 上半身往前（+）或往後（-）偏 1px
-//   hf, hb: 前手／後手套的位移 [dx, dy]（往臉朝的方向為 +x）   ff, fb: 前腳／後腳鞋子的位移
-//   eyes: "open" | "blink" | "squint"（用力）| "hurt"（><）   look: 眼睛往臉朝的方向偏 0 或 1
+//   hf, hb: 前角／後角尖端的位移 [dx, dy]（往臉朝的方向為 +x）   ff, fb: 前腳／後腳鞋子的位移
+//   eyes: "open" | "blink" | "squint"（用力）| "hurt"（><）
+//   view: 身體轉到哪個角度（繞垂直軸）：0 正面、1 斜前（平常）、2 側面、3 斜後、4 背面
+//         轉得越側，臉朝的那半邊拿掉越多欄（看起來越窄）；轉到背面時看不到臉，看到領巾的結；
+//         肚子的光在身體裡面，從背面只透出一點點。換方向＝ 1 → 0 → 翻面 → 1；另一隻手出拳＝ 1 → 2 → 3（背面出拳）→ 2 → 1
 //   core: 肚子閃光大小 0～2    scarf: 0 垂下、1 被風往後吹
 // 明暗：光從左上。外緣內側一圈亮邊（左上最亮、右下背光邊也亮），裡面一圈暗帶，肚子閃光從裡面透出來 → 透明感。
 import { hex } from "../../pixelfx/src/core/index.js";
@@ -14,7 +18,6 @@ import { hex } from "../../pixelfx/src/core/index.js";
 const C = (s) => hex(s) >>> 0;
 const OUT = C("#3a1e36");
 const GLASS = ["#d08a1c", "#f5c040", "#ffe27a", "#fff4b8", "#ffffff"].map(C);
-const MITT = ["#d08a1c", "#f5c040", "#ffe27a", "#fff4b8"].map(C);
 const SHOE = ["#1c2448", "#2c3c78", "#4a62b0", "#7a96e0"].map(C);
 const TEAL = ["#126068", "#1f8a8c", "#3cc8c0", "#9af0e0"].map(C);
 const EYE = C("#40204a"), WHITE = C("#ffffff"), BLUSH = C("#ff9a6a");
@@ -27,39 +30,76 @@ const HALF = [
   "....###########", "...#########...", "...########....",
 ];
 const BW = 29, MID = 14, WAIST = 14;          // 身體寬、中線、壓扁／拉長時增減的那一列
-const MITT_S = [".##", "###", "###", ".##"];   // 左手套（朝左），右手套左右鏡像
 const SHOE_S = [".#####", "######"];          // 左鞋
-const PAD = 8;                                // 畫布四周留給伸長的手腳
+const PAD = 11;                               // 畫布四周留給伸長的角和腳
+// 左側角：底邊在身體上（第 4、5 欄），尖端四點；右側角左右鏡像
+const ARM_BASE = [[4, 6], [5, 6], [4, 11], [5, 11]], ARM_TIP = [[2, 7], [1, 8], [1, 9], [2, 10]];
+// 各角度拿掉的欄（臉朝的那半邊；避開眼睛和中線），越側越窄
+const VIEW_CUT = { 1: [15, 22], 2: [5, 6, 7, 21, 22, 23], 3: [15, 22] };   // 側面避開頭頂的角（12～16 欄），兩邊各拿 3 欄
 export const STAR_H = 23;                     // 腳底到頭頂（不含外框）
 
 export const POSES = {
   stand: {},
   run: [
-    { lean: 1, hf: [-2, 1], hb: [2, -1], ff: [2, 0], fb: [-2, -1], scarf: 1, look: 1 },
-    { lean: 1, body: -1, hf: [-1, 1], hb: [1, 0], ff: [1, -1], fb: [-1, 0], scarf: 1, look: 1 },
-    { lean: 1, hf: [2, -1], hb: [-2, 1], ff: [-2, -1], fb: [2, 0], scarf: 1, look: 1 },
-    { lean: 1, body: -1, hf: [1, 0], hb: [-1, 1], ff: [-1, 0], fb: [1, -1], scarf: 1, look: 1 },
+    { lean: 1, hf: [-2, 1], hb: [2, -1], ff: [2, 0], fb: [-2, -1], scarf: 1 },
+    { lean: 1, body: -1, hf: [-1, 1], hb: [1, 0], ff: [1, -1], fb: [-1, 0], scarf: 1 },
+    { lean: 1, hf: [2, -1], hb: [-2, 1], ff: [-2, -1], fb: [2, 0], scarf: 1 },
+    { lean: 1, body: -1, hf: [1, 0], hb: [-1, 1], ff: [-1, 0], fb: [1, -1], scarf: 1 },
   ],
-  jump: { body: 1, hf: [0, -3], hb: [0, -3], ff: [1, -2], fb: [-1, -2], scarf: 1, look: 1 },
+  jump: { body: 1, hf: [0, -3], hb: [0, -3], ff: [1, -2], fb: [-1, -2], scarf: 1 },
   fall: { hf: [-1, -4], hb: [1, -4], ff: [0, 1], fb: [0, 1], scarf: 1, eyes: "open" },
   land: { body: -1, hf: [-1, 2], hb: [1, 2], ff: [-1, 0], fb: [1, 0] },
-  dash: { body: -1, lean: 1, hf: [-3, 0], hb: [-3, 1], ff: [-2, -1], fb: [-3, -1], scarf: 1, eyes: "squint", look: 1 },
+  dash: { body: -1, lean: 1, hf: [-3, 0], hb: [-3, 1], ff: [-2, -1], fb: [-3, -1], scarf: 1, eyes: "squint" },
   hurt: { body: -1, lean: -1, hf: [-1, -3], hb: [1, -3], ff: [1, 0], fb: [-1, 0], eyes: "hurt", core: 0 },
-  cast: { lean: 1, hf: [5, -1], hb: [-2, 1], ff: [1, 0], fb: [-1, 0], eyes: "squint", look: 1, core: 2 },
+  cast: { lean: 1, hf: [5, -1], hb: [-2, 1], ff: [1, 0], fb: [-1, 0], eyes: "squint", core: 2 },
   // 攻擊：前搖（手往後拉）→ 出拳（手伸長）→ 收手
-  windF: { lean: -1, hf: [-3, 0], hb: [1, 1], ff: [0, 0], fb: [0, 0], eyes: "squint", look: 1 },
-  punchF: { lean: 1, hf: [7, 0], hb: [-2, 1], ff: [2, 0], fb: [-1, 0], eyes: "squint", look: 1, scarf: 1, core: 1 },
-  windB: { lean: -1, hf: [1, 1], hb: [-3, 0], ff: [0, 0], fb: [0, 0], eyes: "squint", look: 1 },
-  punchB: { lean: 1, hf: [-2, 1], hb: [9, -1], ff: [2, 0], fb: [-1, 0], eyes: "squint", look: 1, scarf: 1, core: 1 },
-  punchUp: { body: 1, lean: 1, hf: [5, -6], hb: [3, -5], ff: [1, -1], fb: [-1, 0], eyes: "squint", look: 1, scarf: 1, core: 2 },
+  windF: { lean: -1, hf: [-3, 0], hb: [1, 1], ff: [0, 0], fb: [0, 0], eyes: "squint" },
+  punchF: { lean: 1, hf: [7, 0], hb: [-2, 1], ff: [2, 0], fb: [-1, 0], eyes: "squint", scarf: 1, core: 1 },
+  punchB: { lean: 1, hf: [6, -3], hb: [-2, 2], ff: [2, 0], fb: [-1, 0], eyes: "squint", scarf: 1, core: 1 },
+  punchUp: { body: 1, lean: 1, hf: [5, -6], hb: [3, -5], ff: [1, -1], fb: [-1, 0], eyes: "squint", scarf: 1, core: 2 },
+  // 動畫 12 原則補的格子
+  // 攻擊：預備（往反方向拉、身體後仰）→ 拖影格（角拉到最長、身體拉長，誇張）→ 命中（身體壓扁、停住）→ 跟隨（角回彈過頭）→ 收
+  smearF: { body: 1, lean: 1, hf: [11, -1], hb: [-3, 1], ff: [2, -1], fb: [-2, 0], eyes: "squint", scarf: 1, core: 2 },
+  hitF: { body: -1, lean: 1, hf: [8, 0], hb: [-2, 2], ff: [2, 0], fb: [-2, 0], eyes: "squint", scarf: 1, core: 2 },
+  followF: { lean: 0, hf: [2, 1], hb: [0, 0], ff: [1, 0], fb: [-1, 0], eyes: "squint", core: 1 },
+  // 另一隻手出拳：身體扭轉，側面蓄力 → 轉到斜後方、拳（角）甩出去 → 命中時背對鏡頭 → 轉回側面 → 回到平常
+  windB: { view: 2, lean: -1, hf: [-3, 1], hb: [-2, -1], ff: [1, 0], fb: [-1, 0], eyes: "squint" },
+  smearB: { view: 3, body: 1, lean: 1, hf: [11, -2], hb: [-3, 1], ff: [2, -1], fb: [-2, 0], scarf: 1 },
+  hitB: { view: 3, body: -1, lean: 1, hf: [8, -1], hb: [-2, 2], ff: [2, 0], fb: [-2, 0], scarf: 1 },
+  followB: { view: 2, hf: [3, 0], hb: [0, 1], ff: [1, 0], fb: [-1, 0], eyes: "squint" },
+  back: { view: 4 },
+  smearUp: { body: 1, lean: 1, hf: [4, -9], hb: [2, -6], ff: [1, -2], fb: [-1, -1], eyes: "squint", scarf: 1, core: 2 },
+  // 跳：起跳拉長 → 最高點放鬆（漸慢）→ 下落越快越拉長；落地壓扁 → 回彈
+  apex: { hf: [-1, -2], hb: [1, -2], ff: [1, -1], fb: [-1, -1], scarf: 1 },
+  fallFast: { body: 1, hf: [-1, -5], hb: [1, -5], ff: [0, 1], fb: [0, 1], scarf: 1, eyes: "squint" },
+  landUp: { body: 1, hf: [0, -1], hb: [0, -1], ff: [0, 0], fb: [0, 0] },
+  // 轉身中間那一格（正面）
+  turn: { view: 0, body: -1, hf: [0, -1], hb: [0, -1] },
   // 大招
-  charge: { body: -1, hf: [3, 3], hb: [-3, 3], ff: [-1, 0], fb: [1, 0], eyes: "squint", core: 2 },
-  rise: { body: 1, hf: [2, -8], hb: [-2, -8], ff: [0, -1], fb: [0, -1], scarf: 1, core: 2 },
-  throw: { lean: 1, hf: [6, 3], hb: [-3, -2], ff: [1, -1], fb: [-2, -2], eyes: "squint", look: 1, scarf: 1, core: 1 },
-  finish: { body: -1, lean: 1, hf: [5, 4], hb: [-3, 0], ff: [2, 0], fb: [-2, 0], eyes: "squint", look: 1, core: 2 },
+  charge: { body: -1, view: 0, hf: [-2, 3], hb: [2, 3], ff: [-1, 0], fb: [1, 0], eyes: "squint", core: 2 },
+  rise: { body: 1, view: 0, hf: [-1, -7], hb: [1, -7], ff: [0, -1], fb: [0, -1], scarf: 1, core: 2 },
+  throw: { lean: 1, hf: [6, 3], hb: [-3, -2], ff: [1, -1], fb: [-2, -2], eyes: "squint", scarf: 1, core: 1 },
+  finish: { body: -1, lean: 1, hf: [5, 4], hb: [-3, 0], ff: [2, 0], fb: [-2, 0], eyes: "squint", core: 2 },
 };
 // 待機 8 格：主要動作是肚子的閃光一閃一亮（星星的個性），第 6 格眨眼；身體不動、腳不滑。
 POSES.idle = [0, 1, 2, 2, 1, 0, 0, 0].map((core, i) => ({ core, eyes: i === 6 ? "blink" : "open", hf: [0, i >= 2 && i <= 4 ? -1 : 0], hb: [0, i >= 3 && i <= 5 ? -1 : 0] }));
+
+// 凸多邊形：包住所有點的外殼，再判斷格子中心在不在裡面
+function convexHull(p) {
+  p = p.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], up = [];
+  for (const q of p) { while (lo.length > 1 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+  for (const q of p.reverse()) { while (up.length > 1 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+  return lo.slice(0, -1).concat(up.slice(0, -1));
+}
+function inHull(h, x, y) {
+  for (let i = 0; i < h.length; i++) {
+    const a = h[i], b = h[(i + 1) % h.length];
+    if ((b[0] - a[0]) * (y - a[1]) - (b[1] - a[1]) * (x - a[0]) < -0.01 * Math.hypot(b[0] - a[0], b[1] - a[1])) return false;
+  }
+  return true;
+}
 
 // ---- 組一個姿勢的像素（快取）
 const cache = new Map();
@@ -89,19 +129,29 @@ function build(q) {
       at(x, y - 1, 1); at(x, y, 1); at(x, y + 1, 1);
     }
   };
-  // 手套：前手在右（臉朝右時），後手在左；dx 往右為 +
-  const mitt = (side, [dx, dy]) => {
-    const bx = side < 0 ? PAD + 1 : PAD + BW - 4, by = top + 7 + dy, ox = bx + dx;
-    const rootX = side < 0 ? PAD + 4 + lean : PAD + BW - 5 + lean, rootY = top + 8;
-    if (Math.abs(dx) + Math.abs(dy) > 1) bridge(rootX, rootY, ox + 1, by + 1);
-    MITT_S.forEach((r, j) => [...r].forEach((ch, i) => {
-      if (ch !== "#") return;
-      const x = side < 0 ? ox + i : ox + 2 - i;
-      mat[by + j][x] = 2;
-    }));
+  // 側角＝手：底邊＋（移動後的）尖端圍成凸多邊形，整塊填成身體。前角在右（臉朝右時）；dx 往右為 +
+  const arm = (side, [dx, dy]) => {
+    const mx = (x) => (side < 0 ? x : BW - 1 - x);
+    let pts = [...ARM_BASE, ...ARM_TIP].map(([x, y]) => [mx(x), y]);
+    if (dx || dy) {
+      // 伸出去的角：從肩膀（底邊中心）到尖端是一個漸細的楔形。保持體積（立體感）：
+      // 底邊寬 6，尖端寬隨長度變細，但最細 3 格，不會變成細線；尖端多一點圓頭。
+      const bx = mx(4.5), by = 8.5, tx = mx(1.5) + dx, ty = 8.5 + dy;
+      const len = Math.hypot(tx - bx, ty - by) || 1, ux = (tx - bx) / len, uy = (ty - by) / len, nx = -uy, ny = ux;
+      const hb = 3, ht = Math.max(1.5, 2.2 - (len - 3) * 0.08);
+      pts = [[bx + nx * hb, by + ny * hb], [bx - nx * hb, by - ny * hb], [tx + nx * ht, ty + ny * ht], [tx - nx * ht, ty - ny * ht],
+        [tx + ux * 0.9 + nx * ht * 0.5, ty + uy * 0.9 + ny * ht * 0.5], [tx + ux * 0.9 - nx * ht * 0.5, ty + uy * 0.9 - ny * ht * 0.5],
+        ...ARM_BASE.map(([x, y]) => [mx(x), y])];
+    }
+    pts = pts.map(([x, y]) => [PAD + x + lean, top + y]);
+    const hull = convexHull(pts);
+    const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+    for (let y = Math.floor(Math.min(...ys)); y <= Math.ceil(Math.max(...ys)); y++) for (let x = Math.floor(Math.min(...xs)); x <= Math.ceil(Math.max(...xs)); x++) {
+      if (inHull(hull, x, y)) mat[y][x] = 1;
+    }
   };
-  mitt(-1, q.hb ?? [0, 0]);
-  mitt(1, q.hf ?? [0, 0]);
+  arm(-1, q.hb ?? [0, 0]);
+  arm(1, q.hf ?? [0, 0]);
   // 鞋子：前腳在右
   const shoe = (side, [dx, dy]) => {
     const bx = side < 0 ? PAD + 2 : PAD + BW - 8, by = top + BH + dy, ox = bx + dx;
@@ -129,19 +179,19 @@ function build(q) {
     }
     qq = nq;
   }
-  const cx = PAD + MID, cy = top + rowOf(15), core = q.core ?? 1;
+  const view = q.view ?? 1, back = view >= 3;
+  const cx = PAD + MID, cy = top + rowOf(15), core = back ? 0 : q.core ?? 1;
   const px = Array.from({ length: H }, () => new Array(W).fill(0));
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const m = mat[y][x];
     if (!m) continue;
     const tl = empty(x - 1, y) || empty(x, y - 1), br = empty(x + 1, y) || empty(x, y + 1);
     if (m === 3) { px[y][x] = SHOE[tl ? 3 : br ? 1 : 2]; continue; }
-    if (m === 2) { px[y][x] = MITT[tl ? 3 : br ? 1 : 2]; continue; }
     const d = dist[y][x], side = (x - cx) + (y - cy) > 2, r = Math.hypot((x - cx) * 0.9, y - cy);
     const arm = core === 0 ? 0 : core;
     const plus = (x === cx && Math.abs(y - cy) <= arm) || (y === cy && Math.abs(x - cx) <= arm);
     let c;
-    if (plus) c = GLASS[4];
+    if (plus) c = back ? GLASS[3] : GLASS[4];   // 背面：光隔著身體，只透出淡淡一點
     else if (r < 1.6 + core * 0.6) c = GLASS[3];
     else if (d === 1) c = tl ? GLASS[3] : GLASS[2];
     else if (d === 2) c = side ? GLASS[1] : GLASS[2];
@@ -151,17 +201,25 @@ function build(q) {
   }
   const put = (x, y, c) => { const X = PAD + x + (y < WAIST ? lean : 0), Y = top + rowOf(y); if (mat[Y]?.[X]) px[Y][X] = c; };
   // 眼睛
-  const lk = q.look ?? 0, eyes = q.eyes ?? "open";
-  for (const ex of [10 + lk, 17 + lk]) {
+  const lk = view === 1 ? 1 : 0, eyes = back ? "none" : q.eyes ?? "open";
+  // 側面只看得到前面那隻眼睛
+  for (const ex of view === 2 ? [18] : [10 + lk, 17 + lk]) {
     if (eyes === "open") { for (let y = 9; y < 12; y++) { put(ex, y, EYE); put(ex + 1, y, EYE); } put(ex, 9, WHITE); }
     else if (eyes === "squint") { for (let y = 10; y < 12; y++) { put(ex, y, EYE); put(ex + 1, y, EYE); } put(ex, 10, WHITE); }
     else if (eyes === "blink") { put(ex, 11, EYE); put(ex + 1, 11, EYE); }
   }
-  if (eyes === "hurt") { for (const [x, y] of [[10, 9], [11, 10], [10, 11], [18, 9], [17, 10], [18, 11]]) put(x, y, EYE); }
-  put(9 + lk, 12, BLUSH); put(19 + lk, 12, BLUSH);
+  if (eyes === "hurt") { for (const [x, y] of view === 2 ? [[19, 9], [18, 10], [19, 11]] : [[10, 9], [11, 10], [10, 11], [18, 9], [17, 10], [18, 11]]) put(x, y, EYE); }
+  if (!back) { if (view !== 2) put(9 + lk, 12, BLUSH); put(view === 2 ? 20 : 19 + lk, 12, BLUSH); }
   // 青色領巾：一圈＋前面的三角；被風吹時三角往後、尾巴飄出身體
   for (let x = 9; x <= 19; x++) put(x, 5, TEAL[x < 13 ? 3 : x > 16 ? 1 : 2]);
-  if (q.scarf) { put(12, 6, TEAL[2]); put(13, 6, TEAL[1]); put(11, 6, TEAL[1]); }
+  if (back) {
+    // 背面：領巾在後面打結，兩條尾巴垂下（被風吹時往後飄）
+    const kx = view === 4 ? 14 : 12;
+    put(kx - 1, 5, TEAL[3]); put(kx, 5, TEAL[2]); put(kx + 1, 5, TEAL[3]); put(kx, 6, TEAL[1]);
+    if (q.scarf) { put(kx - 1, 7, TEAL[2]); put(kx - 2, 7, TEAL[1]); put(kx + 1, 7, TEAL[2]); put(kx - 2, 8, TEAL[1]); }
+    else { put(kx - 1, 7, TEAL[2]); put(kx - 1, 8, TEAL[1]); put(kx + 1, 7, TEAL[2]); put(kx + 1, 8, TEAL[1]); }
+  } else if (view === 2) { put(18, 6, TEAL[2]); put(19, 6, TEAL[1]); put(19, 7, TEAL[1]); }   // 側面：領巾的三角在前緣
+  else if (q.scarf) { put(12, 6, TEAL[2]); put(13, 6, TEAL[1]); put(11, 6, TEAL[1]); }
   else { put(13, 6, TEAL[2]); put(14, 6, TEAL[1]); put(15, 6, TEAL[1]); put(14, 7, TEAL[1]); }
   // 左上的玻璃反光
   for (const [x, y] of [[6, 7], [7, 7], [7, 8]]) put(x, y, WHITE);
@@ -171,13 +229,19 @@ function build(q) {
     const X = PAD + 8 + lean, Y = top + 5;
     for (const [dx, dy, t] of [[0, 0, 2], [-1, 0, 2], [-2, 1, 1], [-3, 1, 1]]) if (!mat[Y + dy][X + dx]) { mat[Y + dy][X + dx] = 4; px[Y + dy][X + dx] = TEAL[t]; }
   }
+  // 側身：臉朝的那半邊往後轉，拿掉兩欄（看起來比正面窄）
+  for (const c of (VIEW_CUT[view] ?? []).map((c) => PAD + c + lean).sort((a, b) => b - a)) {
+    for (let y = 0; y < H; y++) { mat[y].splice(c, 1); mat[y].push(0); px[y].splice(c, 1); px[y].push(0); }
+  }
   // 外框
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     if (mat[y][x]) continue;
     if (!empty(x - 1, y) || !empty(x + 1, y) || !empty(x, y - 1) || !empty(x, y + 1)) px[y][x] = OUT;
   }
   const hfq = q.hf ?? [0, 0];
-  const out = { px, W, H, ax: PAD + MID, ay: top + BH + 1, core: [cx - (PAD + MID), cy - (top + BH + 1)], hand: [BW - 3 - MID + hfq[0], 8.5 + hfq[1] - BH - 1] };
+  // 拿掉中線左邊的欄時，中線也跟著左移，腳底的基準點要一起移（不然身體會跳）
+  const cuts = VIEW_CUT[view] ?? [], nl = cuts.filter((c) => c < MID).length, nr = cuts.length - nl;
+  const out = { px, W, H, ax: PAD + MID - nl, ay: top + BH + 1, core: [0, cy - (top + BH + 1)], hand: [BW - 2 - MID + hfq[0] - nr, 8.5 + hfq[1] - BH - 1] };
   cache.set(key, out);
   return out;
 }

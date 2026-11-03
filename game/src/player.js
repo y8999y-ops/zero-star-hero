@@ -74,7 +74,7 @@ export class Player {
       x, y, vx: 0, vy: 0, face: 1, grounded: false, coyote: 0, jumps: 0, airDash: true, dropT: 0,
       state: "move", t: 0, atk: null, step: 0, lastAtk: 9, dashCd: 0, skillCd: 0,
       hp: 100, maxHp: 100, invuln: 0, flash: 0, landT: 0, runDist: 0, clock: 0, ghosts: [], ghostAcc: 0,
-      pose: POSES.stand,
+      pose: POSES.stand, turnT: 0, lastFace: 0,
       critNext: false, buff: { atk: 0, spd: 0, move: 0, t: 0 }, dmgMul: 1,
     });
     this.setStats({ wtype: "sword", uniques: new Set(), atk: 12, maxHp: 100, def: 0, spd: 0, move: 0, crit: 8, critDmg: 60, fire: 0, skill: 0, cdr: 0 });
@@ -113,6 +113,7 @@ export class Player {
     this.landT -= dt;
     this.dropT -= dt;
     this.coyote -= dt;
+    this.turnT -= dt;
 
     // ---- 狀態切換：閃避和技能隨時可以取消攻擊
     if (input.dash && this.dashCd <= 0 && this.state !== "hurt" && (this.grounded || this.airDash)) {
@@ -215,6 +216,8 @@ export class Player {
     }
 
     // ---- 動畫
+    // 轉身：臉朝的方向一改，先轉到正面一下再轉過去
+    if (this.face !== this.lastFace) { if (this.lastFace) this.turnT = 0.09; this.lastFace = this.face; }
     this.pose = this.poseNow();
     for (const g of this.ghosts) g.age += dt;
     while (this.ghosts.length && this.ghosts[0].age > 0.22) this.ghosts.shift();
@@ -306,8 +309,11 @@ export class Player {
       case "cast": return POSES.cast;
       case "hurt": return POSES.hurt;
     }
-    if (!this.grounded) return this.vy < 0 ? POSES.jump : POSES.fall;
-    if (this.landT > 0) return POSES.land;
+    if (this.turnT > 0 && this.state === "move") return POSES.turn;
+    // 空中：上升拉長、最高點放鬆、下落越快越拉長（漸快漸慢＋擠壓伸展）
+    if (!this.grounded) return this.vy < -120 ? POSES.jump : this.vy < 90 ? POSES.apex : this.vy < 300 ? POSES.fall : POSES.fallFast;
+    // 落地：先壓扁，再回彈一下（跟隨）
+    if (this.landT > 0) return this.landT > 0.05 ? POSES.land : POSES.landUp;
     if (Math.abs(this.vx) > 20) {
       this.runDist += Math.abs(this.vx) / 60;
       return POSES.run[Math.floor(this.runDist / 9) % 4];
@@ -315,15 +321,18 @@ export class Player {
     return POSES.idle[Math.floor(this.clock * 8) % 8];
   }
 
-  // 攻擊：用招式的命中時間決定姿勢。前搖拉手 → 每一下命中出拳（左右手輪流）→ 收手。最後一下會擊飛的改成上勾拳。
+  // 攻擊（動畫 12 原則）：預備 → 拖影格（誇張、拉長）→ 命中（壓扁，配合命中停頓）→ 跟隨（回彈過頭）→ 收。
+  // 每一下用招式自己的命中時間；左右兩種刺法輪流，最後一下會擊飛的改成往上刺。
   attackPose() {
     const a = this.atk, s = a.s, hits = s.hits, t = a.time;
-    const hand = (k) => (this.step + k) % 2 === 0;
-    if (t < 0) return hand(0) ? POSES.windF : POSES.windB;
+    const kind = (k) => (s.launch && k === hits.length - 1 ? "Up" : (this.step + k) % 2 === 0 ? "F" : "B");
     let k = 0;
-    while (k + 1 < hits.length && hits[k + 1].t - 0.04 <= t) k++;
-    if (t < hits[k].t - 0.04) return hand(k) ? POSES.windF : POSES.windB;
-    if (t - hits[k].t < 0.12) return s.launch && k === hits.length - 1 ? POSES.punchUp : hand(k) ? POSES.punchF : POSES.punchB;
+    while (k + 1 < hits.length && hits[k + 1].t - 0.05 <= t) k++;
+    const d = t - hits[k].t, K = kind(k);
+    if (d < -0.05) return K === "B" ? POSES.windB : POSES.windF;
+    if (d < 0) return POSES["smear" + K];
+    if (d < 0.07) return K === "Up" ? POSES.punchUp : POSES["hit" + K];
+    if (d < 0.15) return K === "B" ? POSES.followB : POSES.followF;
     return POSES.land;
   }
 
