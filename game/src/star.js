@@ -18,11 +18,15 @@ import { hex } from "../../pixelfx/src/core/index.js";
 const C = (s) => hex(s) >>> 0;
 const OUT = C("#3a1e36");
 const GLASS = ["#d08a1c", "#f5c040", "#ffe27a", "#fff4b8", "#ffffff"].map(C);
-// 形態的身體顏色（暗帶 → 亮邊 → 核心）。黏液星、鐵罐星正式造型完成前先用換色代替。
+// 形態的身體顏色（暗帶 → 亮邊 → 核心）。鐵罐星的上半身還是金色，下半身另外套鐵罐（見 build 的「形態的外觀」）。
+// 造型：黏液星＝草稿 S3（果凍＋滴落＋氣泡），鐵罐星＝草稿 C1（下半身鐵罐＋罐蓋），使用者 2026-11-04 選定。
 const FORM_RAMPS = {
-  slime: ["#2a8a4a", "#4cc05a", "#8ee87a", "#d4ffc0", "#ffffff"].map(C),
-  can: ["#4a5468", "#6e7a90", "#9aa6ba", "#d0d8e6", "#ffffff"].map(C),
+  slime: ["#1f6a3a", "#36a04a", "#6cd45a", "#b8f4a0", "#ffffff"].map(C),
 };
+const METAL = ["#2e3440", "#4a5468", "#6e7a90", "#9aa6ba", "#d0d8e6", "#ffffff"].map(C);
+const RUST = ["#6e3218", "#a4552a"].map(C);
+// 罐蓋（頭上）：# 把手、數字＝METAL 的第幾階＋1
+const LID = ["....##....", "...#..#...", ".44555544.", "3444444443", ".22222221."];
 const SHOE = ["#1c2448", "#2c3c78", "#4a62b0", "#7a96e0"].map(C);
 const TEAL = ["#126068", "#1f8a8c", "#3cc8c0", "#9af0e0"].map(C);
 const EYE = C("#40204a"), WHITE = C("#ffffff"), BLUSH = C("#ff9a6a");
@@ -233,6 +237,49 @@ function build(q) {
   if (q.scarf) {
     const X = PAD + 8 + lean, Y = top + 5;
     for (const [dx, dy, t] of [[0, 0, 2], [-1, 0, 2], [-2, 1, 1], [-3, 1, 1]]) if (!mat[Y + dy][X + dx]) { mat[Y + dy][X + dx] = 4; px[Y + dy][X + dx] = TEAL[t]; }
+  }
+  // ---- 形態的外觀
+  const putX = (x, y, c, upper = false) => {   // 可以畫在身體外面（滴落、罐蓋），會一起描外框；upper：跟著上半身前傾
+    const X = PAD + Math.round(x) + (upper || y < WAIST ? lean : 0), Y = top + (upper ? Math.round(y) : rowOf(Math.round(y)));
+    if (Y < 0 || Y >= H || X < 0 || X >= W) return;
+    if (!mat[Y][X]) mat[Y][X] = 4;
+    px[Y][X] = c;
+  };
+  const onBody = (x, y) => mat[top + rowOf(y)]?.[PAD + x + (y < WAIST ? lean : 0)] === 1;
+  if (q.form === "slime") {
+    // 兩隻手的尖端往下滴（跟著角移動）、肚子下面一滴、身體裡三個氣泡、兩個濕亮的高光
+    for (const [side, [dx, dy]] of [[-1, q.hb ?? [0, 0]], [1, q.hf ?? [0, 0]]]) {
+      const tx = (side < 0 ? 1.5 : BW - 2.5) + dx, ty = Math.round(8.5 + dy);
+      const drip = side < 0 ? [[0, 2, 2], [0, 3, 1], [0, 4, 1]] : [[0, 2, 2], [0, 3, 2], [0, 4, 1], [0, 5, 1]];
+      // 只在角的尖端正下方是空的時候滴；碰到別的東西（腳、地面附近）就停，不黏成一團
+      if (view === 2 || dy > 2 || mat[top + ty + 1]?.[PAD + Math.round(tx) + lean] !== 1) continue;   // 側面時兩隻手重疊，不滴
+      for (const [ox, oy, k] of drip) {
+        const X = PAD + Math.round(tx + ox) + lean, Y = top + ty + oy;
+        if (mat[Y]?.[X] || mat[Y]?.[X - 1] || mat[Y]?.[X + 1] || mat[Y + 1]?.[X] || mat[Y + 2]?.[X]) break;
+        putX(tx + ox, ty + oy, G[k], true);
+      }
+    }
+    if (!back) for (const [x, y, k] of [[11, 19, 2], [11, 20, 1]]) if (!onBody(x, y)) putX(x, y, G[k]);
+    for (const [cx2, cy2] of [[8, 15], [19, 17], [16, 8]]) for (const [dx, dy] of [[0, -1], [-1, 0], [1, 0], [0, 1]]) if (onBody(cx2 + dx, cy2 + dy) && px[top + rowOf(cy2 + dy)][PAD + cx2 + dx + (cy2 + dy < WAIST ? lean : 0)] !== EYE) put(cx2 + dx, cy2 + dy, G[3]);
+    if (!back) for (const [x, y] of [[20, 14], [21, 15], [9, 3]]) put(x, y, G[4]);
+  }
+  if (q.form === "can") {
+    // 下半身套著鐵罐：每一列左亮右暗的縱向亮帶，上緣凸紋一亮一暗，底下暗一階；肚子的光、眼睛、領巾不蓋
+    const skip = new Set([EYE, WHITE, BLUSH, ...TEAL, G[4]]);
+    for (let y = 13; y <= 20; y++) {
+      const Y = top + rowOf(y), xs = [];
+      for (let X = 0; X < W; X++) if (mat[Y][X] === 1 && !skip.has(px[Y][X])) xs.push(X);
+      if (!xs.length) continue;
+      const a = Math.min(...xs), w = Math.max(...xs) - a + 1;
+      for (const X of xs) {
+        const u = (X - a) / w;
+        let k = u < 0.12 ? 3 : u < 0.3 ? 4 : u < 0.55 ? 3 : u < 0.8 ? 2 : 1;
+        if (y === 13) k = Math.min(5, k + 1); else if (y === 14) k = Math.max(0, k - 1); else if (y === 20) k = Math.max(0, k - 1);
+        px[Y][X] = METAL[k];
+      }
+    }
+    for (const [x, y, k] of back ? [[17, 16, 1], [18, 16, 0]] : [[10, 16, 1], [11, 16, 0], [19, 18, 1]]) if (onBody(x, y)) put(x, y, RUST[k]);
+    LID.forEach((r, j) => [...r].forEach((ch, i) => { if (ch !== ".") putX(9 + i, j - 3, ch === "#" ? METAL[3] : METAL[+ch - 1]); }));
   }
   // 側身：臉朝的那半邊往後轉，拿掉兩欄（看起來比正面窄）
   for (const c of (VIEW_CUT[view] ?? []).map((c) => PAD + c + lean).sort((a, b) => b - a)) {

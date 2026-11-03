@@ -51,16 +51,17 @@ const COMBO_DEF = {
   ],
 };
 const comboCache = {};
-function comboFor(key) {
-  if (!comboCache[key]) {
-    comboCache[key] = COMBO_DEF[key].map((s) => ({
+function comboFor(key, form = "star") {
+  const ck = key + ":" + form;
+  if (!comboCache[ck]) {
+    comboCache[ck] = COMBO_DEF[key].map((s) => ({
       ...s,
-      anim: slashAnim(s.mod),
+      anim: slashAnim(s.mod, form),
       start: Math.min(0, ...s.mod.act.poses.map(([t]) => (t < 0 ? t * s.wind : 0))),   // 前搖從幾秒前開始
       hits: s.mod.act.hits,
     }));
   }
-  return comboCache[key];
+  return comboCache[ck];
 }
 const CHARGE_T = 0.3, CHARGE_V = 330;   // 鐵罐星的蓋子衝撞
 
@@ -75,7 +76,7 @@ export class Player {
       pose: POSES.stand, turnT: 0, lastFace: 0,
       critNext: false, buff: { atk: 0, spd: 0, move: 0, t: 0 }, dmgMul: 1, form: "star", formLv: 1,
     });
-    this.combo = comboFor("sword");
+    this.combo = comboFor("sword", "star");
     this.setStats({ uniques: new Set(), atk: 12, maxHp: 100, def: 0, spd: 0, move: 0, crit: 8, critDmg: 60, fire: 0, skill: 0, cdr: 0 });
   }
 
@@ -96,7 +97,7 @@ export class Player {
   setForm(id, lv) {
     this.form = id;
     this.formLv = lv;
-    this.combo = comboFor(FORMS[id].combo);
+    this.combo = comboFor(FORMS[id].combo, id);
     this.step = 0;
     if (this.state === "attack") { this.state = "move"; this.atk = null; }
   }

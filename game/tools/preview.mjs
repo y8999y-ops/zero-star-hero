@@ -31,7 +31,8 @@ if (mode === "hero") {
   // 新主角（胖星）所有姿勢＋規則v2 檢查
   const { POSES, starPixels } = await import("../src/star.js");
   const list = [];
-  for (const [n, v] of Object.entries(POSES)) (Array.isArray(v) ? v : [v]).forEach((q, i) => list.push([Array.isArray(v) ? n + i : n, q]));
+  const form = process.env.FORM;   // FORM=slime / can：看形態的外觀
+  for (const [n, v] of Object.entries(POSES)) (Array.isArray(v) ? v : [v]).forEach((q, i) => list.push([Array.isArray(v) ? n + i : n, form ? { ...q, form } : q]));
   const CW = 48, CH = 48, K = +(process.env.K ?? 4), cols = +(process.env.COLS ?? 8), W = CW * cols, H = CH * Math.ceil(list.length / cols);
   const f = createFrame(W, H);
   f.color.fill(0xff2a2018);

@@ -53,7 +53,24 @@ export const A = {
 const slashCache = new Map([[swordSlash, A.slash[0]], [doubleSlash, A.slash[1]], [spinSlash, A.slash[2]]]);
 // 大劍、大錘的衝擊有大片純白，換成暖白，比較不刺眼
 const soft = (pal) => pal?.map((c) => (c.toLowerCase() === "#ffffff" ? "#e8dcc4" : c));
-export function slashAnim(mod) {
+// 形態的招式顏色：星星＝金色星光、黏液星＝綠色黏液、鐵罐星＝鐵灰色＋橘色火花（取代原本各武器的顏色）
+const FORM_SLASH = {
+  star: { ramp: ["#2a1608", "#6b3c10", "#b8701a", "#f0b42e", "#ffe27a", "#fff6cf", "#ffffff"], sparks: ["#fff6cf", "#ffe27a", "#f0b42e", "#b8701a"] },
+  slime: { ramp: ["#0c2010", "#1a4a20", "#2a8a3a", "#4cc04a", "#8ee86a", "#d4ffb0", "#f0fff0"], sparks: ["#d4ffb0", "#8ee86a", "#4cc04a", "#2a8a3a"] },
+  can: { ramp: ["#14161c", "#2a2e38", "#4a5468", "#6e7a90", "#9aa6ba", "#d0d8e6", "#eef2f8"], sparks: ["#fff3a6", "#ffc23d", "#ff8a2a", "#c44a1a"] },
+};
+// 把 7 色的 ramp 換成特效要的長度
+const fit = (ramp, n) => Array.from({ length: n }, (_, i) => ramp[Math.round((i * (ramp.length - 1)) / Math.max(1, n - 1))]);
+const formCache = new Map();
+export function slashAnim(mod, form = null) {
+  if (form && FORM_SLASH[form]) {
+    const key = form + ":" + mod.meta.name;
+    if (!formCache.has(key)) {
+      const F = FORM_SLASH[form], o = mod.meta.options ?? {};
+      formCache.set(key, bake(mod, { light: GLOW.slash * 0.8, palette: fit(F.ramp, o.palette?.length ?? 7), ...(o.sparks ? { sparks: F.sparks } : {}) }));
+    }
+    return formCache.get(key);
+  }
   if (!slashCache.has(mod)) slashCache.set(mod, bake(mod, { light: GLOW.slash * 0.8, palette: soft(mod.meta.options?.palette) }));
   return slashCache.get(mod);
 }
