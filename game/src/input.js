@@ -1,9 +1,9 @@
 // 輸入：鍵盤＋觸控，統一成同一組狀態。
 // move: -1..1；attack: 按住中；jump / drop / dash / skill: 這一幀剛按下（讀完要用 consume 清掉）
 
-export const input = { move: 0, attack: false, jumpHeld: false, jump: false, drop: false, dash: false, skill: false, ult: false, down: false };
+export const input = { move: 0, attack: false, jumpHeld: false, jump: false, drop: false, dash: false, skill: false, ult: false, form: false, form1: false, form2: false, form3: false, down: false };
 
-const pressed = { jump: 0, drop: 0, dash: 0, skill: 0, ult: 0 };
+const pressed = { jump: 0, drop: 0, dash: 0, skill: 0, ult: 0, form: 0, form1: 0, form2: 0, form3: 0 };
 // 按下的瞬間如果角色剛好動不了，保留一小段時間（輸入緩衝），手感會比較跟手
 const BUFFER = 0.15;
 const press = (k) => (pressed[k] = BUFFER);
@@ -40,6 +40,8 @@ addEventListener("keydown", (e) => {
   if (e.code === "KeyK" || e.code === "ShiftLeft" || e.code === "KeyC") press("dash");
   if (e.code === "KeyU" || e.code === "KeyV") press("skill");
   if (e.code === "KeyL" || e.code === "KeyB") press("ult");
+  if (e.code === "KeyO") press("form");
+  if (e.code === "Digit1" || e.code === "Digit2" || e.code === "Digit3") press("form" + e.code.slice(5));
   if (k || ["Space", "ArrowUp", "ArrowDown"].includes(e.code)) e.preventDefault();
 });
 addEventListener("keyup", (e) => {

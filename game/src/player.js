@@ -12,7 +12,7 @@ import * as spearSweep from "../../pixelfx/src/fx/melee/spear-sweep.js";
 import * as hammerSmash from "../../pixelfx/src/fx/melee/hammer-smash.js";
 import { input, consume } from "./input.js";
 import { A, slashAnim } from "./assets.js";
-import { WTYPES } from "./items.js";
+import { FORMS, formMul } from "./forms.js";
 import { reduction } from "./stats.js";
 import { spawn, hitStop, shake } from "./fx.js";
 import { groundAt, onPlatform, LEVEL_W, WALL } from "./level.js";
@@ -22,8 +22,8 @@ const JUMP_V = -335, JUMP2_V = -295, COYOTE = 0.08;
 const DASH_T = 0.19, DASH_V = 345, DASH_CD = 0.32;
 const SKILL_CD = 1.1;
 
-// 每種武器的連段。每一段：特效、前搖壓縮比例、何時可以接下一段、何時結束、
-// 各下傷害（攻擊力的倍數）、攻擊範圍。換武器＝換這一整組。
+// 連段。每一段：特效、前搖壓縮比例、何時可以接下一段、何時結束、各下傷害（攻擊力的倍數）、攻擊範圍。
+// 換形態＝換這一整組（forms.js 的 combo 指到這裡的 key；key 沿用舊的武器名）。
 const COMBO_DEF = {
   sword: [
     { mod: swordSlash, wind: 0.3, cancel: 0.15, end: 0.34, dmg: [1.3], reach: 58, back: 10 },
@@ -51,20 +51,18 @@ const COMBO_DEF = {
   ],
 };
 const comboCache = {};
-function comboFor(wtype) {
-  if (!comboCache[wtype]) {
-    const W = WTYPES[wtype];
-    comboCache[wtype] = COMBO_DEF[wtype].map((s) => ({
+function comboFor(key) {
+  if (!comboCache[key]) {
+    comboCache[key] = COMBO_DEF[key].map((s) => ({
       ...s,
       anim: slashAnim(s.mod),
-      track: s.mod.act.poses.map(([t, q, how]) => [t < 0 ? t * s.wind : t, { ...q, weapon: W.weapon, offWeapon: W.off ?? q.offWeapon }, how]),
+      start: Math.min(0, ...s.mod.act.poses.map(([t]) => (t < 0 ? t * s.wind : 0))),   // 前搖從幾秒前開始
       hits: s.mod.act.hits,
     }));
   }
-  return comboCache[wtype];
+  return comboCache[key];
 }
-/** 換武器前先把招式準備好（烘焙刀光）。 */
-export const prepareWeapon = (wtype) => comboFor(wtype);
+const CHARGE_T = 0.3, CHARGE_V = 330;   // 鐵罐星的蓋子衝撞
 
 const WHITE = hex("#f0ecff") >>> 0, GHOST = ["#8ae8ff", "#4ab0d8", "#2a6ea0", "#1c3e6a"].map((c) => hex(c) >>> 0);
 
@@ -75,9 +73,10 @@ export class Player {
       state: "move", t: 0, atk: null, step: 0, lastAtk: 9, dashCd: 0, skillCd: 0,
       hp: 100, maxHp: 100, invuln: 0, flash: 0, landT: 0, runDist: 0, clock: 0, ghosts: [], ghostAcc: 0,
       pose: POSES.stand, turnT: 0, lastFace: 0,
-      critNext: false, buff: { atk: 0, spd: 0, move: 0, t: 0 }, dmgMul: 1,
+      critNext: false, buff: { atk: 0, spd: 0, move: 0, t: 0 }, dmgMul: 1, form: "star", formLv: 1,
     });
-    this.setStats({ wtype: "sword", uniques: new Set(), atk: 12, maxHp: 100, def: 0, spd: 0, move: 0, crit: 8, critDmg: 60, fire: 0, skill: 0, cdr: 0 });
+    this.combo = comboFor("sword");
+    this.setStats({ uniques: new Set(), atk: 12, maxHp: 100, def: 0, spd: 0, move: 0, crit: 8, critDmg: 60, fire: 0, skill: 0, cdr: 0 });
   }
 
   /** 套用裝備算出來的數值（stats.js 的 computeStats）。 */
@@ -86,8 +85,6 @@ export class Player {
     this.stats = s;
     this.maxHp = s.maxHp;
     this.hp = Math.max(1, Math.min(this.maxHp, this.hp + Math.max(0, grow)));
-    this.combo = comboFor(s.wtype);
-    this.W = WTYPES[s.wtype];
     this.skillMax = SKILL_CD * (1 - s.cdr / 100);
     if (this.state === "attack") { this.state = "move"; this.atk = null; }
     this.step = 0;
@@ -95,10 +92,19 @@ export class Player {
 
   has(u) { return this.stats.uniques.has(u); }
 
+  /** 換形態：連段、技能、身體顏色一起換。 */
+  setForm(id, lv) {
+    this.form = id;
+    this.formLv = lv;
+    this.combo = comboFor(FORMS[id].combo);
+    this.step = 0;
+    if (this.state === "attack") { this.state = "move"; this.atk = null; }
+  }
+
   /** 一下攻擊的傷害：攻擊力 × 倍率 ＋ 火焰，再算暴擊。force 是必定暴擊。 */
   roll(mult, force = false) {
     const s = this.stats, crit = force || Math.random() * 100 < s.crit;
-    const dmg = (s.atk * mult * (1 + this.buff.atk) + s.fire) * this.dmgMul * (crit ? 1 + s.critDmg / 100 : 1);
+    const dmg = (s.atk * mult * (1 + this.buff.atk) + s.fire) * this.dmgMul * formMul(this.formLv) * (crit ? 1 + s.critDmg / 100 : 1);
     return { dmg, crit };
   }
 
@@ -156,14 +162,25 @@ export class Player {
     } else if (this.state === "attack") {
       this.updateAttack(dt, world);
     } else if (this.state === "cast") {
-      if (!this.cast && this.t >= 0.1) { this.cast = true; world.spawnFireball(this.x + this.face * 18, this.y - 14, this.face); }
-      if (this.t >= 0.28) this.state = "move";
+      if (!this.cast && this.t >= 0.1) {
+        this.cast = true;
+        if (FORMS[this.form].skill === "charge") { this.state = "charge"; this.t = 0; this.chargeHit = new Set(); this.invuln = Math.max(this.invuln, CHARGE_T + 0.05); }
+        else world.spawnFireball(this.x + this.face * 18, this.y - 14, this.face, this.form);
+      }
+      if (this.state === "cast" && this.t >= 0.28) this.state = "move";
+    } else if (this.state === "charge") {
+      // 鐵罐星：往前衝，路上的怪每隻打一次、擊飛
+      this.vx = this.face * CHARGE_V;
+      this.ghostAcc += dt;
+      if (this.ghostAcc > 1 / 30) { this.ghostAcc = 0; this.ghosts.push({ x: this.x, y: this.y, q: this.pose, flip: this.drawFlip(), age: 0 }); }
+      world.hitOnce({ x0: this.x - 12, x1: this.x + 12, y0: this.y - 26, y1: this.y + 2 }, this.chargeHit, () => this.roll(2.2 * (1 + this.stats.skill / 100)), this.face, { launch: true, push: 4 });
+      if (this.t >= CHARGE_T) { this.state = "move"; this.vx *= 0.3; }
     } else if (this.state === "hurt") {
       if (this.t >= 0.32) this.state = "move";
     }
 
     // ---- 水平移動
-    if (this.state !== "dash" && this.state !== "hurt") {
+    if (this.state !== "dash" && this.state !== "hurt" && this.state !== "charge") {
       const target = input.move * RUN * (1 + this.stats.move / 100 + this.buff.move) * ctl;
       const acc = (this.grounded ? ACC_GROUND : ACC_AIR) * dt;
       this.vx += Math.max(-acc, Math.min(acc, target - this.vx));
@@ -239,7 +256,7 @@ export class Player {
     this.aim(world);
     this.state = "attack";
     this.t = 0;
-    this.atk = { s, time: s.track[0][0], spawned: false, nh: 0, flip: this.face < 0, crit: this.critNext };
+    this.atk = { s, time: s.start, spawned: false, nh: 0, flip: this.face < 0, crit: this.critNext };
     this.critNext = false;
     this.lastAtk = 0;
   }
@@ -305,7 +322,7 @@ export class Player {
   poseNow() {
     switch (this.state) {
       case "attack": return this.attackPose();
-      case "dash": return POSES.dash;
+      case "dash": case "charge": return POSES.dash;
       case "cast": return POSES.cast;
       case "hurt": return POSES.hurt;
     }
@@ -343,8 +360,8 @@ export class Player {
   draw(frame) {
     // 殘影
     // 閃避殘影：用實色剪影，越舊顏色越暗（不用半透明）
-    for (const g of this.ghosts) paintStar(frame, g.x, g.y, g.q, g.flip, { tint: GHOST[Math.min(GHOST.length - 1, Math.floor((g.age / 0.22) * GHOST.length))] });
+    for (const g of this.ghosts) paintStar(frame, g.x, g.y, g.q, g.flip, { form: this.form, tint: GHOST[Math.min(GHOST.length - 1, Math.floor((g.age / 0.22) * GHOST.length))] });
     if (this.invuln > 0 && this.state !== "dash" && this.state !== "ult" && Math.floor(this.clock * 20) % 2 === 0) return;
-    paintStar(frame, this.x, this.y, this.pose, this.drawFlip(), { tint: this.flash > 0 ? WHITE : 0 });
+    paintStar(frame, this.x, this.y, this.pose, this.drawFlip(), { tint: this.flash > 0 ? WHITE : 0, form: this.form });
   }
 }

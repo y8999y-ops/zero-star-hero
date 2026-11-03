@@ -6,7 +6,6 @@ import { computeStats, compare, power, STAT_ROWS, xpNeed, MAX_LV } from "./stats
 import { BAG_SIZE } from "./save.js";
 import { iconURL } from "./ui-art.js";
 import { paintStar, POSES } from "./star.js";
-import { WTYPES } from "./items.js";
 
 const $ = (id) => document.getElementById(id);
 const AUTO = ["關", "垃圾", "普通以下"];
@@ -78,7 +77,7 @@ export function createInventory(profile, { onChange, onClose }) {
     changed();
   }
   function unequip(slot) {
-    if (slot === "weapon") return say("武器不能卸下。空手打史萊姆？系統不允許。");
+    if (slot === "weapon") return say("星核不能拿出來。那是你的心臟欸。");
     if (profile.inv.length >= BAG_SIZE) return say("背包滿了，卸不下來。");
     profile.inv.push(profile.equip[slot]);
     profile.equip[slot] = null;

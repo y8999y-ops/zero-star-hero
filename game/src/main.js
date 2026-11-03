@@ -20,6 +20,9 @@ import { makeItem, rollRarity, R, RARITY, JUNK } from "./items.js";
 import { Drops, feed } from "./loot.js";
 import { createInventory } from "./inventory.js";
 import { installUiArt, iconURL, setAttackIcon } from "./ui-art.js";
+import { FORMS, CARRY_MAX, coreChance, absorbCore, makeCore, coresToLevel } from "./forms.js";
+import { createFrame as makeFrame } from "../../pixelfx/src/core/index.js";
+import { paintStar, POSES } from "./star.js";
 import { ult, ULT_MAX, ULT_MULT, startUlt, updateUlt, ultLights, dimScene, drawUlt, drawCutIn, postUlt } from "./ult.js";
 
 installUiArt();
@@ -61,12 +64,12 @@ const runLoot = [];   // 這一趟撿到的東西（通關畫面顯示）
 let slowT = 0;        // 傳說掉落時的慢動作
 function refreshStats() {
   player.setStats(computeStats(profile.equip, profile.lv));
-  setAttackIcon(profile.equip.weapon.icon);
   save(profile);
   updateBagDot();
 }
 player.setStats(computeStats(profile.equip, profile.lv));
-setAttackIcon(profile.equip.weapon.icon);
+setAttackIcon("star");
+player.setForm(profile.forms.cur, profile.forms.owned[profile.forms.cur]?.lv ?? 1);
 player.hp = player.maxHp;
 const inv = createInventory(profile, { onChange: refreshStats });
 window.__game = { player, enemies, stats, profile, drops, inv, get director() { return director; }, get camX() { return camX; } };   // 開發用：在主控台檢查狀態
@@ -97,7 +100,7 @@ function gainXp(n) {
 function dropItem(x, y, minR = 0, opts = {}) {
   const s = player.stats;
   const r = opts.rarity ?? rollRarity(s.mf, minR);
-  const item = makeItem(opts.ilvl ?? ilvlNow(), r, { prefer: s.wtype, ...opts });
+  const item = makeItem(opts.ilvl ?? ilvlNow(), r, opts);
   drops.add(item, x, y, opts.dir);
   if (item.rarity === R.legend) {
     // 傳說：時間變慢、畫面一閃
@@ -114,6 +117,7 @@ function dropItem(x, y, minR = 0, opts = {}) {
 
 /** 撿起來。背包滿了回傳 false。 */
 function pickUp(d) {
+  if (d.item.kind === "formcore") return absorb(d.item);
   const it = d.item, better = compare(it, profile.equip, profile.lv)?.better;
   const autoMax = [-1, R.junk, R.common][profile.auto];
   if (it.rarity <= autoMax && !better) {
@@ -138,6 +142,65 @@ function pickUp(d) {
   updateBagDot();
   return true;
 }
+
+// ---- 形態：吸收魔物核、切換
+const FORM_BURST = {
+  star: ["#1e1206", "#4a2c08", "#86520c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"],
+  slime: ["#0c2010", "#1a4a20", "#2a8a3a", "#4cc04a", "#8ee86a", "#d4ffb0", "#ffffff"],
+  can: ["#14161c", "#2a2e38", "#4a5468", "#6e7a90", "#9aa6ba", "#d0d8e6", "#ffffff"],
+};
+function absorb(it) {
+  const F = FORMS[it.form], res = absorbCore(profile.forms, it.form);
+  spawn(collectBurst, { x: Math.round(player.x), y: Math.round(player.y) - 12, palette: FORM_BURST[it.form], light: 0.5 });
+  flash(player.x, player.y - 12, 80, 3, 0.6, F.color);
+  if (res.unlocked) {
+    toast(`系統：吸收了${F.name}的核！新形態「${F.name}」${profile.forms.carry.includes(it.form) ? "（按 O 或右上角切換）" : "（已滿 3 個，回城鎮再換）"}`, 3.2);
+    sayQueue.unshift([`系統：你把${F.from === "slime" ? "史萊姆" : "垃圾桶"}的核吃掉了？不對，是吸收。好吧，差不多。`, 2.8]);
+  } else if (res.leveled) {
+    toast(`系統：${F.name}升到 Lv ${res.lv}！`, 2.2);
+    if (player.form === it.form) player.setForm(it.form, res.lv);
+  } else {
+    const f = profile.forms.owned[it.form];
+    feed({ name: it.name, icon: "star", rarity: 3 }, `${F.name} ${f.xp}/${coresToLevel(f.lv)}`);
+  }
+  save(profile);
+  buildFormHud();
+  return true;
+}
+function switchForm(id) {
+  if (!id || id === player.form || !profile.forms.owned[id] || ult.on) return;
+  profile.forms.cur = id;
+  player.setForm(id, profile.forms.owned[id].lv);
+  player.turnT = 0.09;
+  player.invuln = Math.max(player.invuln, 0.15);
+  spawn(collectBurst, { x: Math.round(player.x), y: Math.round(player.y) - 12, palette: FORM_BURST[id], light: 0.4 });
+  flash(player.x, player.y - 12, 60, 2, 0.3, FORMS[id].color);
+  save(profile);
+  buildFormHud();
+}
+// 右上角的形態按鈕（電腦也能點）：每格畫一個小星星，目前的形態有亮框
+const formHud = document.getElementById("forms");
+function buildFormHud() {
+  formHud.innerHTML = "";
+  profile.forms.carry.forEach((id, i) => {
+    const b = document.createElement("button");
+    b.className = "fslot" + (id === player.form ? " on" : "");
+    b.title = `${FORMS[id].name}（${i + 1}）`;
+    const f = makeFrame(40, 34), c = document.createElement("canvas");
+    c.width = 40; c.height = 34;
+    paintStar(f, 20, 31, POSES.stand, false, { glow: 0, form: id });
+    const im = new ImageData(40, 34);
+    composite(f, im.data, null);
+    c.getContext("2d").putImageData(im, 0, 0);
+    b.appendChild(c);
+    const lv = document.createElement("i");
+    lv.textContent = "Lv" + profile.forms.owned[id].lv;
+    b.appendChild(lv);
+    b.addEventListener("pointerdown", (e) => { e.stopPropagation(); switchForm(id); });
+    formHud.appendChild(b);
+  });
+}
+buildFormHud();
 
 // ---- 傳說效果：很吵的劍、加班證明
 const NOISY = [
@@ -223,8 +286,17 @@ const world = {
     if (n) { addCombo(n); chargeUlt(n * 0.8); }
     return n;
   },
-  spawnFireball(x, y, dir) {
-    shots.push({ x, y, dir, life: 1.1, fx: spawn(fireball, { x, y, flip: dir < 0, light: GLOW.skill, seed: (Math.random() * 99) | 0 }) });
+  /** 跟 hitArea 一樣，但同一隻只打一次（hit 是記錄打過的 Set） */
+  hitOnce(box, hit, dmg, dir, opts) {
+    let n = 0;
+    for (const e of enemies) if (!e.dead && !hit.has(e) && overlaps(box, e.box())) { hit.add(e); e.hit(dmg(), dir, opts, world); n++; }
+    if (n) { addCombo(n); chargeUlt(n * 0.8); hitStop(0.05); shake(0.15, 2); }
+    return n;
+  },
+  // 形態技能的投射物：星星＝金色星屑彈，黏液星＝綠色黏液彈（爆開範圍大、推得遠）
+  spawnFireball(x, y, dir, form = "star") {
+    const pal = SHOT_PAL[form] ?? SHOT_PAL.star;
+    shots.push({ x, y, dir, form, life: 1.1, fx: spawn(fireball, { x, y, flip: dir < 0, palette: pal.fx, light: GLOW.skill, seed: (Math.random() * 99) | 0 }) });
   },
   dropCoins(x, y, n) {
     n = Math.round(n * (1 + player.stats.gold / 100));
@@ -241,6 +313,8 @@ const world = {
     const s = player.stats;
     gainXp(KILL_XP[e.kind] ?? 5);
     chargeUlt(2);
+    const [coreId, coreP] = coreChance(e.kind, profile.forms);
+    if (coreId && Math.random() < coreP) { const b = e.box(); drops.add(makeCore(coreId), e.x, (b.y0 + b.y1) / 2); }
     if (s.life) player.hp = Math.min(player.maxHp, player.hp + s.life);
     const b = e.box(), cy = (b.y0 + b.y1) / 2;
     if (Math.random() < (DROP_RATE[e.kind] ?? 0.1) * (1 + s.mf / 200)) dropItem(e.x, cy, e.kind === "gold" ? R.magic : 0, { ilvl: ilvlNow(e.kind === "trash" ? 1 : 0) });
@@ -267,6 +341,10 @@ const world = {
 };
 
 let boomDepth = 0;
+const SHOT_PAL = {
+  star: { fx: PAL.gold, boom: PAL.gold, accent: PAL.holy, light: "#ffd27a", r: 46, push: 3 },
+  slime: { fx: PAL.poison, boom: PAL.poison, accent: PAL.leaf, light: "#7ee86a", r: 62, push: 5 },
+};
 // ---- 大招：打中怪會累積能量，滿了才能放
 function chargeUlt(n) {
   if (ult.on || cleared) return;
@@ -289,6 +367,7 @@ const ultHooks = {
   dust: (x, y) => world.dust(x, y, 6),
 };
 window.__game.ultFull = () => (ult.charge = ULT_MAX);
+window.__game.giveCore = (id) => absorb(makeCore(id));
 function addCombo(n) {
   stats.combo += n;
   stats.comboT = 2.2;
@@ -357,6 +436,8 @@ function tick(dt) {
     updateSay(dt);
     return;
   }
+  if (input.form) { consume("form"); const c = profile.forms.carry; switchForm(c[(c.indexOf(player.form) + 1) % c.length]); }
+  for (let i = 0; i < CARRY_MAX; i++) if (input["form" + (i + 1)]) { consume("form" + (i + 1)); switchForm(profile.forms.carry[i]); }
   if (input.ult && ult.charge >= ULT_MAX && player.state !== "hurt") {
     consume("ult");
     startUlt(player, director?.lock);
@@ -410,10 +491,10 @@ function tick(dt) {
     if (hit) {
       s.done = true;
       s.fx.stop();
-      // 用不含純白的火焰色，爆炸才不會整片白光
-      spawn(explosion, { x: Math.round(s.x), y: Math.round(s.y), palette: PAL.ember, accent: PAL.lava, light: GLOW.skill, seed: (Math.random() * 99) | 0 }, { speed: 1.3 });
-      flash(s.x, s.y, 100, 4, 0.4, "#ff8a30");
-      world.hitArea({ x0: s.x - 46, x1: s.x + 46, y0: s.y - 40, y1: s.y + 40 }, () => player.roll(2.4 * (1 + player.stats.skill / 100)), s.dir, { launch: true, push: 3 });
+      const P = SHOT_PAL[s.form] ?? SHOT_PAL.star;
+      spawn(explosion, { x: Math.round(s.x), y: Math.round(s.y), palette: P.boom, accent: P.accent, light: GLOW.skill, seed: (Math.random() * 99) | 0 }, { speed: 1.3 });
+      flash(s.x, s.y, 100, 4, 0.4, P.light);
+      world.hitArea({ x0: s.x - P.r, x1: s.x + P.r, y0: s.y - 40, y1: s.y + 40 }, () => player.roll(2.4 * (1 + player.stats.skill / 100)), s.dir, { launch: true, push: P.push });
       hitStop(0.06);
       shake(0.3, 3);
     }
@@ -468,7 +549,7 @@ function render() {
   sceneClock += 1 / 60;
   const lights = sceneLights(camX, W, sceneClock);
   lights.push({ x: player.x, y: player.y - 10, r: 46, lv: 1.3, col: "#ffcf6a" });   // 星星主角自己會發光
-  for (const s of shots) lights.push({ x: s.x, y: s.y, r: 64, lv: 3, col: "#ff6a20" });
+  for (const s of shots) lights.push({ x: s.x, y: s.y, r: 64, lv: 3, col: (SHOT_PAL[s.form] ?? SHOT_PAL.star).light });
   for (const d of drops.list) if (d.landed && d.item.rarity >= R.rare) lights.push({ x: d.x, y: d.y - 10, r: d.item.rarity === R.legend ? 48 : 30, lv: 2, col: RARITY[d.item.rarity].color });
   ultLights(lights);
   drawLevel(frame, computeLight(frame, lights));

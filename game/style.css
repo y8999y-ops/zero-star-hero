@@ -179,3 +179,10 @@ body.touch #touch { display: block; }
 #ultName { position: absolute; top: 78%; left: 12%; transform: translateY(-50%); font-size: 34px; font-weight: 900; letter-spacing: 6px; color: #fff09a; text-shadow: 0 3px 0 #8a4a0c, 0 0 14px #ffb020; pointer-events: none; opacity: 0; }
 #ultName.on { animation: ultName .45s ease-out forwards; }
 @keyframes ultName { 0% { opacity: 0; transform: translate(-40px, -50%); } 30% { opacity: 1; transform: translate(0, -50%); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(10px, -50%); } }
+
+/* 形態切換：背包按鈕下面的三格 */
+#forms { position: absolute; top: max(62px, calc(env(safe-area-inset-top) + 54px)); right: max(10px, env(safe-area-inset-right)); display: flex; gap: 6px; }
+.fslot { position: relative; width: 46px; height: 40px; padding: 0; border: 6px solid transparent; border-image: var(--inset) 6 fill / 6px; image-rendering: pixelated; background: none; opacity: .65; }
+.fslot canvas { width: 40px; height: 34px; position: absolute; left: -3px; top: -3px; image-rendering: pixelated; }
+.fslot i { position: absolute; right: -4px; bottom: -6px; font: 700 10px/1 sans-serif; font-style: normal; color: var(--gold); text-shadow: 0 1px 0 #000; }
+.fslot.on { opacity: 1; filter: drop-shadow(0 0 4px #ffd84a); }

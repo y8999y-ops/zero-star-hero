@@ -18,6 +18,11 @@ import { hex } from "../../pixelfx/src/core/index.js";
 const C = (s) => hex(s) >>> 0;
 const OUT = C("#3a1e36");
 const GLASS = ["#d08a1c", "#f5c040", "#ffe27a", "#fff4b8", "#ffffff"].map(C);
+// 形態的身體顏色（暗帶 → 亮邊 → 核心）。黏液星、鐵罐星正式造型完成前先用換色代替。
+const FORM_RAMPS = {
+  slime: ["#2a8a4a", "#4cc05a", "#8ee87a", "#d4ffc0", "#ffffff"].map(C),
+  can: ["#4a5468", "#6e7a90", "#9aa6ba", "#d0d8e6", "#ffffff"].map(C),
+};
 const SHOE = ["#1c2448", "#2c3c78", "#4a62b0", "#7a96e0"].map(C);
 const TEAL = ["#126068", "#1f8a8c", "#3cc8c0", "#9af0e0"].map(C);
 const EYE = C("#40204a"), WHITE = C("#ffffff"), BLUSH = C("#ff9a6a");
@@ -106,7 +111,7 @@ const cache = new Map();
 function build(q) {
   const key = JSON.stringify(q);
   if (cache.has(key)) return cache.get(key);
-  const body = q.body ?? 0, lean = q.lean ?? 0;
+  const body = q.body ?? 0, lean = q.lean ?? 0, G = FORM_RAMPS[q.form] ?? GLASS;
   const rows = HALF.slice();
   if (body < 0) rows.splice(WAIST, 1);
   if (body > 0) rows.splice(WAIST, 0, HALF[WAIST]);
@@ -191,12 +196,12 @@ function build(q) {
     const arm = core === 0 ? 0 : core;
     const plus = (x === cx && Math.abs(y - cy) <= arm) || (y === cy && Math.abs(x - cx) <= arm);
     let c;
-    if (plus) c = back ? GLASS[3] : GLASS[4];   // 背面：光隔著身體，只透出淡淡一點
-    else if (r < 1.6 + core * 0.6) c = GLASS[3];
-    else if (d === 1) c = tl ? GLASS[3] : GLASS[2];
-    else if (d === 2) c = side ? GLASS[1] : GLASS[2];
-    else if (r < 3.4 + core * 0.6) c = GLASS[2];
-    else c = side ? GLASS[0] : GLASS[1];
+    if (plus) c = back ? G[3] : G[4];   // 背面：光隔著身體，只透出淡淡一點
+    else if (r < 1.6 + core * 0.6) c = G[3];
+    else if (d === 1) c = tl ? G[3] : G[2];
+    else if (d === 2) c = side ? G[1] : G[2];
+    else if (r < 3.4 + core * 0.6) c = G[2];
+    else c = side ? G[0] : G[1];
     px[y][x] = c;
   }
   const put = (x, y, c) => { const X = PAD + x + (y < WAIST ? lean : 0), Y = top + rowOf(y); if (mat[Y]?.[X]) px[Y][X] = c; };
@@ -251,8 +256,8 @@ export const starPixels = build;
  * 把主角畫到 frame。x, y 是腳底（世界座標），flip 是臉朝左。
  * tint：整個剪影換成單色（受擊閃白、閃避殘影）。glow：身體四周柔和的光（特效層）。
  */
-export function paintStar(frame, x, y, q, flip, { tint = 0, glow = 1 } = {}) {
-  const s = build(q), Wf = frame.w, Hf = frame.h, Cc = frame.color, L = frame.light;
+export function paintStar(frame, x, y, q, flip, { tint = 0, glow = 1, form = null } = {}) {
+  const s = build(form && form !== "star" ? { ...q, form } : q), Wf = frame.w, Hf = frame.h, Cc = frame.color, L = frame.light;
   const ox = Math.round(x) - (frame.ox | 0), oy = Math.round(y) - (frame.oy | 0);
   for (let j = 0; j < s.H; j++) {
     const py = oy + j - s.ay;

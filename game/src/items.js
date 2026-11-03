@@ -1,4 +1,6 @@
-// 刷寶資料：稀有度、欄位、武器種類、底材、詞綴、傳說，以及「掉一件裝備」的隨機產生。
+// 刷寶資料：稀有度、欄位、底材、詞綴、傳說，以及「掉一件裝備」的隨機產生。
+// 2026-11-04 改成星星主題：武器欄 → 星核（鑲在身體裡的寶石，提供攻擊力）；攻擊方式改由「形態」決定（forms.js）。
+// 欄位 id 沿用舊的（weapon、head…），存檔不用改結構，只改顯示名稱。
 // 數值設計見 docs/企劃書.md 第 5 章。這裡只有資料和純函式，不碰畫面。
 
 export const RARITY = [
@@ -11,37 +13,29 @@ export const RARITY = [
 export const R = Object.fromEntries(RARITY.map((r, i) => [r.id, i]));
 
 export const SLOTS = [
-  { id: "weapon", name: "武器", kind: "weapon" },
-  { id: "head", name: "頭盔", kind: "head" },
-  { id: "body", name: "衣服", kind: "body" },
-  { id: "hands", name: "手套", kind: "hands" },
-  { id: "feet", name: "鞋子", kind: "feet" },
-  { id: "acc1", name: "飾品", kind: "acc" },
-  { id: "acc2", name: "飾品", kind: "acc" },
+  { id: "weapon", name: "星核", kind: "weapon" },
+  { id: "head", name: "星冠", kind: "head" },
+  { id: "body", name: "星殼", kind: "body" },
+  { id: "hands", name: "星爪", kind: "hands" },
+  { id: "feet", name: "星靴", kind: "feet" },
+  { id: "acc1", name: "碎片", kind: "acc" },
+  { id: "acc2", name: "碎片", kind: "acc" },
 ];
-export const KIND_NAME = { weapon: "武器", head: "頭盔", body: "衣服", hands: "手套", feet: "鞋子", acc: "飾品", junk: "垃圾" };
-
-// 武器種類：換武器＝換連段（招式在 player.js 的 COMBOS）
-export const WTYPES = {
-  sword: { name: "單手劍", weapon: "sword" },
-  greatsword: { name: "大劍", weapon: "greatsword" },
-  dagger: { name: "雙匕首", weapon: "dagger", off: "dagger", crit: 8 },
-  spear: { name: "長槍", weapon: "spear" },
-  hammer: { name: "大錘", weapon: "hammer" },
-};
+export const KIND_NAME = { weapon: "星核", head: "星冠", body: "星殼", hands: "星爪", feet: "星靴", acc: "碎片", junk: "垃圾" };
 
 // 底材：lv 是最低物品等級，數值是 1 級時的基礎值（會隨物品等級成長）
 export const BASES = {
-  sword1: { kind: "weapon", wtype: "sword", name: "生鏽的鐵劍", short: "鐵劍", icon: "sword", atk: 12, lv: 1 },
-  sword2: { kind: "weapon", wtype: "sword", name: "見習騎士劍", short: "騎士劍", icon: "sword", atk: 15, lv: 6 },
-  great1: { kind: "weapon", wtype: "greatsword", name: "門板大劍", short: "門板劍", icon: "greatsword", atk: 19, lv: 1 },
-  great2: { kind: "weapon", wtype: "greatsword", name: "屠龍大劍（仿）", short: "屠龍劍", icon: "greatsword", atk: 27, lv: 8 },
-  dagger1: { kind: "weapon", wtype: "dagger", name: "削水果刀", short: "水果刀", icon: "dagger", atk: 8, lv: 1 },
-  dagger2: { kind: "weapon", wtype: "dagger", name: "刺客短刃", short: "短刃", icon: "dagger", atk: 11, lv: 7 },
-  spear1: { kind: "weapon", wtype: "spear", name: "晾衣竿", short: "晾衣竿", icon: "spear", atk: 12, lv: 1 },
-  spear2: { kind: "weapon", wtype: "spear", name: "騎兵長槍", short: "長槍", icon: "spear", atk: 17, lv: 7 },
-  hammer1: { kind: "weapon", wtype: "hammer", name: "搥肉槌", short: "肉槌", icon: "hammer", atk: 18, lv: 1 },
-  hammer2: { kind: "weapon", wtype: "hammer", name: "打樁大錘", short: "大錘", icon: "hammer", atk: 26, lv: 8 },
+  // 星核（舊的武器底材 id 保留，存檔裡的舊武器會直接變成對應的星核；圖示之後重畫）
+  sword1: { kind: "weapon", name: "鏽色星核", short: "鏽核", icon: "sword", atk: 12, lv: 1 },
+  sword2: { kind: "weapon", name: "晨光星核", short: "晨核", icon: "sword", atk: 15, lv: 6 },
+  great1: { kind: "weapon", name: "沉重星核", short: "重核", icon: "greatsword", atk: 19, lv: 1 },
+  great2: { kind: "weapon", name: "隕鐵星核", short: "隕核", icon: "greatsword", atk: 27, lv: 8 },
+  dagger1: { kind: "weapon", name: "尖銳星核", short: "尖核", icon: "dagger", atk: 8, crit: 8, lv: 1 },
+  dagger2: { kind: "weapon", name: "暗影星核", short: "影核", icon: "dagger", atk: 11, crit: 8, lv: 7 },
+  spear1: { kind: "weapon", name: "細長星核", short: "長核", icon: "spear", atk: 12, lv: 1 },
+  spear2: { kind: "weapon", name: "彗尾星核", short: "彗核", icon: "spear", atk: 17, lv: 7 },
+  hammer1: { kind: "weapon", name: "鈍光星核", short: "鈍核", icon: "hammer", atk: 18, lv: 1 },
+  hammer2: { kind: "weapon", name: "巨岩星核", short: "岩核", icon: "hammer", atk: 26, lv: 8 },
   head1: { kind: "head", name: "破水桶", short: "水桶", icon: "bucket", def: 2, lv: 1 },
   head2: { kind: "head", name: "皮帽", short: "皮帽", icon: "cap", def: 4, lv: 4 },
   head3: { kind: "head", name: "鐵頭盔", short: "頭盔", icon: "helm", def: 7, lv: 10 },
@@ -77,8 +71,8 @@ export const AFFIXES = {
   crit: { pre: "精準", fmt: (v) => `暴擊率 +${v}%`, slots: ["weapon", "hands", "head", "acc"], t: [[10, 12], [7, 9], [5, 6], [3, 4], [1, 2]] },
   critDmg: { pre: "殘暴", fmt: (v) => `暴擊傷害 +${v}%`, slots: ["weapon", "acc"], t: [[45, 60], [32, 44], [22, 31], [13, 21], [6, 12]] },
   fire: { pre: "燃燒", fmt: (v) => `附加火焰傷害 +${v}`, slots: ["weapon", "hands", "acc"], t: [[14, 18], [10, 13], [7, 9], [4, 6], [1, 3]] },
-  skill: { pre: "魔力", fmt: (v) => `火球傷害 +${v}%`, slots: ["weapon", "head", "acc"], t: [[45, 60], [32, 44], [22, 31], [13, 21], [6, 12]] },
-  cdr: { pre: "冥想", fmt: (v) => `火球冷卻 -${v}%`, slots: ["head", "acc"], t: [[20, 25], [15, 19], [11, 14], [7, 10], [3, 6]] },
+  skill: { pre: "魔力", fmt: (v) => `技能傷害 +${v}%`, slots: ["weapon", "head", "acc"], t: [[45, 60], [32, 44], [22, 31], [13, 21], [6, 12]] },
+  cdr: { pre: "冥想", fmt: (v) => `技能冷卻 -${v}%`, slots: ["head", "acc"], t: [[20, 25], [15, 19], [11, 14], [7, 10], [3, 6]] },
   life: { pre: "吸血", fmt: (v) => `擊殺回復 ${v} 生命`, slots: ["weapon", "hands", "acc"], t: [[7, 8], [5, 6], [4, 4], [2, 3], [1, 1]] },
   boom: { pre: "易燃", fmt: (v) => `擊殺時 ${v}% 機率爆炸`, slots: ["weapon", "body", "acc"], t: [[18, 22], [13, 17], [9, 12], [5, 8], [2, 4]] },
   gold: { pre: "貪財", fmt: (v) => `金幣 +${v}%`, slots: ["head", "feet", "acc"], t: [[50, 60], [36, 49], [24, 35], [13, 23], [5, 12]] },
@@ -90,7 +84,7 @@ export const AFFIXES = {
 export const UNIQUES = {
   slipper: { kind: "feet", name: "前任勇者的拖鞋", icon: "goldslipper", def: 4, text: "閃避後的下一擊必定暴擊；閃避距離 +50%", lore: "前任勇者逃跑時掉的。跑得很快。" },
   overtime: { kind: "acc", name: "加班證明", icon: "paper", text: "戰鬥越久傷害越高：每 10 秒 +5%，上限 +100%，戰鬥結束歸零", lore: "上面蓋著「已讀不回」的章。" },
-  noisy: { kind: "weapon", wtype: "sword", name: "很吵的劍", icon: "noisysword", atk: 18, text: "每 10 秒吐槽你一次，並給予隨機增益 5 秒", lore: "「拜託你認真打好嗎。」" },
+  noisy: { kind: "weapon", name: "很吵的星核", icon: "noisysword", atk: 18, text: "每 10 秒吐槽你一次，並給予隨機增益 5 秒", lore: "「拜託你認真打好嗎。」" },
   hardhat: { kind: "head", name: "爆炸頭安全帽", icon: "hardhat", def: 6, text: "擊殺時爆炸機率 +25%，爆炸範圍 +50%", lore: "工地主任的遺物。施工中，請勿靠近。" },
 };
 
@@ -146,12 +140,7 @@ export function makeItem(ilvl, rarity, opts = {}) {
   }
   let baseId = opts.base;
   if (!baseId) {
-    // 智慧掉落：有 opts.prefer（目前用的武器種類）時，武器偏向那一種
-    let ids = Object.keys(BASES).filter((id) => BASES[id].lv <= ilvl && (!opts.kind || BASES[id].kind === opts.kind));
-    if (opts.prefer && Math.random() < 0.5) {
-      const same = ids.filter((id) => BASES[id].wtype === opts.prefer);
-      if (same.length) ids = same;
-    }
+    const ids = Object.keys(BASES).filter((id) => BASES[id].lv <= ilvl && (!opts.kind || BASES[id].kind === opts.kind));
     // 同一部位裡，越新的底材越常出現
     baseId = pick(ids);
     const better = ids.filter((id) => BASES[id].kind === BASES[baseId].kind && BASES[id].lv > BASES[baseId].lv);
@@ -162,23 +151,31 @@ export function makeItem(ilvl, rarity, opts = {}) {
   let n = randInt(a0, a1);
   if (b.kind === "acc" && rarity === R.common) n = 1;   // 飾品沒有基礎數值，至少給一條
   const affixes = rollAffixes(b.kind, n, ilvl);
-  const item = { uid: uid(), base: baseId, kind: b.kind, wtype: b.wtype, icon: b.icon, rarity, ilvl, affixes, stats: baseStats(b, ilvl, r.mult) };
-  item.name = rarity === R.junk ? "破爛的" + b.short
-    : rarity === R.magic && affixes.length ? AFFIXES[affixes[0].id].pre + "的" + b.short
-    : rarity === R.rare ? pick(RARE_NAMES) + "之" + b.short
-    : b.name;
+  const item = { uid: uid(), base: baseId, kind: b.kind, icon: b.icon, rarity, ilvl, affixes, stats: baseStats(b, ilvl, r.mult) };
+  item.name = nameFor(item, rarity === R.rare ? pick(RARE_NAMES) : null);
   return item;
 }
 
 export function makeUnique(id, ilvl) {
   const u = UNIQUES[id], r = RARITY[R.legend];
   const affixes = rollAffixes(u.kind, randInt(r.affix[0], r.affix[1]), ilvl);
-  return { uid: uid(), unique: id, kind: u.kind, wtype: u.wtype, icon: u.icon, rarity: R.legend, ilvl, affixes, stats: baseStats(u, ilvl, r.mult), name: u.name };
+  return { uid: uid(), unique: id, kind: u.kind, icon: u.icon, rarity: R.legend, ilvl, affixes, stats: baseStats(u, ilvl, r.mult), name: u.name };
+}
+
+/** 物品名稱（底材名＋稀有度的前綴）。rareName：稀有裝備的隨機名字（舊存檔轉換時沿用原本的）。 */
+export function nameFor(item, rareName) {
+  if (item.unique) return UNIQUES[item.unique].name;
+  const b = BASES[item.base];
+  return item.rarity === R.junk ? "破爛的" + b.short
+    : item.rarity === R.magic && item.affixes.length ? AFFIXES[item.affixes[0].id].pre + "的" + b.short
+    : item.rarity === R.rare ? (rareName ?? "零星") + "之" + b.short
+    : b.name;
 }
 
 function baseStats(b, ilvl, mult) {
   const s = {}, g = growth(ilvl) * mult;
   if (b.atk) s.atk = Math.round(b.atk * g);
+  if (b.crit) s.crit = b.crit;
   if (b.def) s.def = Math.round(b.def * g);
   if (b.hp) s.hp = Math.round(b.hp * g);
   return s;
@@ -186,17 +183,18 @@ function baseStats(b, ilvl, mult) {
 
 /** 一開始身上的裝備。 */
 export function starterGear() {
-  const sword = makeItem(1, R.common, { base: "sword1" });
-  sword.affixes = [];
-  const shirt = makeItem(1, R.common, { base: "body1" });
-  shirt.affixes = [];
-  return { weapon: sword, body: shirt };
+  const core = makeItem(1, R.common, { base: "sword1" });
+  core.affixes = [];
+  const shell = makeItem(1, R.common, { base: "body1" });
+  shell.affixes = [];
+  return { weapon: core, body: shell };
 }
 
 /** 一件物品的說明文字（給背包詳細欄位用）。 */
 export function describe(item) {
   const lines = [];
-  if (item.stats.atk) lines.push(["base", `武器攻擊 ${item.stats.atk}`]);
+  if (item.stats.atk) lines.push(["base", `星核攻擊 ${item.stats.atk}`]);
+  if (item.stats.crit) lines.push(["base", `暴擊率 +${item.stats.crit}%`]);
   if (item.stats.def) lines.push(["base", `防禦 ${item.stats.def}`]);
   if (item.stats.hp) lines.push(["base", `生命 +${item.stats.hp}`]);
   for (const a of item.affixes) {
@@ -207,5 +205,5 @@ export function describe(item) {
   return lines;
 }
 
-export const kindLabel = (item) => (item.kind === "weapon" ? WTYPES[item.wtype].name : KIND_NAME[item.kind]);
+export const kindLabel = (item) => KIND_NAME[item.kind];
 export const rarityOf = (item) => RARITY[item.rarity];
