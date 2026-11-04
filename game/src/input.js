@@ -57,18 +57,21 @@ const DEAD = 10;        // 拖動多少 px 才開始走
 const FULL = 38;        // 拖動多少 px 算全速
 const FOLLOW = 60;      // 手指拖超過這個距離，搖桿中心跟著手指走（浮動搖桿）
 const SWIPE = 26;       // 往上／往下快滑多少 px 算一次
+const SWIPE_AIR = 16;   // 空中的二段跳滑動，距離放寬
 const SWIPE_TIME = 0.18;
 
 export function initTouch() {
   const zone = document.getElementById("leftZone");
   const base = document.getElementById("stickBase"), knob = document.getElementById("stickKnob");
-  let id = null, ax = 0, ay = 0, hist = [];
+  let id = null, ax = 0, ay = 0, hist = [], lock = 0;   // lock：剛滑出一跳，一小段時間內不連發（一次長滑不會變成兩段跳）
   const showStick = (x, y, kx) => {
     base.style.left = ax + "px";
     base.style.top = ay + "px";
     knob.style.transform = `translate(${kx}px, ${Math.max(-30, Math.min(30, y - ay))}px)`;
   };
   zone.addEventListener("pointerdown", (e) => {
+    // 在空中點一下左半邊＝二段跳（抬手再點，或另一根手指點都可以）
+    if (input.air) { press("jump"); input.jumpHeld = true; }
     if (id !== null) return;
     id = e.pointerId;
     try { zone.setPointerCapture(id); } catch {}
@@ -90,9 +93,11 @@ export function initTouch() {
     const now = e.timeStamp;
     hist.push({ y: e.clientY, t: now });
     while (hist.length > 2 && now - hist[0].t > SWIPE_TIME * 1000) hist.shift();
-    const dy = e.clientY - hist[0].y;
-    if (dy < -SWIPE) { press("jump"); input.jumpHeld = true; hist = [{ y: e.clientY, t: now }]; ay = y; }
-    else if (dy > SWIPE) { press("drop"); hist = [{ y: e.clientY, t: now }]; ay = y; }
+    // 往上滑跟這段時間內「最低」的點比：手指先拉回來再往上滑也算；往下滑跟最高點比
+    const up = e.clientY - Math.max(...hist.map((h) => h.y)), down = e.clientY - Math.min(...hist.map((h) => h.y));
+    if (up < -(input.air ? SWIPE_AIR : SWIPE) && now > lock) { press("jump"); lock = now + 220; input.jumpHeld = true; hist = [{ y: e.clientY, t: now }]; ay = y; }
+    // 空中往下滑不算下跳，才能放心把手指拉回來再滑一次
+    else if (down > SWIPE && !input.air) { press("drop"); hist = [{ y: e.clientY, t: now }]; ay = y; }
     showStick(ax, y, Math.max(-34, Math.min(34, dx)));
   });
   const end = (e) => {

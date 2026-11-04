@@ -232,6 +232,7 @@ export class Player {
       this.grounded = false;
       if (this.vy >= 0) { this.coyote = COYOTE; this.jumps = 1; }
     }
+    input.air = !this.grounded && this.jumps < 2;   // 手機：還能二段跳，點一下左半邊就跳
 
     // ---- 動畫
     // 轉身：臉朝的方向一改，先轉到正面一下再轉過去
