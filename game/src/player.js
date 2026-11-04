@@ -222,6 +222,7 @@ export class Player {
     const gy = this.vy >= 0 ? groundAt(this.x, prevY, this.y, this.dropT > 0) : null;
     if (gy !== null) {
       if (!wasGrounded && this.vy > 260) { this.landT = 0.1; world.dust(this.x, gy, 6); }
+      if (!wasGrounded && this.vy > 80) world.land?.(this.x, gy, this.vy > 260);   // 草屑
       this.y = gy;
       this.vy = 0;
       this.grounded = true;

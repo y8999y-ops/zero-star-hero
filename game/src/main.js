@@ -27,6 +27,8 @@ import { FORMS, CARRY_MAX, coreChance, absorbCore, makeCore, coresToLevel } from
 import { createFrame as makeFrame } from "../../pixelfx/src/core/index.js";
 import { paintStar, POSES } from "./star.js";
 import { npcSize } from "./npcs.js";
+import { createProps } from "./props.js";
+import { PLATFORMS } from "./level.js";
 import { ult, ULT_MAX, ULT_MULT, startUlt, updateUlt, ultLights, dimScene, drawUlt, drawCutIn, postUlt } from "./ult.js";
 
 installUiArt();
@@ -277,6 +279,23 @@ function updateChest(dt) {
   }
 }
 
+// 場景互動物件：草叢、木箱、垃圾堆、水晶
+const props = createProps({
+  floor: FLOOR, w: geo.w, platforms: TOWN ? [] : PLATFORMS, town: TOWN,
+  avoid: TOWN ? [...NPCS.map((n) => n.x), 924] : [...TORCHES, STAGE.exitX - 120, STAGE.exitX + 26, STAGE.start.x],
+});
+props.onBreak = (o) => {
+  world.dropCoins(o.x, o.y - 10, o.type ? 2 + Math.floor(Math.random() * 3) : 1 + Math.floor(Math.random() * 3));
+  if (o.type === "crate" && Math.random() < 0.12) dropItem(o.x, o.y - 10, R.common, { ilvl: ilvlNow(0) });
+};
+const propMovers = () => {
+  const list = [{ x: player.x, y: player.y, vx: player.vx, dash: player.state === "dash" }];
+  for (const e of enemies) if (!e.dead && !e.k.fly) list.push({ x: e.x, y: e.y, vx: e.vx ?? 0 });
+  return list;
+};
+const propView = () => ({ x0: camX, x1: camX + W });
+window.__game.props = props;
+
 if (!TOWN) for (const x of TORCHES) spawn(A.brazier, { x, y: FLOOR }, { layer: "back", keep: true }).update(Math.random() * 3);
 if (!ENDLESS && !TOWN) spawn(A.portal, { x: STAGE.exitX + 26, y: FLOOR }, { layer: "back", keep: true });
 
@@ -311,6 +330,7 @@ const world = {
   },
   hitArea(box, dmg, dir, opts) {
     let n = 0;
+    props.hit(box, dir);
     for (const e of enemies) if (!e.dead && overlaps(box, e.box())) { e.hit(typeof dmg === "function" ? dmg() : dmg, dir, opts, world); n++; }
     if (n) { addCombo(n); chargeUlt(n * 0.8); }
     return n;
@@ -318,6 +338,7 @@ const world = {
   /** 跟 hitArea 一樣，但同一隻只打一次（hit 是記錄打過的 Set） */
   hitOnce(box, hit, dmg, dir, opts) {
     let n = 0;
+    props.hit(box, dir);
     for (const e of enemies) if (!e.dead && !hit.has(e) && overlaps(box, e.box())) { hit.add(e); e.hit(dmg(), dir, opts, world); n++; }
     if (n) { addCombo(n); chargeUlt(n * 0.8); hitStop(0.05); shake(0.15, 2); }
     return n;
@@ -331,6 +352,7 @@ const world = {
     n = Math.round(n * (1 + player.stats.gold / 100));
     for (let i = 0; i < n; i++) coins.push({ x, y, vx: (Math.random() - 0.5) * 160, vy: -120 - Math.random() * 140, t: 0 });
   },
+  land(x, y, hard) { props.landing(x, y, hard); },
   dust(x, y, n) {
     spawn(A.dust, { x: Math.round(x), y: Math.round(y), flip: Math.random() < 0.5 }, { speed: 1.8 });
   },
@@ -406,6 +428,7 @@ function townTick(dt) {
     consume("skill"); consume("ult");
     player.update(dt, world);
     player.x = Math.max(20, Math.min(TOWN_W - 20, player.x));
+    props.update(dt, propMovers(), propView());
     near = nearby(player.x);
     if (atk && !prevAtk && near && player.grounded) interact(near);
     prevAtk = atk;
@@ -632,6 +655,7 @@ function tick(dt) {
     return;
   }
   player.update(dt, world);
+  props.update(dt, propMovers(), propView());
   updateUniques(dt);
   updateChest(dt);
   drops.update(dt, player, 16 * (1 + player.stats.magnet / 100), pickUp);
@@ -740,8 +764,11 @@ function render() {
   for (const s of shots) lights.push({ x: s.x, y: s.y, r: 64, lv: 3, col: (SHOT_PAL[s.form] ?? SHOT_PAL.star).light });
   for (const d of drops.list) if (d.landed && d.item.rarity >= R.rare) lights.push({ x: d.x, y: d.y - 10, r: d.item.rarity === R.legend ? 48 : 30, lv: 2, col: RARITY[d.item.rarity].color });
   ultLights(lights);
-  if (TOWN) drawTown(frame, computeLight(frame, lights), sceneClock);
-  else { drawLevel(frame, computeLight(frame, lights)); drawAtmosphere(frame, sceneClock); }
+  props.lights(lights);
+  const lv = computeLight(frame, lights);
+  if (TOWN) drawTown(frame, lv, sceneClock);
+  else { drawLevel(frame, lv); drawAtmosphere(frame, sceneClock); }
+  props.draw(frame, lv);
   if (TOWN) { drawTownNpcs(frame, sceneClock); drawPrompt(); }
   if (chest && !chest.opened && Math.abs(chest.x - camX - W / 2) < W) chest.fx.draw(frame);
   // 大招時：先畫怪再暗場，法陣這些背景特效畫在暗場之後才會亮
