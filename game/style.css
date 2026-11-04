@@ -252,3 +252,22 @@ body.talking #touch { opacity: 0; pointer-events: none; transition: opacity .2s;
 #fade.on { opacity: 1; }
 #sysText > span { grid-area: 1 / 1; }
 #sysGhost { visibility: hidden; }
+
+/* 王（1-4）：畫面下方的血條（標出 60%、30% 兩個階段的分界）、大招的橫幅和暗場 */
+#bossBar { position: absolute; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translate(-50%, 20px); width: min(460px, 70%); opacity: 0; transition: opacity .4s, transform .4s; pointer-events: none; z-index: 2; }
+#bossBar.on { opacity: 1; transform: translate(-50%, 0); }
+.bossName { text-align: center; font-size: 13px; font-weight: 900; letter-spacing: 4px; color: #e8f0a0; text-shadow: 0 2px 0 #000; margin-bottom: 2px; }
+.bossHp { position: relative; height: 18px; border: 6px solid transparent; border-image: var(--bar) 6 fill / 6px; image-rendering: pixelated; background: #14120a; background-clip: padding-box; }
+#bossFill, #bossLag { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; }
+#bossFill { background: linear-gradient(#e8f878 0 2px, #9ac02a 2px 4px, #5e7c16 4px); transition: width .1s; }
+#bossBar[data-phase="2"] #bossFill { background: linear-gradient(#ffd0a0 0 2px, #ff7a3a 2px 4px, #b03a14 4px); }
+#bossBar[data-phase="3"] #bossFill { background: linear-gradient(#fffbe0 0 2px, #ffd84a 2px 4px, #c08a1c 4px); animation: ubReady .5s steps(2) infinite; }
+#bossLag { background: #fff0e0; transition: width .6s .3s; }
+.bossHp i { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #120c10; }
+#bossDim { position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(10,8,4,0) 30%, rgba(10,8,4,.55) 100%); opacity: 0; pointer-events: none; z-index: 1; }
+#bossDim.on { animation: bossDim 5s ease-out forwards; }
+@keyframes bossDim { 0% { opacity: 0; } 8% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; } }
+#bossUlt { position: absolute; top: 30%; left: 0; right: 0; text-align: center; font-size: 36px; font-weight: 900; letter-spacing: 10px; color: #fff6c0; text-shadow: 0 3px 0 #8a4a0c, 0 0 18px #ffb020; pointer-events: none; opacity: 0; z-index: 3; }
+#bossUlt.on { animation: bossUlt 1.6s ease-out forwards; }
+@keyframes bossUlt { 0% { opacity: 0; transform: scale(1.8); letter-spacing: 30px; } 15% { opacity: 1; transform: scale(1); letter-spacing: 10px; } 80% { opacity: 1; } 100% { opacity: 0; transform: scale(.96); } }
+body.touch #bossBar { width: min(330px, 44%); }

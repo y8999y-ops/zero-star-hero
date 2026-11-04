@@ -13,7 +13,8 @@ export const H = 216;
 export const LEVEL_W = LAYOUT.w;
 export const THEME = LAYOUT.theme;
 export { STAGE_ID };
-const S = { abyss: 0, junk: 100, cave: 200 }[THEME] ?? 0;   // 亂數種子錯開，每關長得不一樣
+const S = { abyss: 0, junk: 100, cave: 200, lair: 300 }[THEME] ?? 0;
+const JUNKY = THEME === "junk" || THEME === "lair";   // 巢穴＝垃圾山的最深處   // 亂數種子錯開，每關長得不一樣
 export const FLOOR = 184;
 export const WALL = 16;
 /** 單向平台：從下面可以跳上來，往下滑可以穿過去。 */
@@ -48,6 +49,7 @@ const FOG = {
   abyss: { 1: ["#1c4a56", 0.75], 2: ["#163a46", 0.55], 3: ["#10262f", 0.3] },
   junk: { 1: ["#4a3a30", 0.72], 2: ["#3a2c26", 0.52], 3: ["#261c18", 0.3] },
   cave: { 1: ["#12243e", 0.78], 2: ["#0e1c32", 0.58], 3: ["#0a1424", 0.32] },
+  lair: { 1: ["#3a3422", 0.72], 2: ["#2e2a1c", 0.52], 3: ["#1e1c14", 0.3] },
 }[THEME];
 for (const [layer, [fog, t]] of Object.entries(FOG)) for (const k of ["rock", "rust", "metal", "tire", "wood"]) R[k + layer] = ramp(BASE[k].map((c) => mixHex(c, fog, t)));
 const code = (r, t) => r * 8 + Math.max(0, Math.min(7, t)) + 1;
@@ -57,6 +59,7 @@ const SKY = ({
   abyss: [[0, "#060c12"], [30, "#08111a"], [58, "#0c1a24"], [82, "#11242e"], [102, "#173039"], [122, "#1f3d46"], [146, "#183540"], [170, "#122a34"]],
   junk: [[0, "#0e0a0a"], [30, "#160f0e"], [58, "#201614"], [82, "#2c1e1a"], [102, "#3a2820"], [122, "#4a3426"], [146, "#3c2a22"], [170, "#2a1e1a"]],
   cave: [[0, "#04060c"], [30, "#050812"], [58, "#070b18"], [82, "#0a1020"], [102, "#0d1528"], [122, "#111a30"], [146, "#0e162a"], [170, "#0a1020"]],
+  lair: [[0, "#0a0a06"], [30, "#12120a"], [58, "#1a1a0e"], [82, "#242214"], [102, "#2e2c18"], [122, "#3a361e"], [146, "#2e2a18"], [170, "#201e12"]],
 }[THEME]).map(([y, c]) => [y, C(c)]);
 const skyRow = new Uint32Array(H);
 for (let y = 0; y < H; y++) for (const [y0, c] of SKY) if (y >= y0) skyRow[y] = c;
@@ -116,7 +119,7 @@ function build() {
   }
 
   // ---- 中遠景（0.3）：岩柱＋巨大的垃圾剪影（輪胎、木箱、鐵管）＝「垃圾山」
-  const N2 = THEME === "junk" ? 9 : 6;
+  const N2 = JUNKY ? 9 : 6;
   for (let k = 0; k < N2; k++) {
     const cx = Math.floor((k + 0.3 + rand(k + S, 11) * 0.4) * (W2 / N2)), w = (THEME === "cave" ? 44 : 30) + Math.floor(rand(k + S, 12) * 16);
     for (let y = 0; y < H; y++) {
@@ -200,10 +203,10 @@ function build() {
   };
   for (const p of PLATFORMS) for (let x = p.x; x < p.x + p.w; x++) {
     const edge = x === p.x || x === p.x + p.w - 1;
-    for (let y = p.y; y < p.y + 9; y++) put(x, y, THEME === "junk" ? plank(x, y, p) : edge || y === p.y + 8 ? code(R.ink, 0) : brick(x, y, p.y));
-    if (THEME !== "junk") mossTop(x, p.y);
+    for (let y = p.y; y < p.y + 9; y++) put(x, y, JUNKY ? plank(x, y, p) : edge || y === p.y + 8 ? code(R.ink, 0) : brick(x, y, p.y));
+    if (!JUNKY) mossTop(x, p.y);
   }
-  const PILE_GAP = { abyss: 96, junk: 52, cave: 240 }[THEME];
+  const PILE_GAP = { abyss: 96, junk: 52, cave: 240, lair: 44 }[THEME];
   for (let k = 0; k < LEVEL_W / PILE_GAP - 1; k++) {
     const cx = 100 + k * PILE_GAP + Math.floor(rand(k + S, 51) * 30);
     if (cx > LEVEL_W - 60) break;

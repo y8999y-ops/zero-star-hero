@@ -2,7 +2,7 @@
 // 換場景會重新載入頁面；載入時先決定這次是哪一關，level.js 照這一關的地形烘焙。
 // 開發用：網址加 ?stage=1-2 直接進那一關。
 export const STAGE_KEY = "zero-hero-stage";
-export const STAGE_ORDER = ["1-1", "1-2", "1-3"];   // 1-4 王戰做好再加進來
+export const STAGE_ORDER = ["1-1", "1-2", "1-3", "1-4"];
 
 export const LAYOUTS = {
   // 1-1 墜落之底：原本的深淵垃圾山
@@ -35,6 +35,12 @@ export const LAYOUTS = {
       { x: 1700, y: 140, w: 80 }, { x: 1840, y: 104, w: 104 }, { x: 2040, y: 132, w: 88 }, { x: 2220, y: 96, w: 80 },
     ],
     torches: [180, 1260, 2380],
+  },
+  // 1-4 大胃王的巢穴：一個畫面多一點的封閉場地，兩側矮平台、中間高平台（王放大招時站上去）
+  "1-4": {
+    name: "大胃王的巢穴", theme: "lair", w: 560,
+    platforms: [{ x: 40, y: 140, w: 72 }, { x: 448, y: 140, w: 72 }, { x: 226, y: 96, w: 108 }],
+    torches: [34, 526],
   },
 };
 

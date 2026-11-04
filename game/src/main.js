@@ -31,6 +31,7 @@ import { npcSize } from "./npcs.js";
 import { createFolk, FOLK_INFO } from "./folk.js";
 import { createProps } from "./props.js";
 import { createScenery } from "./scenery.js";
+import { Boss, prepareBoss } from "./boss.js";
 import { createComboArt } from "./combo-art.js";
 import { fxState, dustFx, updateCombatFx, drawCombatFx, drawDamageNumbers } from "./combatfx.js";
 import { PLATFORMS } from "./level.js";
@@ -264,7 +265,7 @@ function updateUniques(dt) {
 }
 
 // ---- 終點前的寶箱：打完最後一場才能開
-const chest = ENDLESS || TOWN ? null : { x: STAGE.exitX - 120, opened: false, fx: createFx(chestOpen, { x: STAGE.exitX - 120, y: FLOOR, light: 0.3 }), t: 0 };
+const chest = ENDLESS || TOWN || STAGE_ID === "1-4" ? null : { x: STAGE.exitX - 120, opened: false, fx: createFx(chestOpen, { x: STAGE.exitX - 120, y: FLOOR, light: 0.3 }), t: 0 };
 function updateChest(dt) {
   if (!chest) return;
   if (!chest.opened) {
@@ -308,12 +309,12 @@ window.__game.props = props;
 window.__game.scenery = scenery;
 
 if (!TOWN) for (const x of TORCHES) spawn(A.brazier, { x, y: FLOOR }, { layer: "back", keep: true }).update(Math.random() * 3);
-if (!ENDLESS && !TOWN) spawn(A.portal, { x: STAGE.exitX + 26, y: FLOOR }, { layer: "back", keep: true });
+if (!ENDLESS && !TOWN && STAGE_ID !== "1-4") spawn(A.portal, { x: STAGE.exitX + 26, y: FLOOR }, { layer: "back", keep: true });
 
 // 關卡流程需要的操作
 const stageApi = {
   spawnEnemy(kind, x, y) {
-    const e = new Enemy(kind, x, y ?? FLOOR);
+    const e = kind === "boss" ? new Boss(x, FLOOR, bossApi) : new Enemy(kind, x, y ?? FLOOR);
     enemies.push(e);
     world.dust(e.x, e.k.fly ? e.y + 8 : e.y, 4);
   },
@@ -343,7 +344,7 @@ const world = {
     let n = 0;
     props.hit(box, dir);
     scenery.hit(box, dir);
-    for (const e of enemies) if (!e.dead && overlaps(box, e.box())) { e.hit(typeof dmg === "function" ? dmg() : dmg, dir, opts, world); n++; }
+    for (const e of enemies) if (!e.dead && overlaps(box, e.box())) { e.hit(typeof dmg === "function" ? dmg() : dmg, dir, opts, world, box); n++; }
     if (n) { addCombo(n); chargeUlt(n * 0.8); }
     return n;
   },
@@ -352,7 +353,7 @@ const world = {
     let n = 0;
     props.hit(box, dir);
     scenery.hit(box, dir);
-    for (const e of enemies) if (!e.dead && !hit.has(e) && overlaps(box, e.box())) { hit.add(e); e.hit(dmg(), dir, opts, world); n++; }
+    for (const e of enemies) if (!e.dead && !hit.has(e) && overlaps(box, e.box())) { hit.add(e); e.hit(dmg(), dir, opts, world, box); n++; }
     if (n) { addCombo(n); chargeUlt(n * 0.8); hitStop(0.05); shake(0.15, 2); }
     return n;
   },
@@ -405,6 +406,43 @@ const world = {
 };
 
 let boomDepth = 0;
+
+// ---- 王（1-4）：給 boss.js 用的操作、畫面下方的血條、大招橫幅
+if (STAGE_ID === "1-4") prepareBoss();   // 先把王的動畫烘好，開打時才不會卡
+const bossBar = $("bossBar"), bossFill = $("bossFill"), bossLag = $("bossLag");
+const bossApi = {
+  player,
+  get lock() { return director?.lock ?? { l: WALL, r: LEVEL_W - WALL }; },
+  platforms: { top: PLATFORMS[2] },
+  hurt: (dmg, fromX) => player.hurt(dmg, fromX, world),
+  say: (msg, sec) => sayQueue.unshift([msg, sec]),
+  line: (msg, sec) => toast(msg, sec),
+  spawnSlime: (x) => stageApi.spawnEnemy("slime", x),
+  dropCoins: (x, y, n) => world.dropCoins(x, y, n),
+  dropLoot(x, y) {
+    spawn(chestOpen, { x: Math.round(x), y: FLOOR, light: 0.3 }, { layer: "back" });
+    dropItem(x, y, R.rare, { rarity: profile.cleared["1-4"] ? undefined : R.legend, ilvl: ilvlNow(3), dir: -1 });
+    dropItem(x, y, R.rare, { ilvl: ilvlNow(2), dir: 1 });
+    dropItem(x, y, R.magic, { ilvl: ilvlNow(2) });
+  },
+  absorb() {
+    gainXp(160);
+    sayQueue.unshift(["系統：吸收了大胃王吞下去的星星碎片！……你又亮了一點點。", 3]);
+  },
+  bar(k, phase) {
+    bossBar.classList.add("on");
+    bossFill.style.width = k * 100 + "%";
+    bossLag.style.width = k * 100 + "%";
+    bossBar.dataset.phase = phase;
+    if (k <= 0) setTimeout(() => bossBar.classList.remove("on"), 1200);
+  },
+  ult(name) {
+    const el = $("bossUlt");
+    el.textContent = name;
+    el.classList.remove("on"); void el.offsetWidth; el.classList.add("on");
+    $("bossDim").classList.remove("on"); void $("bossDim").offsetWidth; $("bossDim").classList.add("on");
+  },
+};
 
 // ================= 城鎮：碎星鎮 =================
 // 公會等級：完成的任務數
@@ -524,7 +562,7 @@ async function guild(name) {
     save(profile, true);
   }
   const rank = rankOf(G.done), nr = nextRank(G.done);
-  const QUEST_NOTE = { "1-1": "清光狂化魔物", "1-2": "垃圾桶怪大量出沒", "1-3": "蝙蝠群、菁英出沒" };
+  const QUEST_NOTE = { "1-1": "清光狂化魔物", "1-2": "垃圾桶怪大量出沒", "1-3": "蝙蝠群、菁英出沒", "1-4": "王：大胃王史萊姆" };
   const v = await ask(name, `冒險者等級 ${rank}　已完成任務 ${G.done} 個。今天要接什麼任務？`, [
     ...unlocked().reverse().map((id) => [`討伐：${id} ${LAYOUTS[id].name}（${QUEST_NOTE[id]}）${profile.cleared[id] ? "" : "　NEW"}`, "stage:" + id]),
     ["練功：無限討伐（打到你手痠為止）", "endless"],
@@ -534,7 +572,7 @@ async function guild(name) {
   if (v?.startsWith?.("stage:")) {
     const id = v.slice(6);
     G.quest = id;
-    await talk(name, [{ "1-1": "任務受理。墜星之谷的狂化魔物越來越多了，請小心。", "1-2": "垃圾山……那裡的垃圾桶會咬人喔。真的。", "1-3": "蝙蝠洞窟很暗。……啊，你會發光，那沒事了。" }[id]]);
+    await talk(name, [{ "1-1": "任務受理。墜星之谷的狂化魔物越來越多了，請小心。", "1-2": "垃圾山……那裡的垃圾桶會咬人喔。真的。", "1-3": "蝙蝠洞窟很暗。……啊，你會發光，那沒事了。", "1-4": "……大胃王。牠把墜星之谷的垃圾全吃光了，還在變大。拜託你了。" }[id]]);
     goScene("stage", id);
   }
   else if (v === "endless") { await talk(name, ["無限討伐不算正式任務，不過掉的東西都歸你。"]); goScene("endless"); }
@@ -638,7 +676,7 @@ function separate(dt) {
     const a = enemies[i];
     for (let j = i + 1; j < enemies.length; j++) {
       const b = enemies[j];
-      if (a.k.fly !== b.k.fly) continue;
+      if (a.k.fly !== b.k.fly || a.isBoss || b.isBoss) continue;
       const dx = b.x - a.x, dy = b.y - a.y, min = a.k.w + b.k.w - 4;
       if (Math.abs(dx) < min && Math.abs(dy) < (a.k.fly ? 16 : 6)) {
         const push = (min - Math.abs(dx)) * 0.5 * Math.min(1, 10 * dt) * (dx >= 0 ? 1 : -1) || 0.5;
@@ -784,6 +822,7 @@ function render() {
   sceneClock += 1 / 60;
   const lights = TOWN ? townLights(sceneClock) : sceneLights(camX, W, sceneClock);
   lights.push({ x: player.x, y: player.y - 10, r: 46, lv: 1.3, col: "#ffcf6a" });   // 星星主角自己會發光
+  for (const e of enemies) e.lights?.(lights);
   for (const e of enemies) if (e.elite && !e.dead) lights.push({ x: e.x, y: e.y - 10, r: 36, lv: 1.2, col: "#ff4a3a" });
   for (const s of shots) lights.push({ x: s.x, y: s.y, r: 64, lv: 3, col: (SHOT_PAL[s.form] ?? SHOT_PAL.star).light });
   for (const d of drops.list) if (d.landed && d.item.rarity >= R.rare) lights.push({ x: d.x, y: d.y - 10, r: d.item.rarity === R.legend ? 48 : 30, lv: 2, col: RARITY[d.item.rarity].color });
@@ -935,7 +974,8 @@ function showClear() {
   $("clearLoot").innerHTML = got.length
     ? got.map((it) => `<div class="slot r${it.rarity}" title="${it.name}"><img src="${iconURL(it.icon, 2)}"></div>`).join("")
     : '<span style="color:var(--dim)">這趟沒撿到魔法以上的裝備。再刷一次吧！</span>';
-  $("clearLine").textContent = stats.deaths === 0 ? "系統：一次都沒死？……我收回「零星」那句話。一半。" : "系統：過是過了。死了幾次這件事，我會幫你保密的。";
+  if (STAGE_ID === "1-4") { $("clearLine").textContent = "第一章　墜星之谷　完。……走出洞窟，前面就是碎星鎮了。"; $("homeBtn").textContent = "走出洞窟，回碎星鎮"; }
+  else $("clearLine").textContent = stats.deaths === 0 ? "系統：一次都沒死？……我收回「零星」那句話。一半。" : "系統：過是過了。死了幾次這件事，我會幫你保密的。";
   $("nextBtn").classList.toggle("hidden", ENDLESS || !nextStage());
   if (nextStage()) $("nextBtn").textContent = `下一關：${nextStage()} ${LAYOUTS[nextStage()].name}`;
   $("clear").classList.remove("hidden");

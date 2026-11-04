@@ -21,7 +21,7 @@ export function bake(mod, o = {}, fps = 30) {
 }
 
 // 只留下有畫東西的範圍
-function crop(f, ox, oy) {
+export function crop(f, ox, oy) {
   let x0 = f.w, y0 = f.h, x1 = -1, y1 = -1;
   for (let y = 0; y < f.h; y++) for (let x = 0; x < f.w; x++) {
     const i = y * f.w + x;

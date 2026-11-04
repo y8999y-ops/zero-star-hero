@@ -71,7 +71,16 @@ export const STAGE_1_3 = {
     { x: 2300, say: "系統：前面……我聞到很臭的味道。像是吃了一百年垃圾的那種。" },
   ],
 };
-export const STAGES = { "1-1": STAGE_1_1, "1-2": STAGE_1_2, "1-3": STAGE_1_3 };
+// 1-4 大胃王的巢穴：一進來就封住整個場地，王從上面掉下來。打倒王（融化演出結束）＝通關。
+export const STAGE_1_4 = {
+  name: "1-4 大胃王的巢穴",
+  start: { x: 60, y: 184 },
+  exitX: 0,
+  intro: ["系統：……這裡就是巢穴。好臭。", "系統：我聞到了。牠就在附近。……不，是在上面。"],
+  caches: [],
+  events: [{ x: 70, lock: [16, 544], waves: [[["boss", 0]]] }],
+};
+export const STAGES = { "1-1": STAGE_1_1, "1-2": STAGE_1_2, "1-3": STAGE_1_3, "1-4": STAGE_1_4 };
 
 const SAY_TIME = 3.2, HINT_TIME = 5;
 
@@ -92,7 +101,7 @@ export class Director {
         if (this.wave < this.waves.length) this.spawnWave(this.waves[this.wave++]);
         else {
           this.lock = null;
-          this.api.say("系統：清除！……哼，還算可以。", 2);
+          if (!this.stage.events.some((e) => e.lock)) this.api.say("系統：清除！……哼，還算可以。", 2);
         }
       } else if (this.api.alive() > 0) this.waveDelay = 0.6;
       return;
@@ -104,13 +113,13 @@ export class Director {
       if (ev.say) this.api.say(ev.say, SAY_TIME);
       if (ev.hint) this.api.hint(this.isTouch ? ev.hint.touch : ev.hint.key, HINT_TIME);
       if (ev.waves) {
-        this.lock = { l: Math.round(camX), r: Math.round(camX) + W };
+        this.lock = ev.lock ? { l: ev.lock[0], r: ev.lock[1] } : { l: Math.round(camX), r: Math.round(camX) + W };
         this.waves = ev.waves;
         this.wave = 0;
         this.waveDelay = 0.4;
       }
     }
-    if (player.x >= this.stage.exitX) {
+    if (!this.lock && this.next >= this.stage.events.length && player.x >= this.stage.exitX) {
       this.done = true;
       this.api.clear();
     }

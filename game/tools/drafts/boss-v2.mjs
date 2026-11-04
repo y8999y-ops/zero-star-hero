@@ -15,14 +15,16 @@ const shots = [
   [bossFx, { pose: "crouch", k: 1 }, 0, "蹲下蓄力"], [bossFx, { pose: "air", k: 0.15 }, 0, "跳起來"],
   [bossFx, { pose: "land", k: 0.04 }, 0, "壓地"], [bossFx, { pose: "land", k: 0.3 }, 0, "壓地後晃"],
   [bossFx, { pose: "inhale", k: 1 }, 0, "吸氣"], [bossFx, { pose: "spit", k: 0.05 }, 0, "吐"],
+  [bossFx, { pose: "lean", k: 1 }, 0], [bossFx, { pose: "slide" }, 0], [bossFx, { pose: "roar" }, 0.1], [bossFx, { pose: "split", k: 0.8 }, 0],
+  [bossFx, { pose: "vacuum" }, 0], [bossFx, { pose: "beam" }, 0], [bossFx, { pose: "dizzy" }, 0], [bossFx, { pose: "melt", k: 0.7 }, 0],
 ].map(([fx, o, t]) => frameOf(fx, o, t));
 
 // 每張用不透明的像素算出範圍，排成兩列，底部對齊
 const box = (f) => { let x0 = f.w, y0 = f.h, x1 = 0, y1 = 0; for (let y = 0; y < f.h; y++) for (let x = 0; x < f.w; x++) if (f.rgba[(y * f.w + x) * 4 + 3] > 200) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); } return { x0: x0 - 8, y0: y0 - 8, x1: x1 + 8, y1: y1 + 4 }; };
 const cells = shots.map((f) => ({ f, b: box(f) }));
-const rows = [cells.slice(0, 5), cells.slice(5)];
+const rows = [cells.slice(0, 5), cells.slice(5, 9), cells.slice(9, 13), cells.slice(13)];
 const cw = rows.map((r) => r.reduce((n, c) => n + c.b.x1 - c.b.x0 + 1, 0)), ch = rows.map((r) => Math.max(...r.map((c) => c.b.y1 - c.b.y0 + 1)));
-const W = Math.max(...cw), H = ch[0] + ch[1];
+const W = Math.max(...cw), H = ch.reduce((a, b) => a + b, 0);
 const img = new Uint8Array(W * K * H * K * 4);
 for (let i = 0; i < W * K * H * K; i++) { img.set(BG, i * 4); img[i * 4 + 3] = 255; }
 let oy = 0;
