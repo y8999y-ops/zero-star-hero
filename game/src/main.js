@@ -5,8 +5,8 @@ import * as explosion from "../../pixelfx/src/fx/explosions/plasma-explosion.js"
 import { A, GLOW } from "./assets.js";
 import { input, tickInput, initTouch, consume } from "./input.js";
 import { drawLevel, drawForeground, drawAtmosphere, sceneLights, LEVEL_W, FLOOR, H, TORCHES, WALL, geo } from "./level.js";
-import { TOWN_W, townLights, drawTown, drawTownNpcs, drawTownFg, nearby } from "./town.js";
-import { talk, ask, dialog } from "./dialog.js";
+import { TOWN_W, NPCS, townLights, drawTown, drawTownNpcs, drawTownFg, nearby } from "./town.js";
+import { talk, ask, dialog, typewriter } from "./dialog.js";
 import * as frogFx from "../../pixelfx/src/fx/critters/frog.js";
 import { computeLight, flash, updateLight } from "./light.js";
 import { spawn, updateFx, drawFx, juice, hitStop, shake, shakeOffset, fxCount } from "./fx.js";
@@ -22,10 +22,11 @@ import { computeStats, compare, xpNeed, MAX_LV } from "./stats.js";
 import { makeItem, rollRarity, R, RARITY, JUNK } from "./items.js";
 import { Drops, feed } from "./loot.js";
 import { createInventory } from "./inventory.js";
-import { installUiArt, iconURL, setAttackIcon } from "./ui-art.js";
+import { installUiArt, iconURL, setAttackIcon, medal, MEDAL_SIZE } from "./ui-art.js";
 import { FORMS, CARRY_MAX, coreChance, absorbCore, makeCore, coresToLevel } from "./forms.js";
 import { createFrame as makeFrame } from "../../pixelfx/src/core/index.js";
 import { paintStar, POSES } from "./star.js";
+import { npcSize } from "./npcs.js";
 import { ult, ULT_MAX, ULT_MULT, startUlt, updateUlt, ultLights, dimScene, drawUlt, drawCutIn, postUlt } from "./ult.js";
 
 installUiArt();
@@ -188,6 +189,7 @@ function switchForm(id) {
   save(profile);
   buildFormHud();
 }
+const $ = (id) => document.getElementById(id);
 // 右上角的形態按鈕（電腦也能點）：每格畫一個小星星，目前的形態有亮框
 const formHud = document.getElementById("forms");
 function buildFormHud() {
@@ -209,6 +211,23 @@ function buildFormHud() {
     b.addEventListener("pointerdown", (e) => { e.stopPropagation(); switchForm(id); });
     formHud.appendChild(b);
   });
+  drawMedal();
+}
+// 左上徽章：把目前形態的主角畫進星芒圓盤
+function drawMedal() {
+  const fw = 40, fh = 34, f = makeFrame(fw, fh), im = new ImageData(fw, fh);
+  paintStar(f, 20, 31, POSES.stand, false, { glow: 0, form: player?.form ?? profile.forms.cur });
+  composite(f, im.data, null);
+  const d = im.data, ox = ((MEDAL_SIZE - fw) >> 1), oy = ((MEDAL_SIZE - fh) >> 1);
+  const c = medal(2, (x, y) => {
+    const sx = x - ox, sy = y - oy;
+    if (sx < 0 || sy < 0 || sx >= fw || sy >= fh) return null;
+    const i = (sy * fw + sx) * 4;
+    return d[i + 3] ? `rgb(${d[i]},${d[i + 1]},${d[i + 2]})` : null;
+  });
+  const cv = $("medalCv");
+  cv.width = c.width; cv.height = c.height;
+  cv.getContext("2d").drawImage(c, 0, 0);
 }
 buildFormHud();
 
@@ -397,6 +416,37 @@ function townTick(dt) {
   camX += (want - camX) * Math.min(1, 5 * dt);
   camX = Math.max(0, Math.min(TOWN_W - W, camX));
   updateSay(dt);
+  updateBubble(dt);
+}
+// 路人泡泡：畫面裡的居民偶爾自言自語（不能是正在旁邊可以對話的那個，頭上已經有「！」）
+const AMBIENT = {
+  clerk: ["（推眼鏡）今天的委託也很多呢。", "請排隊……啊，只有你一個。", "公會的茶，是我泡的。……喝嗎？"],
+  golem: ["……（鏘）", "……碎屑。越多越好。", "……爐子，今天很旺。"],
+  mushroom: ["今天的湯是蘑菇湯～不是親戚喔。", "累了就來休息吧～", "頭上的孩子們又長高了呢～"],
+};
+const bubbleEl = $("bubble"), bubbleText = $("bubbleText");
+let bubbleWho = null, bubbleT = 0, bubbleWait = 3;
+function updateBubble(dt) {
+  if (dialog.open || busy) { bubbleEl.classList.remove("on"); bubbleWho = null; return; }
+  if (bubbleWho) {
+    if ((bubbleT -= dt) <= 0 || bubbleWho === near) { bubbleEl.classList.remove("on"); bubbleWho = null; bubbleWait = 5 + Math.random() * 4; }
+  } else if ((bubbleWait -= dt) <= 0) {
+    const seen = NPCS.filter((n) => n !== near && n.x > camX + 20 && n.x < camX + W - 20);
+    if (seen.length) {
+      bubbleWho = seen[Math.floor(Math.random() * seen.length)];
+      const L = AMBIENT[bubbleWho.id];
+      bubbleText.textContent = L[Math.floor(Math.random() * L.length)];
+      bubbleEl.classList.add("on");
+      bubbleT = 3.2;
+    } else bubbleWait = 2;
+  }
+  if (bubbleWho) {
+    // 世界座標 → 螢幕座標（畫布有放大）
+    const r = canvas.getBoundingClientRect(), k = r.width / W, sr = $("stage").getBoundingClientRect();
+    const head = FLOOR - npcSize(bubbleWho.id)[1] - 4;
+    bubbleEl.style.left = r.left - sr.left + (bubbleWho.x - camX) * k + "px";
+    bubbleEl.style.top = r.top - sr.top + head * k + "px";
+  }
 }
 // 可以對話時，頭上出現一個跳動的「！」
 function drawPrompt() {
@@ -769,7 +819,6 @@ function drawCoins() {
 }
 
 // ---- HUD
-const $ = (id) => document.getElementById(id);
 const flashEl = $("flash"), bagDot = $("bagDot"), lvEl = $("lvText"), xpFill = $("xpFill");
 function updateBagDot() {
   const up = profile.inv.some((it) => compare(it, profile.equip, profile.lv)?.better), nw = profile.inv.some((it) => it.new);
@@ -779,7 +828,20 @@ function updateBagDot() {
 const comboEl = $("combo"), hpFill = $("hpFill"), hpText = $("hpText"), coinsEl = $("coins"), killsEl = $("kills"), fpsEl = $("fps"), cdEl = $("skillCd"), toastEl = $("toast");
 const ubFill = $("ubFill"), ubBar = $("ubBar"), ultFill = $("ultFill"), btnUlt = $("btnUlt");
 let toastT = 0;
+const sysEl = $("sys"), sysText = $("sysTyped"), sysGhost = $("sysGhost");
+let sysT = 0, sysTyping = null;
 function toast(msg, sec = 3) {
+  if (msg.startsWith("系統：")) {
+    const text = msg.slice(3);
+    sysTyping?.skip();
+    sysEl.classList.remove("glitch");
+    void sysEl.offsetWidth;
+    sysEl.classList.add("on", "glitch");
+    sysGhost.textContent = text;   // 隱形的整句先撐開大小，打字時框不會一直變寬
+    sysTyping = typewriter(sysText, text, 1320, "sine");
+    sysT = toastT = sec + text.length * 0.035;   // 打字的時間另外加上去，看得完
+    return;
+  }
   toastEl.textContent = msg;
   toastEl.classList.add("on");
   toastT = sec;
@@ -835,8 +897,24 @@ addEventListener("keydown", (e) => {
   else inv.show();
 });
 addEventListener("pagehide", () => save(profile, true));
+const hpLag = $("hpLag"), medalEl = $("medal"), xpBar = $("xpBar"), xpText = $("xpText"), killBox = $("killBox");
+let lastHp = -1, lastXp = -1, xpShowT = 0, lastKills = 0, killShowT = 0;
 function hud(dt) {
-  hpFill.style.width = (player.hp / player.maxHp) * 100 + "%";
+  const hpK = player.hp / player.maxHp;
+  hpFill.style.width = hpK * 100 + "%";
+  hpLag.style.width = hpK * 100 + "%";
+  if (lastHp >= 0 && player.hp < lastHp - 0.5) { medalEl.classList.remove("hit"); void medalEl.offsetWidth; medalEl.classList.add("hit"); }
+  lastHp = player.hp;
+  medalEl.classList.toggle("low", hpK < 0.3 && player.hp > 0);
+  // 經驗：有變化才浮出來 2.5 秒
+  const xpKey = profile.lv * 1e6 + profile.xp;
+  if (lastXp >= 0 && xpKey !== lastXp) xpShowT = 2.5;
+  lastXp = xpKey;
+  xpBar.classList.toggle("show", (xpShowT -= dt) > 0 || inv.open);
+  xpText.textContent = profile.lv >= MAX_LV ? "MAX" : `${profile.xp}/${xpNeed(profile.lv)}`;
+  // 擊倒數：打倒東西才出現幾秒
+  if (stats.kills !== lastKills) { lastKills = stats.kills; killShowT = 3; }
+  killBox.classList.toggle("on", (killShowT -= dt) > 0);
   hpText.textContent = Math.ceil(player.hp);
   coinsEl.textContent = profile.coins;
   lvEl.textContent = "Lv " + profile.lv;
@@ -850,6 +928,7 @@ function hud(dt) {
   ubBar.classList.toggle("ready", ready);
   btnUlt.classList.toggle("ready", ready);
   if ((toastT -= dt) <= 0) toastEl.classList.remove("on");
+  if ((sysT -= dt) <= 0) sysEl.classList.remove("on");
 }
 
 // ---- 主迴圈
@@ -895,6 +974,7 @@ function start() {
   if (!TOWN) { $("btnHome").classList.remove("hidden"); $("btnHome").style.backgroundImage = `url(${iconURL("home", 3)})`; }
   $("start").classList.add("hidden");
   document.body.classList.add("playing");
+  document.body.classList.toggle("town", TOWN);
   updateBagDot();
   const touch = document.body.classList.contains("touch");
   if (touch) {

@@ -42,14 +42,16 @@ function mixHex(a, b, t) {
 
 // 面板（參考 Golden UI）：外框 1px、金色斜面（左上亮、右下暗）、內框 1px、深紫底。
 // 外角用 1-1 階梯修圓。16×16，九宮格切 4。
-function panel(k) {
+const GOLD_PANEL = ["#f0c060", "#8a5a1c", "#c08a30", "#1d1730"];
+const SYS_PANEL = ["#a8f0ff", "#1e5a8c", "#4ab0e0", "#0c1a30"];   // 系統視窗：青藍色全像框
+function panel(k, [hi, lo, mid, bg] = GOLD_PANEL) {
   return pixels(16, 16, k, (px) => {
     for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
       const dx = Math.min(x, 15 - x), dy = Math.min(y, 15 - y);
       if (dx + dy < 2) continue;                       // 圓角外面
       if (dx + dy === 2 && dx < 2 && dy < 2) { px(x, y, OUT); continue; }
       const d = Math.min(dx, dy), tl = x + y < 15;
-      px(x, y, d === 0 ? OUT : d === 1 ? (tl ? "#f0c060" : "#8a5a1c") : d === 2 ? "#c08a30" : d === 3 ? OUT : "#1d1730");
+      px(x, y, d === 0 ? OUT : d === 1 ? (tl ? hi : lo) : d === 2 ? mid : d === 3 ? OUT : bg);
     }
   });
 }
@@ -101,8 +103,11 @@ function button(k, pressed, base = ["#f0c050", "#c89030", "#8a5a1c", "#4a2c0c"])
 // 圓形：用 4 鄰格「一圈一圈往內剝」算出每格在第幾層，外框、色環、內框都剛好 1px，階梯一致
 function discLayers(size) {
   const c = (size - 1) / 2, r2 = (size / 2) * (size / 2) - 0.5;
+  return peel(size, (x, y) => (x - c) ** 2 + (y - c) ** 2 <= r2);
+}
+function peel(size, inside) {
   let cur = new Set();
-  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if ((x - c) ** 2 + (y - c) ** 2 <= r2) cur.add(y * size + x);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (inside(x, y)) cur.add(y * size + x);
   const layer = new Map();
   for (let n = 1; cur.size; n++) {
     const edge = [...cur].filter((i) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => {
@@ -138,11 +143,58 @@ function barFrame(k) {
   });
 }
 
+// 主角徽章（HUD 左上）：圓盤加五個星芒，外框 1px、金環 2px（左上亮）、內框 1px、深底。
+// face(x, y) 回傳內圈要畫的顏色（目前形態的主角），超出內圈的會被切掉。
+const MEDAL = 38;
+const medalLayers = (() => {
+  const c = (MEDAL - 1) / 2, Ro = 18.9, Ri = 10;
+  const inStar = (x, y) => {
+    const dx = x - c, dy = y - c, r = Math.hypot(dx, dy);
+    let a = Math.atan2(dx, -dy) / (Math.PI * 2 / 5);   // 0 在正上方，一個尖角一單位
+    a = Math.abs(a - Math.round(a));                      // 離最近的尖角多遠（0～0.5）
+    return r <= Ri + (Ro - Ri) * Math.max(0, 1 - a * 3.6);
+  };
+  return peel(MEDAL, (x, y) => (x - c) ** 2 + (y - c) ** 2 <= 13.6 ** 2 || inStar(x, y));
+})();
+export function medal(k, face, ring = ["#fff2a8", "#f0c050", "#c08a30", "#8a5a1c"]) {
+  return pixels(MEDAL, MEDAL, k, (px) => {
+    for (const [i, n] of medalLayers) {
+      const x = i % MEDAL, y = (i / MEDAL) | 0, tl = x + y < MEDAL - 1;
+      if (n === 1) px(x, y, OUT);
+      else if (n <= 3) px(x, y, n === 2 ? (tl ? ring[0] : ring[3]) : (tl ? ring[1] : ring[2]));
+      else if (n === 4) px(x, y, OUT);
+      else px(x, y, face(x, y) ?? (y < MEDAL / 2 ? "#2a2148" : "#1d1730"));
+    }
+  });
+}
+export const MEDAL_SIZE = MEDAL;
+
+// 對話泡泡（路人用）：白底、1px 外框、圓角（12×12，切 4）；尾巴另外一張 7×5
+function bubble(k) {
+  return pixels(12, 12, k, (px) => {
+    for (let y = 0; y < 12; y++) for (let x = 0; x < 12; x++) {
+      const dx = Math.min(x, 11 - x), dy = Math.min(y, 11 - y);
+      if (dx + dy < 2) continue;
+      const edge = dx === 0 || dy === 0 || (dx + dy === 2 && dx < 2 && dy < 2);
+      px(x, y, edge ? OUT : y >= 10 ? "#c8c0dc" : "#fbf8ff");
+    }
+  });
+}
+function bubbleTail(k) {
+  const rows = ["o#####o", ".o###o.", "..o#o..", "...o..."];   // 第一列蓋住泡泡的下框
+  return pixels(7, 4, k, (px) => rows.forEach((r, y) => [...r].forEach((ch, x) => ch !== "." && px(x, y, ch === "o" ? OUT : "#c8c0dc"))));
+}
+
 /** 把所有介面素材設成 CSS 變數。在遊戲一開始呼叫一次。 */
 export function installUiArt() {
   const root = document.documentElement.style;
   const set = (name, c) => root.setProperty(name, `url(${url(c)})`);
   set("--panel", panel(3));
+  set("--panel-sys", panel(3, SYS_PANEL));
+  set("--panel-sys2", panel(2, SYS_PANEL));
+  set("--tab", button(2, false));
+  set("--bubble", bubble(2));
+  set("--bubble-tail", bubbleTail(2));
   set("--inset", inset(2));
   set("--btn", button(3, false));
   set("--btn-down", button(3, true));
