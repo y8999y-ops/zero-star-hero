@@ -1,0 +1,484 @@
+{
+  "referencePngCount": 22,
+  "approvedFinalCount": 23,
+  "approvedStageCount": 3,
+  "preservedFiles": [
+    {
+      "source": "town/far.png",
+      "destination": "參考原圖/town/far.png",
+      "category": "reference",
+      "sha256": "4AF76EEB11686AE1CB15585B5D5B38BC21B0E1996E46011ED8F1106090AA9FA7"
+    },
+    {
+      "source": "town/fg.png",
+      "destination": "參考原圖/town/fg.png",
+      "category": "reference",
+      "sha256": "23606BCFEF0E316772CE0D939D42C7F48F064A28D05CE8CA6E619B4A1721E85C"
+    },
+    {
+      "source": "town/ground.png",
+      "destination": "參考原圖/town/ground.png",
+      "category": "reference",
+      "sha256": "AF874E47431FC339987B4A615CF19EE7017B36542FC8329A33B5421006B4D81B"
+    },
+    {
+      "source": "town/guild.png",
+      "destination": "參考原圖/town/guild.png",
+      "category": "reference",
+      "sha256": "0BB26E2BD7F5192BDA6CA570CEBE6F29BC112D522E28781D5A1401C08D07E40D"
+    },
+    {
+      "source": "town/inn.png",
+      "destination": "參考原圖/town/inn.png",
+      "category": "reference",
+      "sha256": "D237ACC51FE217666BAE4F2215FA21264F63C39E68CE28CAFF3BCC7EBFF250B8"
+    },
+    {
+      "source": "town/mid.png",
+      "destination": "參考原圖/town/mid.png",
+      "category": "reference",
+      "sha256": "207AFC90239822BD25E189EC28964B2C0B3EEAB0CDAB113C247D88209FAA1B48"
+    },
+    {
+      "source": "town/sky.png",
+      "destination": "參考原圖/town/sky.png",
+      "category": "reference",
+      "sha256": "E8B87A472630FB36C37FB825075BE619D4945B07B046148D7E58B386417061B7"
+    },
+    {
+      "source": "town/workshop.png",
+      "destination": "參考原圖/town/workshop.png",
+      "category": "reference",
+      "sha256": "8B9D82BC18932D96384402FDF89FC7641DDDE080268BF42B317DD616D30C74BA"
+    },
+    {
+      "source": "valley/back.png",
+      "destination": "參考原圖/valley/back.png",
+      "category": "reference",
+      "sha256": "DBA4F37DCF8FEB203BF053CFCBC0A7DDCE19F449F29E1A91071144C34E534660"
+    },
+    {
+      "source": "valley/far.png",
+      "destination": "參考原圖/valley/far.png",
+      "category": "reference",
+      "sha256": "B146BD0F5CB5406EBEC8AA4FDFDB029804DD226198CDBF10AC02DD934FB1E39E"
+    },
+    {
+      "source": "valley/fg.png",
+      "destination": "參考原圖/valley/fg.png",
+      "category": "reference",
+      "sha256": "B6B855A0AD0CE2E39407F0769017E025984DB2CC7F1E7E28C5033F16635CBEF6"
+    },
+    {
+      "source": "valley/ground.png",
+      "destination": "參考原圖/valley/ground.png",
+      "category": "reference",
+      "sha256": "AF7B8A44528F59BD6605889796AF82BF7FA7186661B504A1FD9E5B12878D9F7C"
+    },
+    {
+      "source": "valley/mid.png",
+      "destination": "參考原圖/valley/mid.png",
+      "category": "reference",
+      "sha256": "D32D872E917BB50CC18DB08056EF1ED91FC6C8CEB4B037C1C77268BEE5E6050C"
+    },
+    {
+      "source": "valley/near.png",
+      "destination": "參考原圖/valley/near.png",
+      "category": "reference",
+      "sha256": "26C6308E0CBDC02F221FE692BFB896B5329E9C62FEE66FF9B091C584DBA4BBFD"
+    },
+    {
+      "source": "valley/platform.png",
+      "destination": "參考原圖/valley/platform.png",
+      "category": "reference",
+      "sha256": "39CCE97BE382588D455865588A0D050057F9D7A7CD794453537AFCACFC4CFC19"
+    },
+    {
+      "source": "props/crystals.png",
+      "destination": "參考原圖/props/crystals.png",
+      "category": "reference",
+      "sha256": "1B781EF40FAE7FB0A8176D8C02258ADB3DD2AED662C54774CE0771895DEAAAE9"
+    },
+    {
+      "source": "props/flowers.png",
+      "destination": "參考原圖/props/flowers.png",
+      "category": "reference",
+      "sha256": "AE56566A754B6B1F23AC6DB26CEE40271F4495BDCD35F8FD9470BD226DCE25A4"
+    },
+    {
+      "source": "props/grass.png",
+      "destination": "參考原圖/props/grass.png",
+      "category": "reference",
+      "sha256": "439DE284B55CC3E96B809788C47379189FD2E6BC536F51E1C91A3A4E40D93019"
+    },
+    {
+      "source": "props/junk.png",
+      "destination": "參考原圖/props/junk.png",
+      "category": "reference",
+      "sha256": "5616B4149C344E9AA7C8A850B433AB287FB68072C823F1B1882C08539A25C960"
+    },
+    {
+      "source": "props/moss.png",
+      "destination": "參考原圖/props/moss.png",
+      "category": "reference",
+      "sha256": "417BD3FF12CBCC379EAE3C35DA6577B1C7B086DC8FAA7100597004B3B551184C"
+    },
+    {
+      "source": "props/rocks.png",
+      "destination": "參考原圖/props/rocks.png",
+      "category": "reference",
+      "sha256": "003AAD08B134BC32024B6BEA493B3821A407FA27EEAFB7AD04D385E8F6C1515F"
+    },
+    {
+      "source": "props/town-deco.png",
+      "destination": "參考原圖/props/town-deco.png",
+      "category": "reference",
+      "sha256": "74ADC9AC21FCCBB1FAD8927C20F850EAF846DED6A1A85D6552D3F59206B1B9BA"
+    },
+    {
+      "source": "generation-prompts.json",
+      "destination": "參考原圖/generation-prompts.json",
+      "category": "reference-prompts",
+      "sha256": "FA03B0DD81932DDFADFF1126E28B02E07AD3347C9111A19CD19E493A3F2B5544"
+    },
+    {
+      "source": "redrawn/guild-v5.aseprite",
+      "destination": "approved/town/guild.aseprite",
+      "category": "approved-final",
+      "sha256": "6D3F2A667461B642983E33316CC232A094177B9729C20AD4D1C264D4EC4757DD"
+    },
+    {
+      "source": "redrawn/guild-v5.png",
+      "destination": "approved/town/guild.png",
+      "category": "approved-final",
+      "sha256": "3E1FB3CD118EBE527C3E4CC1CD42CF837D4B64575E6F5E721E0AAAFC01E58728"
+    },
+    {
+      "source": "redrawn/guild-v5-checker-4x.png",
+      "destination": "approved/previews/公會第五稿.png",
+      "category": "approved-preview",
+      "sha256": "A41EC8E2D38B067AEEF2A7FC7BAD2D519BB3E7091491B032DC894EADAD06EC88"
+    },
+    {
+      "source": "redrawn/town/workshop-v3.aseprite",
+      "destination": "approved/town/workshop.aseprite",
+      "category": "approved-final",
+      "sha256": "8525DE63C082D0F188CD99B0EA687C1DC5C20DEFD842A234F55A58278125AF2C"
+    },
+    {
+      "source": "redrawn/town/workshop-v3.png",
+      "destination": "approved/town/workshop.png",
+      "category": "approved-final",
+      "sha256": "C4B158D38D5C5B9688ED654DF6B550046ABF4409B2B1918358E7F2B614B6C5C6"
+    },
+    {
+      "source": "redrawn/previews/town-workshop-v3-4x.png",
+      "destination": "approved/previews/工坊第三稿.png",
+      "category": "approved-preview",
+      "sha256": "1C3415B5078A8988234DD15F1892B2E9367BF5ED343DEDC8F52A54E6910BE402"
+    },
+    {
+      "source": "review/inn-reference-v3.aseprite",
+      "destination": "approved/town/inn.aseprite",
+      "category": "approved-final",
+      "sha256": "31856933D3E5DAD5AC626733DE7B21032FD8BFCFC753C7E5E68FC852BFB64E69"
+    },
+    {
+      "source": "review/inn-reference-v3.png",
+      "destination": "approved/town/inn.png",
+      "category": "approved-final",
+      "sha256": "557B0C4B5A70D01B3F7529580E70FE12472ABA8D14698E84160163108F46797B"
+    },
+    {
+      "source": "review/previews/inn-reference-v3-checker-4x.png",
+      "destination": "approved/previews/旅館參考第三稿.png",
+      "category": "approved-preview",
+      "sha256": "DB3D34B91CF8A45D9CE422AACAD35A9C5BC76E041B73318E8ACA537015D578AC"
+    },
+    {
+      "source": "review/town-far-reference-v1.aseprite",
+      "destination": "approved/town/far.aseprite",
+      "category": "approved-final",
+      "sha256": "79CAA76D2B1A81643CF9860E158CA7F9559C57819BC5F2FC1CCDE71CC3B27B89"
+    },
+    {
+      "source": "review/town-far-reference-v1.png",
+      "destination": "approved/town/far.png",
+      "category": "approved-final",
+      "sha256": "6A2EB3DEFAEE7C73F8D556A9F354B9BF4D027F65989BC8C7DACC707926951527"
+    },
+    {
+      "source": "review/previews/town-far-reference-v1-checker-2x.png",
+      "destination": "approved/previews/城鎮遠景參考第一稿.png",
+      "category": "approved-preview",
+      "sha256": "AA2B6D93842F4B7D20B0ADEED6938D34BC9DDB403ACDACD75B5D10D81608F368"
+    },
+    {
+      "source": "review/town-mid-reference-v1.aseprite",
+      "destination": "approved/town/mid.aseprite",
+      "category": "approved-final",
+      "sha256": "190FD569B10CE85FC0427E98E32DF346A19B23661C63E6E7619759E0211FFFBA"
+    },
+    {
+      "source": "review/town-mid-reference-v1.png",
+      "destination": "approved/town/mid.png",
+      "category": "approved-final",
+      "sha256": "3210F5CD95680F7E69D3DE258DD5B639EA04BB6F30D8F23AC5ECF1CC3BCECDF6"
+    },
+    {
+      "source": "review/previews/town-mid-reference-v1-checker-2x.png",
+      "destination": "approved/previews/城鎮中景參考第一稿.png",
+      "category": "approved-preview",
+      "sha256": "AF976DB9393E19E687BC202A4E685F56CA4DA3FB59D6B71803692CBD6D0C4772"
+    },
+    {
+      "source": "experiments/rock-64-finished-v2.aseprite",
+      "destination": "approved/props/largest-rock-64.aseprite",
+      "category": "approved-final",
+      "sha256": "4CE909DDE070683B7DF8D85A031BCAB2520CFCB1E4E1FA746B2B1E9AF2484527"
+    },
+    {
+      "source": "experiments/rock-64-finished-v2.png",
+      "destination": "approved/props/largest-rock-64.png",
+      "category": "approved-final",
+      "sha256": "41DD3279B5ABEB66B0D8BCDD4F8B177CEF84E033EA65D7B79785CCDEE73BAE06"
+    },
+    {
+      "source": "experiments/rock-64-finished-v2-preview-4x.png",
+      "destination": "approved/previews/最大岩石64完成稿.png",
+      "category": "approved-preview",
+      "sha256": "351BBE6E642D3F9497C136469083C5392293D732A624EB191C2ABB40B86F019E"
+    },
+    {
+      "source": "experiments/rock-study.aseprite",
+      "destination": "approved/已確認過程稿/rock-study.aseprite",
+      "category": "approved-stage",
+      "sha256": "7A8E01C524177E6067A8AFD313FD35237470D9B39816CD7404950065DA946463"
+    },
+    {
+      "source": "experiments/rock-study.png",
+      "destination": "approved/已確認過程稿/rock-study.png",
+      "category": "approved-stage",
+      "sha256": "E1CC40C52FA8E543537E3E5B09C097498657D1FD74505A2036D571AAD6989F11"
+    },
+    {
+      "source": "experiments/rock-outline-64-v3.aseprite",
+      "destination": "approved/已確認過程稿/rock-outline-64-v3.aseprite",
+      "category": "approved-stage",
+      "sha256": "13DAAB9F52B33F381BD234A25DCA40B4589B74D40EB928A5B69126438047997F"
+    },
+    {
+      "source": "experiments/rock-outline-64-v3.png",
+      "destination": "approved/已確認過程稿/rock-outline-64-v3.png",
+      "category": "approved-stage",
+      "sha256": "F75F1D44A94D3BA94BB5FB15C60BBA811EEC9EA41A134B4C2DE253812A82B478"
+    },
+    {
+      "source": "experiments/rock-64-structure-map-v1.aseprite",
+      "destination": "approved/已確認過程稿/rock-64-structure-map-v1.aseprite",
+      "category": "approved-stage",
+      "sha256": "E495A114E38244B246CB08AC0A64B7FA1766C56DC5CEF420987E84462E3DE5A1"
+    },
+    {
+      "source": "experiments/rock-64-structure-map-v1.png",
+      "destination": "approved/已確認過程稿/rock-64-structure-map-v1.png",
+      "category": "approved-stage",
+      "sha256": "7650942201FD08C119C2351E07FF984347C494928BD46B908AD26F00C95E7742"
+    }
+  ],
+  "cleanupInventory": [
+    {
+      "directory": "delivery",
+      "resolved": "C:\\Users\\USER\\Desktop\\像素小遊戲\\game\\art\\delivery",
+      "fileCount": 106
+    },
+    {
+      "directory": "experiments",
+      "resolved": "C:\\Users\\USER\\Desktop\\像素小遊戲\\game\\art\\experiments",
+      "fileCount": 71
+    },
+    {
+      "directory": "final",
+      "resolved": "C:\\Users\\USER\\Desktop\\像素小遊戲\\game\\art\\final",
+      "fileCount": 84
+    },
+    {
+      "directory": "props",
+      "resolved": "C:\\Users\\USER\\Desktop\\像素小遊戲\\game\\art\\props",
+      "fileCount": 8
+    },
+    {
+      "directory": "rebuild-02",
+      "resolved": "C:\\Users\\USER\\Desktop\\像素小遊戲\\game\\art\\rebuild-02",
+      "fileCount": 6
+    },
+    {
+      "directory": "rebuild-03",
+      "resolved": "C:\\Users\\USER\\Desktop\\像素小遊戲\\game\\art\\rebuild-03",
+      "fileCount": 8
+    },
+    {
+      "directory": "redrawn",
+      "resolved": "C:\\Users\\USER\\Desktop\\像素小遊戲\\game\\art\\redrawn",
+      "fileCount": 134
+    },
+    {
+      "directory": "review",
+      "resolved": "C:\\Users\\USER\\Desktop\\像素小遊戲\\game\\art\\review",
+      "fileCount": 42
+    },
+    {
+      "directory": "town",
+      "resolved": "C:\\Users\\USER\\Desktop\\像素小遊戲\\game\\art\\town",
+      "fileCount": 9
+    },
+    {
+      "directory": "valley",
+      "resolved": "C:\\Users\\USER\\Desktop\\像素小遊戲\\game\\art\\valley",
+      "fileCount": 8
+    }
+  ],
+  "status": "Completed: user explicitly approved deleting the ten listed old directories; preserved files verified before and after deletion.",
+  "deletedOldDirectoryFiles": 476,
+  "approvedAdditions": [
+    {
+      "file": "town/sky.png",
+      "aseprite": "town/sky.aseprite",
+      "reference": "參考原圖/town/sky.png",
+      "script": "game/tools/redraw-town-sky-ground-fg-reference.lua",
+      "approved": "2026-11-04",
+      "sha256": "D79D8740AC772955B656B060A7EC8BFF7141A75C45EF851804936C1C3AB929EE"
+    },
+    {
+      "file": "town/ground.png",
+      "aseprite": "town/ground.aseprite",
+      "reference": "參考原圖/town/ground.png",
+      "script": "game/tools/redraw-town-sky-ground-fg-reference.lua",
+      "approved": "2026-11-04",
+      "sha256": "33364FAD4A753D630BF046DC34233FC42E8A1C60CB133DD9B2A3FEEFECB83B8A"
+    },
+    {
+      "file": "town/fg.png",
+      "aseprite": "town/fg.aseprite",
+      "reference": "參考原圖/town/fg.png",
+      "script": "game/tools/redraw-town-sky-ground-fg-reference.lua",
+      "approved": "2026-11-04",
+      "sha256": "AC81C724DB59F228198892FEBFE710B719C077DEA247563A9D8AF8C0A735DAF0"
+    },
+    {
+      "file": "props/flowers.png",
+      "aseprite": "props/flowers.aseprite",
+      "reference": "參考原圖/props/flowers.png",
+      "script": "game/tools/redraw-props-flowers-reference.lua",
+      "approved": "2026-11-04",
+      "sha256": "085C55BF2E362EC3B3615A3F6C6B7650EA4FC168C5ACD3E98B3C0D0392E66640"
+    },
+    {
+      "file": "props/grass.png",
+      "aseprite": "props/grass.aseprite",
+      "reference": "參考原圖/props/grass.png",
+      "script": "game/tools/redraw-props-grass-reference.lua",
+      "approved": "2026-11-04",
+      "sha256": "DBEF587C7E431E6FED71EA657A47A52052F8B70298F911E8FFB666EB432EAD2B"
+    },
+    {
+      "file": "props/moss.png",
+      "aseprite": "props/moss.aseprite",
+      "reference": "參考原圖/props/moss.png",
+      "script": "game/tools/redraw-props-moss-reference.lua",
+      "approved": "2026-11-04",
+      "sha256": "963E6ACF095491A7E1F158EA79943E690EEA42F5752C539FE6A7712F6EAE0CBC"
+    },
+    {
+      "file": "props/crystals.png",
+      "aseprite": "props/crystals.aseprite",
+      "reference": "參考原圖/props/crystals.png",
+      "script": "game/tools/redraw-props-crystals-reference.lua",
+      "approved": "2026-11-04",
+      "sha256": "308A8C17CB60C2892681A097984CC4AA7C344F7DF62D839E5528372D05D4437B"
+    },
+    {
+      "file": "props/junk.png",
+      "aseprite": "props/junk.aseprite",
+      "reference": "參考原圖/props/junk.png",
+      "script": "game/tools/redraw-props-junk-reference.lua",
+      "approved": "2026-11-04",
+      "note": "world scale ~7 source px per art px (reference was finer)",
+      "sha256": "76B42BDD00024CD2CB8261AFF972E156DC0487D62DF44B5D32137D12AF4D0136"
+    },
+    {
+      "file": "props/town-deco.png",
+      "aseprite": "props/town-deco.aseprite",
+      "reference": "參考原圖/props/town-deco.png",
+      "script": "game/tools/redraw-props-towndeco-reference.lua",
+      "approved": "2026-11-04",
+      "note": "world scale ~7 source px per art px",
+      "sha256": "1CBD1430FAA4AB9E7BD634B26E859A03AD61459FACFD521AF655BFCDD1923FA2"
+    },
+    {
+      "file": "props/rocks.png",
+      "aseprite": "props/rocks.aseprite",
+      "reference": "參考原圖/props/rocks.png",
+      "script": "game/tools/redraw-props-rocks-reference.lua",
+      "approved": "2026-11-04",
+      "note": "seven remaining rocks, same scale/palette as largest-rock-64",
+      "sha256": "CC5F8DBB32D3AE4BCA6AB86864164C2B1253C5A03CA0BB9DDEAF16B87FBB3D42"
+    },
+    {
+      "file": "valley/back.png",
+      "aseprite": "valley/back.aseprite",
+      "reference": "參考原圖/valley/back.png",
+      "script": "game/tools/redraw-valley-reference.lua",
+      "approved": "2026-11-04",
+      "sha256": "7CA57F0E836D0D3677696E345B424C53A68DCC9C37FF78F4A4AD988FF6602208"
+    },
+    {
+      "file": "valley/far.png",
+      "aseprite": "valley/far.aseprite",
+      "reference": "參考原圖/valley/far.png",
+      "script": "game/tools/redraw-valley-reference.lua",
+      "approved": "2026-11-04",
+      "sha256": "722C542A87CAF115B1FB5168376833118A81D6D969B534F602754578969BF97E"
+    },
+    {
+      "file": "valley/mid.png",
+      "aseprite": "valley/mid.aseprite",
+      "reference": "參考原圖/valley/mid.png",
+      "script": "game/tools/redraw-valley-reference.lua",
+      "approved": "2026-11-04",
+      "sha256": "F77432F7604295417FA74371B2C13368E6CAF5A7CF62AE6293A733A75CA3D24D"
+    },
+    {
+      "file": "valley/near.png",
+      "aseprite": "valley/near.aseprite",
+      "reference": "參考原圖/valley/near.png",
+      "script": "game/tools/redraw-valley-reference.lua",
+      "approved": "2026-11-04",
+      "sha256": "652D139AB4F81F5CD5D118A957BEA5A88B982CE5F6C352144DA81C983F8CA510"
+    },
+    {
+      "file": "valley/fg.png",
+      "aseprite": "valley/fg.aseprite",
+      "reference": "參考原圖/valley/fg.png",
+      "script": "game/tools/redraw-valley-reference.lua",
+      "approved": "2026-11-04",
+      "sha256": "8BDCB34B428D9B8BDBF3425067247AFB28E0A5081F06CB35AAFE64017381610B"
+    },
+    {
+      "file": "valley/ground.png",
+      "aseprite": "valley/ground.aseprite",
+      "reference": "參考原圖/valley/ground.png",
+      "script": "game/tools/redraw-valley-reference.lua",
+      "approved": "2026-11-04",
+      "sha256": "0F7DD16F6677DC25386A36EC5F246D5E71F0D373B3B49AB9E3F2790B1A1147D9"
+    },
+    {
+      "file": "valley/platform.png",
+      "aseprite": "valley/platform.aseprite",
+      "reference": "參考原圖/valley/platform.png",
+      "script": "game/tools/redraw-valley-reference.lua",
+      "approved": "2026-11-04",
+      "sha256": "DCA3F2E8C7E299BFE3179D0387BE46B68B76B101BB571448811A91643E8AB8D9"
+    }
+  ]
+}

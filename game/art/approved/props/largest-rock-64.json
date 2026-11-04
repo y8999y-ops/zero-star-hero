@@ -1,0 +1,17 @@
+{
+  "status": "user-approved",
+  "source": "game/art/experiments/rock-64-finished-v2.aseprite",
+  "native_size": [
+    64,
+    64
+  ],
+  "opaque_colors": 21,
+  "colors_including_transparency": 22,
+  "png_sha256": "41dd3279b5abeb66b0d8bcdd4f8b177cef84e033ea65d7b79785ccdee73bae06",
+  "workflow": [
+    "outline and native size",
+    "internal structure and occlusion",
+    "masked material colors and lighting",
+    "visual reference comparison and technical checks"
+  ]
+}
