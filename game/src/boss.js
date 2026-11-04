@@ -15,7 +15,7 @@ import { crop } from "./bake.js";
 import { spawn, shake, hitStop } from "./fx.js";
 import { flash } from "./light.js";
 import { hitFx, damageFx, dustFx } from "./combatfx.js";
-import { blip } from "./dialog.js";
+import { sfx, music, tempo } from "./audio.js";
 
 const C = (s) => hex(s) >>> 0;
 const GRAV = 900;
@@ -105,7 +105,8 @@ export class Boss {
     this.flash = 0.07;
     const b = this.box(), hx = Math.max(b.x0, Math.min(b.x1, this.api.player.x + dir * 6));
     hitFx(weak ? sx : hx, weak ? sy : this.y - 22, dir, weak || opts.launch || crit);
-    if (weak) { flash(sx, sy, 40, 2.5, 0.15, "#ffd84a"); blip(2093, "triangle"); }
+    if (weak) flash(sx, sy, 40, 2.5, 0.15, "#ffd84a");
+    sfx(weak || crit ? "crit" : opts.launch ? "hitH" : "hitL");
     damageFx(this, this.x, b.y0 - 4, d, { crit, heavy: opts.launch });
     this.api.bar(Math.max(0, this.hp) / BOSS_HP, this.phase);
     if (this.hp <= 0) this.startDeath();
@@ -121,7 +122,7 @@ export class Boss {
     // 階段切換
     const k = this.hp / BOSS_HP;
     if (this.phase === 1 && k <= PHASE2 && this.state === "idle") { this.phase = 2; this.api.bar(k, 2); return this.go("roar", { next: "idle", say: "系統：牠生氣了。……你剛剛是不是戳到牠的肚子？" }); }
-    if (this.phase === 2 && k <= PHASE3 && this.state === "idle") { this.phase = 3; this.api.bar(k, 3); this.ultT = 99; this.api.say("系統：那個光……牠把星星吃掉了？！小心，你也是星星。", 3); }
+    if (this.phase === 2 && k <= PHASE3 && this.state === "idle") { this.phase = 3; tempo(1.08); this.api.bar(k, 3); this.ultT = 99; this.api.say("系統：那個光……牠把星星吃掉了？！小心，你也是星星。", 3); }
     if (!this.split && k <= 0.5 && this.state === "idle") { this.split = true; return this.go("split"); }
     const fn = this["s_" + this.state];
     if (fn) fn.call(this, dt, P);
@@ -143,14 +144,14 @@ export class Boss {
     if (this.t < 0.8) { this.pose = "land"; this.pk = this.t / 1.2; return; }
     if (this.t < 2.2) {
       this.pose = "roar";
-      if (!this.roared) { this.roared = true; shake(0.9, 3); blip(110, "sawtooth"); this.api.line("大胃王：一顆小星星也想挑戰本大爺？……正好，飯後甜點。", 3.2); }
+      if (!this.roared) { this.roared = true; shake(0.9, 3); sfx("roar"); music("boss"); this.api.line("大胃王：一顆小星星也想挑戰本大爺？……正好，飯後甜點。", 3.2); }
       return;
     }
     this.api.say("系統：牠說的沒錯。但你可以讓牠閉嘴。", 2.8);
     this.go("idle", { wait: 0.8 });
   }
   // 換階段時的大吼
-  s_roar() { this.pose = "roar"; if (!this.o.shook) { this.o.shook = true; shake(0.9, 3); blip(100, "sawtooth"); } if (this.t > 1.2) this.go("idle", { wait: 0.4 }); }
+  s_roar() { this.pose = "roar"; if (!this.o.shook) { this.o.shook = true; shake(0.9, 3); sfx("roar"); } if (this.t > 1.2) this.go("idle", { wait: 0.4 }); }
   // 待機：等一下再出招
   s_idle(dt, P) {
     this.pose = "idle";
@@ -198,12 +199,13 @@ export class Boss {
   s_inhale(dt) {
     const T = (this.o.kind === "fire" ? 0.6 : 0.7) * this.tm;
     this.pose = "inhale"; this.pk = Math.min(1, this.t / T);
+    if (!this.o.snd) { this.o.snd = true; sfx("inhale", T); }
     if (this.t >= T) { this.spitOut(this.o.kind); this.go("spit"); }
   }
   s_spit() { this.pose = "spit"; this.pk = Math.min(1, this.t / 0.5); if (this.t > 0.5) this.go("idle"); }
   spitOut(kind) {
     const P = this.api.player, mx = this.x, my = this.y - 18, dir = P.x >= this.x ? 1 : -1;
-    blip(kind === "fire" ? 180 : 140, "square");
+    sfx(kind === "fire" ? "fire" : "spit");
     if (kind === "fire") {
       const a0 = Math.atan2(P.y - 12 - my, P.x - mx);
       for (const da of [0, -0.35, 0.35]) {
@@ -225,7 +227,7 @@ export class Boss {
   s_lean(dt, P) {
     const T = 0.5 * this.tm;
     this.pose = "lean"; this.pk = Math.min(1, this.t / T);
-    if (this.t >= T) { this.dir = P.x >= this.x ? 1 : -1; this.go("slide"); blip(90, "sawtooth"); }
+    if (this.t >= T) { this.dir = P.x >= this.x ? 1 : -1; this.go("slide"); sfx("dash"); }
   }
   s_slide(dt) {
     this.pose = "slide";
@@ -241,7 +243,7 @@ export class Boss {
     if (this.t >= 1 && !this.o.done) {
       this.o.done = true;
       for (const d of [-1, 0, 1]) this.api.spawnSlime(this.clampX(this.x + d * 40));
-      flash(this.x, this.y - 20, 70, 2, 0.3, "#c0dc54"); shake(0.2, 2);
+      flash(this.x, this.y - 20, 70, 2, 0.3, "#c0dc54"); shake(0.2, 2); sfx("squish");
       this.api.say("系統：分裂了？！……不對，那是牠吃太飽吐出來的。好噁。", 2.6);
     }
     if (this.t > 1.4) this.go("idle");
@@ -261,11 +263,12 @@ export class Boss {
   }
   s_ultRoar() {
     this.pose = "roar";
-    if (!this.o.shown) { this.o.shown = true; this.api.ult("星屑暴食"); shake(1.2, 3); blip(80, "sawtooth"); flash(this.x, this.y - 20, 120, 3, 0.8, "#ffd84a"); }
+    if (!this.o.shown) { this.o.shown = true; this.api.ult("星屑暴食"); shake(1.2, 3); sfx("roar"); sfx("ultCharge"); flash(this.x, this.y - 20, 120, 3, 0.8, "#ffd84a"); }
     if (this.t > 1.3) this.go("vacuum");
   }
   s_vacuum(dt, P) {
     this.pose = "vacuum";
+    if (!this.o.snd) { this.o.snd = true; sfx("vacuum", 3); }
     const mx = this.x, dx = mx - P.x, dist = Math.abs(dx);
     // 往嘴巴拉：越近拉越大力；閃避中拉不動
     const pull = (70 + Math.max(0, 160 - dist) * 0.6) * (P.state === "dash" ? 0.25 : 1);
@@ -276,7 +279,7 @@ export class Boss {
       if (this.api.hurt(30, mx - Math.sign(dx) * 10, true)) {
         P.vx = (P.x >= mx ? 1 : -1) * 300; P.vy = -340;
         this.api.say("系統：被吸進去了……又被吐出來了。……你被嫌難吃了耶。", 2.8);
-        blip(70, "square");
+        sfx("spit");
       }
       return this.go("beam");
     }
@@ -285,6 +288,7 @@ export class Boss {
   s_beam(dt) {
     this.pose = "beam";
     const { l, r } = this.api.lock, T = 2.4, from = this.o.from ?? (this.o.from = this.api.player.x < this.x ? l + 20 : r - 20), to = from < this.x ? r - 20 : l + 20;
+    if (!this.o.snd) { this.o.snd = true; sfx("beam", 2.9); }
     if (this.t < 0.5) { this.beamX = null; return; }   // 肚子先亮 0.5 秒（預兆）
     const k = Math.min(1, (this.t - 0.5) / T);
     this.beamX = from + (to - from) * k;
@@ -304,7 +308,7 @@ export class Boss {
   startDeath() {
     this.dying = 0.001; this.state = "dying"; this.t = 0; this.beamX = null; this.onTop = false;
     this.junk.length = 0; this.balls.forEach((b) => b.fx.stop()); this.balls.length = 0; this.rain.length = 0;
-    hitStop(0.25); shake(0.8, 4); flash(this.x, this.y - 20, 140, 3.5, 1, "#fff6c0"); blip(60, "sawtooth");
+    hitStop(0.25); shake(0.8, 4); flash(this.x, this.y - 20, 140, 3.5, 1, "#fff6c0"); sfx("melt"); music(null);
     this.api.say("系統：倒了……牠倒了！", 2.4);
   }
   updateDeath(dt, P) {
@@ -342,7 +346,7 @@ export class Boss {
       j.life -= dt; j.vy += GRAV * 0.8 * dt; j.x += j.vx * dt; j.y += j.vy * dt; j.rot += dt * (j.vx > 0 ? 12 : -12);
       if (j.y >= fl - 3) {
         j.y = fl - 3;
-        if (j.bounces > 0) { j.vy = -Math.abs(j.vy) * 0.55; j.bounces--; dustFx("land", j.x, fl); }
+        if (j.bounces > 0) { j.vy = -Math.abs(j.vy) * 0.55; j.bounces--; dustFx("land", j.x, fl); if (Math.random() < 0.5) sfx("clank"); }
         else { j.life = Math.min(j.life, 0.25); j.vx *= 0.5; j.vy = 0; }
       }
       if (j.x < l + 4 || j.x > r - 4) j.life = 0;
@@ -374,7 +378,7 @@ export class Boss {
     dustFx("land", this.x - 20, this.y, true); dustFx("land", this.x + 20, this.y, true);
     shake(big ? 0.35 : 0.2, big ? 3 : 2); hitStop(big ? 0.05 : 0.02);
     flash(this.x, this.y - 10, 60, 1.5, 0.2, "#c0dc54");
-    blip(big ? 70 : 100, "triangle");
+    sfx(big ? "bossLand" : "land", true);
   }
   clampX(x) { const { l, r } = this.api.lock; return Math.max(l + 36, Math.min(r - 36, x)); }
 

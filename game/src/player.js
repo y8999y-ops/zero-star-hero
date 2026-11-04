@@ -15,6 +15,7 @@ import { A, slashAnim } from "./assets.js";
 import { FORMS, formMul } from "./forms.js";
 import { reduction } from "./stats.js";
 import { spawn, hitStop, shake } from "./fx.js";
+import { sfx } from "./audio.js";
 import { groundAt, onPlatform, geo, WALL } from "./level.js";
 
 const RUN = 128, ACC_GROUND = 1500, ACC_AIR = 950, GRAV = 1000, MAX_FALL = 430;
@@ -132,6 +133,7 @@ export class Player {
         dir = e ? (e.x > this.x ? -1 : 1) : this.face;
       }
       this.state = "dash";
+      sfx("dash");
       this.t = 0;
       this.atk = null;
       this.vx = dir * DASH_V * (this.has("slipper") ? 1.5 : 1);
@@ -204,6 +206,7 @@ export class Player {
         this.coyote = 0;
         if (this.state === "attack") { this.state = "move"; this.atk = null; }
         world.jumpDust?.(this.x, this.y, first);
+        sfx(first ? "jump" : "jump2");
       }
     }
     if (!input.jumpHeld && this.vy < -150 && this.state === "move") this.vy = -150; // 短按跳得低
@@ -271,6 +274,7 @@ export class Player {
     if (!a.spawned && a.time >= 0) {
       a.spawned = true;
       spawn(s.anim, { x: Math.round(this.x), y: Math.round(this.y), flip: a.flip }, { speed: spd });
+      sfx("swing", this.form);
       // 往前踏一步
       if (this.grounded) this.vx = this.face * 70;
     }
@@ -302,6 +306,7 @@ export class Player {
     this.grounded = false;
     hitStop(0.07);
     shake(0.25, 3);
+    sfx("hurt");
     spawn(A.sparkRed, { x: Math.round(this.x), y: Math.round(this.y) - 6, flip: this.x < fromX });
     world.onPlayerHurt?.(dmg);
     return true;

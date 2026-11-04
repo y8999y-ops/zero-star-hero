@@ -2,6 +2,7 @@
 // 外觀用 PixelFX 的小生物特效（載入時烘焙好），移動跟著牠們自己的動畫節奏走。
 import { rand } from "../../pixelfx/src/core/index.js";
 import { hitFx, damageFx } from "./combatfx.js";
+import { sfx } from "./audio.js";
 import { spawn } from "./fx.js";
 import { flash } from "./light.js";
 import { blit } from "./bake.js";
@@ -138,6 +139,7 @@ export class Enemy {
     // 重擊：最後一段／擊飛、爆擊、推得遠的（技能、衝撞）。輕擊的光和火花都收小
     const heavy = launch || crit || push >= 3;
     hitFx(this.x - dir * 3, cy, dir, heavy);
+    sfx(crit ? "crit" : heavy ? "hitH" : "hitL");
     flash(this.x, cy, heavy ? 36 : 18, heavy ? 2.2 : 1.1, heavy ? 0.14 : 0.08);   // 命中時照亮周圍一下
     damageFx(this, this.x, b.y0 - 3, d, { crit, heavy });
     if (this.hp <= 0) this.die(world);
@@ -145,6 +147,7 @@ export class Enemy {
 
   die(world) {
     this.dead = true;
+    sfx("kill");
     const b = this.box();
     spawn(this.k.poof, { x: Math.round(this.x), y: Math.round(b.y1) });
     const [a, z] = this.k.coins;

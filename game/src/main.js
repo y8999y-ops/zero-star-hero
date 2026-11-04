@@ -33,6 +33,7 @@ import { createProps } from "./props.js";
 import { createScenery } from "./scenery.js";
 import { Boss, prepareBoss } from "./boss.js";
 import { createComboArt } from "./combo-art.js";
+import { unlock as unlockAudio, sfx, music, jingle, vol as audioVol, setVolume } from "./audio.js";
 import { fxState, dustFx, updateCombatFx, drawCombatFx, drawDamageNumbers } from "./combatfx.js";
 import { PLATFORMS } from "./level.js";
 import { ult, ULT_MAX, ULT_MULT, startUlt, updateUlt, ultLights, dimScene, drawUlt, drawCutIn, postUlt } from "./ult.js";
@@ -112,6 +113,7 @@ function gainXp(n) {
     up = true;
   }
   if (!up) return;
+  sfx("levelup");
   refreshStats();
   player.hp = player.maxHp;
   spawn(levelUpFx, { x: Math.round(player.x), y: Math.round(player.y), light: 0.45, seed: profile.lv });
@@ -160,6 +162,7 @@ function pickUp(d) {
   runLoot.push(it);
   feed(it, "", better);
   if (it.kind === "junk" && Math.random() < 0.4) sayQueue.push([JUNK.find((j) => j.id === it.junk).say, 2.4]);
+  sfx(it.rarity >= R.rare ? "rare" : "pickup");
   if (it.rarity >= R.rare) spawn(collectBurst, { x: Math.round(player.x), y: Math.round(player.y) - 10, palette: it.rarity === R.legend ? PAL.ember : ["#1e1206", "#4a2c08", "#86520c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"], light: 0.4 });
   save(profile);
   updateBagDot();
@@ -174,6 +177,7 @@ const FORM_BURST = {
 };
 function absorb(it) {
   const F = FORMS[it.form], res = absorbCore(profile.forms, it.form);
+  sfx("absorb");
   spawn(collectBurst, { x: Math.round(player.x), y: Math.round(player.y) - 12, palette: FORM_BURST[it.form], light: 0.5 });
   flash(player.x, player.y - 12, 80, 3, 0.6, F.color);
   if (res.unlocked) {
@@ -192,6 +196,7 @@ function absorb(it) {
 }
 function switchForm(id) {
   if (!id || id === player.form || !profile.forms.owned[id] || ult.on) return;
+  sfx("form");
   profile.forms.cur = id;
   player.setForm(id, profile.forms.owned[id].lv);
   player.turnT = 0.09;
@@ -273,6 +278,7 @@ function updateChest(dt) {
       chest.opened = true;
       chest.t = 0;
       spawn(chestOpen, { x: chest.x, y: FLOOR, light: 0.3 }, { layer: "back" });
+      sfx("chest");
       flash(chest.x, FLOOR - 16, 80, 3, 1.4, "#ffd84a");
       sayQueue.unshift([profile.clears ? "系統：寶箱！……裡面應該不是垃圾吧。" : "系統：第一次通關的寶箱。我偷偷放了好東西進去。", 2.6]);
     }
@@ -359,6 +365,7 @@ const world = {
   },
   // 形態技能的投射物：星星＝金色星屑彈，黏液星＝綠色黏液彈（爆開範圍大、推得遠）
   spawnFireball(x, y, dir, form = "star") {
+    sfx("shot", form);
     const pal = SHOT_PAL[form] ?? SHOT_PAL.star;
     shots.push({ x, y, dir, form, life: 1.1, fx: spawn(fireball, { x, y, flip: dir < 0, palette: pal.fx, light: GLOW.skill, seed: (Math.random() * 99) | 0 }) });
   },
@@ -366,7 +373,7 @@ const world = {
     n = Math.round(n * (1 + player.stats.gold / 100));
     for (let i = 0; i < n; i++) coins.push({ x, y, vx: (Math.random() - 0.5) * 160, vy: -120 - Math.random() * 140, t: 0 });
   },
-  land(x, y, hard) { dustFx("land", x, y, hard); props.landing(x, y, hard); scenery.landing(x, y, hard); },
+  land(x, y, hard) { sfx("land", hard); dustFx("land", x, y, hard); props.landing(x, y, hard); scenery.landing(x, y, hard); },
   jumpDust(x, y, first) { dustFx(first ? "jump" : "double", x, y); },
   dust(x, y, n) {
     spawn(A.dust, { x: Math.round(x), y: Math.round(y), flip: Math.random() < 0.5 }, { speed: 1.8 });
@@ -637,7 +644,7 @@ const ultHooks = {
     }
     if (n) addCombo(n);
   },
-  dust: (x, y) => world.dust(x, y, 6),
+  dust: (x, y) => { world.dust(x, y, 6); sfx("ultHit"); },
 };
 window.__game.ultFull = () => (ult.charge = ULT_MAX);
 window.__game.giveCore = (id) => absorb(makeCore(id));
@@ -712,6 +719,7 @@ function tick(dt) {
   if (input.ult && ult.charge >= ULT_MAX && player.state !== "hurt") {
     consume("ult");
     startUlt(player, director?.lock);
+    sfx("ultCharge");
     return;
   }
   player.update(dt, world);
@@ -765,6 +773,7 @@ function tick(dt) {
       s.done = true;
       s.fx.stop();
       const P = SHOT_PAL[s.form] ?? SHOT_PAL.star;
+      sfx("boom");
       spawn(explosion, { x: Math.round(s.x), y: Math.round(s.y), palette: P.boom, accent: P.accent, light: GLOW.skill, seed: (Math.random() * 99) | 0 }, { speed: 1.3 });
       flash(s.x, s.y, 100, 4, 0.4, P.light);
       world.hitArea({ x0: s.x - P.r, x1: s.x + P.r, y0: s.y - 40, y1: s.y + 40 }, () => player.roll(2.4 * (1 + player.stats.skill / 100)), s.dir, { launch: true, push: P.push });
@@ -792,7 +801,7 @@ function tick(dt) {
       const dx = player.x - c.x, dy = player.y - 12 - c.y, d = Math.hypot(dx, dy) || 1, sp = 120 + (c.t - 0.45) * 900;
       c.x += (dx / d) * sp * dt;
       c.y += (dy / d) * sp * dt;
-      if (d < 10) { c.got = true; stats.coins++; profile.coins++; }
+      if (d < 10) { c.got = true; stats.coins++; profile.coins++; if (coinSndT <= 0) { sfx("coin"); coinSndT = 0.05; } }
     }
   }
   for (let i = coins.length - 1; i >= 0; i--) if (coins[i].got) coins.splice(i, 1);
@@ -978,6 +987,7 @@ function showClear() {
   else $("clearLine").textContent = stats.deaths === 0 ? "系統：一次都沒死？……我收回「零星」那句話。一半。" : "系統：過是過了。死了幾次這件事，我會幫你保密的。";
   $("nextBtn").classList.toggle("hidden", ENDLESS || !nextStage());
   if (nextStage()) $("nextBtn").textContent = `下一關：${nextStage()} ${LAYOUTS[nextStage()].name}`;
+  jingle("clear");
   $("clear").classList.remove("hidden");
 }
 $("againBtn").addEventListener("click", () => goScene(ENDLESS ? "endless" : "stage", STAGE_ID));
@@ -988,6 +998,17 @@ $("btnHome").addEventListener("click", async () => {
   if (await ask("系統", "要回碎星鎮嗎？這趟撿到的東西都會留著。", [["回城鎮", true], ["繼續打", false]])) goScene("town");
 });
 addEventListener("keydown", (e) => { if (e.code === "KeyH" && !TOWN && started && !dialog.open) $("btnHome").click(); });
+// 聲音設定
+{
+  const panel = $("setPanel"), m = $("volMusic"), s = $("volSfx"), mute = $("btnMute");
+  const sync = () => { m.value = Math.round(audioVol.music * 100); s.value = Math.round(audioVol.sfx * 100); $("volMusicV").textContent = m.value; $("volSfxV").textContent = s.value; mute.textContent = "全部靜音：" + (audioVol.mute ? "開" : "關"); };
+  $("btnSet").addEventListener("click", () => { unlockAudio(); panel.classList.toggle("hidden"); sync(); sfx("ui"); });
+  $("setClose").addEventListener("click", () => { panel.classList.add("hidden"); sfx("close"); });
+  m.addEventListener("input", () => { setVolume("music", m.value / 100); sync(); });
+  s.addEventListener("input", () => { setVolume("sfx", s.value / 100); sync(); sfx("coin"); });
+  mute.addEventListener("click", () => { setVolume("mute", !audioVol.mute); sync(); sfx("ui"); });
+  for (const el of [panel, $("btnSet")]) el.addEventListener("pointerdown", (e) => e.stopPropagation());
+}
 $("bagBtn2").addEventListener("click", () => inv.show());
 $("btnBag").addEventListener("click", () => inv.show());
 addEventListener("keydown", (e) => {
@@ -999,7 +1020,9 @@ addEventListener("keydown", (e) => {
 addEventListener("pagehide", () => save(profile, true));
 const hpLag = $("hpLag"), medalEl = $("medal"), xpBar = $("xpBar"), xpText = $("xpText"), killBox = $("killBox");
 let lastHp = -1, lastXp = -1, xpShowT = 0, lastKills = 0, killShowT = 0;
+let coinSndT = 0;
 function hud(dt) {
+  coinSndT -= dt;
   const hpK = player.hp / player.maxHp;
   hpFill.style.width = hpK * 100 + "%";
   hpLag.style.width = hpK * 100 + "%";
@@ -1073,6 +1096,8 @@ initTouch();
 function start() {
   if (started) return;
   started = true;
+  unlockAudio();
+  music(TOWN ? "town" : STAGE_ID === "1-4" ? null : "stage");   // 1-4 王出場大吼時才開始王戰音樂
   if (!TOWN) { $("btnHome").classList.remove("hidden"); $("btnHome").style.backgroundImage = `url(${iconURL("home", 3)})`; }
   $("start").classList.add("hidden");
   document.body.classList.add("playing");

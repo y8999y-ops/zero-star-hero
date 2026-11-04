@@ -7,6 +7,7 @@
 import { hex } from "../../pixelfx/src/core/index.js";
 import * as splashFx from "../../pixelfx/src/fx/water/splash.js";
 import { spawn } from "./fx.js";
+import { sfx } from "./audio.js";
 
 const C = (s) => hex(s) >>> 0;
 const ramp = (a) => a.map(C);
@@ -148,7 +149,7 @@ export function createScenery({ floor, w, platforms = [], town = false }) {
     const pd = player.grounded && puddleAt(px, py);
     if (pd && Math.abs(player.vx) > 20) {
       pd.stepD += Math.abs(player.vx) * dt;
-      if (pd.stepD > 10) { pd.stepD = 0; splash(px, pd.y, 3, Math.sign(player.vx) * 0.5, 70); ripple(pd, px); }
+      if (pd.stepD > 10) { pd.stepD = 0; splash(px, pd.y, 3, Math.sign(player.vx) * 0.5, 70); ripple(pd, px); sfx("splash"); }
     }
     for (const p of puddles) {
       if (p.x < view.x0 - 40 || p.x > view.x1 + 40) continue;
@@ -178,6 +179,7 @@ export function createScenery({ floor, w, platforms = [], town = false }) {
     const pd = puddleAt(x, y);
     if (!pd) return;
     splash(x, pd.y, hard ? 10 : 6, 0, hard ? 150 : 100);
+    sfx("splash");
     ripple(pd, x, true);
     if (hard) spawn(splashFx, { x: Math.round(x), y: pd.y + 1, stone: false, light: 0.2, seed: (Math.random() * 99) | 0 }, { speed: 2.2 });
   }

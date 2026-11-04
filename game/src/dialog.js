@@ -22,21 +22,9 @@ const SPEAKERS = [
 ];
 const speaker = (name) => SPEAKERS.find(([re]) => re.test(name)) ?? [null, null, 660, "square"];
 
-// ---- 打字音：很短的嗶聲（第一次有聲音前要先有使用者操作，開始畫面那一下就夠了）
-let ac = null;
-export function blip(freq, type = "square") {
-  try {
-    ac ??= new (window.AudioContext || window.webkitAudioContext)();
-    const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
-    o.type = type;
-    o.frequency.setValueAtTime(freq * (0.96 + Math.random() * 0.08), t);
-    g.gain.setValueAtTime(0.035, t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
-    o.connect(g).connect(ac.destination);
-    o.start(t);
-    o.stop(t + 0.06);
-  } catch {}
-}
+// ---- 打字音：走 audio.js（跟著音效音量）
+import { blip } from "./audio.js";
+export { blip };
 
 /** 一個字一個字把 text 打進 el。遇到「…」「，」「。」停久一點（系統吐槽的節奏靠這個）。回傳 { done, skip() } */
 export function typewriter(el, text, freq, wave) {
@@ -137,7 +125,7 @@ export function ask(name, text, options) {
     const b = document.createElement("button");
     b.className = "pbtn";
     b.textContent = `${i + 1}. ${label}`;
-    b.addEventListener("click", (e) => { e.stopPropagation(); choosePick(i); });
+    b.addEventListener("click", (e) => { e.stopPropagation(); blip(1200, "square"); choosePick(i); });
     optEl.appendChild(b);
   });
   return new Promise((r) => (pick = r));

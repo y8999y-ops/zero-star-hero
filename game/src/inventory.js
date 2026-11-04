@@ -6,6 +6,7 @@ import { computeStats, compare, power, STAT_ROWS, xpNeed, MAX_LV } from "./stats
 import { BAG_SIZE } from "./save.js";
 import { iconURL } from "./ui-art.js";
 import { paintStar, POSES } from "./star.js";
+import { sfx } from "./audio.js";
 
 const $ = (id) => document.getElementById(id);
 const AUTO = ["關", "垃圾", "普通以下"];
@@ -217,6 +218,7 @@ export function createInventory(profile, { onChange, onClose }) {
   function show() {
     if (open) return;
     open = true;
+    sfx("open");
     root.classList.remove("hidden");
     fit();
     render();
@@ -224,6 +226,7 @@ export function createInventory(profile, { onChange, onClose }) {
   function close() {
     if (!open) return;
     open = false;
+    sfx("close");
     sel = null;
     root.classList.add("hidden");
     onClose?.();

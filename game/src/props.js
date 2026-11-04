@@ -10,6 +10,7 @@ import { hitFx } from "./combatfx.js";
 import { spawn, shake } from "./fx.js";
 import { flash } from "./light.js";
 import { blip } from "./dialog.js";
+import { sfx } from "./audio.js";
 
 const ramp = (a) => a.map((c) => hex(c) >>> 0);
 const GRASS = ramp(["#07120e", "#0e2219", "#163626", "#1f4d35", "#2c6a46", "#3f8c58", "#5cb06c", "#86d488"]);
@@ -113,6 +114,7 @@ export function createProps({ floor, w, platforms = [], town = false, avoid = []
     for (const t of tufts) {
       if (t.cut || !inBox(t.x, t.y - 10, t.y)) continue;
       t.cut = true; t.cutT = 6; t.vel += dir * 60;
+      if (Math.random() < 0.5) sfx("grass");
       emit(t.x, t.y - 4, 7, grassPal, { vx: dir * 50, leaf: true, up: 90, life: 1.6 });
       emit(t.x, t.y - 2, 3, grassPal, { vx: dir * 80, up: 120 });
     }
@@ -121,6 +123,7 @@ export function createProps({ floor, w, platforms = [], town = false, avoid = []
       const hgt = b.type === "crate" ? 13 : 11;
       if (!inBox(b.x, b.y - hgt, b.y)) continue;
       b.cool = 0.2; b.shakeT = 0.16; b.hp--; n++;
+      sfx(b.hp <= 0 ? "crate" : b.type === "crate" ? "hitL" : "clank");
       const pal = b.type === "crate" ? WOOD : RUST;
       hitFx(b.x - dir * 4, b.y - 7, dir, b.hp <= 0);
       emit(b.x, b.y - 8, 4, pal, { vx: dir * 60, up: 100 });
