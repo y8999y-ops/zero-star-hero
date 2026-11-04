@@ -47,7 +47,7 @@ const TIN = ["#1e2430", "#3a4656", "#5e6e82", "#8c9cb0", "#c8d4e0"];
 const RUST = ["#3a1a0c", "#6a3216", "#9a5024", "#c87a3c", "#e8a466"];
 const WOOD = ["#2a1608", "#4e2e14", "#7a4a22", "#a86c36", "#d09a5a"];
 const RUBBER = ["#0e0c12", "#1c1a22", "#2c2a36", "#44404e", "#5a5666"];
-function boss(pose = "idle", f = 0) {
+export function boss(pose = "idle", f = 0) {
   const W = 70, H = 56, cx = 34;
   const sq = { idle: [1, 1.015, 1.03, 1.015, 1, 0.985, 0.97, 0.985][f], stretch: 1.22, squash: 0.72, spit: 1.06 }[pose];
   const hgt = Math.round(44 * sq), half = Math.round(31 / Math.sqrt(sq)) + (pose === "spit" ? 3 : 0), bot = H - 1, top = bot - hgt;
@@ -172,7 +172,9 @@ function sheet(items, k, bg = "#1c1a2a") {
   return encodePNG(W * k, H * k, img);
 }
 
+if (process.argv[1]?.endsWith("boss-drafts.mjs")) {
 const [bossOut = "boss.png", folkOut = "folk.png"] = process.argv.slice(2);
 writeFileSync(bossOut, sheet([[boss("idle", 0), boss("idle", 2), boss("idle", 6)], [boss("stretch"), boss("squash"), boss("spit")]], 4));
 writeFileSync(folkOut, sheet([[0, 1, 2, 3].map(kid), [0, 1, 2, 3].map(turtle), [0, 1, 2, 3].map(pebble), [0, 1, 2, 3].map((f) => shroom(f)), [0, 1, 2, 3].map((f) => shroom(f, 1))], 6));
 console.log("ok");
+}
