@@ -1107,10 +1107,10 @@ function start() {
   updateBagDot();
   const touch = document.body.classList.contains("touch");
   if (touch) {
-    // 放在外框頁（iframe）裡時，全螢幕開在外框頁，換場景重新載入時就不會跳出全螢幕
-    let top = window;
-    try { if (window.top !== window && window.top.document) top = window.top; } catch {}
-    if (!top.document.fullscreenElement) top.document.documentElement.requestFullscreen?.().then(() => top.screen.orientation?.lock?.("landscape")).catch(() => {});
+    // 放在外框頁（iframe）裡時，請外框頁自己開全螢幕：瀏覽器在「要求全螢幕的那一頁」換頁時會退出全螢幕，
+    // 由外框頁開的話，換場景只重新載入 iframe，全螢幕就留著（點擊的使用者啟用會傳到外框頁）
+    if (window.top !== window) window.parent.postMessage({ type: "zero-hero-fullscreen" }, location.origin);
+    else if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().then(() => screen.orientation?.lock?.("landscape")).catch(() => {});
   }
   if (TOWN) townArrive();
   else if (ENDLESS) toast("系統：無限模式。打到你手痠為止。");

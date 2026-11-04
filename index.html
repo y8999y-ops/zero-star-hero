@@ -23,6 +23,11 @@
   f.src = "game/" + location.search;
   f.addEventListener("load", () => f.focus());
   addEventListener("pointerdown", () => f.focus());
+  // 遊戲請外框頁開全螢幕（全螢幕由這一頁持有，換場景重新載入 iframe 時不會被退出）
+  addEventListener("message", (e) => {
+    if (e.origin !== location.origin || e.data?.type !== "zero-hero-fullscreen") return;
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().then(() => screen.orientation?.lock?.("landscape")).catch(() => {});
+  });
 </script>
 </body>
 </html>
