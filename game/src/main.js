@@ -29,6 +29,7 @@ import { paintStar, POSES } from "./star.js";
 import { npcSize } from "./npcs.js";
 import { createProps } from "./props.js";
 import { createScenery } from "./scenery.js";
+import { fxState, dustFx, updateCombatFx, drawCombatFx, drawDamageNumbers } from "./combatfx.js";
 import { PLATFORMS } from "./level.js";
 import { ult, ULT_MAX, ULT_MULT, startUlt, updateUlt, ultLights, dimScene, drawUlt, drawCutIn, postUlt } from "./ult.js";
 
@@ -357,7 +358,8 @@ const world = {
     n = Math.round(n * (1 + player.stats.gold / 100));
     for (let i = 0; i < n; i++) coins.push({ x, y, vx: (Math.random() - 0.5) * 160, vy: -120 - Math.random() * 140, t: 0 });
   },
-  land(x, y, hard) { props.landing(x, y, hard); scenery.landing(x, y, hard); },
+  land(x, y, hard) { dustFx("land", x, y, hard); props.landing(x, y, hard); scenery.landing(x, y, hard); },
+  jumpDust(x, y, first) { dustFx(first ? "jump" : "double", x, y); },
   dust(x, y, n) {
     spawn(A.dust, { x: Math.round(x), y: Math.round(y), flip: Math.random() < 0.5 }, { speed: 1.8 });
   },
@@ -640,6 +642,7 @@ function tick(dt) {
   if (juice.shakeT > 0) juice.shakeT -= dt;
   if (juice.freeze > 0) { juice.freeze -= dt; return; }   // 命中停頓：整個世界停住
   if (!started || inv.open) return;
+  updateCombatFx(dt);
   if (TOWN) { townTick(dt); return; }
 
   updateLight(dt);
@@ -788,10 +791,13 @@ function render() {
   if (ult.on) { dimScene(frame); drawFx(frame, "back"); }
   player.draw(frame);
   drawFx(frame, "front");
+  fxState.form = player.form;
+  drawCombatFx(frame);
   drawUlt(frame);
   if (TOWN) drawTownFg(frame);
   if (director?.lock) drawBarrier(director.lock);
   if (!TOWN) drawForeground(frame);
+  drawDamageNumbers(frame);   // 跳字畫在最上面，不會被前景擋住
   drawCutIn(frame);
   composite(frame, img.data, null, 0.8);   // 最後再整體壓一點發光
   postUlt(img.data);

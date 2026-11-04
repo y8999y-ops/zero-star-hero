@@ -203,7 +203,7 @@ export class Player {
         this.grounded = false;
         this.coyote = 0;
         if (this.state === "attack") { this.state = "move"; this.atk = null; }
-        world.dust(this.x, this.y, first ? 5 : 8);
+        world.jumpDust?.(this.x, this.y, first);
       }
     }
     if (!input.jumpHeld && this.vy < -150 && this.state === "move") this.vy = -150; // 短按跳得低
@@ -221,7 +221,7 @@ export class Player {
     const wasGrounded = this.grounded;
     const gy = this.vy >= 0 ? groundAt(this.x, prevY, this.y, this.dropT > 0) : null;
     if (gy !== null) {
-      if (!wasGrounded && this.vy > 260) { this.landT = 0.1; world.dust(this.x, gy, 6); }
+      if (!wasGrounded && this.vy > 260) this.landT = 0.1;
       if (!wasGrounded && this.vy > 80) world.land?.(this.x, gy, this.vy > 260);   // 草屑
       this.y = gy;
       this.vy = 0;

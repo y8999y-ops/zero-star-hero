@@ -6,7 +6,7 @@
 // 物件本身是場景（不受規則v2），畫的時候跟遊玩層一樣用色階＋光照上色；碎片、草屑這些是特效，用 PixelFX 加自己的粒子。
 import { hex } from "../../pixelfx/src/core/index.js";
 import * as poof from "../../pixelfx/src/fx/spawn/poof.js";
-import * as hitSpark from "../../pixelfx/src/fx/impacts/hit-spark.js";
+import { hitFx } from "./combatfx.js";
 import { spawn, shake } from "./fx.js";
 import { flash } from "./light.js";
 import { blip } from "./dialog.js";
@@ -122,7 +122,7 @@ export function createProps({ floor, w, platforms = [], town = false, avoid = []
       if (!inBox(b.x, b.y - hgt, b.y)) continue;
       b.cool = 0.2; b.shakeT = 0.16; b.hp--; n++;
       const pal = b.type === "crate" ? WOOD : RUST;
-      spawn(hitSpark, { x: Math.round(b.x - dir * 4), y: b.y - 6, flip: dir < 0, light: 0.3, seed: (Math.random() * 99) | 0 }, { speed: 1.6 });
+      hitFx(b.x - dir * 4, b.y - 7, dir, b.hp <= 0);
       emit(b.x, b.y - 8, 4, pal, { vx: dir * 60, up: 100 });
       if (b.hp <= 0) {
         b.broken = true;

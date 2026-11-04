@@ -1,8 +1,7 @@
 // 敵人：史萊姆（跳著靠近）、蝙蝠（盤旋後俯衝）、金幣史萊姆（拼命逃跑）。
 // 外觀用 PixelFX 的小生物特效（載入時烘焙好），移動跟著牠們自己的動畫節奏走。
 import { rand } from "../../pixelfx/src/core/index.js";
-import * as damageNumber from "../../pixelfx/src/fx/ui/damage-number.js";
-import * as critNumber from "../../pixelfx/src/fx/ui/crit-number.js";
+import { hitFx, damageFx } from "./combatfx.js";
 import { spawn } from "./fx.js";
 import { flash } from "./light.js";
 import { blit } from "./bake.js";
@@ -10,7 +9,6 @@ import { A } from "./assets.js";
 import { FLOOR, LEVEL_W, WALL } from "./level.js";
 
 const GRAV = 900;
-const NUM_PAL = ["#1a1205", "#4a3208", "#8c5c10", "#d49a1c", "#ffd24a", "#ffeaa0", "#fff8e0", "#ffffff"];
 // 史萊姆動畫裡「跳起來」到「落地」的時間（見 pixelfx/src/fx/critters/slime.js）
 const HOP_AIM = 0.84, HOP_UP = 0.9, HOP_DOWN = 1.44;
 const KINDS = {
@@ -133,9 +131,11 @@ export class Enemy {
     this.vx = dir * push * (this.k.fly ? 55 : 42);
     if (launch || crit) this.vy = this.k.fly ? -120 : -230;
     const b = this.box(), cy = Math.round((b.y0 + b.y1) / 2);
-    spawn(A.spark, { x: Math.round(this.x), y: cy + 10, flip: dir < 0 });
-    flash(this.x, cy, crit ? 40 : 28, crit ? 3 : 2, 0.12);   // 命中時照亮周圍一下
-    spawn(crit ? critNumber : damageNumber, { x: Math.round(this.x), y: b.y0 - 2, text: crit ? d + "!" : String(d), ...(crit ? {} : { palette: NUM_PAL }), seed: (Math.random() * 99) | 0 });
+    // 重擊：最後一段／擊飛、爆擊、推得遠的（技能、衝撞）。輕擊的光和火花都收小
+    const heavy = launch || crit || push >= 3;
+    hitFx(this.x - dir * 3, cy, dir, heavy);
+    flash(this.x, cy, heavy ? 36 : 18, heavy ? 2.2 : 1.1, heavy ? 0.14 : 0.08);   // 命中時照亮周圍一下
+    damageFx(this, this.x, b.y0 - 3, d, { crit, heavy });
     if (this.hp <= 0) this.die(world);
   }
 
