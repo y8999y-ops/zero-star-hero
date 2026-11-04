@@ -1123,6 +1123,7 @@ if (sessionStorage.getItem(AUTO_KEY)) {
   const fade = $("fade");
   fade.style.transition = "none"; fade.classList.add("on");
   start();
+  document.documentElement.classList.remove("auto");
   void fade.offsetWidth;   // 先讓全黑生效，再開動畫淡掉
   fade.style.transition = ""; fade.classList.remove("on");
 }
