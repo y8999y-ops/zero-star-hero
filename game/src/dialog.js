@@ -15,6 +15,10 @@ const SPEAKERS = [
   [/岩叔/, "golem", 196, "square"],
   [/菇媽/, "mushroom", 523, "triangle"],
   [/系統/, null, 1320, "sine"],
+  [/啵啵/, "kid", 1046, "square"],
+  [/慢慢/, "turtle", 147, "triangle"],
+  [/碎碎/, "pebble", 330, "square"],
+  [/菇菇寶寶/, "shroom", 784, "triangle"],
 ];
 const speaker = (name) => SPEAKERS.find(([re]) => re.test(name)) ?? [null, null, 660, "square"];
 

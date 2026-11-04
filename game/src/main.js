@@ -28,6 +28,7 @@ import { FORMS, CARRY_MAX, coreChance, absorbCore, makeCore, coresToLevel } from
 import { createFrame as makeFrame } from "../../pixelfx/src/core/index.js";
 import { paintStar, POSES } from "./star.js";
 import { npcSize } from "./npcs.js";
+import { createFolk, FOLK_INFO } from "./folk.js";
 import { createProps } from "./props.js";
 import { createScenery } from "./scenery.js";
 import { createComboArt } from "./combo-art.js";
@@ -421,6 +422,8 @@ function goScene(next, stageId) {
 }
 
 let prevAtk = false, near = null, busy = false;
+const folk = TOWN ? createFolk(FLOOR) : null;   // 路人
+window.__game.folk = folk;
 if (TOWN) {
   spawn(frogFx, { x: 548, y: FLOOR, seed: 3, light: 0.2 }, { keep: true, layer: "back" });
 }
@@ -443,7 +446,8 @@ function townTick(dt) {
     player.x = Math.max(20, Math.min(TOWN_W - 20, player.x));
     props.update(dt, propMovers(), propView());
   scenery.update(dt, player, propView());
-    near = nearby(player.x);
+    folk.update(dt, player.x);
+    near = nearby(player.x) ?? folk.nearby(player.x);
     if (atk && !prevAtk && near && player.grounded) interact(near);
     prevAtk = atk;
   } else { player.vx = 0; prevAtk = true; }
@@ -466,12 +470,12 @@ let bubbleWho = null, bubbleT = 0, bubbleWait = 3;
 function updateBubble(dt) {
   if (dialog.open || busy) { bubbleEl.classList.remove("on"); bubbleWho = null; return; }
   if (bubbleWho) {
-    if ((bubbleT -= dt) <= 0 || bubbleWho === near) { bubbleEl.classList.remove("on"); bubbleWho = null; bubbleWait = 5 + Math.random() * 4; }
+    if ((bubbleT -= dt) <= 0 || bubbleWho === near || bubbleWho === near?.folk) { bubbleEl.classList.remove("on"); bubbleWho = null; bubbleWait = 5 + Math.random() * 4; }
   } else if ((bubbleWait -= dt) <= 0) {
-    const seen = NPCS.filter((n) => n !== near && n.x > camX + 20 && n.x < camX + W - 20);
+    const seen = [...NPCS, ...folk.list.filter((o) => !o.follow)].filter((n) => n !== near && n !== near?.folk && n.x > camX + 20 && n.x < camX + W - 20);
     if (seen.length) {
       bubbleWho = seen[Math.floor(Math.random() * seen.length)];
-      const L = AMBIENT[bubbleWho.id];
+      const L = AMBIENT[bubbleWho.id] ?? FOLK_INFO[bubbleWho.id].ambient;
       bubbleText.textContent = L[Math.floor(Math.random() * L.length)];
       bubbleEl.classList.add("on");
       bubbleT = 3.2;
@@ -488,7 +492,7 @@ function updateBubble(dt) {
 // 可以對話時，頭上出現一個跳動的「！」
 function drawPrompt() {
   if (!near || dialog.open) return;
-  const bob = Math.floor(sceneClock * 4) % 2, x0 = Math.round(near.x) - frame.ox - 1, y0 = (near.place === "sign" ? 140 : FLOOR - 46) - bob - frame.oy;
+  const bob = Math.floor(sceneClock * 4) % 2, x0 = Math.round(near.x) - frame.ox - 1, y0 = (near.place === "sign" ? 140 : near.folk ? FLOOR - near.h - 12 : FLOOR - 46) - bob - frame.oy;
   const C1 = hex("#ffd84a") >>> 0, C0 = hex("#2a1626") >>> 0;
   for (let y = -1; y <= 9; y++) for (let x = -1; x <= 3; x++) {
     const on = x >= 0 && x <= 2 && ((y >= 0 && y <= 5) || (y >= 7 && y <= 8)) && (x === 1 || y <= 5);
@@ -503,7 +507,8 @@ function drawPrompt() {
 async function interact(n) {
   busy = true;
   try {
-    if (n.place === "guild") await guild(n.name);
+    if (n.folk) { n.folk.talking = true; await talk(n.name, folk.lines(n.folk)); n.folk.talking = false; }
+    else if (n.place === "guild") await guild(n.name);
     else if (n.place === "workshop") await workshop(n.name);
     else if (n.place === "inn") await inn(n.name);
     else await talk("路標", ["「往 墜星之谷 →」", "系統：要出發的話，先去公會接任務。……沒有任務就跑去打怪，公會不給錢的。"]);
@@ -790,7 +795,7 @@ function render() {
   else { drawLevel(frame, lv); drawAtmosphere(frame, sceneClock); }
   props.draw(frame, lv);
   scenery.draw(frame, lv, sceneClock);
-  if (TOWN) { drawTownNpcs(frame, sceneClock); drawPrompt(); }
+  if (TOWN) { drawTownNpcs(frame, sceneClock); folk.draw(frame); drawPrompt(); }
   if (chest && !chest.opened && Math.abs(chest.x - camX - W / 2) < W) chest.fx.draw(frame);
   // 大招時：先畫怪再暗場，法陣這些背景特效畫在暗場之後才會亮
   if (!ult.on) drawFx(frame, "back");

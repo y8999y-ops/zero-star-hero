@@ -12,7 +12,7 @@ const OUT = "#2a1626";
 // 材質格子 → 上色（左上亮、右下暗）→ 外框。回傳 { px: 顏色（ABGR 數字）的二維陣列, W, H }
 function sprite(W, H, paint, ramps, fixed = {}) {
   const m = Array.from({ length: H }, () => Array(W).fill(null));
-  const set = (x, y, v) => { if (x >= 0 && y >= 0 && x < W && y < H) m[y][x] = v; };
+  const set = (x, y, v) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < W && y < H) m[y][x] = v; };
   paint(set);
   const empty = (x, y) => x < 0 || y < 0 || x >= W || y >= H || !m[y][x];
   const diff = (x, y, k) => empty(x, y) || m[y][x] !== k;
@@ -104,7 +104,65 @@ function mushroom(f) {
   { P: "#f4ecd0", U: "#8a5a5a", E: "#2a1626", K: "#ff9a8a", B: "#c8ccdc" });
 }
 
-const BUILD = { clerk: slimeClerk, golem, mushroom };
+
+// ---- 路人（M6 後半，草稿＝docs/路人草稿-碎星鎮.png，使用者 2026-11-04 確認）：走路 4 格（f 0～3），面向右
+// 啵啵：公會波波的弟弟，跳著走；慢慢：苔殼龜郵差；碎碎：岩叔的學徒；菇菇寶寶：菇媽家的小孩（兩顆一起跑，後面那顆慢一格）
+function kid(f) {
+  const W = 15, H = 13, cx = 7, h = [0, 1, 2, 1][f], sq = [1, 1, 0.9, 1][f];
+  return sprite(W, H, (set) => {
+    const hgt = Math.round(9 * sq), bot = H - 1 - h, w0 = Math.round(6 / Math.sqrt(sq));
+    for (let y = bot - hgt; y <= bot; y++) { const t = (bot - y) / hgt, w = Math.round(w0 * Math.sqrt(Math.max(0, 1 - Math.max(0, t - 0.2) ** 2 / 0.64))); for (let x = cx - w; x <= cx + w; x++) set(x, y, "B"); }
+    const ey = bot - Math.round(hgt * 0.5);
+    set(cx - 2, ey, "E"); set(cx + 2, ey, "E"); set(cx, ey + 2, "E");
+    for (const [x, y] of [[-1, 0], [-2, -1], [-2, 1], [1, 0], [2, -1], [2, 1], [0, 0]]) set(cx + 3 + x, bot - hgt - 1 + y, "R");
+    set(cx - 4, ey - 2, "H");
+  }, { B: ["#173064", "#244c96", "#3474c8", "#5aa2ec", "#9ad0ff"], R: ["#6a1424", "#a02234", "#d03a44", "#ff6a60", "#ff9a8a"] }, { E: "#1a1030", H: "#ffffff" });
+}
+function turtle(f) {
+  const W = 23, H = 17, step = [0, 1, 0, 1][f], bob = [0, 0, 1, 0][f];
+  return sprite(W, H, (set) => {
+    // 殼：高高的半圓頂，上面有六角格紋和苔蘚
+    for (let y = 1; y <= 11; y++) { const w = Math.round(7.5 * Math.sqrt(1 - ((11 - y) / 10.5) ** 2)); for (let x = 9 - w; x <= 9 + w; x++) set(x, y + bob, "S"); }
+    for (const [x, y] of [[6, 5], [7, 5], [11, 5], [12, 5], [5, 8], [9, 7], [13, 8], [8, 9], [10, 9]]) set(x, y + bob, "L");
+    for (const [x, y] of [[6, 1], [7, 1], [8, 0], [9, 1], [10, 2], [11, 1], [5, 2], [12, 2]]) set(x, y + bob, "M");
+    for (let x = 1; x <= 17; x++) set(x, 12 + bob, "U");
+    // 郵差包＋背帶
+    for (let y = 7; y <= 11; y++) for (let x = 0; x <= 4; x++) set(x, y + bob, "G");
+    set(2, 8 + bob, "g");
+    for (let i = 0; i < 9; i++) set(4 + i, 7 - Math.round(i * 0.6) + bob, "g");
+    // 頭（右邊，比較大）＋郵差帽
+    for (let y = 5; y <= 11; y++) for (let x = 16; x <= 22; x++) { const d = Math.hypot(x - 19, (y - 8) * 1.1); if (d <= 3.4) set(x, y + bob, "K"); }
+    set(20, 7 + bob, "E"); set(21, 9 + bob, "k");
+    for (let x = 16; x <= 21; x++) set(x, 4 + bob, "C");
+    for (let x = 17; x <= 20; x++) set(x, 3 + bob, "C");
+    set(22, 5 + bob, "C"); set(21, 5 + bob, "C");
+    // 短短的腳（前後交替踩）
+    for (const [lx, up] of [[3, step], [13, 1 - step]]) for (let y = 13; y <= 15 - up; y++) for (let x = lx; x <= lx + 2; x++) set(x, y + (up ? 0 : 0) + bob * 0, "K");
+  }, { S: ["#3a3418", "#5a5224", "#7a7030", "#9c9044", "#c4b868"], L: ["#2a2810", "#3a3418", "#4a4420", "#4a4420", "#4a4420"], M: ["#1a3a1e", "#2a5a2c", "#3a7a38", "#5cb05a", "#86d488"], U: ["#3a2a16", "#5a4024", "#7a5832", "#9a7244", "#9a7244"], K: ["#2e5a36", "#4a8a50", "#6aae66", "#94d084", "#c0ecaa"], G: ["#4a2a14", "#7a4a22", "#a86c36", "#d09a5a", "#ecc890"], C: ["#1a2a5a", "#2a4490", "#3a62c0", "#5a8ae0", "#8ab4f4"] }, { E: "#1a1030", k: "#2a5a30", g: "#5a3416" });
+}
+function pebble(f) {
+  const W = 14, H = 16, sway = [0, 1, 0, -1][f];
+  return sprite(W, H, (set) => {
+    for (let y = 1; y <= 11; y++) { const w = Math.round(5.5 * Math.sqrt(1 - ((6 - y) / 6) ** 2)); for (let x = 6 - w + sway; x <= 6 + w + sway; x++) set(x, y, "S"); }
+    set(4 + sway, 5, "E"); set(8 + sway, 5, "E");
+    set(6 + sway, 8, "Y"); set(6 + sway, 9, "Y"); set(7 + sway, 8, "Y");
+    for (let y = 9; y <= 11; y++) for (let x = 9; x <= 11; x++) if (!(y === 9 && x === 11)) set(x + sway, y, "R");
+    for (const [x, y] of [[3, 2], [4, 2], [5, 1], [8, 2]]) set(x + sway, y, "M");
+    set(4, 12 + (f === 1 ? 0 : 1), "S"); set(4, 13, "S"); set(8, 12 + (f === 3 ? 0 : 1), "S"); set(8, 13, "S");
+  }, { S: ["#3a3240", "#5a4e5e", "#7e7080", "#a89aa4", "#d0c6c8"], R: ["#3a3a46", "#565666", "#787888", "#9a9aac", "#9a9aac"], M: ["#1e5a34", "#3a9a48", "#3a9a48", "#8ae070", "#8ae070"] }, { E: "#ffd84a", Y: "#ff8a2a" });
+}
+function shroom(f, lag = 0) {
+  const W = 11, H = 13, b = [0, 1, 0, 1][(f + lag) % 4];
+  return sprite(W, H, (set) => {
+    for (let y = 0; y <= 4; y++) { const w = [2, 4, 5, 5, 5][y]; for (let x = 5 - w; x <= 5 + w; x++) set(x, y + b, "R"); }
+    set(3, 1 + b, "P"); set(4, 1 + b, "P"); set(7, 2 + b, "P");
+    for (let y = 5; y <= 9; y++) for (let x = 3; x <= 7; x++) set(x, y + b, "Y");
+    set(4, 6 + b, "E"); set(6, 6 + b, "E");
+    set(3 + (f % 2), 10 + b, "Y"); set(7 - (f % 2), 10 + b, "Y");
+  }, { R: ["#6a1424", "#a02234", "#d03a44", "#ff6a50", "#ff9a8a"], Y: ["#8a7a5a", "#c8b890", "#f4ecd0", "#fffaf0", "#fffaf0"] }, { P: "#f4ecd0", E: "#2a1626" });
+}
+
+const BUILD = { clerk: slimeClerk, golem, mushroom, kid: (f) => kid(f % 4), turtle: (f) => turtle(f % 4), pebble: (f) => pebble(f % 4), shroom: (f) => shroom(f % 4), shroom2: (f) => shroom(f % 4, 1) };
 const cache = {};
 /** 某個居民第 f 格（0～7）的像素 */
 export function npcFrame(id, f) {
