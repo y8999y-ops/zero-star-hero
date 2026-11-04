@@ -458,10 +458,12 @@ function rankOf(done) { let r = "F"; for (const [n, need] of RANKS) if (done >= 
 const nextRank = (done) => RANKS.find(([, need]) => need > done);
 
 /** 換場景：存檔、淡出、重新載入 */
+const AUTO_KEY = "zero-hero-auto";
 function goScene(next, stageId) {
   save(profile, true);
   sessionStorage.setItem(NEXT_KEY, next);
   if (stageId) sessionStorage.setItem(STAGE_KEY, stageId);
+  sessionStorage.setItem(AUTO_KEY, "1");   // 下一個場景直接開始，不再顯示「點擊開始」
   $("fade").classList.add("on");
   setTimeout(() => location.replace(location.pathname), 380);   // 拿掉網址上的開發用參數
 }
@@ -1105,13 +1107,26 @@ function start() {
   updateBagDot();
   const touch = document.body.classList.contains("touch");
   if (touch) {
-    document.documentElement.requestFullscreen?.().then(() => screen.orientation?.lock?.("landscape")).catch(() => {});
+    // 放在外框頁（iframe）裡時，全螢幕開在外框頁，換場景重新載入時就不會跳出全螢幕
+    let top = window;
+    try { if (window.top !== window && window.top.document) top = window.top; } catch {}
+    if (!top.document.fullscreenElement) top.document.documentElement.requestFullscreen?.().then(() => top.screen.orientation?.lock?.("landscape")).catch(() => {});
   }
   if (TOWN) townArrive();
   else if (ENDLESS) toast("系統：無限模式。打到你手痠為止。");
   else director = new Director(STAGE, stageApi, touch);
 }
 $("startBtn").addEventListener("click", start);
+// 換場景過來的：黑幕淡入、直接開始；聲音等第一次操作再解鎖（瀏覽器規定）
+if (sessionStorage.getItem(AUTO_KEY)) {
+  sessionStorage.removeItem(AUTO_KEY);
+  const fade = $("fade");
+  fade.style.transition = "none"; fade.classList.add("on");
+  start();
+  void fade.offsetWidth;   // 先讓全黑生效，再開動畫淡掉
+  fade.style.transition = ""; fade.classList.remove("on");
+}
+for (const ev of ["pointerdown", "keydown", "touchstart"]) addEventListener(ev, unlockAudio, { capture: true, passive: true });
 addEventListener("keydown", (e) => { if (!started && (e.code === "Enter" || e.code === "Space")) start(); });
 // 開發用：主控台直接掉寶、加經驗
 Object.assign(window.__game, { dropItem, gainXp, R });
