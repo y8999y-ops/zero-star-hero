@@ -46,6 +46,11 @@ export const A = {
   trashBite: bake(trashCan, { mode: "bite", light: GLOW.enemy * 2 }),
   trashWhite: bake(trashCan, { palette: flash(7), rust: flash(4), light: 0 }),
   trashWhiteBite: bake(trashCan, { mode: "bite", palette: flash(7), rust: flash(4), light: 0 }),
+  // 菁英（紅色）
+  slimeElite: bake(slimeFx, { palette: ["#14060a", "#3a0a14", "#6e1220", "#b01e2a", "#e84a3a", "#ff9a70", "#ffe0c8"], light: GLOW.enemy * 1.6 }),
+  batElite: bake(batFx, { palette: ["#14060a", "#2e0a18", "#5a1228", "#8e1e3a", "#c83a4a", "#ff7a6a", "#ffd0c0"], eyes: ["#5a2a00", "#ffd84a", "#fff3a6", "#ffffff"], light: GLOW.enemy * 1.6 }),
+  trashEliteWalk: bake(trashCan, { palette: ["#140a0e", "#2a1418", "#44202a", "#64303c", "#8a4650", "#b46a6a", "#e0a8a0"], rust: ["#4a0e0e", "#8c1a18", "#c8362a", "#ff6a4a"], eyes: ["#5a0a00", "#e0301a", "#ff8a4a", "#ffe0c0"], light: GLOW.enemy * 3 }),
+  trashEliteBite: bake(trashCan, { mode: "bite", palette: ["#140a0e", "#2a1418", "#44202a", "#64303c", "#8a4650", "#b46a6a", "#e0a8a0"], rust: ["#4a0e0e", "#8c1a18", "#c8362a", "#ff6a4a"], eyes: ["#5a0a00", "#e0301a", "#ff8a4a", "#ffe0c0"], light: GLOW.enemy * 3 }),
   poofTrash: bake(poof, { palette: ["#1f272c", "#313d42", "#485a5c", "#667a78", "#8ea29c", "#c4d4cc"], light: GLOW.poof }),
 };
 

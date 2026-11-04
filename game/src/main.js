@@ -1,4 +1,4 @@
-// 遊戲主程式：關卡 1-1（教學、四場戰鬥、出口）。網址加 ?endless 是無限出怪的測試模式。
+// 遊戲主程式：第一章的關卡（1-1～1-3）、碎星鎮。網址加 ?endless 是無限出怪的測試模式，?stage=1-2 直接進那一關。
 import { createFrame, composite, hex, PAL } from "../../pixelfx/src/core/index.js";
 import * as fireball from "../../pixelfx/src/fx/fire/fireball.js";
 import * as explosion from "../../pixelfx/src/fx/explosions/plasma-explosion.js";
@@ -12,7 +12,8 @@ import { computeLight, flash, updateLight } from "./light.js";
 import { spawn, updateFx, drawFx, juice, hitStop, shake, shakeOffset, fxCount } from "./fx.js";
 import { Player } from "./player.js";
 import { Enemy } from "./enemies.js";
-import { Director, STAGE_1_1 } from "./stage.js";
+import { Director, STAGES } from "./stage.js";
+import { STAGE_KEY, STAGE_ORDER, STAGE_ID, LAYOUTS } from "./stages.js";
 import * as levelUpFx from "../../pixelfx/src/fx/ui/level-up.js";
 import * as chestOpen from "../../pixelfx/src/fx/pickups/chest-open.js";
 import * as collectBurst from "../../pixelfx/src/fx/pickups/collect-burst.js";
@@ -43,7 +44,11 @@ sessionStorage.removeItem(NEXT_KEY);
 const profile = load();
 const ENDLESS = nextScene ? nextScene === "endless" : QS.has("endless");
 const TOWN = nextScene ? nextScene === "town" : !QS.has("endless") && !QS.has("stage") && (profile.clears > 0 || profile.guild.registered);
-const STAGE = STAGE_1_1;
+const STAGE = STAGES[STAGE_ID];
+// 關卡進度：哪幾關打過（舊存檔：通關過＝1-1 打過）
+profile.cleared ??= profile.clears > 0 ? { "1-1": true } : {};
+const unlocked = () => STAGE_ORDER.filter((id, i) => i === 0 || profile.cleared[STAGE_ORDER[i - 1]]);
+const nextStage = () => STAGE_ORDER[STAGE_ORDER.indexOf(STAGE_ID) + 1];
 
 const STEP = 1 / 60;
 const canvas = document.getElementById("screen");
@@ -370,13 +375,13 @@ const world = {
     if (stats.kills === 100) toast("系統：好啦，我承認你有一點點厲害。");
     if (e.kind === "gold") toast("系統：金幣史萊姆！今晚加菜！");
     const s = player.stats;
-    gainXp(KILL_XP[e.kind] ?? 5);
+    gainXp((KILL_XP[e.kind] ?? 5) * (e.elite ? 4 : 1));
     chargeUlt(2);
     const [coreId, coreP] = coreChance(e.kind, profile.forms);
-    if (coreId && Math.random() < coreP) { const b = e.box(); drops.add(makeCore(coreId), e.x, (b.y0 + b.y1) / 2); }
+    if (coreId && Math.random() < (e.elite ? Math.min(1, coreP * 4) : coreP)) { const b = e.box(); drops.add(makeCore(coreId), e.x, (b.y0 + b.y1) / 2); }
     if (s.life) player.hp = Math.min(player.maxHp, player.hp + s.life);
     const b = e.box(), cy = (b.y0 + b.y1) / 2;
-    if (Math.random() < (DROP_RATE[e.kind] ?? 0.1) * (1 + s.mf / 200)) dropItem(e.x, cy, e.kind === "gold" ? R.magic : 0, { ilvl: ilvlNow(e.kind === "trash" ? 1 : 0) });
+    if (e.elite || Math.random() < (DROP_RATE[e.kind] ?? 0.1) * (1 + s.mf / 200)) dropItem(e.x, cy, e.kind === "gold" || e.elite ? R.magic : 0, { ilvl: ilvlNow(e.kind === "trash" || e.elite ? 1 : 0) });
     // 擊殺爆炸（詞綴／爆炸頭安全帽）：會連鎖，最多連 6 次
     if (s.boom && boomDepth < 6 && Math.random() * 100 < s.boom) {
       const big = player.has("hardhat") ? 1.5 : 1, rx = 34 * big;
@@ -407,9 +412,10 @@ function rankOf(done) { let r = "F"; for (const [n, need] of RANKS) if (done >= 
 const nextRank = (done) => RANKS.find(([, need]) => need > done);
 
 /** 換場景：存檔、淡出、重新載入 */
-function goScene(next) {
+function goScene(next, stageId) {
   save(profile, true);
   sessionStorage.setItem(NEXT_KEY, next);
+  if (stageId) sessionStorage.setItem(STAGE_KEY, stageId);
   $("fade").classList.add("on");
   setTimeout(() => location.replace(location.pathname), 380);   // 拿掉網址上的開發用參數
 }
@@ -513,13 +519,19 @@ async function guild(name) {
     save(profile, true);
   }
   const rank = rankOf(G.done), nr = nextRank(G.done);
+  const QUEST_NOTE = { "1-1": "清光狂化魔物", "1-2": "垃圾桶怪大量出沒", "1-3": "蝙蝠群、菁英出沒" };
   const v = await ask(name, `冒險者等級 ${rank}　已完成任務 ${G.done} 個。今天要接什麼任務？`, [
-    ["討伐：1-1 墜落之底（清光狂化魔物）", "stage"],
+    ...unlocked().reverse().map((id) => [`討伐：${id} ${LAYOUTS[id].name}（${QUEST_NOTE[id]}）${profile.cleared[id] ? "" : "　NEW"}`, "stage:" + id]),
     ["練功：無限討伐（打到你手痠為止）", "endless"],
     ["問問升級的事", "rank"],
     ["先不用", null],
   ]);
-  if (v === "stage") { G.quest = "1-1"; await talk(name, ["任務受理。墜星之谷的狂化魔物越來越多了，請小心。"]); goScene("stage"); }
+  if (v?.startsWith?.("stage:")) {
+    const id = v.slice(6);
+    G.quest = id;
+    await talk(name, [{ "1-1": "任務受理。墜星之谷的狂化魔物越來越多了，請小心。", "1-2": "垃圾山……那裡的垃圾桶會咬人喔。真的。", "1-3": "蝙蝠洞窟很暗。……啊，你會發光，那沒事了。" }[id]]);
+    goScene("stage", id);
+  }
   else if (v === "endless") { await talk(name, ["無限討伐不算正式任務，不過掉的東西都歸你。"]); goScene("endless"); }
   else if (v === "rank") await talk(name, [nr ? `再完成 ${nr[1] - G.done} 個任務就能升到 ${nr[0]} 級。` : "你已經是 S 級了。……公會的天花板，就是你。", "升級後能接更難的任務，去更遠的地方。"]);
 }
@@ -767,6 +779,7 @@ function render() {
   sceneClock += 1 / 60;
   const lights = TOWN ? townLights(sceneClock) : sceneLights(camX, W, sceneClock);
   lights.push({ x: player.x, y: player.y - 10, r: 46, lv: 1.3, col: "#ffcf6a" });   // 星星主角自己會發光
+  for (const e of enemies) if (e.elite && !e.dead) lights.push({ x: e.x, y: e.y - 10, r: 36, lv: 1.2, col: "#ff4a3a" });
   for (const s of shots) lights.push({ x: s.x, y: s.y, r: 64, lv: 3, col: (SHOT_PAL[s.form] ?? SHOT_PAL.star).light });
   for (const d of drops.list) if (d.landed && d.item.rarity >= R.rare) lights.push({ x: d.x, y: d.y - 10, r: d.item.rarity === R.legend ? 48 : 30, lv: 2, col: RARITY[d.item.rarity].color });
   ultLights(lights);
@@ -904,6 +917,7 @@ function showClear() {
     ["通關時間", `${mm}:${ss}`], ["擊倒", stats.kills], ["金幣", stats.coins], ["最高連擊", stats.best], ["死亡次數", stats.deaths], ["撿到", runLoot.length + " 件"],
   ].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
   profile.clears++;
+  profile.cleared[STAGE_ID] = true;
   // 公會的任務：通關＝完成
   if (profile.guild.quest) {
     const before = rankOf(profile.guild.done);
@@ -917,9 +931,12 @@ function showClear() {
     ? got.map((it) => `<div class="slot r${it.rarity}" title="${it.name}"><img src="${iconURL(it.icon, 2)}"></div>`).join("")
     : '<span style="color:var(--dim)">這趟沒撿到魔法以上的裝備。再刷一次吧！</span>';
   $("clearLine").textContent = stats.deaths === 0 ? "系統：一次都沒死？……我收回「零星」那句話。一半。" : "系統：過是過了。死了幾次這件事，我會幫你保密的。";
+  $("nextBtn").classList.toggle("hidden", ENDLESS || !nextStage());
+  if (nextStage()) $("nextBtn").textContent = `下一關：${nextStage()} ${LAYOUTS[nextStage()].name}`;
   $("clear").classList.remove("hidden");
 }
-$("againBtn").addEventListener("click", () => goScene(ENDLESS ? "endless" : "stage"));
+$("againBtn").addEventListener("click", () => goScene(ENDLESS ? "endless" : "stage", STAGE_ID));
+$("nextBtn").addEventListener("click", () => nextStage() && goScene("stage", nextStage()));
 $("homeBtn").addEventListener("click", () => goScene("town"));
 $("btnHome").addEventListener("click", async () => {
   if (TOWN || dialog.open || !started) return;
@@ -1002,6 +1019,8 @@ window.__game.bench = (n = 300) => {
 };
 
 // ---- 開始畫面
+$("startName").textContent = ENDLESS ? "無限討伐" : `第一章　${STAGE.name}`;
+$("clearName").textContent = ENDLESS ? "無限討伐" : STAGE.name;
 const isTouch = matchMedia("(pointer: coarse)").matches || "ontouchstart" in window;
 if (isTouch) document.body.classList.add("touch");
 addEventListener("touchstart", () => document.body.classList.add("touch"), { once: true });

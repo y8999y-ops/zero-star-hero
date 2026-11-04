@@ -18,6 +18,10 @@ const KINDS = {
   // 自製敵人：慢慢走過來，靠近就蓄力撲咬
   trash: { anim: A.trashWalk, white: A.trashWhite, bite: A.trashBite, whiteBite: A.trashWhiteBite, hp: 70, dmg: 5, biteDmg: 13, w: 11, h: 30, coins: [3, 6], poof: A.poofTrash },
 };
+// 菁英：紅色、血 3～4 倍、比較痛、比較快；行為跟原本的一樣（kind 用 base）
+KINDS.slimeE = { ...KINDS.slime, anim: A.slimeElite, hp: 130, dmg: 12, coins: [6, 10], base: "slime", elite: true };
+KINDS.batE = { ...KINDS.bat, anim: A.batElite, hp: 80, dmg: 11, coins: [5, 8], base: "bat", elite: true };
+KINDS.trashE = { ...KINDS.trash, anim: A.trashEliteWalk, bite: A.trashEliteBite, hp: 220, dmg: 8, biteDmg: 20, coins: [10, 16], base: "trash", elite: true };
 // 垃圾桶怪咬人的節奏（秒，對應 trash-can.js 的 bite 動畫：0.8 秒一輪）
 const BITE_LUNGE = 0.3, BITE_HIT0 = 0.38, BITE_HIT1 = 0.48, BITE_END = 0.8;
 
@@ -26,9 +30,9 @@ export class Enemy {
   constructor(kind, x, y) {
     const k = KINDS[kind];
     seed++;
-    Object.assign(this, { kind, k, x, y, vx: 0, vy: 0, hp: k.hp, stun: 0, flash: 0, dead: false, face: 1, clock: 0, hopDir: 1 });
+    Object.assign(this, { kind: k.base ?? kind, elite: !!k.elite, k, x, y, vx: 0, vy: 0, hp: k.hp, stun: 0, flash: 0, dead: false, face: 1, clock: 0, hopDir: 1 });
     this.t = rand(seed, 3) * k.anim.duration; // 錯開動畫，不要大家一起跳
-    this.speed = kind === "gold" ? 120 : 52 + rand(seed, 4) * 30;
+    this.speed = kind === "gold" ? 120 : (52 + rand(seed, 4) * 30) * (k.elite ? 1.25 : 1);
     if (k.fly) { this.mode = "hover"; this.modeT = 1 + rand(seed, 5) * 2; this.side = rand(seed, 6) < 0.5 ? -1 : 1; }
   }
 

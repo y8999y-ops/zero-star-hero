@@ -39,6 +39,40 @@ export const STAGE_1_1 = {
   ],
 };
 
+// 1-2 垃圾山：垃圾桶怪變多，第一次碰到菁英（紅色、很硬、掉的東西比較好）
+export const STAGE_1_2 = {
+  name: "1-2 垃圾山",
+  start: { x: 80, y: 184 },
+  exitX: 2700,
+  intro: ["系統：這裡是垃圾山。上面的世界把不要的東西，全部丟到這裡。", "系統：……包括你。開玩笑的。大概。"],
+  caches: [{ x: 560, y: 84, n: 7 }, { x: 1432, y: 86, n: 9 }, { x: 2336, y: 84, n: 10 }],
+  events: [
+    { x: 260, hint: { touch: "右上角的背包：穿裝備、比較、拆垃圾", key: "I＝背包：穿裝備、比較、拆垃圾" } },
+    { x: 620, say: "系統：歡迎委員會來了。", waves: [[["slime", 1], ["slime", -1], ["trash", 1]], [["slime", 1], ["slime", 1], ["slime", -1], ["bat", 0]]] },
+    { x: 1150, say: "系統：垃圾桶……越來越多了。打倒它們，有機會吸收鐵罐星的核。", waves: [[["trash", 1], ["trash", -1]], [["trash", 1], ["slime", -1], ["slime", -1], ["bat", 0]]] },
+    { x: 1680, say: "系統：那隻史萊姆的顏色不太對。是菁英，很硬。打贏的話掉的東西比較好。", waves: [[["slimeE", 1], ["slime", -1], ["slime", -1]], [["slime", 1], ["trash", -1], ["bat", 0], ["bat", 0]]] },
+    { x: 2260, say: "系統：最後一段。我看到很多垃圾桶在發抖。", waves: [[["trash", 1], ["trash", -1], ["slime", 1], ["bat", 0]], [["trashE", 1], ["slime", -1], ["bat", 0], ["gold", -1]]] },
+    { x: 2560, say: "系統：再往下……是蝙蝠的地盤了。" },
+  ],
+};
+
+// 1-3 蝙蝠洞窟：很暗、蝙蝠一大群，菁英蝙蝠＋菁英垃圾桶；最後預告王
+export const STAGE_1_3 = {
+  name: "1-3 蝙蝠洞窟",
+  start: { x: 80, y: 184 },
+  exitX: 2500,
+  intro: ["系統：好暗。……你會發光這件事，第一次派上用場了。", "系統：聽到翅膀的聲音了嗎？我聽到了。很多。"],
+  caches: [{ x: 628, y: 76, n: 8 }, { x: 1344, y: 70, n: 10 }, { x: 2260, y: 88, n: 9 }],
+  events: [
+    { x: 420, say: "系統：來了。", waves: [[["bat", 0], ["bat", 0], ["bat", 0]], [["bat", 0], ["bat", 0], ["slime", 1], ["slime", -1]]] },
+    { x: 900, say: "系統：蝙蝠會俯衝。閃避有無敵時間，看準了再按。", waves: [[["bat", 0], ["bat", 0], ["trash", 1]], [["bat", 0], ["bat", 0], ["bat", 0], ["slime", -1]]] },
+    { x: 1420, say: "系統：那隻……體型不太對。菁英蝙蝠，衝得特別快。", waves: [[["batE", 0], ["bat", 0], ["bat", 0]], [["bat", 0], ["slime", 1], ["slime", -1], ["bat", 0]]] },
+    { x: 1960, say: "系統：垃圾桶怪也跑進洞裡了？這裡到底是誰在管。", waves: [[["trashE", 1], ["bat", 0], ["bat", 0]], [["batE", 0], ["trash", -1], ["bat", 0], ["gold", 1]]] },
+    { x: 2300, say: "系統：前面……我聞到很臭的味道。像是吃了一百年垃圾的那種。" },
+  ],
+};
+export const STAGES = { "1-1": STAGE_1_1, "1-2": STAGE_1_2, "1-3": STAGE_1_3 };
+
 const SAY_TIME = 3.2, HINT_TIME = 5;
 
 export class Director {
@@ -86,7 +120,7 @@ export class Director {
     const { l, r } = this.lock;
     list.forEach(([kind, side], i) => {
       const x = side > 0 ? r - 24 - i * 14 : side < 0 ? l + 24 + i * 14 : l + 60 + Math.random() * (r - l - 120);
-      this.api.spawnEnemy(kind, x, kind === "bat" ? 40 + Math.random() * 30 : undefined);
+      this.api.spawnEnemy(kind, x, kind.startsWith("bat") ? 40 + Math.random() * 30 : undefined);
     });
   }
 }

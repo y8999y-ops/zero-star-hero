@@ -1,4 +1,5 @@
-// 關卡 1-1 的場景：深淵·垃圾山（層次＋光影版）。
+// 第一章的關卡場景：深淵·垃圾山（層次＋光影版）。地形照 stages.js 的這一關（寬、平台、火把、主題）烘焙：
+//   abyss＝1-1 墜落之底、junk＝1-2 垃圾山（垃圾更多、平台是木板鐵架、偏鏽色）、cave＝1-3 蝙蝠洞窟（更暗、水晶更多）
 // 參考絲之歌、Ori 的「技法」（不是畫面）＋ SLYNYRD 的像素視差教學，見 docs/素材參考.md：
 //   6 層：天空霧光（逆光，中下段最亮）→ 遠景 → 中遠景（巨大垃圾剪影）→ 中景（鎖鏈、水晶）→ 遊玩層 → 前景剪影
 //   越遠越接近霧色、越近越暗；遊玩層對比最高；前景幾乎全黑，框住畫面。
@@ -6,19 +7,19 @@
 // 水晶、火球、爆炸照亮，而且顏色永遠是色票裡的顏色（規則v2：不漸層、不柔邊）。
 import { hex, rand } from "../../pixelfx/src/core/index.js";
 import { tintOf } from "./light.js";
+import { LAYOUT, STAGE_ID } from "./stages.js";
 
 export const H = 216;
-export const LEVEL_W = 2400;
+export const LEVEL_W = LAYOUT.w;
+export const THEME = LAYOUT.theme;
+export { STAGE_ID };
+const S = { abyss: 0, junk: 100, cave: 200 }[THEME] ?? 0;   // 亂數種子錯開，每關長得不一樣
 export const FLOOR = 184;
 export const WALL = 16;
 /** 單向平台：從下面可以跳上來，往下滑可以穿過去。 */
-export const PLATFORMS = [
-  { x: 330, y: 138, w: 96 }, { x: 520, y: 104, w: 72 }, { x: 700, y: 140, w: 120 },
-  { x: 1000, y: 122, w: 88 }, { x: 1180, y: 92, w: 64 }, { x: 1340, y: 138, w: 112 },
-  { x: 1640, y: 116, w: 96 }, { x: 1840, y: 142, w: 80 }, { x: 2040, y: 108, w: 104 },
-];
+export const PLATFORMS = LAYOUT.platforms;
 /** 火把位置（插在地上）。 */
-export const TORCHES = [180, 620, 1090, 1520, 1960, 2260];
+export const TORCHES = LAYOUT.torches;
 
 // ---- 色票：每條 8 階，0 最暗 → 7 最亮
 const C = (s) => hex(s) >>> 0;
@@ -43,12 +44,20 @@ for (const k of Object.keys(BASE)) R[k] = ramp(BASE[k]);
 R.ink = ramp(Array(8).fill("#07050c"));
 R.crystal = ramp(["#0e3440", "#14505e", "#1e7080", "#2e8fa8", "#46b4c8", "#6ad4e0", "#a0eef4", "#e0ffff"], true);
 // 霧化的色票：遠景、中遠景、中景各往自己的霧色混一些（越遠混越多、霧越亮）
-const FOG = { 1: ["#1c4a56", 0.75], 2: ["#163a46", 0.55], 3: ["#10262f", 0.3] };
+const FOG = {
+  abyss: { 1: ["#1c4a56", 0.75], 2: ["#163a46", 0.55], 3: ["#10262f", 0.3] },
+  junk: { 1: ["#4a3a30", 0.72], 2: ["#3a2c26", 0.52], 3: ["#261c18", 0.3] },
+  cave: { 1: ["#12243e", 0.78], 2: ["#0e1c32", 0.58], 3: ["#0a1424", 0.32] },
+}[THEME];
 for (const [layer, [fog, t]] of Object.entries(FOG)) for (const k of ["rock", "rust", "metal", "tire", "wood"]) R[k + layer] = ramp(BASE[k].map((c) => mixHex(c, fog, t)));
 const code = (r, t) => r * 8 + Math.max(0, Math.min(7, t)) + 1;
 
 // 天空（逆光霧）：實色帶，中下段最亮
-const SKY = [[0, "#060c12"], [30, "#08111a"], [58, "#0c1a24"], [82, "#11242e"], [102, "#173039"], [122, "#1f3d46"], [146, "#183540"], [170, "#122a34"]].map(([y, c]) => [y, C(c)]);
+const SKY = ({
+  abyss: [[0, "#060c12"], [30, "#08111a"], [58, "#0c1a24"], [82, "#11242e"], [102, "#173039"], [122, "#1f3d46"], [146, "#183540"], [170, "#122a34"]],
+  junk: [[0, "#0e0a0a"], [30, "#160f0e"], [58, "#201614"], [82, "#2c1e1a"], [102, "#3a2820"], [122, "#4a3426"], [146, "#3c2a22"], [170, "#2a1e1a"]],
+  cave: [[0, "#04060c"], [30, "#050812"], [58, "#070b18"], [82, "#0a1020"], [102, "#0d1528"], [122, "#111a30"], [146, "#0e162a"], [170, "#0a1020"]],
+}[THEME]).map(([y, c]) => [y, C(c)]);
 const skyRow = new Uint32Array(H);
 for (let y = 0; y < H; y++) for (const [y0, c] of SKY) if (y >= y0) skyRow[y] = c;
 
@@ -101,20 +110,23 @@ const CRYSTALS = [
 function build() {
   // ---- 遠景（0.12）：鐘乳石、石筍，幾乎融進霧裡
   for (let k = 0; k < 12; k++) {
-    const cx = Math.floor((k + rand(k, 1) * 0.6) * (W1 / 12));
-    spike(L1, W1, cx, 0, 50 + Math.floor(rand(k, 2) * 50), 26 + Math.floor(rand(k, 3) * 30), 1, code(R.rock1, 3), code(R.rock1, 5));
-    spike(L1, W1, cx + 40, H - 1, 80 + Math.floor(rand(k, 4) * 50), 40 + Math.floor(rand(k, 5) * 40), -1, code(R.rock1, 3), code(R.rock1, 5));
+    const cx = Math.floor((k + rand(k + S, 1) * 0.6) * (W1 / 12));
+    spike(L1, W1, cx, 0, 50 + Math.floor(rand(k + S, 2) * 50), 26 + Math.floor(rand(k + S, 3) * 30), 1, code(R.rock1, 3), code(R.rock1, 5));
+    spike(L1, W1, cx + 40, H - 1, 80 + Math.floor(rand(k + S, 4) * 50), 40 + Math.floor(rand(k + S, 5) * 40), -1, code(R.rock1, 3), code(R.rock1, 5));
   }
 
   // ---- 中遠景（0.3）：岩柱＋巨大的垃圾剪影（輪胎、木箱、鐵管）＝「垃圾山」
-  for (let k = 0; k < 6; k++) {
-    const cx = Math.floor((k + 0.3 + rand(k, 11) * 0.4) * (W2 / 6)), w = 30 + Math.floor(rand(k, 12) * 16);
+  const N2 = THEME === "junk" ? 9 : 6;
+  for (let k = 0; k < N2; k++) {
+    const cx = Math.floor((k + 0.3 + rand(k + S, 11) * 0.4) * (W2 / N2)), w = (THEME === "cave" ? 44 : 30) + Math.floor(rand(k + S, 12) * 16);
     for (let y = 0; y < H; y++) {
       const u = Math.abs(y - H * 0.4) / (H * 0.6), hw = Math.round((w / 2) * (0.5 + 0.5 * u * u));
       for (let dx = -hw; dx < hw; dx++) setL(L2, W2, cx + dx, y, code(R.rock2, dx === -hw || dx === hw - 1 ? 5 : dx > hw - 6 ? 2 : 3));
     }
-    const jx = cx + 90, kind = k % 3;
-    if (kind === 0) {           // 半埋的巨大輪胎
+    const jx = cx + 90, kind = THEME === "cave" ? -1 : k % 3;
+    if (kind === -1) {          // 洞窟：巨大的石筍
+      spike(L2, W2, jx, H - 1, 90 + Math.floor(rand(k + S, 13) * 50), 34 + Math.floor(rand(k + S, 14) * 20), -1, code(R.rock2, 3), code(R.rock2, 5));
+    } else if (kind === 0) {           // 半埋的巨大輪胎
       const r0 = 26, r1 = 16, cy = 170;
       for (let y = cy - r0; y <= cy + r0; y++) for (let x = -r0; x <= r0; x++) {
         const d = Math.hypot(x, y - cy);
@@ -134,18 +146,19 @@ function build() {
   }
 
   // ---- 中景（0.6）：從天花板垂下的岩塊和鐵鍊，岩架上的發光水晶
-  for (let k = 0; k < 9; k++) {
-    const cx = Math.floor((k + 0.2 + rand(k, 21) * 0.5) * (W3 / 9));
-    spike(L3, W3, cx, 0, 34 + Math.floor(rand(k, 22) * 30), 30 + Math.floor(rand(k, 23) * 20), 1, code(R.rock3, 2), code(R.rock3, 4));
+  const N3 = THEME === "cave" ? 13 : 9;
+  for (let k = 0; k < N3; k++) {
+    const cx = Math.floor((k + 0.2 + rand(k + S, 21) * 0.5) * (W3 / N3));
+    spike(L3, W3, cx, 0, 34 + Math.floor(rand(k + S, 22) * 30), 30 + Math.floor(rand(k + S, 23) * 20), 1, code(R.rock3, 2), code(R.rock3, 4));
     // 鐵鍊：一節亮一節暗，2px 寬
-    const chainX = cx + 40, len = 40 + Math.floor(rand(k, 24) * 50);
+    const chainX = cx + 40, len = THEME === "cave" ? 0 : 40 + Math.floor(rand(k + S, 24) * 50);
     for (let y = 0; y < len; y++) {
       const link = Math.floor(y / 3) % 2;
       setL(L3, W3, chainX, y, code(R.metal3, link ? 4 : 3));
       setL(L3, W3, chainX + 1, y, code(R.metal3, link ? 2 : 3));
     }
     // 地上的石塊岩架＋水晶
-    const lx = cx + 100, ly = 172 - Math.floor(rand(k, 25) * 10), lw = 40;
+    const lx = cx + 100, ly = 172 - Math.floor(rand(k + S, 25) * 10), lw = 40;
     for (let y = ly; y < H; y++) for (let x = 0; x < lw; x++) {
       const inset = Math.max(0, 4 - (y - ly));        // 頂端兩角修圓（階梯）
       if (x < inset || x >= lw - inset) continue;
@@ -161,7 +174,7 @@ function build() {
   const brick = (x, y, top) => {
     const row = Math.floor((y - top) / 8), off = (row & 1) * 8, bx = (x + off) % 16, by = (y - top) % 8;
     if (bx === 0 || by === 0) return code(R.ink, 0);
-    const id = Math.floor((x + off) / 16), shade = rand(id, row, 9) < 0.25 ? 1 : 0;
+    const id = Math.floor((x + off) / 16), shade = rand(id + S, row, 9) < 0.25 ? 1 : 0;
     return code(R.rock, (by === 1 ? 4 : by === 7 ? 2 : 3) - shade);
   };
   const CRACK = [[3, 2], [4, 3], [4, 4], [5, 5], [6, 5]];
@@ -178,13 +191,22 @@ function build() {
   }
   for (let k = 0; k < LEVEL_W / 16; k += 7) for (const [dx, dy] of CRACK) put(k * 16 + dx, FLOOR + 8 + dy, code(R.ink, 0));
   for (const side of [0, LEVEL_W - WALL]) for (let x = side; x < side + WALL; x++) for (let y = 0; y < FLOOR; y++) put(x, y, brick(x, y, 0));
+  const plank = (x, y, p) => {
+    const by = y - p.y, bx = x - p.x;
+    if (by === 0 || by === 8 || bx === 0 || bx === p.w - 1) return code(R.ink, 0);
+    if ((bx % 24 === 3 || bx % 24 === 4) && by > 1) return code(R.metal, bx % 24 === 3 ? 5 : 3);   // 鐵架
+    if (by === 4) return code(R.wood, 2);                                                         // 兩片木板的縫
+    return code(R.wood, (by === 1 || by === 5 ? 5 : by === 3 || by === 7 ? 3 : 4) - (rand(Math.floor(bx / 12) + S, by > 4 ? 1 : 0, 7) < 0.3 ? 1 : 0));
+  };
   for (const p of PLATFORMS) for (let x = p.x; x < p.x + p.w; x++) {
     const edge = x === p.x || x === p.x + p.w - 1;
-    for (let y = p.y; y < p.y + 9; y++) put(x, y, edge || y === p.y + 8 ? code(R.ink, 0) : brick(x, y, p.y));
-    mossTop(x, p.y);
+    for (let y = p.y; y < p.y + 9; y++) put(x, y, THEME === "junk" ? plank(x, y, p) : edge || y === p.y + 8 ? code(R.ink, 0) : brick(x, y, p.y));
+    if (THEME !== "junk") mossTop(x, p.y);
   }
-  for (let k = 0; k < 24; k++) {
-    const cx = 100 + k * 96 + Math.floor(rand(k, 51) * 30);
+  const PILE_GAP = { abyss: 96, junk: 52, cave: 240 }[THEME];
+  for (let k = 0; k < LEVEL_W / PILE_GAP - 1; k++) {
+    const cx = 100 + k * PILE_GAP + Math.floor(rand(k + S, 51) * 30);
+    if (cx > LEVEL_W - 60) break;
     if (TORCHES.some((t) => Math.abs(t - cx) < 30)) continue;
     for (const [name, dx, dy] of PILES[k % PILES.length]) {
       const rows = JUNK[name];
@@ -198,9 +220,9 @@ function build() {
 
   // ---- 前景剪影（1.35）：上方垂下的岩塊、下方的碎石堆，幾乎全黑，只有靠光那側一條邊
   for (let k = 0; k < 5; k++) {
-    const cx = Math.floor((k + 0.5) * (WF / 5)) + Math.floor(rand(k, 61) * 80);
-    spike(LF, WF, cx, 0, 22 + Math.floor(rand(k, 62) * 22), 30 + Math.floor(rand(k, 63) * 24), 1, code(R.rock, 0), code(R.rock, 1));
-    spike(LF, WF, cx + 180, H - 1, 16 + Math.floor(rand(k, 64) * 10), 60 + Math.floor(rand(k, 65) * 30), -1, code(R.rock, 0), code(R.rock, 1));
+    const cx = Math.floor((k + 0.5) * (WF / 5)) + Math.floor(rand(k + S, 61) * 80);
+    spike(LF, WF, cx, 0, 22 + Math.floor(rand(k + S, 62) * 22), 30 + Math.floor(rand(k + S, 63) * 24), 1, code(R.rock, 0), code(R.rock, 1));
+    spike(LF, WF, cx + 180, H - 1, 16 + Math.floor(rand(k + S, 64) * 10), 60 + Math.floor(rand(k + S, 65) * 30), -1, code(R.rock, 0), code(R.rock, 1));
   }
   for (let y = 1; y < H; y++) for (let x = 0; x < WF; x++) {
     const i = y * WF + x;
