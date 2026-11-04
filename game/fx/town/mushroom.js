@@ -70,11 +70,11 @@ function mom(g, t, D) {
 
 function kid(g, t, walk) {
   const ph = walk ? wrap(t, 0.5) / 0.5 : 0, land = walk && ph > 0.5;
-  const sq = walk ? (land ? -0.12 : 0.1) : 0, hop = walk && !land ? -Math.round(Math.sin((ph / 0.5) * Math.PI) * 2) : 0;
+  const sq = walk ? (land ? -0.06 : 0.04) : 0, hop = walk && !land ? -Math.round(Math.sin((ph / 0.5) * Math.PI) * 2) : 0;
   const leg = walk ? (ph < 0.5 ? 1 : -1) : 0;
   ball(g, -2 - leg, -1, 1.8, 1.4, SHOE, { spec: false });
   ball(g, 2 + leg, -1, 1.8, 1.4, SHOE, { spec: false });
-  const top = -8 + hop - Math.round(sq * 6);
+  const top = -8 + hop - Math.round(sq * 4);
   cylinder(g, 0, top, -2 + hop, 3.6 * (1 - sq * 0.5), STEM);
   g.set(-2, top + 2, EYE); g.set(1, top + 2, EYE);
   cap(g, 0, top, 7 * (1 - sq * 0.4), 5 * (1 + sq), [[-0.45, 0.45, 1.4], [0.45, 0.6, 1.2]]);

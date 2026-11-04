@@ -31,9 +31,10 @@ export function draw(p, time, o) {
   const nod = !walk ? (wrap(time, 3.2) > 2.6 ? 1 : 0) : Math.round(Math.max(0, Math.sin(ph * TAU)) * 1);
   g.clear();
   // 腳：四隻短管子，前後兩組交替抬起
-  for (const [x, s] of [[-9, 1], [-3, -1], [4, 1], [10, -1]]) {
+  for (const [x, s] of [[-7, 1], [7, -1]]) {   // 側面只看得到靠近這邊的兩隻
     const lift = Math.max(0, stepA * s) > 0.3 ? 1 : 0;
-    limb(g, [[x, -6 - bob], [x + s * 0.5, -1 - lift]], 1.6, SKIN);
+    limb(g, [[x, -6 - bob], [x + s * 0.5, -1 - lift]], 2, SKIN);
+    ball(g, x + s * 0.5, -1 - lift, 2.6, 1.4, SKIN, { spec: false });   // 腳掌
   }
   // 脖子＋頭（右邊）
   limb(g, [[11, -10 - bob], [15 + nod, -12 - bob]], 2.4, SKIN);

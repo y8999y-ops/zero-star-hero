@@ -373,10 +373,9 @@ export function drawTownFg(frame) {
   }
 }
 
-/** 居民（待機 8 格，每格 1/8 秒） */
+/** 居民（待機動畫，烘焙好的，見 npcs.js） */
 export function drawTownNpcs(frame, time) {
-  const f = Math.floor(time * 8) % 8;
-  for (const n of NPCS) paintNpc(frame, n.id, f, n.x, FLOOR - 1, n.flip);
+  for (const n of NPCS) paintNpc(frame, n.id, time, n.x, FLOOR - 1, n.flip);
 }
 /** 主角附近的居民或路標（可以對話的） */
 export function nearby(x) {

@@ -492,7 +492,7 @@ function updateBubble(dt) {
 // 可以對話時，頭上出現一個跳動的「！」
 function drawPrompt() {
   if (!near || dialog.open) return;
-  const bob = Math.floor(sceneClock * 4) % 2, x0 = Math.round(near.x) - frame.ox - 1, y0 = (near.place === "sign" ? 140 : near.folk ? FLOOR - near.h - 12 : FLOOR - 46) - bob - frame.oy;
+  const bob = Math.floor(sceneClock * 4) % 2, x0 = Math.round(near.x) - frame.ox - 1, y0 = (near.place === "sign" ? 140 : FLOOR - (near.h ?? npcSize(near.id)[1]) - 12) - bob - frame.oy;
   const C1 = hex("#ffd84a") >>> 0, C0 = hex("#2a1626") >>> 0;
   for (let y = -1; y <= 9; y++) for (let x = -1; x <= 3; x++) {
     const on = x >= 0 && x <= 2 && ((y >= 0 && y <= 5) || (y >= 7 && y <= 8)) && (x === 1 || y <= 5);

@@ -36,28 +36,30 @@ export function createFolk(floor) {
     { id: "turtle", x: 480, min: 330, max: 720 },
     { id: "pebble", x: 450, min: 360, max: 560 },
     { id: "shroom", x: 820, min: 640, max: 900 },
-  ].map((o, i) => ({ ...o, info: FOLK_INFO[o.id], dir: i % 2 ? -1 : 1, state: "walk", t: 2 + i, anim: 0, talking: false, talkN: 0 }));
+  ].map((o, i) => ({ ...o, info: FOLK_INFO[o.id], dir: i % 2 ? -1 : 1, state: "walk", t: 2 + i, talking: false, talkN: 0 }));
   const lead = list.find((o) => o.id === "shroom");
-  const follower = { id: "shroom2", info: FOLK_INFO.shroom, x: lead.x - 14, dir: lead.dir, state: "walk", anim: 0, follow: lead, talking: false };
+  const follower = { id: "shroom2", info: FOLK_INFO.shroom, x: lead.x - 14, dir: lead.dir, state: "walk", follow: lead, talking: false };
   list.push(follower);
 
   function update(dt, playerX) {
     for (const o of list) {
-      if (o.talking) { o.dir = playerX >= o.x ? 1 : -1; o.anim = 0; continue; }
+      o.clock = (o.clock ?? Math.random() * 2) + dt;
+      o.moving = false;
+      if (o.talking) { o.dir = playerX >= o.x ? 1 : -1; continue; }
       if (o.follow) {
         // 跟著前面那顆，隔 14px，慢一格
         const L = o.follow, tx = L.x - L.dir * 14;
         const d = tx - o.x;
-        if (Math.abs(d) > 1) { o.x += Math.sign(d) * Math.min(Math.abs(d), L.info.speed * 1.15 * dt); o.dir = Math.sign(d); o.anim += dt * 8; }
-        else { o.dir = L.dir; if (L.state === "idle") o.anim = 0; }
+        if (Math.abs(d) > 1) { o.x += Math.sign(d) * Math.min(Math.abs(d), L.info.speed * 1.15 * dt); o.dir = Math.sign(d); o.moving = true; }
+        else o.dir = L.dir;
         continue;
       }
       o.t -= dt;
       if (o.state === "walk") {
         o.x += o.dir * o.info.speed * dt;
-        o.anim += dt * (o.info.hop ? 7 : 6);
+        o.moving = true;
         if (o.x < o.min || o.x > o.max) { o.x = Math.max(o.min, Math.min(o.max, o.x)); o.dir = -o.dir; }
-        if (o.t <= 0) { o.state = "idle"; o.t = 1.2 + Math.random() * 2.5; o.anim = 0; }
+        if (o.t <= 0) { o.state = "idle"; o.t = 1.2 + Math.random() * 2.5; }
       } else if (o.t <= 0) {
         o.state = "walk"; o.t = 3 + Math.random() * 5;
         if (Math.random() < 0.5) o.dir = -o.dir;
@@ -65,7 +67,7 @@ export function createFolk(floor) {
     }
   }
   function draw(frame) {
-    for (const o of list) paintNpc(frame, o.id, o.state === "walk" || o.anim > 0 ? Math.floor(o.anim) % 4 : 0, o.x, floor - 1, o.dir < 0);
+    for (const o of list) paintNpc(frame, o.id, o.clock ?? 0, o.x, floor - 1, o.dir < 0, o.moving);
   }
   /** 主角旁邊的路人（可以聊天的）；菇菇寶寶跟著的那顆不算 */
   function nearby(x) {

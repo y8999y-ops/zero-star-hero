@@ -37,14 +37,17 @@ function boss(g, C, t, D) {
   // 腳（兩顆矮石頭）
   ball(g, -7, -4, 5.5, 4.2, C, { spec: false });
   ball(g, 7, -4, 5.5, 4.2, C, { spec: false });
-  // 身體：一顆大圓石
-  ball(g, 0, -20 + lift, 14, 12, C);
-  // 手：肩膀一顆石頭，往下一條粗管子，拳頭一顆石頭
+  // 手（畫在身體後面，往外張開才看得到）：上臂一顆長石、前臂一條粗管子、拳頭一顆石頭
   for (const s of [-1, 1]) {
-    limb(g, [[s * 13, -26 + lift], [s * 17, -16 + lift], [s * 17, -10 + lift]], (u) => 3.2 - u * 0.6, C);
-    ball(g, s * 14, -29 + lift, 6.5, 5.5, C);
-    ball(g, s * 17.5, -8 + lift, 5.2, 4.6, C, { spec: false });
+    ball(g, s * 19, -22 + lift, 4.6, 6.5, C, { bias: -0.08 });
+    limb(g, [[s * 20, -18 + lift], [s * 22, -12 + lift]], 3.4, C);
+    ball(g, s * 22, -9 + lift, 5.4, 4.8, C, { spec: false });
   }
+  // 身體：一顆大圓石；肩膀各一顆石頭蓋在手臂上面
+  ball(g, 0, -20 + lift, 14, 12, C);
+  for (const s of [-1, 1]) ball(g, s * 14, -29 + lift, 6.5, 5.5, C);
+  // 手臂和身體之間的縫（深色），分得出前後
+  for (const s of [-1, 1]) for (let y = -24; y <= -12; y++) { const x = s * Math.round(14 * Math.sqrt(Math.max(0, 1 - ((y + 20) / 12) ** 2))); g.set(x + s, y + lift, C[1]); }
   // 頭：小一點的圓石，坐在身體上
   ball(g, 0, -37 + lift, 8, 6.5, C);
   mossCap(g, 0, -37 + lift, 8, 6.5);
