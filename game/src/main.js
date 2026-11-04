@@ -29,6 +29,7 @@ import { paintStar, POSES } from "./star.js";
 import { npcSize } from "./npcs.js";
 import { createProps } from "./props.js";
 import { createScenery } from "./scenery.js";
+import { createComboArt } from "./combo-art.js";
 import { fxState, dustFx, updateCombatFx, drawCombatFx, drawDamageNumbers } from "./combatfx.js";
 import { PLATFORMS } from "./level.js";
 import { ult, ULT_MAX, ULT_MULT, startUlt, updateUlt, ultLights, dimScene, drawUlt, drawCutIn, postUlt } from "./ult.js";
@@ -389,7 +390,6 @@ const world = {
   },
   onPlayerHurt() {
     stats.combo = 0;
-    comboEl.classList.remove("on");
     if (player.hp <= 0) {
       player.hp = player.maxHp;
       stats.deaths++;
@@ -592,10 +592,6 @@ function addCombo(n) {
   stats.best = Math.max(stats.best, stats.combo);
   if (stats.combo >= 50 && stats.combo - n < 50) toast("系統：50 連擊！……我開始有點興奮了。");
   if (stats.combo >= 100 && stats.combo - n < 100) toast("系統：100 連擊！這不科學！");
-  comboEl.classList.add("on");
-  comboEl.classList.remove("bump");
-  void comboEl.offsetWidth;
-  comboEl.classList.add("bump");
 }
 
 // ---- 敵人生成：越打越多
@@ -747,7 +743,7 @@ function tick(dt) {
   for (let i = coins.length - 1; i >= 0; i--) if (coins[i].got) coins.splice(i, 1);
 
   updateFx(dt);
-  if ((stats.comboT -= dt) <= 0 && stats.combo) { stats.combo = 0; comboEl.classList.remove("on"); }
+  if ((stats.comboT -= dt) <= 0 && stats.combo) stats.combo = 0;
 
   followCam(dt);
   updateSay(dt);
@@ -867,7 +863,7 @@ function updateBagDot() {
   bagDot.className = "dot" + (up ? " on" : nw ? " on new" : "");
   bagDot.textContent = up ? "▲" : nw ? "!" : "";
 }
-const comboEl = $("combo"), hpFill = $("hpFill"), hpText = $("hpText"), coinsEl = $("coins"), killsEl = $("kills"), fpsEl = $("fps"), cdEl = $("skillCd"), toastEl = $("toast");
+const comboEl = $("combo"), comboArt = createComboArt(comboEl), hpFill = $("hpFill"), hpText = $("hpText"), coinsEl = $("coins"), killsEl = $("kills"), fpsEl = $("fps"), cdEl = $("skillCd"), toastEl = $("toast");
 const ubFill = $("ubFill"), ubBar = $("ubBar"), ultFill = $("ultFill"), btnUlt = $("btnUlt");
 let toastT = 0;
 const sysEl = $("sys"), sysText = $("sysTyped"), sysGhost = $("sysGhost");
@@ -962,7 +958,7 @@ function hud(dt) {
   lvEl.textContent = "Lv " + profile.lv;
   xpFill.style.width = (profile.lv >= MAX_LV ? 100 : (profile.xp / xpNeed(profile.lv)) * 100) + "%";
   killsEl.textContent = stats.kills;
-  $("comboN").textContent = stats.combo;
+  comboArt.update(stats.combo, stats.comboT / 2.2, dt);
   cdEl.style.height = Math.max(0, player.skillCd / player.skillMax) * 100 + "%";
   const uk = ult.charge / ULT_MAX, ready = uk >= 1 && !ult.on;
   ubFill.style.width = uk * 100 + "%";

@@ -53,16 +53,20 @@ html, body {
 #topR { position: absolute; top: max(8px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right)); display: none; gap: 8px; align-items: center; z-index: 2; }
 body.playing #topR { display: flex; }
 .coins { height: 34px; padding: 0 10px 0 6px; display: flex; align-items: center; gap: 4px; color: var(--gold); font-weight: 700; font-size: 15px; text-shadow: 0 2px 0 #000; border: 6px solid transparent; border-image: var(--inset) 6 fill / 6px; image-rendering: pixelated; pointer-events: none; }
-#killBox { position: absolute; top: max(108px, calc(env(safe-area-inset-top) + 100px)); right: max(12px, env(safe-area-inset-right)); color: var(--dim); font-size: 13px; font-weight: 700; text-shadow: 0 2px 0 #000; pointer-events: none; opacity: 0; transition: opacity .4s; }
+#killBox { position: absolute; top: max(172px, calc(env(safe-area-inset-top) + 164px)); right: max(12px, env(safe-area-inset-right)); color: var(--dim); font-size: 13px; font-weight: 700; text-shadow: 0 2px 0 #000; pointer-events: none; opacity: 0; transition: opacity .4s; }
 #killBox.on { opacity: 1; }
 #killBox span { color: var(--ink); font-size: 16px; }
 body.town .ub, body.town #killBox, body.town #combo { display: none; }
-#combo { position: absolute; top: 18%; right: 6%; text-align: right; pointer-events: none; opacity: 0; transition: opacity .3s; text-shadow: 0 3px 0 #000; }
+/* 連段：像素風計數器（src/combo-art.js 畫），加一下跳一下、里程碑閃光、斷掉往下掉著淡出 */
+#combo { position: absolute; top: max(104px, calc(env(safe-area-inset-top) + 96px)); right: max(8px, env(safe-area-inset-right)); pointer-events: none; opacity: 0; transform-origin: 85% 40%; }
+#combo canvas { display: block; width: 152px; height: 64px; image-rendering: pixelated; }
 #combo.on { opacity: 1; }
-#combo b { display: block; font-size: 44px; line-height: 1; color: var(--gold); font-style: italic; }
-#combo span { font-size: 14px; letter-spacing: 3px; color: var(--ink); }
-#combo.bump b { animation: bump .15s ease-out; }
-@keyframes bump { from { transform: scale(1.35); } to { transform: scale(1); } }
+#combo.bump canvas { animation: comboBump .16s steps(3); }
+@keyframes comboBump { 0% { transform: scale(1.3) rotate(-4deg); } 100% { transform: none; } }
+#combo.mile canvas { animation: comboMile .5s steps(5); }
+@keyframes comboMile { 0% { transform: scale(1.7) rotate(-6deg); filter: brightness(2.2) drop-shadow(0 0 6px #fff); } 40% { transform: scale(1.15); filter: brightness(1.4) drop-shadow(0 0 4px #ffd84a); } 100% { transform: none; filter: none; } }
+#combo.end { animation: comboEnd .6s ease-in forwards; }
+@keyframes comboEnd { to { opacity: 0; transform: translateY(14px); } }
 #toast { position: absolute; top: 30%; left: 50%; transform: translateX(-50%); font-size: 18px; font-weight: 700; color: var(--ink); text-shadow: 0 2px 0 #000; pointer-events: none; opacity: 0; transition: opacity .3s; white-space: nowrap; }
 #toast.on { opacity: 1; }
 #hint { position: absolute; bottom: 22%; left: 50%; transform: translateX(-50%); max-width: 70%; padding: 6px 14px; border: 6px solid transparent; border-image: var(--inset) 6 fill / 6px; image-rendering: pixelated; color: var(--gold); font-size: 14px; text-align: center; pointer-events: none; opacity: 0; transition: opacity .4s; }
