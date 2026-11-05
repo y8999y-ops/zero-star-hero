@@ -157,10 +157,11 @@ export function drawDamageNumbers(frame) {
     const wpx = [...text].reduce((n, ch) => n + GLYPH[ch][0].length * s + gap, -gap), hpx = 5 * s;
     // 跳一下：剛加上去的那 0.1 秒往上 2 格
     let x = Math.round(q.x - ox - wpx / 2), y = Math.round(q.y - oy - hpx - q.rise - (q.bump > 0 ? 2 : 0));
-    x = Math.max(2, Math.min(W - wpx - 2, x));
-    y = Math.max(2, Math.min(H - hpx - 2, y));
+    const v = frame.view ?? { x0: 0, y0: 0, w: W, h: H };   // 推到「看得到的範圍」的邊緣（鏡頭拉近後畫布四周被裁掉）
+    x = Math.max(Math.ceil(v.x0) + 2, Math.min(Math.floor(v.x0 + v.w) - wpx - 2, x));
+    y = Math.max(Math.ceil(v.y0) + 2, Math.min(Math.floor(v.y0 + v.h) - hpx - 2, y));
     for (const p of placed) if (x < p.x + p.w + 2 && x + wpx + 2 > p.x && y < p.y + p.h + 2 && y + hpx + 2 > p.y) y = p.y - hpx - 3;
-    y = Math.max(2, y);
+    y = Math.max(Math.ceil(v.y0) + 2, y);
     placed.push({ x, y, w: wpx, h: hpx });
     const [fill, low] = q.crit ? NUM.crit : q.heavy || q.hits >= 3 ? NUM.heavy : NUM.normal;
     // 先畫外框（四周＋右下多一格當陰影），再畫字；字的下半部用較深的顏色

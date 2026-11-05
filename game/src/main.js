@@ -101,8 +101,16 @@ const canvas = document.getElementById("screen");
 const ctx = canvas.getContext("2d");
 let W = 384, frame, img;
 const ZOOM = 1.38;   // 鏡頭拉近（看到的世界是原本的 1/1.38）；使用者 2026-11-05：1.2 → 再放大 15%
-// 使用者 2026-11-05：鏡頭往下 15%——看得到的範圍在畫布裡往下移（看得到腳下多一點），單位：畫布像素
-const VIEW_DY = Math.round(0.15 * H / ZOOM);
+// 使用者 2026-11-05：鏡頭往下 15%，再往上 10%（淨往下 5%）——看得到的範圍在畫布裡往下移（看得到腳下多一點），單位：畫布像素
+const VIEW_DY = Math.round(0.05 * H / ZOOM);
+// 王戰時鏡頭稍微拉遠（使用者 2026-11-05 照建議）：王房比一個畫面寬，拉遠一點才看得到王從另一邊衝過來
+const ZOOM_BOSS = 1.2;
+let zoom = ZOOM, zoomShown = 0;
+/** 看得到的範圍（畫布座標）：放大後四周被裁掉，只剩中間這一塊；鏡頭、特寫帶、跳字、小地圖都照這個算 */
+function viewRect() {
+  const vw = W / zoom, vh = H / zoom, my = (H - vh) / 2;
+  return { x0: (W - vw) / 2, y0: my + Math.min(VIEW_DY, my), w: vw, h: vh };
+}
 
 // ---- 畫面大小：高度固定 216，寬度跟著螢幕比例走（手機長螢幕不會有黑邊）
 function resize() {
@@ -110,16 +118,22 @@ function resize() {
   W = Math.max(320, Math.min(480, Math.round((H * aspect) / 2) * 2));
   canvas.width = W;
   canvas.height = H;
-  // 使用者 2026-11-05：鏡頭近 20%——畫面照原本的 216 高畫，顯示時放大 1.2 倍、置中，超出視窗的四周裁掉（#stage overflow: hidden）
-  const k = Math.min(innerWidth / W, innerHeight / H) * ZOOM;
+  // 使用者 2026-11-05：鏡頭拉近——畫面照原本的 216 高畫，顯示時放大 zoom 倍，超出視窗的四周裁掉（#stage overflow: hidden）
+  frame = createFrame(W, H);
+  img = new ImageData(W, H);
+  applyZoom();
+}
+/** 畫布顯示大小：放大 zoom 倍，看得到的範圍對齊視窗中間 */
+function applyZoom() {
+  zoomShown = zoom;
+  const k = Math.min(innerWidth / W, innerHeight / H) * zoom, v = viewRect();
   canvas.style.width = Math.floor(W * k) + "px";
   canvas.style.height = Math.floor(H * k) + "px";
   // 置中（比視窗大時 grid 會靠左上，裁切就不對稱）：直接算左上角，offsetLeft／offsetTop 也跟著對
   canvas.style.position = "absolute";
   canvas.style.left = Math.round((innerWidth - Math.floor(W * k)) / 2) + "px";
-  canvas.style.top = Math.round((innerHeight - Math.floor(H * k)) / 2 - VIEW_DY * k) + "px";
-  frame = createFrame(W, H);
-  img = new ImageData(W, H);
+  canvas.style.top = Math.round((innerHeight - Math.floor(H * k)) / 2 - (v.y0 - (H - v.h) / 2) * k) + "px";
+  frame.view = v;
 }
 addEventListener("resize", resize);
 resize();
@@ -155,7 +169,7 @@ bindForms(profile.forms);
 player.setForm(profile.forms.cur);
 player.hp = player.maxHp;
 const inv = createInventory(profile, { onChange: refreshStats });
-window.__game = { player, enemies, stats, profile, drops, inv, get director() { return director; }, get camX() { return camX; } };   // 開發用：在主控台檢查狀態
+window.__game = { player, enemies, stats, profile, drops, inv, get director() { return director; }, get camX() { return camX; }, get camY() { return camY; }, get view() { return viewRect(); }, get zoom() { return zoom; } };   // 開發用：在主控台檢查狀態
 
 // 每種敵人的經驗值、掉寶率
 const KILL_XP = { slime: 5, bat: 5, trash: 12, gold: 20 };
@@ -352,7 +366,7 @@ const STAGE_CHEST = { "1-1": 0, "1-2": 1, "1-3": 2 };
 const chestOpts = (tier) => { const T = CHEST_TIERS[tier]; return { tier, wood: T.wood, palette: T.palette, coins: 0, gems: 0, light: 0.3 + tier * 0.08 }; };
 function makeChest(x, tier, y = FLOOR) { return { x: Math.round(x), y, tier, opened: false, t: 0, fx: createFx(treasureChest, { x: Math.round(x), y, ...chestOpts(tier) }) }; }
 let chest = ENDLESS || TOWN || STAGE_ID === "1-4" ? null : makeChest(STAGE.exitX - 120, STAGE_CHEST[STAGE_ID] ?? 0, floorAt(STAGE.exitX - 120, (STAGE.exitY || FLOOR) - 8));
-let chestNear = false, prevChestAtk = false;
+let prevUseAtk = false, useT = null, useKind = "";
 /** 可以開箱嗎：站在旁邊、在地上、沒有在打仗 */
 // 8b：怪物擺滿整張地圖，改成「附近 160 以內沒有活的怪」就能開（不用清光整關）
 const canOpenChest = () => !!chest && !chest.opened && Math.abs(player.x - chest.x) < 24 && Math.abs(player.y - chest.y) < 20 && player.grounded && !director?.lock && !enemies.some((e) => !e.dead && e.kind !== "gold" && Math.abs(e.x - chest.x) < 160 && Math.abs(e.y - chest.y) < 80);
@@ -366,8 +380,6 @@ function openChest() {
   sayQueue.unshift([["系統：木箱。……聊勝於無。", "系統：鐵箱！裡面應該不是垃圾吧。", "系統：紅漆金箱！我聞到錢的味道了。", "系統：星箱……！這是傳說中的那個嗎？"][c.tier], 2.6]);
 }
 function updateChest(dt) {
-  const near = canOpenChest();
-  if (near !== chestNear) { chestNear = near; document.body.classList.toggle("chestnear", near); }
   if (!chest || !chest.opened) return;
   const before = chest.t;
   chest.t += dt;
@@ -386,12 +398,33 @@ function updateChest(dt) {
     }
   }
 }
-/** 開箱鍵：在 player.update 之前攔截攻擊鍵。剛按下那一下開箱，旁邊有寶箱時不出拳 */
-function chestInput() {
+// ---- 互動鍵（使用者 2026-11-05）：傳送門、星之祭壇、寶箱、星之殘火、化石核、保險箱、碑文，都要站在旁邊按互動鍵才觸發。
+// 互動鍵＝攻擊鍵：旁邊有東西可以用時，攻擊鍵換成門／手／寶箱的圖示並發亮，頭上冒「！」；按下去用掉、不出拳。
+function findUse() {
+  if (!player.grounded || (player.hideT ?? 0) > 0 || ult.on) return null;
+  const c = [];
+  if (canOpenChest()) c.push({ kind: "chest", x: chest.x, top: chest.y - 34, go: openChest });
+  if (stageDone && !leaving && portalX !== null && Math.abs(player.x - portalX) < 16 && Math.abs(player.y - portalY) < 20) c.push({ kind: "door", x: portalX, top: portalY - 48, go: leaveStage });
+  for (const a of altars) if (Math.abs(player.x - a.x) < 16 && Math.abs(player.y - a.y) < 24) c.push({ kind: "hand", x: a.x, top: a.y - 44, go: () => useAltar(a) });
+  for (const u of features?.usable() ?? []) c.push({ kind: u.t === "safe" ? "chest" : "hand", x: u.x, top: u.top, go: () => features.use(u) });
+  let best = null;
+  for (const o of c) if (!best || Math.abs(o.x - player.x) < Math.abs(best.x - player.x)) best = o;
+  return best;
+}
+/** 在 player.update 之前攔截攻擊鍵：剛按下那一下用掉旁邊的東西，旁邊有東西時不出拳 */
+function useInput() {
   const atk = input.attack;
-  if (chestNear && atk && !prevChestAtk) { input.attack = false; openChest(); }
-  else if (chestNear) input.attack = false;
-  prevChestAtk = atk;
+  useT = findUse();
+  const kind = useT?.kind ?? "";
+  if (kind !== useKind) {
+    for (const k of ["chest", "door", "hand"]) document.body.classList.toggle(k + "near", k === kind);
+    useKind = kind;
+    // 第一次遇到可以互動的東西：教一次怎麼用（記在存檔，之後不再講）
+    if (kind && !profile.tipUse) { profile.tipUse = 1; sayQueue.unshift([isTouch ? "系統：站在旁邊時右下角的鍵會換圖示、發亮——按一下就能用。門、祭壇、撿東西都一樣。" : "系統：站在旁邊時按【滑鼠左鍵】就能用。門、祭壇、撿東西都一樣——頭上有「！」的就是。", 3.6]); }
+  }
+  if (useT && atk && !prevUseAtk) { input.attack = false; useT.go(); useT = null; }
+  else if (useT) input.attack = false;
+  prevUseAtk = atk;
 }
 
 // ---- 可以撿的金幣和寶石（寶箱噴出來的）：先彈跳落地，主角走過去才吸過來
@@ -718,7 +751,7 @@ const world = {
       player.hideT = 9; player.invuln = 10; player.state = "move";
       setTimeout(() => fade.classList.add("on"), 550);
       setTimeout(() => {
-        if (to) { player.x = to.x; player.y = to.y; player.vx = player.vy = 0; player.state = "move"; camX = Math.max(0, Math.min(LEVEL_W - W, to.x - W / 2)); camY = Math.max(0, Math.min(MAP_H - H, to.y - H * 0.62)); }
+        if (to) { player.x = to.x; player.y = to.y; player.vx = player.vy = 0; player.state = "move"; { const v = viewRect(); camX = Math.max(-v.x0, Math.min(LEVEL_W - v.x0 - v.w, to.x - W / 2)); if (MAP_H > H) camY = Math.max(-v.y0, Math.min(MAP_H - v.y0 - v.h, to.y - H * 0.62)); } }
         player.hp = player.maxHp; player.mp = player.maxMp;
         fade.classList.remove("on");
         deathFx.regather(player.x, player.y, col);
@@ -913,9 +946,9 @@ function townTick(dt) {
   } else { player.vx = 0; prevAtk = true; }
   drops.update(dt, player, 16, pickUp);
   updateFx(dt);
-  const want = player.x - W / 2 + player.face * 30;
+  const want = player.x - W / 2 + player.face * 30, v = viewRect();
   camX += (want - camX) * Math.min(1, 5 * dt);
-  camX = Math.max(0, Math.min(TOWN_W - W, camX));
+  camX = Math.max(-v.x0, Math.min(TOWN_W - v.x0 - v.w, camX));   // 照看得到的範圍停（放大後畫布邊緣是裁掉的）
   updateSay(dt);
   updateBubble(dt);
 }
@@ -932,7 +965,7 @@ function updateBubble(dt) {
   if (bubbleWho) {
     if ((bubbleT -= dt) <= 0 || bubbleWho === near || bubbleWho === near?.folk) { bubbleEl.classList.remove("on"); bubbleWho = null; bubbleWait = 5 + Math.random() * 4; }
   } else if ((bubbleWait -= dt) <= 0) {
-    const seen = [...NPCS, ...folk.list.filter((o) => !o.follow)].filter((n) => n !== near && n !== near?.folk && n.x > camX + 20 && n.x < camX + W - 20);
+    const seen = [...NPCS, ...folk.list.filter((o) => !o.follow)].filter((n) => n !== near && n !== near?.folk && n.x > camX + viewRect().x0 + 20 && n.x < camX + viewRect().x0 + viewRect().w - 20);
     if (seen.length) {
       bubbleWho = seen[Math.floor(Math.random() * seen.length)];
       const L = AMBIENT[bubbleWho.id] ?? FOLK_INFO[bubbleWho.id].ambient;
@@ -952,7 +985,11 @@ function updateBubble(dt) {
 // 可以對話時，頭上出現一個跳動的「！」
 function drawPrompt() {
   if (!near || dialog.open) return;
-  const bob = Math.floor(sceneClock * 4) % 2, x0 = Math.round(near.x) - frame.ox - 1, y0 = (near.place === "sign" ? 140 : FLOOR - (near.h ?? npcSize(near.id)[1]) - 12) - bob - frame.oy;
+  drawBang(near.x, near.place === "sign" ? 140 : FLOOR - (near.h ?? npcSize(near.id)[1]) - 12);
+}
+/** 頭上跳動的「！」：(x, top) 世界座標。城鎮的對話、關卡裡可以互動的東西都用這個 */
+function drawBang(wx, top) {
+  const bob = Math.floor(sceneClock * 4) % 2, x0 = Math.round(wx) - frame.ox - 1, y0 = Math.round(top) - bob - frame.oy;
   const C1 = hex("#ffd84a") >>> 0, C0 = hex("#2a1626") >>> 0;
   for (let y = -1; y <= 9; y++) for (let x = -1; x <= 3; x++) {
     const on = x >= 0 && x <= 2 && ((y >= 0 && y <= 5) || (y >= 7 && y <= 8)) && (x === 1 || y <= 5);
@@ -1074,22 +1111,26 @@ function heartBurst(from) {
   world.hitArea({ x0: player.x - r, x1: player.x + r, y0: player.y - r, y1: player.y + 10 }, () => player.roll(mult), player.face, { push: 3, elem: el });
 }
 // ---- 史詩套裝「流星獵手」4 件：暴擊標記，5 秒內再暴擊同一隻 → 掉一顆小流星（攻擊力 80%）
+/** 通關後在傳送門按互動：回碎星鎮 */
+function leaveStage() {
+  leaving = true;
+  sfx("form");
+  flash(portalX, portalY - 16, 90, 3, 0.5, "#a8f0ff");
+  goScene("town");
+}
 function updateAltars() {
-  for (const a of altars) {
-    if (a.pulse > 0) a.pulse = Math.max(0, a.pulse - STEP / 0.8);
-    const near = Math.abs(player.x - a.x) < 14 && Math.abs(player.y - a.y) < 24;
-    if (near && !a.near) {
-      player.hp = player.maxHp; player.mp = player.maxMp;
-      checkpoint = a;
-      if (!a.lit) {
-        a.lit = true;
-        spawn(collectBurst, { x: a.x, y: a.y - 18, palette: ["#1e1206", "#4a2c08", "#86520c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"], light: 0.6 });
-        flash(a.x, a.y - 16, 110, 3, 0.8, "#ffe066"); sfx("levelup");
-        toast("星之祭壇點亮了：生命、魔力回滿。死掉的話會從這裡重來。", 2.6);
-      } else { flash(a.x, a.y - 16, 60, 2, 0.3, "#ffe066"); sfx("chime"); }
-    }
-    a.near = near;
-  }
+  for (const a of altars) if (a.pulse > 0) a.pulse = Math.max(0, a.pulse - STEP / 0.8);
+}
+/** 在星之祭壇按互動：生命、魔力回滿，設成重生點 */
+function useAltar(a) {
+  player.hp = player.maxHp; player.mp = player.maxMp;
+  checkpoint = a;
+  if (!a.lit) {
+    a.lit = true;
+    spawn(collectBurst, { x: a.x, y: a.y - 18, palette: ["#1e1206", "#4a2c08", "#86520c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"], light: 0.6 });
+    flash(a.x, a.y - 16, 110, 3, 0.8, "#ffe066"); sfx("levelup");
+    toast("星之祭壇點亮了：生命、魔力回滿。死掉的話會從這裡重來。", 2.6);
+  } else { flash(a.x, a.y - 16, 60, 2, 0.3, "#ffe066"); sfx("chime"); toast("生命、魔力回滿了。", 1.6); }
 }
 /** 星核效果每幀：沉重（被打飛的撞到別人）、彗尾（衝刺留星光）、鈍光（暈眩計時） */
 function updateCoreFx(dt) {
@@ -1155,7 +1196,7 @@ const ultHooks = {
   // 形態大招（ult-forms.js）用的
   enemies: () => enemies.filter((e) => !e.dead),
   hit(e, mult, dir, opts) { if (e.dead) return; e.hit(player.roll(mult * (1 + player.stats.ult / 100)), dir, opts, world); addCombo(1); },
-  view: () => ({ l: camX, r: camX + W, top: camY }),
+  view: () => { const v = viewRect(); return { l: camX + v.x0, r: camX + v.x0 + v.w, top: camY + v.y0 }; },   // 大招只打看得到的範圍
   puddle: (x, y) => hazards.addTemp({ type: "goo", x: Math.round(x), y, w: 44, ttl: 6 }),
   heal: (k) => { player.hp = Math.min(player.maxHp, player.hp + player.maxHp * k); },
 };
@@ -1228,13 +1269,6 @@ function tick(dt) {
   if (enemies.some((e) => !e.dead && Math.abs(e.x - player.x) < 240)) hudFadeT = 2; else hudFadeT -= dt;
   if ((hudFadeT > 0) !== inCombat) { inCombat = hudFadeT > 0; document.body.classList.toggle("combat", inCombat); }
   if (cleared) { updateFx(dt); return; }
-  // 通關後踩到傳送門：回碎星鎮
-  if (stageDone && !leaving && portalX !== null && player.grounded && Math.abs(player.x - portalX) < 12 && Math.abs(player.y - portalY) < 20) {
-    leaving = true;
-    sfx("form");
-    flash(portalX, portalY - 16, 90, 3, 0.5, "#a8f0ff");
-    goScene("town");
-  }
   // 大招進行中：世界停住，只有主角、特效和攝影機在動
   if (ult.on) {
     updateUlt(dt, player, ultHooks);
@@ -1260,7 +1294,7 @@ function tick(dt) {
     sfx("ultCharge");
     return;
   }
-  chestInput();
+  useInput();
   player.update(dt, world);
   props.update(dt, propMovers(), propView());
   scenery.update(dt, player, propView());
@@ -1271,7 +1305,7 @@ function tick(dt) {
   if (ENDLESS) spawnEnemies(dt);
   else {
     stats.time += dt;
-    director.update(dt, player, camX, W);
+    { const v = viewRect(); director.update(dt, player, camX + v.x0, v.w); }
     // 戰鬥區封鎖：主角出不去
     if (director.lock) player.x = Math.max(director.lock.l + 10, Math.min(director.lock.r - 10, player.x));
   }
@@ -1403,20 +1437,26 @@ function tick(dt) {
   if ((stats.comboT -= dt) <= 0 && stats.combo) stats.combo = 0;
 
   followCam(dt);
-  mapView?.update(dt, camX, camY, W, H);
+  { const v = viewRect(); mapView?.update(dt, camX + v.x0, camY + v.y0, v.w, v.h); }   // 小地圖：看得到的範圍才算走過
   updateSay(dt);
 }
 // 攝影機：跟著主角，稍微往面對的方向看
 function followCam(dt) {
-  const want = player.x - W / 2 + player.face * 36;
+  // 王戰時慢慢拉遠、打完慢慢拉回來
+  const zt = director?.lock && STAGE.arena ? ZOOM_BOSS : ZOOM;
+  if (zoom !== zt) { zoom += Math.sign(zt - zoom) * Math.min(Math.abs(zt - zoom), 0.5 * dt); if (Math.abs(zoom - zoomShown) > 0.004 || zoom === zt) applyZoom(); }
+  const v = viewRect();
+  // 使用者 2026-11-05 照建議：往面對的方向多看 36 → 50（拉近後怪衝進畫面才有時間反應）
+  const want = player.x - W / 2 + player.face * 50;
   camX += (want - camX) * Math.min(1, 5 * dt);
-  camX = Math.max(0, Math.min(LEVEL_W - W, camX));
-  if (director?.lock) camX = Math.max(director.lock.l, Math.min(director.lock.r - W, camX));
+  // 照「看得到的範圍」停：走到地圖兩端主角還在畫面裡、王房光牆也看得到
+  camX = Math.max(-v.x0, Math.min(LEVEL_W - v.x0 - v.w, camX));
+  if (director?.lock) camX = Math.max(director.lock.l - v.x0, Math.min(director.lock.r - v.x0 - v.w, camX));
   // 8b：上下跟。主角站在畫面約 6 成高的地方；往下掉的時候跟快一點，才看得到底下
   if (MAP_H > H) {
     const wy = player.y - H * 0.62 + (player.vy > 120 ? 30 : 0);
     camY += (wy - camY) * Math.min(1, (player.vy > 120 ? 7 : 4) * dt);
-    camY = Math.max(0, Math.min(MAP_H - H, camY));
+    camY = Math.max(-v.y0, Math.min(MAP_H - v.y0 - v.h, camY));   // 爬到最上面看得到地圖頂端的尖刺、天花板上的蝙蝠
   }
 }
 
@@ -1450,6 +1490,7 @@ function render() {
   scenery.draw(frame, lv, sceneClock);
   hazards.draw(frame);
   if (TOWN) { drawTownNpcs(frame, sceneClock); folk.draw(frame); drawPrompt(); }
+  else if (useT) drawBang(useT.x, useT.top);
   if (chest && !chest.opened && Math.abs(chest.x - camX - W / 2) < W) chest.fx.draw(frame);
   // 大招時：先畫怪再暗場，法陣這些背景特效畫在暗場之後才會亮
   if (!ult.on) drawFx(frame, "back");
@@ -1475,7 +1516,7 @@ function render() {
   fxState.form = player.form;
   drawCombatFx(frame);
   drawUlt(frame);
-  if (!TOWN) drawLowHp(frame, lowHp.k, lowHp.pulse, ZOOM, VIEW_DY);
+  if (!TOWN) drawLowHp(frame, lowHp.k, lowHp.pulse, zoom, viewRect().y0 - (H - H / zoom) / 2);
   if (TOWN) drawTownFg(frame);
   if (director?.lock) drawBarrier(director.lock);
   if (!TOWN) drawForeground(frame);
@@ -1638,7 +1679,7 @@ function showClear() {
   }
   sayQueue.length = 0;
   toast(`系統：通關！${mm}:${ss}，擊倒 ${stats.kills}、最高連擊 ${stats.best}${stats.deaths ? "、死了 " + stats.deaths + " 次" : "，一次都沒死"}。`, 3.2);
-  sayQueue.push([STAGE_ID === "1-4" ? "系統：第一章　墜星之谷　完。走進傳送門，前面就是碎星鎮了。" : stats.deaths === 0 ? "系統：一次都沒死？……我收回「零星」那句話。一半。走進傳送門回碎星鎮吧。" : "系統：過是過了。走進傳送門回碎星鎮，死了幾次這件事我會幫你保密。", 4]);
+  sayQueue.push([STAGE_ID === "1-4" ? "系統：第一章　墜星之谷　完。走到傳送門按互動，前面就是碎星鎮了。" : stats.deaths === 0 ? "系統：一次都沒死？……我收回「零星」那句話。一半。走到傳送門按互動回碎星鎮吧。" : "系統：過是過了。走到傳送門按互動回碎星鎮，死了幾次這件事我會幫你保密。", 4]);
 }
 $("againBtn").addEventListener("click", () => goScene(ENDLESS ? "endless" : "stage", STAGE_ID));
 $("nextBtn").addEventListener("click", () => nextStage() && goScene("stage", nextStage()));

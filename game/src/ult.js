@@ -307,7 +307,7 @@ export function drawCutIn(frame) {
   const W = frame.w, C = frame.color, L = frame.light;
   const open = Math.min(clamp01((t - cut0) / 0.07), clamp01((cut1 - t) / 0.07)), half = Math.round(24 * outCubic(open));
   if (half <= 0) return;
-  const cy = frame.h - 46, local = t - cut0;   // 放在下方，上面的主角和星核才看得到
+  const vw = frame.view, cy = Math.round(vw ? vw.y0 + vw.h - 30 : frame.h - 46), local = t - cut0;   // 放在下方，上面的主角和星核才看得到；照看得到的範圍放（鏡頭拉近後畫布下緣被裁掉）
   const put = (x, y, [r, g, b], a = 1) => {
     if (x < 0 || y < 0 || x >= W || y >= frame.h) return;
     const i = y * W + x, c = C[i], q = 1 - a;
@@ -331,7 +331,7 @@ export function drawCutIn(frame) {
   paintStar(portrait, 24, 50, PORTRAIT, ult.face < 0, { glow: 0, form: ult.form });   // 特寫：目前形態的臉
   let top = 52;
   for (let i = 0; i < portrait.color.length; i++) if (portrait.color[i] >>> 24) { top = Math.floor(i / 48); break; }
-  const S = 4, rows = Math.ceil((half * 2) / S) + 1, px0 = Math.round(W * 0.56 + 40 * (1 - outCubic(clamp01(local / 0.12))) - local * 14);
+  const S = 4, rows = Math.ceil((half * 2) / S) + 1, px0 = Math.round((vw ? vw.x0 + vw.w - 206 : W * 0.56) + 40 * (1 - outCubic(clamp01(local / 0.12))) - local * 14);
   for (let r = 0; r < rows; r++) for (let x = 0; x < 48; x++) {
     const c = portrait.color[(top + 3 + r) * 48 + x];   // 從頭頂往下 3 格開始：領巾、眼睛、肚子的光都在帶子裡
     if (!(c >>> 24)) continue;

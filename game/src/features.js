@@ -8,6 +8,8 @@
 //   { t: "fossil", x, y, form } 魔物化石核：那個形態 +1 技能點（還沒有那個形態就給目前的形態）
 //   { t: "safe", x, y }        被丟下來的寶箱：碰到打開，掉稀有以上的裝備和金幣
 //   { t: "stele", x, y, i }    星王的碑文：讀一段星王的故事
+// 使用者 2026-11-05：星之殘火、化石核、保險箱、碑文改成站在旁邊按互動鍵（攻擊鍵）才拿／讀（usable、use）；
+//   形態機關（裂牆、氣流、黏液菇、封印門）照舊用形態的能力觸發，礦脈照舊用打的。
 // 拿過、打開過的都記在 profile.found[關卡][編號]，重進關卡也不會再出現（規則：一次性）。
 // (x, y)＝底部中心（貼地）。畫在 feature-art.js。
 import { setSolid, geo } from "./map.js";
@@ -72,20 +74,30 @@ export function createFeatures({ stageId, list = [], profile, player, api }) {
       } else if (f.t === "seal") {
         if (f.lit > 0 && f.open < 1) { f.lit = Math.min(1, f.lit + dt * 2); if (f.lit >= 1) f.open = Math.min(1, f.open + dt * 1.2); if (f.open >= 1) { setSolid(box(f), false); take(f); } }
         else if (!f.done && f.lit === 0 && Math.abs(player.x - f.x) < 30 && Math.abs(player.y - f.y) < 40) hint(f);
-      } else if (f.done) continue;
-      else if (f.t === "ember" && near(f, 10, 22)) {
-        take(f); profile.mpBonus = (profile.mpBonus ?? 0) + 10; api.refresh();
-        api.burst(f.x, f.y - 10, "ember"); api.banner("res_ember", "星之殘火", `最大魔力 +10（${100 + profile.mpBonus}）`, "你墜落時散掉的一小塊自己，撿回來了。");
-      } else if (f.t === "fossil" && near(f, 14, 16)) {
-        const form = profile.forms.owned[f.form] ? f.form : profile.forms.cur;
-        profile.forms.owned[form].pts = (profile.forms.owned[form].pts ?? 0) + 1;
-        take(f); api.burst(f.x, f.y - 8, "fossil"); api.banner("res_fossil", "魔物化石核", `${FORMS[form].name} 技能點 +1`, "很久以前的魔物核，變成化石了還吸收得到。");
-      } else if (f.t === "safe" && near(f, 16, 22) && player.grounded) {
-        take(f); api.loot(f.x, f.y - 12); api.burst(f.x, f.y - 10, "safe"); api.toast("被丟下來的寶箱：上面的世界丟了一個保險箱下來……沒鎖。", 2.8, "res_safe");
-      } else if (f.t === "stele" && near(f, 14, 34)) {
-        take(f); profile.lore = (profile.lore ?? 0) + 1;
-        api.say(STELE_LORE[(f.i ?? 0) % STELE_LORE.length], 5); api.burst(f.x, f.y - 20, "stele");
       }
+    }
+  }
+  /** 互動鍵：站在旁邊可以用的東西（殘火、化石核、保險箱、碑文），top＝頭上「！」的高度 */
+  const USE = { ember: [14, 22, 24], fossil: [16, 16, 20], safe: [18, 22, 24], stele: [16, 34, 40] };
+  function usable() {
+    const out = [];
+    for (const f of items) { const u = USE[f.t]; if (u && !f.done && near(f, u[0], u[1])) out.push({ f, t: f.t, x: f.x, y: f.y, top: f.y - u[2] }); }
+    return out;
+  }
+  function use({ f }) {
+    if (f.done) return;
+    if (f.t === "ember") {
+      take(f); profile.mpBonus = (profile.mpBonus ?? 0) + 10; api.refresh();
+      api.burst(f.x, f.y - 10, "ember"); api.banner("res_ember", "星之殘火", `最大魔力 +10（${100 + profile.mpBonus}）`, "你墜落時散掉的一小塊自己，撿回來了。");
+    } else if (f.t === "fossil") {
+      const form = profile.forms.owned[f.form] ? f.form : profile.forms.cur;
+      profile.forms.owned[form].pts = (profile.forms.owned[form].pts ?? 0) + 1;
+      take(f); api.burst(f.x, f.y - 8, "fossil"); api.banner("res_fossil", "魔物化石核", `${FORMS[form].name} 技能點 +1`, "很久以前的魔物核，變成化石了還吸收得到。");
+    } else if (f.t === "safe") {
+      take(f); api.loot(f.x, f.y - 12); api.burst(f.x, f.y - 10, "safe"); api.toast("被丟下來的寶箱：上面的世界丟了一個保險箱下來……沒鎖。", 2.8, "res_safe");
+    } else if (f.t === "stele") {
+      take(f); profile.lore = (profile.lore ?? 0) + 1;
+      api.say(STELE_LORE[(f.i ?? 0) % STELE_LORE.length], 5); api.burst(f.x, f.y - 20, "stele");
     }
   }
   /** 攻擊範圍打到礦脈：每下間隔 0.25 秒，3 下碎掉 */
@@ -133,5 +145,5 @@ export function createFeatures({ stageId, list = [], profile, player, api }) {
       else if (f.t === "stele" && f.done) list.push({ x: f.x, y: f.y - 18, r: 30, lv: 1, col: "#ffe066" });
     }
   }
-  return { items, update, hit, shotAt, draw, lights };
+  return { items, update, usable, use, hit, shotAt, draw, lights };
 }

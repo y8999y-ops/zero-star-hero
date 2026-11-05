@@ -62,9 +62,9 @@ export class Enemy {
     const toward = player.x >= this.x ? 1 : -1;
 
     this.world = world;
-    // 8b：怪物擺在地圖上，主角靠近（左右 200、上下 90 以內）或被打到才醒來追；還沒醒的在原地待著（史萊姆原地輕跳、蝙蝠在原地飛）
+    // 8b：怪物擺在地圖上，主角靠近（左右 160、上下 90 以內；使用者 2026-11-05 鏡頭拉近後 200 → 160，看到怪時牠才剛發現你）或被打到才醒來追；還沒醒的在原地待著（史萊姆原地輕跳、蝙蝠在原地飛）
     if (!this.awake) {
-      if (Math.abs(player.x - this.x) < 200 && Math.abs(player.y - this.y) < 90 || this.hp < this.k.hp) {
+      if (Math.abs(player.x - this.x) < 160 && Math.abs(player.y - this.y) < 90 || this.hp < this.k.hp) {
         this.awake = true; this.alertT = 0;   // 特效補強 2：發現主角，頭上冒「!」
         const now = performance.now(); if (now - alertSfxT > 300) { alertSfxT = now; sfx("chime"); }
       }

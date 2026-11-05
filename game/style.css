@@ -607,6 +607,11 @@ body.talking #qtrack { opacity: .2; }
 /* 寶箱旁邊（不是戰鬥狀態）：攻擊鍵變成開箱鍵，發金光 */
 body.chestnear .btn.big { background-image: var(--tb-chest); animation: talkReady 1s ease-in-out infinite; }
 body.chestnear .btn.big.on { background-image: var(--tb-chest-on); }
+/* 使用者 2026-11-05：關卡裡的互動鍵——傳送門（門）、祭壇／殘火／化石核／碑文（手） */
+body.doornear .btn.big { background-image: var(--tb-door); animation: talkReady 1s ease-in-out infinite; }
+body.doornear .btn.big.on { background-image: var(--tb-door-on); }
+body.handnear .btn.big { background-image: var(--tb-hand); animation: talkReady 1s ease-in-out infinite; }
+body.handnear .btn.big.on { background-image: var(--tb-hand-on); }
 
 /* 主畫面按鈕第三版：用 frame-art 的公會外框（主按鈕切 8＝16px，四角有金座紅寶石）與卡片（切 6＝12px） */
 #startBtn.tbig { border: 16px solid transparent; border-image: var(--plate-main) 16 fill / 16px; padding: 0 22px 0 40px; }
