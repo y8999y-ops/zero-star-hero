@@ -52,6 +52,9 @@ const waves = [];   // 技能樹「星光斬」
 const minis = [];   // 技能樹「蝙蝠群」的小蝙蝠
 import * as slamFx from "../../pixelfx/src/fx/impacts/ground-slam.js";
 import { drawMiniBat } from "./minibat.js";
+import { drawMark, drawStrike, drawShield, drawReson, STRIKE_T } from "./setfx.js";
+import * as sparkFx from "../../pixelfx/src/fx/impacts/hit-spark.js";
+const strikes = [];   // 流星獵手 4 件的小流星
 let hudFadeT = 0, inCombat = false;   // 戰鬥中 HUD 變淡
 import { ultPixels, ULT_S } from "./ult-icon.js";
 import { ult, ULT_MAX, ULT_MULT, startUlt, updateUlt, ultLights, dimScene, drawUlt, drawCutIn, postUlt } from "./ult.js";
@@ -164,6 +167,10 @@ function dropItem(x, y, minR = 0, opts = {}) {
     void flashEl.offsetWidth;
     flashEl.classList.add("on");
     sayQueue.unshift(["系統：……等等，那個橘色的光是怎樣？！", 2.6]);
+  } else if (item.rarity === R.epic) {
+    // 史詩（套裝）：紫光、震一下，第一次撿到時系統解釋
+    flash(x, y, 90, 3, 0.6, "#b878ff"); shake(0.25, 2); hitStop(0.06);
+    if (!profile.seenSet) { profile.seenSet = 1; sayQueue.unshift(["系統：紫色的光……套裝！同一套穿 2 件、4 件都有效果。", 3]); }
   } else if (item.rarity === R.rare) shake(0.15, 2);
 }
 
@@ -478,6 +485,7 @@ const world = {
     for (const e of enemies) if (!e.dead && overlaps(box, e.box())) {
       const r = typeof dmg === "function" ? dmg() : dmg, poisoned = e.st?.poison > 0;
       e.hit(r, dir, opts, world, box); n++;
+      onCritHit(e, r);
       // 技能樹「嗜血爪」（蝠翼星）：打中毒的敵人回復傷害的 3%
       if (poisoned && player.form === "bat" && rank("bat", "b_blood")) player.hp = Math.min(player.maxHp, player.hp + (r.dmg ?? r) * 0.03);
     }
@@ -489,7 +497,7 @@ const world = {
     let n = 0;
     props.hit(box, dir);
     scenery.hit(box, dir);
-    for (const e of enemies) if (!e.dead && !hit.has(e) && overlaps(box, e.box())) { hit.add(e); e.hit(dmg(), dir, opts, world, box); n++; }
+    for (const e of enemies) if (!e.dead && !hit.has(e) && overlaps(box, e.box())) { hit.add(e); const r = dmg(); e.hit(r, dir, opts, world, box); onCritHit(e, r); n++; }
     if (n) { addCombo(n); chargeUlt(n * 0.8); hitStop(0.05); shake(0.15, 2); }
     return n;
   },
@@ -505,7 +513,7 @@ const world = {
   groundSlam(x, y, r, mult) {
     spawn(slamFx, { x: Math.round(x), y: Math.round(FLOOR), palette: ["#14161c", "#2a2e38", "#4a5468", "#6e7a90", "#9aa6ba", "#d0d8e6", "#ffffff"], light: 0.4, seed: (Math.random() * 99) | 0 }, { speed: 1.8 });
     shake(0.25, 3); sfx("land", true);
-    world.hitArea({ x0: x - r, x1: x + r, y0: FLOOR - 30, y1: FLOOR + 2 }, () => player.roll(mult * (1 + player.stats.skill / 100)), player.face, { launch: true, push: 3 });
+    world.hitArea({ x0: x - r, x1: x + r, y0: FLOOR - 30, y1: FLOOR + 2 }, () => player.roll(mult * player.skillMul()), player.face, { launch: true, push: 3 });
   },
   /** 技能樹「蝙蝠群」（蝠翼星）：滑翔時每 0.5 秒放一隻小蝙蝠，最多 3 隻 */
   onGlide(dt) {
@@ -541,7 +549,7 @@ const world = {
     const [coreId, coreP] = coreChance(e.kind, profile.forms);
     if (coreId && Math.random() < (e.elite ? Math.min(1, coreP * 4) : coreP)) { const b = e.box(); drops.add(makeCore(coreId), e.x, (b.y0 + b.y1) / 2); }
     const b = e.box(), cy = (b.y0 + b.y1) / 2;
-    if (e.elite || Math.random() < (DROP_RATE[e.kind] ?? 0.1) * (1 + s.mf / 200)) dropItem(e.x, cy, e.kind === "gold" || e.elite ? R.fine : 0, { ilvl: ilvlNow(e.kind === "trash" || e.elite ? 1 : 0) });
+    if (e.elite || Math.random() < (DROP_RATE[e.kind] ?? 0.1) * (1 + s.mf / 200)) dropItem(e.x, cy, e.kind === "gold" || e.elite ? R.fine : 0, e.elite && Math.random() < 0.03 ? { rarity: R.epic, ilvl: ilvlNow(1) } : { ilvl: ilvlNow(e.kind === "trash" || e.elite ? 1 : 0) });
     // 擊殺爆炸（只剩傳說「爆炸頭安全帽」有；詞綴已取消）：會連鎖，最多連 6 次
     if (player.has("hardhat") && boomDepth < 6 && Math.random() * 100 < 25) {
       const big = player.has("hardhat") ? 1.5 : 1, rx = 34 * big;
@@ -871,6 +879,12 @@ const SHOT_PAL = {
   star: { fx: PAL.gold, boom: PAL.gold, accent: PAL.holy, light: "#ffd27a", r: 46, push: 3 },
   slime: { fx: PAL.poison, boom: PAL.poison, accent: PAL.leaf, light: "#7ee86a", r: 62, push: 5 },
 };
+// ---- 史詩套裝「流星獵手」4 件：暴擊標記，5 秒內再暴擊同一隻 → 掉一顆小流星（攻擊力 80%）
+function onCritHit(e, r) {
+  if (!r?.crit || !player.set4("meteor") || !e.box) return;
+  if (e.meteorMark > 0) { e.meteorMark = 0; strikes.push({ x: e.x, y: (e.box().y0 + e.box().y1) / 2, t: 0, e }); }
+  else e.meteorMark = 5;
+}
 // ---- 技能樹：技能彈爆開之後的追加效果
 function skillTreeBoom(s) {
   const x = s.x, y = s.y;
@@ -878,7 +892,7 @@ function skillTreeBoom(s) {
     // 星雨：1 秒後天上落下一陣小星屑（pixelfx arcane/star-fall），範圍內每顆打一次
     setTimeout(() => {
       spawn(starFallFx, { x: Math.round(x), y: FLOOR, palette: PAL.gold, light: 0.4, seed: (Math.random() * 99) | 0 }, { speed: 1.2 });
-      for (let k = 0; k < 4; k++) setTimeout(() => world.hitArea({ x0: x - 50, x1: x + 50, y0: FLOOR - 60, y1: FLOOR }, () => player.roll(0.6 * (1 + player.stats.skill / 100)), s.dir, { push: 1 }), 150 + k * 180);
+      for (let k = 0; k < 4; k++) setTimeout(() => world.hitArea({ x0: x - 50, x1: x + 50, y0: FLOOR - 60, y1: FLOOR }, () => player.roll(0.6 * player.skillMul()), s.dir, { push: 1 }), 150 + k * 180);
     }, 1000);
   }
   if (s.form === "slime") {
@@ -993,6 +1007,7 @@ function tick(dt) {
   if (input.ult && ult.charge >= ULT_MAX && player.state !== "hurt") {
     consume("ult");
     startUlt(player, director?.lock);
+    if (player.set4("reson")) player.resonT = 10;   // 星辰共鳴 4 件
     sfx("ultCharge");
     return;
   }
@@ -1048,7 +1063,7 @@ function tick(dt) {
     let hit = s.life <= 0 || s.x < WALL || s.x > LEVEL_W - WALL;
     if (!hit) for (const e of enemies) if (!e.dead && e !== s.skip && overlaps(e.box(), { x0: s.x - 8, x1: s.x + 8, y0: s.y - 8, y1: s.y + 8 })) {
       // 技能樹「貫穿」（星星）：穿過第一隻，打到第二隻才爆
-      if (s.form === "star" && !s.small && rank("star", "s_pierce") && !s.skip) { s.skip = e; e.hit(player.roll(1.2 * (1 + player.stats.skill / 100)), s.dir, { push: 2 }, world); continue; }
+      if (s.form === "star" && !s.small && rank("star", "s_pierce") && !s.skip) { s.skip = e; e.hit(player.roll(1.2 * player.skillMul()), s.dir, { push: 2 }, world); continue; }
       hit = true; break;
     }
     if (hit) {
@@ -1060,7 +1075,7 @@ function tick(dt) {
       sfx("boom");
       spawn(explosion, { x: Math.round(s.x), y: Math.round(s.y), palette: P.boom, accent: P.accent, light: GLOW.skill * (s.small ? 0.5 : 1), seed: (Math.random() * 99) | 0 }, { speed: s.small ? 1.8 : 1.3 });
       flash(s.x, s.y, s.small ? 50 : 100, 4, 0.4, P.light);
-      world.hitArea({ x0: s.x - R, x1: s.x + R, y0: s.y - 40, y1: s.y + 40 }, () => player.roll(2.4 * s.mult * (1 + player.stats.skill / 100)), s.dir, { launch: true, push: P.push, elem: ELEM[s.form] ?? "burn" });
+      world.hitArea({ x0: s.x - R, x1: s.x + R, y0: s.y - 40, y1: s.y + 40 }, () => player.roll(2.4 * s.mult * player.skillMul()), s.dir, { launch: true, push: P.push, elem: ELEM[s.form] ?? "burn" });
       hitStop(s.small ? 0.03 : 0.06);
       shake(s.small ? 0.12 : 0.3, s.small ? 1 : 3);
       if (!s.small) skillTreeBoom(s);
@@ -1083,6 +1098,17 @@ function tick(dt) {
     if (tgt && m.cd <= 0 && Math.abs(tgt.x - m.x) < 10 && Math.abs(ty - m.y) < 12) { m.cd = 0.6; tgt.hit(player.roll(0.4), m.vx >= 0 ? 1 : -1, { push: 1, elem: "poison" }, world); }
   }
   for (let i = minis.length - 1; i >= 0; i--) if (minis[i].life <= 0) minis.splice(i, 1);
+  for (const e of enemies) if (e.meteorMark > 0) e.meteorMark -= dt;
+  for (const s of strikes) {
+    s.t += dt;
+    if (s.t >= STRIKE_T && !s.done) {
+      s.done = true;
+      spawn(sparkFx, { x: Math.round(s.x), y: Math.round(s.y), palette: ["#6e3a0c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"], light: 0.6 });
+      flash(s.x, s.y, 50, 2.5, 0.2, "#ffe066"); shake(0.12, 2);
+      if (!s.e.dead) s.e.hit(player.roll(0.8), player.face, { push: 2 }, world);
+    }
+  }
+  for (let i = strikes.length - 1; i >= 0; i--) if (strikes[i].done) strikes.splice(i, 1);
 
   // 金幣：先噴出去，再被吸過來
   for (const c of coins) {
@@ -1155,6 +1181,10 @@ function render() {
   drawBolts(frame);
   for (const w of waves) drawWave(frame, w);
   for (const m of minis) drawMiniBat(frame, m);
+  for (const e of enemies) if (e.meteorMark > 0 && !e.dead) drawMark(frame, e.x, e.box().y0 - 7, sceneClock);
+  for (const s of strikes) drawStrike(frame, s);
+  if (player.shield > 0) drawShield(frame, player.x, player.y - 12, player.shield / (player.maxHp * 0.2), sceneClock);
+  if (player.resonT > 0) drawReson(frame, player.x, player.y - 12, sceneClock);
   drawCoins();
   drawGems();
   if (ult.on) { dimScene(frame); drawFx(frame, "back"); }

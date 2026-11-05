@@ -261,6 +261,94 @@ export const ICON_DEFS = {
     "L.L.L.........", "LMMfML........", ".NNMN.........", "........L.L.L.", "........LMMfML", ".........NNMN.",
     "..L.L.L.......", "..LMMfML......", "...NNMN.......",
   ] },
+  // ---- 史詩套裝（第 5 批）：徽章 set_*、各部位 set_<套>_<部位>
+  // 流星獵手：金＋紅，彗星尾巴
+  set_meteor: { ox: 1, oy: 1, rows: [
+    "f.............", ".fg...........", "..fgh.........", "...ghh........", "....hhG.......", ".....hGH......",
+    "....GGaHHI....", ".....HHHI.....", "....GHIIIJ....", "....HJ..IJ....", "...HJ....IJ...",
+  ] },
+  set_meteor_weapon: { ox: 1, oy: 1, rows: [
+    "f.............", ".gf...........", "..hgf.........", "...hg.GGG.....", "....hGaHHI....", "....GaHHHIJ...",
+    "....GHHHIIJ...", "....GHHIIJJ...", ".....HIIJJ....", "......JJJ.....",
+  ] },
+  set_meteor_head: { ox: 1, oy: 1, rows: [
+    "..........ff..", ".........fgh..", "....GGGGfgh...", "...GaHHHHhh...", "..GaHHHHHHII..", "..GHHHHHHHIJ..",
+    "..GHHHHHHHIJ..", "..GJJJJJJJJJ..", "..GH.hhhh.IJ..", "..GHHHHHHHIJ..", "...HI....IJ...",
+  ] },
+  set_meteor_body: { ox: 2, oy: 1, rows: [
+    ".GG.....GG.", "GaHGGGGGHIJ", "GHHHHHHHHIJ", ".GHHHfHHHI.", ".GHHfgfHHI.", ".GHHHfHHHI.", ".GHHHHHHII.",
+    ".GHHHHHHII.", ".hhhhhhhhh.", ".HHHHHHHIJ.", "..IIIIIIJ..",
+  ] },
+  set_meteor_hands: { ox: 2, oy: 1, rows: [
+    "f..f..f....", "g..g..g....", "GH.GH.GH...", "GH.GH.GH.G.", "GHHHHHHHGH.", "GaHHHHHHHI.", "GHHHHHHHIJ.",
+    ".GHHHHHIIJ.", ".hhhhhhhh..", ".HHHHHHIJ..", "..IIIIIJ...",
+  ] },
+  set_meteor_feet: { ox: 2, oy: 1, rows: [
+    "f.....GGG..", "gf....GaH..", ".hf...GHH..", "..hg..GHH..", "...hg.GHH..", "......GHHI.", ".....GHHHII",
+    "....GHHHHIJ", "...GHHHHHIJ", "..hhhhhhhhh", "..JJJJJJJJJ",
+  ] },
+  set_meteor_acc: { ox: 3, oy: 1, rows: [
+    "...hhh....", "..h...h...", "..h...h...", "...h.h....", "....G.....", "...GaH....", "GGGHaHIII.", ".GHHHHIJ..",
+    "..HHHIJ...", "..HI.IJ...", ".HJ...IJ..",
+  ] },
+  // 星辰共鳴：青＋銀，繞圈的軌道環
+  set_reson: { ox: 1, oy: 1, rows: [
+    "....pppppp....", "..pp......pp..", ".p....p.....p.", "p....pqr.....p", "p...pqaqr....p", "pqqqqaaaqqqqqp",
+    "p...rqaqr....p", "p....rqr.....p", ".p....r.....p.", "..pp......pp..", "....pppppp....",
+  ] },
+  set_reson_weapon: { ox: 1, oy: 1, rows: [
+    "......p.......", ".....pqr......", "....pqaqr.....", "pppppqaqrrrrr.", "p..pqaqqqr..r.", ".pppqqqqqrrrr.",
+    "....rqqqr.....", ".....rqr......", "......r.......",
+  ] },
+  set_reson_head: { ox: 1, oy: 1, rows: [
+    "......p.......", ".....pqr......", "....pqaqr.....", ".....rqr......", "......r.......", "..a.......c...",
+    ".abbbbpbbbbc..", "abbbbpaqbbbcd.", ".bcc..r...ccd.", "..c........d..",
+  ] },
+  set_reson_body: { ox: 2, oy: 1, rows: [
+    ".pp.....pp.", "pqqpppppqrr", "pqqqqqqqqrr", ".pqqqaqqqr.", ".pqqa.aqqr.", ".pqqqaqqqr.", ".pqqqqqqrr.",
+    ".bbbbbbbbb.", ".pqqqqqqrr.", "..rrrrrrr..",
+  ] },
+  set_reson_hands: { ox: 2, oy: 1, rows: [
+    "p..p..p....", "q..q..q....", "ab.ab.ab...", "ab.ab.ab.a.", "abbbbbbbab.", "abbbbbbbbc.", "pqqqaqqqrr.",
+    "pqqaaaqqrr.", ".pqqaqqrr..", ".abbbbbbc..", "..cccccd...",
+  ] },
+  set_reson_feet: { ox: 2, oy: 1, rows: [
+    "......pqr..", "......qar..", "......pqq..", "......bbbc.", "......bbbc.", ".....pqqqr.", "....pqqqqrr",
+    "...pqqqqqrs", "..pqqqqqqrs", "..bbbbbbbbc", "..cccccccdd",
+  ] },
+  set_reson_acc: { ox: 2, oy: 1, rows: [
+    "....aaa....", "...a...c...", "...a...c...", "....bbc....", "....pqr....", "...pqaqr...", "..pqaqqqr..",
+    "...pqqqr...", "....rqr.....", ".....r.....",
+  ] },
+  // 夜宴：深紅＋紫黑，蝙蝠翅膀、獠牙、高腳杯
+  set_feast: { ox: 2, oy: 1, rows: [
+    ".OOOOOOOOO.", "Ofgggggghi.", "Ofggggghhi.", ".Ogggghhi..", "..Ohhhhi...", "...OPPO....", "....PO.....",
+    "....PO.....", "..OOPPOO...", ".OPPPPPPO..",
+  ] },
+  set_feast_weapon: { ox: 1, oy: 1, rows: [
+    "L...........L.", "LM..........ML", ".LMM..hh..MML.", "..LMMfgghMML..", "...MfgffghM...", "....gffgghh...",
+    "....hgghhii...", ".....hhiii....", "......iii.....",
+  ] },
+  set_feast_head: { ox: 1, oy: 1, rows: [
+    ".O.........O..", ".OM.......PO..", ".OMP.....PPO..", ".OMPOOOOOPPO..", ".OMMMPPPPPPO..", ".OMPPPPPPPPO..",
+    ".OPPfPPPfPPO..", ".OPPPPPPPPPO..", "..hhhhhhhhh...", "..OP.....PO...", "..O.......O...",
+  ] },
+  set_feast_body: { ox: 2, oy: 1, rows: [
+    "..OO...OO..", ".OPPOOOPPO.", ".OPPfPfPPO.", "OPPPfPfPPPO", "OPPPgPgPPPO", "OPPPgPgPPPO", "OPPPhPhPPPO",
+    "OPPPhPhPPPO", "OPPhhPhhPPO", "OPh..P..hPO", "Oh...P...hO",
+  ] },
+  set_feast_hands: { ox: 2, oy: 1, rows: [
+    "A..A..A....", "BA.BA.BA...", "OP.OP.OP...", "OP.OP.OP.O.", "OPPPPPPPOP.", "OPfPPPPPPP.", "OPPPPPPPPO.",
+    ".OPPPPPPO..", ".hhhhhhhh..", ".OPPPPPPO..", "..OOOOOO...",
+  ] },
+  set_feast_feet: { ox: 2, oy: 1, rows: [
+    "......OOO..", "......OPP..", "......OPP..", "......OfP..", "......OPP..", ".....OPPPO.", "....OPPPPPO",
+    "...OPPPPPPO", "O.OPPPPPPPO", "OOhhhhhhhhh", ".OOOOOOOOOO",
+  ] },
+  set_feast_acc: { ox: 3, oy: 1, rows: [
+    "...OOOO...", "..O....O..", "..O....O..", "...O..O...", "...OPPO...", "..OPfgPO..", "..OPgiPO..",
+    "...A..A...", "...AB.AB..", "....B..B..",
+  ] },
   // ---- 元素狀態圖示（第 4 批，技能樹說明用）
   el_burn: { ox: 3, oy: 1, rows: [
     "....f.....", "...fg.....", "...fgh....", "..fggh..f.", "..fgGgh.gh", ".fgGHGghgh", ".fgHaHGggh", "fgGHHHGghi",

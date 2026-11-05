@@ -1,7 +1,7 @@
 // 背包畫面：左邊身上裝備＋數值，中間背包格子，右邊選中物品的詳細資料和比較。
 // 手機：點一下選取，再點一次同一格就直接穿上。電腦：I / B / Tab 開關，Esc 關閉。
 import { createFrame, composite } from "../../pixelfx/src/core/index.js";
-import { SLOTS, RARITY, R, UNIQUES, describe, kindLabel, colorOf } from "./items.js";
+import { SLOTS, RARITY, R, UNIQUES, describe, kindLabel, colorOf, SETS, setCounts } from "./items.js";
 import { computeStats, compare, power, STAT_ROWS, xpNeed, MAX_LV } from "./stats.js";
 import { BAG_SIZE } from "./save.js";
 import { iconURL } from "./ui-art.js";
@@ -261,7 +261,13 @@ export function createInventory(profile, { onChange, onClose }) {
       if (sel.key !== "weapon") btns = `<button class="pbtn" data-act="unequip">卸下</button>`;
     }
     if (sel.where === "bag") btns += `<button class="pbtn red" data-act="salvage">拆解 <small>+${r.scrap}星塵</small></button>`;
-    const lore = it.unique ? `<div class="lore">${UNIQUES[it.unique].lore}</div>` : "";
+    let lore = it.unique ? `<div class="lore">${UNIQUES[it.unique].lore}</div>` : "";
+    // 套裝：套名＋身上穿了幾件，2 件／4 件效果（達成的亮起來）
+    if (it.set) {
+      const S = SETS[it.set], n = setCounts(profile.equip)[it.set] ?? 0;
+      lore += `<div class="setbox" style="--sc:${S.color}"><div class="sn"><img class="sti" src="${iconURL(S.emblem, 1)}">${S.name}<em>${n}/4</em></div>`
+        + `<div class="sb ${n >= 2 ? "on" : ""}"><b>2</b>${S.two}</div><div class="sb ${n >= 4 ? "on" : ""}"><b>4</b>${S.four}</div></div>`;
+    }
     el.innerHTML = `<div class="dhead"><div class="slot r${it.rarity}"><img src="${iconURL(it.icon, 2)}"></div>
       <div class="dname" style="color:${colorOf(it)}">${it.name}${junk ? "" : `<span class="dlv" title="物品等級">${it.ilvl}</span>`}</div></div>
       <div class="dlines">${lines || '<div class="ln">（什麼都沒有）</div>'}${lore}</div>${cmp}<div class="dbtns">${btns}</div>`;

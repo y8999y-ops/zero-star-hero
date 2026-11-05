@@ -113,15 +113,25 @@ export class Player {
     const s = this.stats, crit = force || Math.random() * 100 < s.crit;
     const dmg = s.atk * mult * (1 + this.buff.atk) * this.dmgMul * formMul(this.formLv) * (crit ? 1 + s.critDmg / 100 : 1);
     if (s.leech > 0 && this.hp > 0) {
-      const h = Math.min(this.leechBudget, (dmg * s.leech) / 100);
+      // 夜宴 4 件：生命低於 30% 吸血加倍；生命滿了，多吸的變成護盾（最多最大生命的 20%）
+      const feast = this.set4("feast"), k = feast && this.hp < this.maxHp * 0.3 ? 2 : 1;
+      const h = Math.min(this.leechBudget, (dmg * s.leech * k) / 100);
       this.leechBudget -= h;
+      const over = this.hp + h - this.maxHp;
       this.hp = Math.min(this.maxHp, this.hp + h);
+      if (feast && over > 0) this.shield = Math.min(this.maxHp * 0.2, (this.shield ?? 0) + over);
     }
     return { dmg, crit };
   }
 
+  /** 技能傷害倍率：技能傷害% ×（星辰共鳴 4 件：大招後 10 秒 +25%） */
+  skillMul() { return (1 + this.stats.skill / 100) * (this.resonT > 0 ? 1.25 : 1); }
+  /** 某一套穿滿 4 件了嗎 */
+  set4(id) { return (this.stats.sets?.[id] ?? 0) >= 4; }
+
   update(dt, world) {
     this.clock += dt;
+    if (this.resonT > 0) this.resonT -= dt;
     if (this.lightT > 0) this.lightT -= dt;
     if (this.filmT > 0) this.filmT -= dt;
     if (this.dentT > 0) this.dentT -= dt;
@@ -166,7 +176,7 @@ export class Player {
       this.t = 0;
       this.atk = null;
       this.cast = false;
-      this.skillCd = this.skillMax;
+      this.skillCd = this.skillMax * (this.resonT > 0 ? 0.7 : 1);   // 星辰共鳴 4 件：冷卻 -30%
     }
     if (input.attack && (this.state === "move" || (this.state === "attack" && this.atk.time >= this.atk.s.cancel))) this.startAttack(world);
     if ((this.buff.t -= dt) <= 0) Object.assign(this.buff, { atk: 0, spd: 0, move: 0 });
@@ -199,7 +209,7 @@ export class Player {
       this.vx = this.face * CHARGE_V;
       this.ghostAcc += dt;
       if (this.ghostAcc > 1 / 30) { this.ghostAcc = 0; this.ghosts.push({ x: this.x, y: this.y, q: this.pose, flip: this.drawFlip(), age: 0 }); }
-      world.hitOnce({ x0: this.x - 12, x1: this.x + 12, y0: this.y - 26, y1: this.y + 2 }, this.chargeHit, () => this.roll(2.2 * (1 + this.stats.skill / 100)), this.face, { launch: true, push: 4, elem: "shock" });
+      world.hitOnce({ x0: this.x - 12, x1: this.x + 12, y0: this.y - 26, y1: this.y + 2 }, this.chargeHit, () => this.roll(2.2 * this.skillMul()), this.face, { launch: true, push: 4, elem: "shock" });
       // 技能樹「回收車」：路上的小怪被推著走
       if (rank("can", "c_truck")) for (const e of world.enemiesIn({ x0: this.x - 4, x1: this.x + this.face * 26, y0: this.y - 30, y1: this.y + 4 })) {
         if (e.isBoss) continue;
@@ -207,7 +217,7 @@ export class Player {
       }
       if (this.t >= (this.chargeDur ?? CHARGE_T)) {
         this.state = "move"; this.vx *= 0.3;
-        if (this.truck?.size) { for (const e of this.truck) if (!e.dead) e.hit(this.roll(1.2 * (1 + this.stats.skill / 100)), this.face, { launch: true, push: 6, elem: "shock" }, world); this.truck.clear(); }
+        if (this.truck?.size) { for (const e of this.truck) if (!e.dead) e.hit(this.roll(1.2 * this.skillMul()), this.face, { launch: true, push: 6, elem: "shock" }, world); this.truck.clear(); }
         if (rank("can", "c_brake")) world.groundSlam?.(this.x, this.y, 46, 1.2);   // 急停震地
       }
     } else if (this.state === "fly") {
@@ -216,7 +226,7 @@ export class Player {
       this.vy = FLY_VY * (1 - this.t / FLY_T);
       this.ghostAcc += dt;
       if (this.ghostAcc > 1 / 30) { this.ghostAcc = 0; this.ghosts.push({ x: this.x, y: this.y, q: this.pose, flip: this.drawFlip(), age: 0 }); }
-      world.hitOnce({ x0: this.x - 14, x1: this.x + 14, y0: this.y - 28, y1: this.y + 2 }, this.chargeHit, () => this.roll(1.8 * (1 + this.stats.skill / 100)), this.face, { push: 3, elem: "poison" });
+      world.hitOnce({ x0: this.x - 14, x1: this.x + 14, y0: this.y - 28, y1: this.y + 2 }, this.chargeHit, () => this.roll(1.8 * this.skillMul()), this.face, { push: 3, elem: "poison" });
       if (this.t >= (this.flyDur ?? FLY_T)) {
         this.state = "move"; this.vx *= 0.5; this.jumps = Math.min(this.jumps, 1);
         if (this.doubleReady) { this.doubleReady = false; this.doubleT = 1.2; }   // 二段飛：1.2 秒內可以再飛一次
@@ -353,6 +363,9 @@ export class Player {
 
   hurt(dmg, fromX, world) {
     if (this.invuln > 0 || this.state === "dash") return false;
+    if (this.invuln > 0 || this.state === "dash") return false;
+    // 夜宴的護盾先擋
+    if (this.shield > 0) { const a = Math.min(this.shield, dmg); this.shield -= a; dmg -= a; if (dmg <= 0) { this.invuln = 0.5; this.flash = 0.06; sfx("hitL"); return true; } }
     const def = this.stats.def * (this.dentT > 0 ? 1.5 : 1);   // 凹痕記憶：防禦 +50%
     dmg = Math.max(1, Math.round(dmg * (1 - reduction(def)) * (this.filmT > 0 ? 0.75 : 1)));   // 黏液護膜：-25%
     // 鐵皮（鐵罐星）：攻擊中被打不會中斷，只扣血

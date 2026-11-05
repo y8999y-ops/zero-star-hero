@@ -4,5 +4,5 @@ export const CHEST_TIERS = [
   { name: "木箱", wood: ["#110a10", "#24131a", "#3a1f1f", "#552d24", "#73402c", "#925737", "#b07246"], palette: ["#1e1206", "#4a2c08", "#86520c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"], coins: 8, gems: 1, items: [["common", 1], ["fine", 1]] },
   { name: "鐵箱", wood: ["#0c0e16", "#1a1e2c", "#2a3040", "#3e4658", "#5a6478", "#7e88a0", "#a8b2c8"], palette: ["#0a1420", "#1a3048", "#2a5878", "#4a90b8", "#7ac8e8", "#b8f0ff", "#e8fcff", "#ffffff"], coins: 14, gems: 3, items: [["fine", 2], ["rare", 1]] },
   { name: "紅漆金箱", wood: ["#14060a", "#2e0c14", "#4e1420", "#701c28", "#922834", "#b43a40", "#d0584e"], palette: ["#1e1206", "#4a2c08", "#86520c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"], coins: 22, gems: 6, items: [["fine", 2], ["rare", 2]] },
-  { name: "星箱", wood: ["#0c0618", "#1c0e34", "#2e1656", "#46207a", "#622ca0", "#8040c8", "#a462e8"], palette: ["#1a0a2a", "#3e1466", "#6a28a8", "#a050e0", "#d08cff", "#f0c8ff", "#fff0ff", "#ffffff"], coins: 32, gems: 10, items: [["fine", 1], ["rare", 3]] },
+  { name: "星箱", wood: ["#0c0618", "#1c0e34", "#2e1656", "#46207a", "#622ca0", "#8040c8", "#a462e8"], palette: ["#1a0a2a", "#3e1466", "#6a28a8", "#a050e0", "#d08cff", "#f0c8ff", "#fff0ff", "#ffffff"], coins: 32, gems: 10, items: [["rare", 3], ["epic", 1]] },
 ];

@@ -114,6 +114,15 @@ export const UNIQUES = {
   hardhat: { kind: "head", name: "爆炸頭安全帽", icon: "hardhat", text: "擊殺時 25% 機率爆炸", lore: "工地主任的遺物。施工中，請勿靠近。" },
 };
 
+// ---- 史詩套裝（第 5 批，docs/裝備系統企劃.md 3.1）：不跟形態綁；同一套穿 2 件、4 件有效果（stats.js 算 2 件的數值，4 件的效果在 player.js／main.js）
+export const SETS = {
+  meteor: { name: "流星獵手", short: "流星", color: "#ff9a4a", emblem: "set_meteor", two: "暴擊率 +8%", four: "暴擊打中的敵人被標上流星記號；5 秒內再暴擊牠，天上掉一顆小流星砸下去（攻擊力 80%）" },
+  reson: { name: "星辰共鳴", short: "共鳴", color: "#7ae8ff", emblem: "set_reson", two: "充能效率 +15%", four: "放完大招後 10 秒內，技能冷卻 -30%、技能傷害 +25%" },
+  feast: { name: "夜宴", short: "夜宴", color: "#ff5a7a", emblem: "set_feast", two: "吸血 +2%", four: "生命低於 30% 時吸血加倍；生命已滿時，多吸的血變成護盾（最多最大生命的 20%）" },
+};
+export const SET_IDS = Object.keys(SETS);
+const SET_KIND_NAME = { weapon: "核", head: "冠", body: "殼", hands: "爪", feet: "靴", acc: "碎片" };
+
 // 隨機名字：稀有以上叫「○○之＋短名」
 const RARE_NAMES = ["社畜", "加班狂", "外送員", "失眠者", "禿頭勇者", "深淵", "午夜", "墜星", "打工仔", "零星", "前男友", "房東", "末班車", "便利商店"];
 
@@ -224,6 +233,13 @@ export function makeItem(ilvl, rarity, opts = {}) {
   const main = rollMain(b, b.kind, ilvl, rarity);
   const affixes = rollSubs(s0 + Math.floor(Math.random() * (s1 - s0 + 1)), ilvl, main.id, b.sub);
   const item = { uid: uid(), base: baseId, kind: b.kind, icon: b.icon, rarity, ilvl, main, affixes, plus: 0 };
+  // 史詩＝套裝：隨機一套（或指定 opts.set），圖示和名字換成套裝的
+  if (rarity === R.epic) {
+    item.set = opts.set ?? pick(SET_IDS);
+    item.icon = `set_${item.set}_${b.kind}`;
+    item.name = `${SETS[item.set].name}之${SET_KIND_NAME[b.kind]}`;
+    return item;
+  }
   item.name = nameFor(item, rarity >= R.rare ? pick(RARE_NAMES) : null);
   return item;
 }
@@ -270,6 +286,12 @@ export function describe(item) {
   }
   if (item.unique) lines.push(["unique", null, UNIQUES[item.unique].text]);
   return lines;
+}
+/** 身上每一套穿了幾件：{ meteor: 2, ... } */
+export function setCounts(equip) {
+  const n = {};
+  for (const it of Object.values(equip)) if (it?.set) n[it.set] = (n[it.set] ?? 0) + 1;
+  return n;
 }
 
 export const kindLabel = (item) => KIND_NAME[item.kind];

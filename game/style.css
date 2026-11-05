@@ -746,3 +746,11 @@ body.touch #invTabs button.on { color: var(--gold); border-color: var(--gold); b
 body.touch #invBox > .pn { display: none; grid-column: 1; }
 body.touch #invBox[data-pane="invHero"] #invHero, body.touch #invBox[data-pane="invBag"] #invBag, body.touch #invBox[data-pane="invDetail"] #invDetail { display: flex; }
 body.touch #invTabs { margin-right: 44px; }
+/* 套裝（第 5 批）：背包詳細裡的套裝框 */
+.setbox { margin-top: 4px; padding: 4px 6px; border: 1px solid var(--sc); background: rgba(40, 20, 60, .5); }
+.setbox .sn { display: flex; align-items: center; gap: 2px; color: var(--sc); font-weight: 700; font-size: 14px; }
+.setbox .sn em { margin-left: auto; font-style: normal; font-size: 12px; color: var(--ink); }
+.setbox .sb { display: flex; gap: 6px; font-size: 12px; color: var(--dim); line-height: 16px; margin-top: 2px; }
+.setbox .sb b { flex: none; width: 16px; height: 16px; text-align: center; border: 1px solid #4a3a60; color: var(--dim); }
+.setbox .sb.on { color: var(--ink); }
+.setbox .sb.on b { color: #0a0810; background: var(--sc); border-color: var(--sc); }
