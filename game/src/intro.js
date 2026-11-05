@@ -9,6 +9,7 @@ import { starPixels, POSES } from "./star.js";
 import { systemFace, moodOf } from "./system-face.js";
 import { typewriter } from "./dialog.js";
 import { sfx } from "./audio.js";
+import { skyCanvas } from "./starsky.js";
 
 const H = 216;
 const ART = new URL("../art/approved/", import.meta.url).href;
@@ -42,9 +43,10 @@ const END = 23.2;
 /** 播開場。root：放畫布和台詞的容器；canvas：畫布。回傳 Promise（播完或跳過時 resolve）。 */
 export async function playIntro(root, canvas) {
   await Promise.all([
-    load("sky", "town/sky.png"), load("far", "town/far.png"),
+    load("far", "town/far.png"),
     load("vback", "valley/back.png"), load("vfar", "valley/far.png"), load("vmid", "valley/mid.png"), load("vground", "valley/ground.png"),
   ]);
+  IMG.sky = skyCanvas(H);
   const g = canvas.getContext("2d");
   let W = 384;
   const resize = () => {

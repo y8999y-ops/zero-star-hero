@@ -21,12 +21,12 @@
       <div class="ub" id="ubBar"><div class="ub-fill" id="ubFill"></div><span>大招</span></div>
       <div class="xp" id="xpBar"><div class="xp-fill" id="xpFill"></div><span id="xpText"></span></div>
     </div>
+    <button id="btnBag" title="背包（I）"><i class="dot" id="bagDot"></i></button>
   </div>
   <div id="topR">
-    <button id="btnSet" title="聲音設定">♪</button>
+    <button id="btnSet" title="設定"></button>
     <div class="coins"><i class="ic coin"></i><span id="coins">0</span></div>
     <button id="btnHome" class="hidden" title="回碎星鎮（H）"></button>
-    <button id="btnBag" title="背包（I）"><i class="dot" id="bagDot"></i></button>
   </div>
   <div id="killBox">擊倒 <span id="kills">0</span></div>
   <div id="forms"></div>
@@ -43,10 +43,12 @@
   <div id="toast"></div>
   <div id="ultName">零星墜落</div>
   <div id="setPanel" class="hidden">
-    <div class="setTtl">聲音</div>
+    <div class="setTtl">設定</div>
     <label>音樂<input type="range" id="volMusic" min="0" max="100" step="5"><b id="volMusicV"></b></label>
     <label>音效<input type="range" id="volSfx" min="0" max="100" step="5"><b id="volSfxV"></b></label>
-    <div class="row"><button id="btnMute" class="pbtn">全部靜音：關</button><button id="setClose" class="pbtn">關閉</button></div>
+    <div class="row"><button id="btnMute" class="pbtn">全部靜音：關</button></div>
+    <div class="row"><button id="btnIntro" class="pbtn">重看開場動畫</button><button id="btnTitle" class="pbtn">回主畫面</button></div>
+    <div class="row"><button id="setClose" class="pbtn">關閉</button></div>
   </div>
   <div id="bossDim"></div>
   <div id="bossUlt"></div>
@@ -93,7 +95,7 @@
     <div class="tmenu">
       <button id="startBtn" class="tbig"><span id="startLabel">開始冒險</span><small id="startName">第一章　1-1 墜落之底</small></button>
       <button id="helpBtn" class="tsmall">操作說明</button>
-      <button id="soundBtn" class="tsmall">聲音設定</button>
+      <button id="soundBtn" class="tsmall">設定</button>
     </div>
     <div class="tfoot"><span>第一章 試玩版</span><span>v0.8</span></div>
     <div id="helpPanel" class="hidden">

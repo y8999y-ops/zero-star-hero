@@ -253,6 +253,17 @@ export function installUiArt() {
   set("--bubble-tail", bubbleTail(2));
   set("--inset", inset(2));
   set("--plate", menuPlate(2));
+  // 設定鍵的齒輪（10×10＋1px 外框）
+  set("--ic-gear", (() => {
+    const G = ["....##....", ".#.####.#.", ".########.", "..##..##..", ".##....##.", ".##....##.", "..##..##..", ".########.", ".#.####.#.", "....##...."];
+    const at = (x, y) => G[y]?.[x] === "#";
+    return pixels(12, 12, 2, (px) => {
+      for (let y = -1; y <= 10; y++) for (let x = -1; x <= 10; x++) {
+        if (at(x, y)) px(x + 1, y + 1, x + y < 9 ? "#ffe27a" : "#d89a2a");
+        else if (at(x + 1, y) || at(x - 1, y) || at(x, y + 1) || at(x, y - 1)) px(x + 1, y + 1, OUT);
+      }
+    });
+  })());
   set("--plate-main", menuPlate(2, true));
   set("--ic-star", pixels(16, 16, 2, (px) => stampIcon(px, "star", 0, 0)));
   set("--btn", button(3, false));

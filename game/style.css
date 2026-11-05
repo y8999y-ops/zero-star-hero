@@ -463,3 +463,12 @@ body.town.near .btn.big { animation: talkReady 1.2s ease-in-out infinite; }
 .introSkip { top: auto; bottom: max(12px, env(safe-area-inset-bottom)); }
 .tmenu { top: 44%; }
 @media (max-height: 420px) { .tmenu { top: 42%; } }
+
+/* 設定鍵換成像素齒輪；背包鍵移到左上主角徽章旁邊（HUD 那一排） */
+#btnSet { position: relative; color: transparent; }
+#btnSet::after { content: ""; position: absolute; inset: -2px; background: var(--ic-gear) center / 20px no-repeat; image-rendering: pixelated; }   /* 邊框的 fill 會蓋住背景，所以齒輪畫在 ::after */
+#hud #btnBag { pointer-events: auto; margin: 10px 0 0 4px; width: 40px; height: 40px; }
+#setPanel .row { display: flex; gap: 6px; }
+#setPanel .row .pbtn { flex: 1; white-space: nowrap; }
+body:not(.playing) #btnTitle { display: none; }
+body.talking #hint { display: none; }

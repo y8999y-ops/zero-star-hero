@@ -83,7 +83,7 @@ const enemies = [];
 const coins = [];
 const shots = [];
 const stats = { coins: 0, kills: 0, combo: 0, comboT: 0, best: 0, time: 0, deaths: 0 };
-let camX = 0, started = false, director = null, cleared = false;
+let camX = 0, started = false, director = null, cleared = false, introOn = false;   // introOn：開場動畫播放中（遊戲暫停）
 
 // ---- 存檔與刷寶
 const drops = new Drops();
@@ -556,7 +556,7 @@ function drawPrompt() {
   }
   for (let y = 0; y <= 8; y++) if (y !== 6) { const px = x0 + 1, py = y0 + y; if (px >= 0 && py >= 0 && px < frame.w && py < frame.h) frame.color[py * frame.w + px] = C1; }
   void C0;
-  showHint(document.body.classList.contains("touch") ? `點「對話」和${near.name}說話` : `J＝和${near.name}說話`, 0.2);
+  // 下方的「按○和○○說話」提示框拿掉了（使用者 2026-11-05）：頭上的「！」和發亮的對話鍵就夠了
 }
 async function interact(n) {
   busy = true;
@@ -708,7 +708,7 @@ function tick(dt) {
   tickInput(dt);
   if (juice.shakeT > 0) juice.shakeT -= dt;
   if (juice.freeze > 0) { juice.freeze -= dt; return; }   // 命中停頓：整個世界停住
-  if (!started || inv.open) return;
+  if (!started || inv.open || introOn) return;
   updateCombatFx(dt);
   if (TOWN) { townTick(dt); return; }
 
@@ -1154,7 +1154,6 @@ function start() {
   else director = new Director(STAGE, stageApi, touch);
 }
 // 開始冒險：新遊戲第一次進 1-1 時先播開場動畫（只播一次，可跳過），播完直接開始
-let introOn = false;
 async function startOrIntro() {
   if (started || introOn) return;
   if (TOWN || ENDLESS || STAGE_ID !== "1-1" || profile.seenIntro) return start();
@@ -1164,6 +1163,7 @@ async function startOrIntro() {
   $("helpPanel").classList.add("hidden");
   $("start").classList.add("intro");
   await playIntro($("start"), $("titleCv"));
+  introOn = false;
   profile.seenIntro = true;
   save(profile, true);
   // 開場已經講過「轉生成功、種族星星」，1-1 一開始改講別的
@@ -1175,6 +1175,35 @@ async function startOrIntro() {
   fade.style.transition = ""; fade.classList.remove("on");
 }
 $("startBtn").addEventListener("click", startOrIntro);
+// 設定裡的「重看開場動畫」：在原地播（遊戲暫停），播完回到原本的畫面
+async function replayIntro() {
+  if (introOn) return;
+  introOn = true;
+  $("setPanel").classList.add("hidden");
+  const wasStarted = started;
+  stopTitle?.(); stopTitle = null;
+  $("helpPanel").classList.add("hidden");
+  $("start").classList.remove("hidden");
+  $("start").classList.add("intro");
+  await playIntro($("start"), $("titleCv"));
+  $("start").classList.remove("intro");
+  if (wasStarted) $("start").classList.add("hidden");
+  else stopTitle = await startTitle($("titleCv"), { form: profile.forms.cur });
+  introOn = false;
+}
+$("btnIntro").addEventListener("click", (e) => { e.stopPropagation(); sfx("ui"); replayIntro(); });
+// 「回主畫面」：存檔後重新載入、顯示主畫面（關卡中回去的話，下次從碎星鎮繼續；還沒到過鎮上的新玩家從原本的關卡）
+$("btnTitle").addEventListener("click", (e) => {
+  e.stopPropagation();
+  sfx("ui");
+  save(profile, true);
+  const toTown = TOWN || profile.clears > 0 || profile.guild.registered;
+  sessionStorage.setItem(NEXT_KEY, toTown ? "town" : ENDLESS ? "endless" : "stage");
+  if (!toTown && !ENDLESS) sessionStorage.setItem(STAGE_KEY, STAGE_ID);
+  sessionStorage.removeItem(AUTO_KEY);
+  $("fade").classList.add("on");
+  setTimeout(() => location.replace(location.pathname), 380);
+});
 // 換場景過來的：黑幕淡入、直接開始；聲音等第一次操作再解鎖（瀏覽器規定）
 if (sessionStorage.getItem(AUTO_KEY)) {
   sessionStorage.removeItem(AUTO_KEY);

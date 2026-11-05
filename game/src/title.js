@@ -5,6 +5,7 @@
 // 每隔幾秒一道斜光掃過字，字的邊上有十字星光一閃一閃。選單是 HTML（字要清楚），在標題下面置中。
 // 參考：大標題＋簡短選單置中、背景動作要慢（標題畫面要安靜不要吵）、標題字深色底配亮字＋反光（見 docs/素材參考.md）。
 import { starPixels, POSES } from "./star.js";
+import { skyCanvas } from "./starsky.js";
 
 const H = 216;
 const IMG = {};
@@ -30,9 +31,10 @@ function heroFrame(form, f) {
 /** 開始播主畫面。canvas：要畫的 <canvas>；form：主角目前的形態。回傳 stop()。 */
 export async function startTitle(canvas, { form = "star" } = {}) {
   await Promise.all([
-    load("sky", ART + "approved/town/sky.png"), load("far", ART + "approved/town/far.png"), load("mid", ART + "approved/town/mid.png"),
+    load("far", ART + "approved/town/far.png"), load("mid", ART + "approved/town/mid.png"),
     load("ground", ART + "approved/town/ground.png"), load("fg", ART + "approved/town/fg.png"), load("logo", ART + "ui/logo.png"),
   ]);
+  IMG.sky = skyCanvas(H);   // 自己畫的星空底色（starsky.js），星星和流星在下面另外畫
   const g = canvas.getContext("2d");
   let W = 384, run = true, t0 = performance.now(), last = 0;
   const resize = () => {
