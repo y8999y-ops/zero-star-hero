@@ -40,7 +40,7 @@ export const STATS = {
   critDmg: { name: "暴擊傷害", pct: true, t: [[10, 12], [8, 10], [6, 8], [4, 6], [2, 4]], main: 8 },
   skill: { name: "技能傷害", pct: true, t: [[14, 18], [12, 15], [9, 12], [7, 9], [4, 6]], main: 10 },
   ult: { name: "大招傷害", pct: true, t: [[18, 22], [15, 18], [11, 15], [8, 11], [5, 8]], main: 12 },
-  charge: { name: "充能效率", pct: true, t: [[12, 15], [10, 12], [8, 10], [5, 7], [3, 5]], main: 8 },
+  charge: { name: "魔力回復", pct: true, t: [[12, 15], [10, 12], [8, 10], [5, 7], [3, 5]], main: 8 },
   cdr: { name: "技能冷卻", pct: true, neg: true, t: [[7, 8], [6, 7], [4, 6], [3, 4], [2, 3]] },
   leech: { name: "吸血", pct: true, dec: 1, t: [[2.5, 3], [2, 2.5], [1.5, 2], [1, 1.5], [0.5, 0.5]], main: 1.5 },
   move: { name: "移速", pct: true, t: [[6, 7], [5, 6], [4, 5], [3, 4], [2, 3]], main: 5 },
@@ -118,7 +118,7 @@ export const UNIQUES = {
 export const MYTHS = {
   starking: {
     kind: "head", name: "星王之冠", icon: "myth_crown",
-    text: (st) => `放完大招後 ${st >= 2 ? 12 : 8} 秒「星王化」：全身發光、傷害 +20%${st >= 3 ? "；星王化開始時大招能量留一半" : ""}`,
+    text: (st) => `放完大招後 ${st >= 2 ? 12 : 8} 秒「星王化」：全身發光、傷害 +20%${st >= 3 ? "；星王化開始時退回一半的大招魔力" : ""}`,
     forms: { star: "星屑彈一次射 3 發", slime: "黏液彈爆開時連火一起點（直接大火）", can: "衝撞沒有冷卻", bat: "可以一直飛（滑翔不會往下掉、飛行沒有冷卻）" },
     lore: ["王冠內側刻著一行小字：「給最亮的那一顆」。", "你聽見王冠裡有人在數數：一、二、三……數到第九就停了。九顆星星？", "星王沒有死。祂只是碎成了很多很多片——其中一片，正戴著祂的王冠。"],
   },
@@ -135,7 +135,7 @@ export const awakenStage = (it) => (it.awaken?.kills ?? 0) >= AWAKEN[2] ? 3 : (i
 // ---- 史詩套裝（第 5 批，docs/裝備系統企劃.md 3.1）：不跟形態綁；同一套穿 2 件、4 件有效果（stats.js 算 2 件的數值，4 件的效果在 player.js／main.js）
 export const SETS = {
   meteor: { name: "流星獵手", short: "流星", color: "#ff9a4a", emblem: "set_meteor", two: "暴擊率 +8%", four: "暴擊打中的敵人被標上流星記號；5 秒內再暴擊牠，天上掉一顆小流星砸下去（攻擊力 80%）" },
-  reson: { name: "星辰共鳴", short: "共鳴", color: "#7ae8ff", emblem: "set_reson", two: "充能效率 +15%", four: "放完大招後 10 秒內，技能冷卻 -30%、技能傷害 +25%" },
+  reson: { name: "星辰共鳴", short: "共鳴", color: "#7ae8ff", emblem: "set_reson", two: "魔力回復 +15%", four: "放完大招後 10 秒內，技能冷卻 -30%、技能傷害 +25%" },
   feast: { name: "夜宴", short: "夜宴", color: "#ff5a7a", emblem: "set_feast", two: "吸血 +2%", four: "生命低於 30% 時吸血加倍；生命已滿時，多吸的血變成護盾（最多最大生命的 20%）" },
 };
 export const SET_IDS = Object.keys(SETS);
@@ -312,7 +312,7 @@ export function makeMyth(id, ilvl) {
 }
 
 /** 物品名稱：普通＝底材名；精良＝「主屬性的形容詞＋的＋短名」；稀有以上＝「隨機名字之短名」。 */
-const MAIN_ADJ = { atk: "鋒利", atkPct: "鋒利", hp: "結實", hpPct: "結實", crit: "精準", critDmg: "殘暴", skill: "魔力", ult: "星爆", charge: "共鳴", leech: "嗜血", move: "疾風" };
+const MAIN_ADJ = { atk: "鋒利", atkPct: "鋒利", hp: "結實", hpPct: "結實", crit: "精準", critDmg: "殘暴", skill: "魔力", ult: "星爆", charge: "泉湧", leech: "嗜血", move: "疾風" };
 export function nameFor(item, rareName) {
   if (item.unique) return UNIQUES[item.unique].name;
   const b = BASES[item.base];

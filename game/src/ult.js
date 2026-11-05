@@ -16,7 +16,9 @@ import { paintStar, POSES } from "./star.js";
 import { FLOOR, LEVEL_W, WALL } from "./level.js";
 import { floorAt } from "./map.js";
 
-export const ULT_MAX = 70;   // 2026-11-05 使用者：集大招所需能量降低約 30%（原 100）
+export const ULT_MAX = 70;   // （舊）大招能量上限：2026-11-05 使用者改成「大招不需要能量，只消耗魔力」，現在沒用到
+// 大招消耗的魔力（使用者 2026-11-05）：60，按下去扣；放完 1 秒內不能再放
+export const ULT_MP = 60;
 export const ULT_MULT = 9;   // 傷害倍率（× 攻擊力，再乘技能傷害加成）
 const T = { rise: 0.65, top: 1.0, cut0: 0.7, cut1: 1.15, throw: 1.15, drop: 1.28, hit: 1.46, land: 1.64, end: 2.7 };
 

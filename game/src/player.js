@@ -22,7 +22,7 @@ import { groundAt, onPlatform, geo, WALL } from "./level.js";
 import { moveX, ceilingAt } from "./map.js";
 
 const RUN = 128, ACC_GROUND = 1500, ACC_AIR = 950, GRAV = 1000, MAX_FALL = 430;
-const JUMP_V = -335, JUMP2_V = -295, COYOTE = 0.08;
+const JUMP_V = -335, JUMP2_V = -295, COYOTE = 0.15;   // 郊狼時間（走出平台邊緣後還能起跳的時間）：使用者 2026-11-05 要好跳一點，0.08 → 0.15 秒
 const DASH_T = 0.19, DASH_V = 345, DASH_CD = 0.32;
 const SKILL_CD = 1.1;
 // 魔力（使用者 2026-11-05：技能改成消耗魔力，冷卻保留）：每次技能 25，每秒回 8；最大魔力基礎 100，星之殘火加上限
@@ -154,7 +154,7 @@ export class Player {
     this.lastAtk += dt;
     this.dashCd -= dt;
     this.skillCd -= dt;
-    this.mp = Math.min(this.maxMp, this.mp + MP_REGEN * dt);
+    this.mp = Math.min(this.maxMp, this.mp + MP_REGEN * dt * (1 + (this.stats.charge ?? 0) / 100));   // 「魔力回復」（原本的充能效率）加快回魔
     this.invuln -= dt;
     this.flash -= dt;
     this.landT -= dt;

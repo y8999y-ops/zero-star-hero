@@ -18,7 +18,7 @@
     <div id="medal"><canvas id="medalCv"></canvas><b class="lv" id="lvText">Lv 1</b></div>
     <div class="bars">
       <div class="hp"><div class="hp-lag" id="hpLag"></div><div class="hp-fill" id="hpFill"></div><span id="hpText">100</span></div>
-      <div class="mp" id="mpBar"><div class="mp-fill" id="mpFill"></div><span id="mpText"></span></div>
+      <div class="mp" id="mpBar"><div class="mp-fill" id="mpFill"></div><i id="mpMark"></i><span id="mpText"></span></div>
       <div class="ub" id="ubBar"><div class="ub-fill" id="ubFill"></div><span>大招</span></div>
       <div class="xp" id="xpBar"><div class="xp-fill" id="xpFill"></div><span id="xpText"></span></div>
     </div>
@@ -27,6 +27,7 @@
       <button id="btnBag" title="背包（I）" data-label="背包"><i class="dot" id="bagDot"></i></button>
       <button id="btnQuest" title="任務" data-label="任務"></button>
       <button id="btnTree" title="技能樹（T）" data-label="技能樹"><i class="dot" id="treeDot"></i></button>
+      <button id="btnMap" title="地圖（M）" data-label="地圖"></button>
     </div>
   </div>
   <div id="qtrack" class="empty">
@@ -114,7 +115,7 @@
         <p>左半邊左右拖動＝移動</p><p>往上快滑＝跳（空中點一下＝二段跳）</p><p>往下快滑＝穿過平台</p><p>右下：攻擊（按住連段）、閃避、技能、大招</p><p>右邊直排：切換形態</p>
       </div>
       <div class="hp-col"><b>電腦</b>
-        <p>A / D 移動　空白鍵、↑ 跳</p><p>S＋跳 穿過平台</p><p>滑鼠左鍵 攻擊（按住連段）　右鍵 衝刺</p><p>E 技能　Q 大招　1 / 2 / 3 切換形態</p><p>I 背包　H 回城鎮</p>
+        <p>A / D 移動　空白鍵、↑ 跳</p><p>S＋跳 穿過平台</p><p>滑鼠左鍵 攻擊（按住連段）　右鍵 衝刺</p><p>E 技能　Q 大招　1 / 2 / 3 切換形態</p><p>I 背包　T 技能樹　M 地圖　H 回城鎮</p>
       </div>
       <button id="helpClose" class="pbtn">知道了</button>
     </div>

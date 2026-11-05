@@ -871,3 +871,20 @@ body.playing #medal:active canvas { transform: scale(.94); }
 @keyframes mpLack { 0%, 50% { filter: brightness(2) saturate(.3); transform: translateX(-2px); } 25%, 75% { transform: translateX(2px); } }
 body.town .mp { display: none; }
 #btnSkill.nomp, #pcSkill.nomp { filter: grayscale(.8) brightness(.7); }
+
+/* ---- 8e：地圖畫面 ---- */
+#hud #hudMenu #btnMap { display: none !important; border: 6px solid transparent; border-image: var(--inset) 6 / 6px; background-color: #1d1730; }
+body.playing:not(.town) #hud #hudMenu #btnMap { display: flex !important; }
+.map-box { width: auto !important; height: auto !important; max-width: 96%; }
+.map-box .win-head { gap: 10px; }
+.map-pct { flex: 1; text-align: right; color: var(--acc); font-size: 12px; font-weight: 700; }
+.map-x { color: #f0ffff; font: 700 14px/1 sans-serif; }
+.map-wrap { overflow: auto; max-width: 100%; padding: 4px 0; overscroll-behavior: contain; }
+.map-cv { display: block; image-rendering: pixelated; border: 2px solid #2a7a94; background: #06050c; }
+.map-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; padding-top: 4px; font-size: 12px; color: #c8e8f0; }
+.map-legend span { display: inline-flex; align-items: center; gap: 3px; }
+.map-legend canvas { width: 18px; height: 18px; image-rendering: pixelated; }
+
+/* 大招改成消耗魔力：原本的大招能量條拿掉，魔力條上一條金色刻度＝夠放大招 */
+.bars .ub { display: none !important; }
+#mpMark { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: #ffe066; box-shadow: 0 0 3px #ffd84a; }

@@ -12,7 +12,7 @@ export const TREES = {
     { id: "s_edge", path: 1, max: 3, cost: 1, icon: "n_s_edge", name: "銳角", desc: (r) => `普攻傷害 +${5 * r}%` },
     { id: "s_wave", path: 1, max: 1, cost: 2, icon: "n_s_wave", name: "星光斬", desc: () => "連段最後一下射出一道短距離的星光斬" },
     { id: "s_light", path: 1, max: 1, cost: 2, icon: "n_s_light", name: "收招輕盈", desc: () => "打完一套連段後 2 秒內，移速 +20%" },
-    { id: "s_origin", path: 2, max: 1, cost: 2, icon: "n_s_origin", name: "星之本源", desc: () => "切換成星星時，大招能量 +5（3 秒一次）" },
+    { id: "s_origin", path: 2, max: 1, cost: 2, icon: "n_s_origin", name: "星之本源", desc: () => "切換成星星時，魔力 +10（3 秒一次）" },
     { id: "s_return", path: 2, max: 1, cost: 2, icon: "n_s_return", name: "回歸", desc: () => "切回星星時，技能冷卻減半" },
     { id: "s_rain", path: 3, max: 1, cost: 3, icon: "n_s_rain", name: "星雨", desc: () => "星屑彈爆開 1 秒後，天上落下一陣小星屑" },
   ],

@@ -59,6 +59,7 @@ import { drawMark, drawStrike, drawShield, drawReson, drawKingBack, drawKingFron
 import { drawTrail, drawDizzy, TRAIL_T } from "./corefx.js";
 import { drawAltar } from "./altar-art.js";
 import { createFeatures } from "./features.js";
+import { createMapView } from "./mapview.js";
 import * as sparkFx from "../../pixelfx/src/fx/impacts/hit-spark.js";
 const strikes = [];   // 流星獵手 4 件的小流星（星核「隕鐵」的小隕石也用這個）
 let comet = null;     // 星核「彗尾」：這次衝刺打過誰
@@ -66,7 +67,7 @@ let comet = null;     // 星核「彗尾」：這次衝刺打過誰
 const trail = [];     // 彗尾留下的星光點 { x, y, t }
 let hudFadeT = 0, inCombat = false;   // 戰鬥中 HUD 變淡
 import { ultPixels, ULT_S } from "./ult-icon.js";
-import { ult, ULT_MAX, ULT_MULT, startUlt, updateUlt, ultLights, dimScene, drawUlt, drawCutIn, postUlt } from "./ult.js";
+import { ult, ULT_MAX, ULT_MP, ULT_MULT, startUlt, updateUlt, ultLights, dimScene, drawUlt, drawCutIn, postUlt } from "./ult.js";
 
 installUiArt();
 // 場景：城鎮（碎星鎮）或關卡。換場景＝存檔後重新載入頁面（下一個場景記在 sessionStorage）。
@@ -252,7 +253,7 @@ function switchForm(id) {
   player.setForm(id);
   player.turnT = 0.09;
   // 技能樹：切換時的效果
-  if (id === "star" && rank("star", "s_origin") && sceneClock - (switchForm.originT ?? -9) > 3) { switchForm.originT = sceneClock; chargeUlt(5 / (1 + (player.stats.charge ?? 0) / 100)); }
+  if (id === "star" && rank("star", "s_origin") && sceneClock - (switchForm.originT ?? -9) > 3) { switchForm.originT = sceneClock; player.mp = Math.min(player.maxMp, player.mp + 10); }
   if (id === "star" && rank("star", "s_return")) player.skillCd *= 0.5;
   if (id === "slime" && rank("slime", "g_film")) player.filmT = 3;
   if (id === "can" && rank("can", "c_dent")) player.dentT = 3;
@@ -473,6 +474,24 @@ if (!TOWN && !ENDLESS) features = createFeatures({
   },
 });
 window.__game.features = features;
+// 8e：地圖畫面（M 鍵、左上選單的「地圖」）
+const mapView = TOWN || ENDLESS ? null : createMapView({
+  stageId: STAGE_ID, name: `${STAGE_ID} ${LAYOUTS[STAGE_ID].name}`, layout: { ...LAYOUTS[STAGE_ID], h: MAP_H },
+  solidAt, platforms: geo.platforms, profile,
+  getMarks: () => [
+    { icon: "player", x: player.x, y: player.y, always: true },
+    ...altars.map((a) => ({ icon: a.lit ? "altarOn" : "altarOff", x: a.x, y: a.y })),
+    ...(STAGE.exitX ? [{ icon: "exit", x: STAGE.exitX + 26, y: STAGE.exitY || FLOOR }] : []),
+    ...(features?.items ?? []).filter((f) => !((f.t === "crack" || f.t === "seal") && f.done)).map((f) => ({ icon: f.t, x: f.x, y: f.y, dim: f.done && !["shroom", "wind"].includes(f.t) })),
+  ],
+  onOpen: (box) => { sfx("open"); playOpen(box, "sys"); },
+  onClose: () => sfx("close"),
+});
+window.__game.mapView = mapView;
+const openMap = () => { if (mapView && started && !dialog.open && !inv.open && !isWinOpen()) mapView.toggle(); };
+addEventListener("keydown", (e) => { if (e.code === "KeyM") openMap(); if (e.code === "Escape" && mapView?.open) mapView.hide(); });
+$("btnMap").style.backgroundImage = `url(${iconURL("map", 2)})`;
+$("btnMap").addEventListener("click", (e) => { e.stopPropagation(); document.body.classList.remove("menuOpen"); openMap(); });
 props.onBreak = (o) => {
   world.dropCoins(o.x, o.y - 10, o.type ? 2 + Math.floor(Math.random() * 3) : 1 + Math.floor(Math.random() * 3));
   if (o.type === "crate" && Math.random() < 0.12) dropItem(o.x, o.y - 10, R.common, { ilvl: ilvlNow(0) });
@@ -1046,13 +1065,11 @@ function skillTreeBoom(s) {
     if (rank("slime", "g_split")) for (const vy of [-140, 0, 140]) world.spawnShotlet(x, y, vy ? s.dir : -s.dir, "slime", { vy, mult: 0.5, life: 0.28 });
   }
 }
-// ---- 大招：打中怪會累積能量，滿了才能放
-function chargeUlt(n) {
-  if (ult.on || cleared) return;
-  const was = ult.charge;
-  ult.charge = Math.min(ULT_MAX, ult.charge + n * (1 + (player.stats.charge ?? 0) / 100));   // 充能效率
-  if (was < ULT_MAX && ult.charge >= ULT_MAX) toast("系統：" + tipFor("大招集滿了！按【大招】，讓牠們見識一下零星的厲害。", "大招集滿了！按【Q】，讓牠們見識一下零星的厲害。"), 2.6, "ult");
-}
+// ---- 大招：使用者 2026-11-05 改成「不需要能量，只消耗魔力」（ULT_MP）。原本打怪累積能量的呼叫留著，但不做事
+function chargeUlt() {}
+let ultCd = 0;   // 放完 1 秒內不能再放
+const ultReady = () => player.mp >= ULT_MP && !ult.on && ultCd <= 0;
+let ultTipped = false;
 const ultHooks = {
   // 衝擊波掃到的怪：每隻只打一次
   wave(x0, x1, tx) {
@@ -1067,7 +1084,7 @@ const ultHooks = {
   },
   dust: (x, y) => { world.dust(x, y, 6); sfx("ultHit"); },
 };
-window.__game.ultFull = () => (ult.charge = ULT_MAX);
+window.__game.ultFull = () => (player.mp = player.maxMp);
 window.__game.giveCore = (id) => absorb(makeCore(id));
 function addCombo(n) {
   stats.combo += n;
@@ -1121,7 +1138,7 @@ function tick(dt) {
   tickInput(dt);
   if (juice.shakeT > 0) juice.shakeT -= dt;
   if (juice.freeze > 0) { juice.freeze -= dt; return; }   // 命中停頓：整個世界停住
-  if (!started || inv.open || introOn || isWinOpen()) return;
+  if (!started || inv.open || introOn || isWinOpen() || mapView?.open) return;
   updateCombatFx(dt);
   if (TOWN) { townTick(dt); return; }
 
@@ -1150,13 +1167,17 @@ function tick(dt) {
   }
   if (input.form) { consume("form"); const c = profile.forms.carry; switchForm(c[(c.indexOf(player.form) + 1) % c.length]); }
   for (let i = 0; i < CARRY_MAX; i++) if (input["form" + (i + 1)]) { consume("form" + (i + 1)); switchForm(profile.forms.carry[i]); }
-  if (input.ult && ult.charge >= ULT_MAX && player.state !== "hurt") {
+  ultCd -= dt;
+  if (!ultTipped && ultReady() && stats.kills >= 3) { ultTipped = true; toast("系統：" + tipFor("魔力夠了就能放大招！按【大招】，讓牠們見識一下零星的厲害。", "魔力夠了就能放大招！按【Q】，讓牠們見識一下零星的厲害。"), 2.6, "ult"); }
+  if (input.ult && !ultReady() && !ult.on) { consume("ult"); if (player.mp < ULT_MP) world.noMana?.(); }
+  if (input.ult && ultReady() && player.state !== "hurt") {
     consume("ult");
+    player.mp -= ULT_MP; ultCd = 1;
     startUlt(player, director?.lock);
     if (player.set4("reson")) player.resonT = 10;   // 星辰共鳴 4 件
-    // 星王之冠：星王化（8 秒，覺醒 2 階 12 秒；3 階大招能量留一半）
+    // 星王之冠：星王化（8 秒，覺醒 2 階 12 秒；3 階退回一半的大招魔力）
     const crown = mythOn("starking");
-    if (crown) { const st = awakenStage(crown); player.kingT = st >= 2 ? 12 : 8; if (st >= 3) ult.charge = ULT_MAX * 0.5; toast("星王化！", 1.6); }
+    if (crown) { const st = awakenStage(crown); player.kingT = st >= 2 ? 12 : 8; if (st >= 3) player.mp = Math.min(player.maxMp, player.mp + ULT_MP / 2); toast("星王化！", 1.6); }
     sfx("ultCharge");
     return;
   }
@@ -1294,6 +1315,7 @@ function tick(dt) {
   if ((stats.comboT -= dt) <= 0 && stats.combo) stats.combo = 0;
 
   followCam(dt);
+  mapView?.update(dt, camX, camY, W, H);
   updateSay(dt);
 }
 // 攝影機：跟著主角，稍微往面對的方向看
@@ -1579,6 +1601,7 @@ function hud(dt) {
   // 魔力條；魔力不夠放技能時，技能鍵變暗
   mpFill.style.width = (player.mp / player.maxMp) * 100 + "%";
   setNum(mpText, Math.floor(player.mp));
+  $("mpMark").style.left = (ULT_MP / player.maxMp) * 100 + "%";   // 魔力條上的刻度：到這裡就能放大招
   const noMp = player.mp < MP_COST;
   $("btnSkill").classList.toggle("nomp", noMp); pcSkill.classList.toggle("nomp", noMp);
   // 電腦版右下角的技能圖示：冷卻用一圈變暗的扇形倒數，中間顯示剩幾秒；好了閃一下
@@ -1587,7 +1610,7 @@ function hud(dt) {
   pcSkillT.textContent = player.skillCd > 0.05 ? (player.skillCd >= 1 ? Math.ceil(player.skillCd) : player.skillCd.toFixed(1)) : "";
   if (pcSkill.classList.contains("cool") && cdk <= 0) { pcSkill.classList.remove("cool"); pcSkill.classList.remove("pop"); void pcSkill.offsetWidth; pcSkill.classList.add("pop"); }
   else if (cdk > 0) pcSkill.classList.add("cool");
-  const uk = ult.charge / ULT_MAX, ready = uk >= 1 && !ult.on;
+  const uk = Math.min(1, player.mp / ULT_MP), ready = ultReady();   // 大招圖示：魔力灌滿星星（夠放大招＝發光閃耀）
   ubFill.style.width = uk * 100 + "%";
   ultImg.data.set(ultPixels(ult.on ? 0 : uk, performance.now() / 1000)); ultG.putImageData(ultImg, 0, 0); ultG2.putImageData(ultImg, 0, 0); ultHud.classList.toggle("ready", ready);   // 大招圖示：能量灌滿星星、集滿發光閃耀
   ubBar.classList.toggle("ready", ready);

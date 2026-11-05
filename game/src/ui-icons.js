@@ -76,6 +76,10 @@ export const ICON_DEFS = {
     "..GGGGGGGGGH..", "..HHHHHHHHIJ..", "..............", "..............", "..............", "..GGGGGGGGGH..",
     "..HHHHHHHHIJ..", "..............", "..............", "..............", "..GGGGGGGGGH..", "..HHHHHHHHIJ..",
   ] },
+  // 8e：地圖（摺三折的紙，紅色虛線路線，終點一個 X）
+  map: { ox: 2, oy: 3, rows: [
+    "AAAACCCCAAAA", "ABBBCDDDABBB", "ABgBCDDDAhBh", "ABBgCDDDABhB", "ABBBgDDDAhBh", "ABBBCggDABBB", "ABBBCDDgABBB", "ABBBCDDDgBBB", "ABBBCDDDABBB", "BBBBDDDDBBBB",
+  ] },
   // ---- 屬性圖示（2026-11-05 裝備改版第 1 批）：背包數值列、裝備說明用
   st_atk: { ox: 2, oy: 2, rows: [
     "..........ab", ".........abc", "........abc.", ".......abc..", "......abc...", ".....abc....",
