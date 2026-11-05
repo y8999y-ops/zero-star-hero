@@ -109,6 +109,105 @@ export const ICON_DEFS = {
   st_mf: { ox: 2, oy: 2, rows: [
     "..kkl..kll..", ".kkllm.klmm.", ".klllmklmmm.", "..lllmmmmm..", "...llmmmn...", ".kkllm.mmmn.", "klllmm.mmnnn", ".llmm...mnn.", "..m.....n...", ".....m......", "....m.......",
   ] },
+
+  // ---- 形態技能樹節點（第 4 批）：星星 n_s_*、黏液星 n_g_*
+  n_s_big: { ox: 1, oy: 1, rows: [
+    "......G.......", "..G...G...G...", "...G..H..G....", "......H.......", ".....GHI......", "GGGGGHaHIIIIJ.",
+    ".....HII......", "......I.......", "...I..I..J....", "..I...I...J...", "......J.......",
+  ] },
+  n_s_pierce: { ox: 1, oy: 2, rows: [
+    ".......hhh....", "......h...h...", "G....h.....h..", "HG...h.....h..", "aHGGGGGGGGGGGJ", "HG...h.....h..",
+    "G....h.....h..", "......h...h...", ".......hhh....",
+  ] },
+  n_s_fire: { ox: 1, oy: 1, rows: [
+    "......h.......", ".....hgh......", ".....gfg..h...", "....hgfgh.g...", "......G..hgh..", ".....GHI......",
+    "GGGGGHaHIIIIJ.", ".GHHHHHIIIIJ..", "..HHHHIIIIJ...", "..HHJ...IIJ...", ".HJ.......IJ..",
+  ] },
+  n_s_edge: { ox: 2, oy: 1, rows: [
+    "..........a", ".........ab", "........abc", ".......abc.", "......abc..", ".....abc...", "....GHc....",
+    "...GHI.....", "..GHIJ.....", ".GHIJ......", "GHIJ.......", "IJ.........",
+  ] },
+  n_s_wave: { ox: 2, oy: 1, rows: [
+    "....J..aaG..", "...J...aHHG.", "..J.....aHHG", "..J.....aHHG", ".J.......aHG", ".J.......aHG", ".J.......aHG",
+    "..J.....aHHG", "..J.....aHHG", "...J...aHHG.", "....J..aaG..",
+  ].map((r) => r.replace(/J/g, ".")).map((r, i) => (i === 3 || i === 7 ? "IJJ" + r.slice(3) : i === 5 ? "HIJJ" + r.slice(4) : r)) },   // 第 3 輪：左邊三條速度線
+  n_s_light: { ox: 1, oy: 2, rows: [
+    "........G.....", "........H.....", ".......GaI....", "pppp..GHHHIJ..", "..qqq..HaI....", "pppppp..I.....",
+    "..qqq...J.....", "pppp..........", "..............",
+  ] },
+  n_s_origin: { ox: 1, oy: 1, rows: [
+    "....GGGGcc....", "..GG......cc..", ".G....G.....c.", ".G...GHI....c.", "G..GGHaHIJ...c", "G...HHHII....c",
+    "G...HJ.IJ....c", ".G..........c.", ".G..........c.", "..GG......cc..", "....GGcccc....",
+  ] },
+  n_s_return: { ox: 1, oy: 1, rows: [
+    "....qqqqq.....", "..qq.....qq...", ".q.........q..", "q.....G....qqq", "q....GHI....q.", "q..GGHaHIJ....",
+    "q...HHHII.....", ".q..HJ.IJ.....", "..q...........", "...qq.........", ".....qqq......",
+  ] },
+  n_s_rain: { ox: 1, oy: 1, rows: [
+    "B.............", ".B......B.....", "..B......B....", "...G......B...", "..GaH......G..", "...HI.....GaH.",
+    "....I......HI.", "......B......", ".......B......", "........G.....", ".......GaH....", "........HI....",
+  ] },
+  n_g_big: { ox: 2, oy: 2, rows: [
+    "k....lll....k", ".k.llmmmmn.k.", "..lkkllmmmn..", "..lkalllmmn..", ".llklllllmnn.", ".lllllllmmnn.",
+    "..mllllmmmnn.", "..mmmmmmnnn..", ".k.nmmnnnn.k.", "k...nnnnn...k",
+  ] },
+  n_g_bounce: { ox: 1, oy: 1, rows: [
+    "......aaa.....", ".....a...a....", "....a.....a...", "...a.......a..", "..a.........a.", ".llm.........a",
+    "lkaml......llm", "lllmm.....lkam", "lllmm.....lllm", ".mmn......lmmn", "...........nn.",
+  ] },
+  n_g_ground: { ox: 1, oy: 3, rows: [
+    "....l....l....", "....l....m....", "...lkl...m....", "...lam.........", "....m.........", "..............",
+    ".lllllllmmmmn.", "lkkallllmmmmnn", "nnnnnnnnnnnnnn",
+  ] },
+  n_g_horn: { ox: 1, oy: 2, rows: [
+    "....l.........", "...lml........", "...lml......k.", "..lkalmmmmmmkk", "lllkllllllllmko", ".mllllmmmmmm.k.",
+    "..mlllmo......", "..mmn.mmo.....", ".mn.....mo....", ".n.......o....",
+  ] },
+  n_g_coat: { ox: 2, oy: 1, rows: [
+    ".........ab", "........abc", ".......abc.", "......klm..", ".....kllm...", "....klmm....", "...GHmm.....",
+    "..GHI.l.....", ".GHIJ.l.....", "GHIJ..m.....", "IJ....l.....", "......m.....",
+  ] },
+  n_g_spring: { ox: 2, oy: 1, rows: [
+    "...lllll...", "..lkallmm..", "..lllllmn..", "...nnnnn...", "..abbbbbc..", "....bbc....", "..abbbbbc..", "....bbc....",
+    "..abbbbbc..", "....bbc....", ".abbbbbbbc.", ".ccccccccd.",
+  ] },
+  n_g_fuel: { ox: 2, oy: 1, rows: [
+    "....h......", "...hgh.....", "...gfg.....", "..hgfgh....", "...hgh.....", "....l......", "...lkl.....", "..lkall....",
+    ".lklllmm...", ".lllllmn...", ".mllmmmn...", "..mmmnn....",
+  ] },
+  n_g_film: { ox: 1, oy: 1, rows: [
+    "....kkkkkk....", "..kk......ll..", ".k...........l", ".k.....G.....l", "k.....GHI....m", "k...GGHaHIJ..m",
+    "k....HHHII...m", ".l...HJ.IJ..m.", ".l..........m.", "..ll......mm..", "....mmmmmm....",
+  ] },
+  n_g_split: { ox: 1, oy: 1, rows: [
+    "..........lm..", ".........lam..", "..........mn..", "...lll........", "..lkalm...lm..", "..llllmn.lamn.",
+    "..lllmmn..mn..", "...mmnn.......", "..........lm..", ".........lam..", "..........mn..",
+  ] },
+  // ---- 元素狀態圖示（第 4 批，技能樹說明用）
+  el_burn: { ox: 3, oy: 1, rows: [
+    "....f.....", "...fg.....", "...fgh....", "..fggh..f.", "..fgGgh.gh", ".fgGHGghgh", ".fgHaHGggh", "fgGHHHGghi",
+    "fgGHHHGghi", ".gGGHGGhi.", "..hhhhhi..", "...iiii...",
+  ] },
+  el_slime: { ox: 3, oy: 1, rows: [
+    "....kk....", "...kkl....", "...kll....", "..kkllm...", "..kallmm..", ".kklllmm..", ".klllllmn.", ".llllllmn.",
+    ".lllllmmn.", "..llmmmn..", "...mnnn...", "......n...",
+  ] },
+  el_shock: { ox: 3, oy: 1, rows: [
+    "......GH..", ".....GaI..", "....GaI...", "...GaI....", "..GaHHHI..", ".GHHHHaI..", "....GaI...", "...GaI....",
+    "..GaI.....", ".GaI......", ".HI.......", ".I........",
+  ] },
+  el_poison: { ox: 2, oy: 1, rows: [
+    "........kk..", ".......kalm.", ".......lllm.", "..kk....mm..", ".kalm.......", ".llmm..kkl..", "..mm..kallm.",
+    "......lllmm.", "...M..mmmm..", "..MNM..nn...", "...N........", "............",
+  ] },
+  el_wet: { ox: 3, oy: 1, rows: [
+    "....p.....", "....q.....", "...pqr....", "...pqr....", "..pqqqr...", "..paqqrr..", ".pqaqqqrs.", ".pqqqqqrs.",
+    ".qqqqqrrs.", "..qqrrrs..", "...rsss...", "..........",
+  ] },
+  el_oil: { ox: 3, oy: 1, rows: [
+    "....d.....", "....d.....", "...dde....", "...dde....", "..ddeee...", "..dpQeee..", ".ddqddeee.", ".dQddpqee.",
+    ".dddeeeee.", "..deeeee..", "...eeee...", "..........",
+  ] },
 };
 
 const N = 16;

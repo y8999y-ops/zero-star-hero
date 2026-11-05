@@ -29,9 +29,10 @@ import { playFace, moodOf } from "./system-face.js";
 import { startTitle } from "./title.js";
 import { playIntro } from "./intro.js";
 import { questEvent, refreshBoard, rewardText, sysActive } from "./quests.js";
-import { initTownUI, openQuests, openForge, openInn, isWinOpen, MEALS, questLook } from "./townui.js";
+import { initTownUI, openQuests, openForge, openInn, isWinOpen, MEALS, questLook, openTree } from "./townui.js";
 import { installUiArt, iconURL, setAttackIcon, medal, MEDAL_SIZE } from "./ui-art.js";
-import { FORMS, CARRY_MAX, coreChance, absorbCore, makeCore, coresToLevel } from "./forms.js";
+import { FORMS, CARRY_MAX, coreChance, absorbCore, makeCore } from "./forms.js";
+import { bindForms, rank, freePts } from "./skilltree.js";
 import { createFrame as makeFrame } from "../../pixelfx/src/core/index.js";
 import { paintStar, POSES } from "./star.js";
 import { npcSize } from "./npcs.js";
@@ -45,6 +46,9 @@ import { fxState, dustFx, updateCombatFx, drawCombatFx, drawDamageNumbers } from
 import { PLATFORMS } from "./level.js";
 import { ELEM, setStatusContext, updateStatus, drawBolts, REACTION } from "./status.js";
 import { createHazards } from "./hazards.js";
+import * as starFallFx from "../../pixelfx/src/fx/arcane/star-fall.js";
+import { drawWave, WAVE_T, WAVE_V } from "./starwave.js";
+const waves = [];   // 技能樹「星光斬」
 import { ultPixels, ULT_S } from "./ult-icon.js";
 import { ult, ULT_MAX, ULT_MULT, startUlt, updateUlt, ultLights, dimScene, drawUlt, drawCutIn, postUlt } from "./ult.js";
 
@@ -109,7 +113,8 @@ function refreshStats() {
 }
 player.setStats(statsNow());
 setAttackIcon("star");
-player.setForm(profile.forms.cur, profile.forms.owned[profile.forms.cur]?.lv ?? 1);
+bindForms(profile.forms);
+player.setForm(profile.forms.cur);
 player.hp = player.maxHp;
 const inv = createInventory(profile, { onChange: refreshStats });
 window.__game = { player, enemies, stats, profile, drops, inv, get director() { return director; }, get camX() { return camX; } };   // 開發用：在主控台檢查狀態
@@ -203,12 +208,10 @@ function absorb(it) {
   if (res.unlocked) {
     toast(`系統：吸收了${F.name}的核！新形態「${F.name}」。${profile.forms.carry.includes(it.form) ? tipFor("點右邊的【形態】就能變身。", "按【1】～【3】就能變身。") : "已經帶滿 3 個了，回城鎮再換。"}`, 3.4, "forms");
     sayQueue.unshift([`系統：你把${F.from === "slime" ? "史萊姆" : "垃圾桶"}的核吃掉了？不對，是吸收。好吧，差不多。`, 2.8]);
-  } else if (res.leveled) {
-    toast(`系統：${F.name}升到 Lv ${res.lv}！`, 2.2);
-    if (player.form === it.form) player.setForm(it.form, res.lv);
   } else {
-    const f = profile.forms.owned[it.form];
-    feed({ name: it.name, icon: it.icon, rarity: 3 }, `${F.name} ${f.xp}/${coresToLevel(f.lv)}`);
+    // 重複的核：那個形態 +1 技能點
+    feed({ name: it.name, icon: it.icon, rarity: 3 }, `${F.name} 技能點 +1（${freePts(it.form)}）`);
+    if (!profile.seenTreeTip) { profile.seenTreeTip = 1; sayQueue.push(["系統：重複的核會變成技能點。點左上的【技能樹】把它花掉。", 3]); }
   }
   save(profile);
   buildFormHud();
@@ -218,8 +221,12 @@ function switchForm(id) {
   if (!id || id === player.form || !profile.forms.owned[id] || ult.on) return;
   sfx("form");
   profile.forms.cur = id;
-  player.setForm(id, profile.forms.owned[id].lv);
+  player.setForm(id);
   player.turnT = 0.09;
+  // 技能樹：切換時的效果
+  if (id === "star" && rank("star", "s_origin") && sceneClock - (switchForm.originT ?? -9) > 3) { switchForm.originT = sceneClock; chargeUlt(5 / (1 + (player.stats.charge ?? 0) / 100)); }
+  if (id === "star" && rank("star", "s_return")) player.skillCd *= 0.5;
+  if (id === "slime" && rank("slime", "g_film")) player.filmT = 3;
   player.invuln = Math.max(player.invuln, 0.15);
   spawn(collectBurst, { x: Math.round(player.x), y: Math.round(player.y) - 12, palette: FORM_BURST[id], light: 0.4 });
   flash(player.x, player.y - 12, 60, 2, 0.3, FORMS[id].color);
@@ -242,9 +249,10 @@ function buildFormHud() {
     composite(f, im.data, null);
     c.getContext("2d").putImageData(im, 0, 0);
     b.appendChild(c);
-    const lv = document.createElement("i");
-    lv.textContent = "Lv" + profile.forms.owned[id].lv;
-    b.appendChild(lv);
+    // 有沒花掉的技能點：右下角一顆小點（原本的 Lv 拿掉了）
+    if (freePts(id) > 0) { const dot = document.createElement("i"); dot.className = "ptdot"; dot.textContent = freePts(id); b.appendChild(dot); }
+    const any = Object.keys(profile.forms.owned).reduce((s, f) => s + Math.max(0, freePts(f)), 0);
+    $("treeDot").textContent = any; $("treeDot").classList.toggle("on", any > 0);
     b.addEventListener("pointerdown", (e) => { e.stopPropagation(); switchForm(id); });
     formHud.appendChild(b);
   });
@@ -475,7 +483,14 @@ const world = {
   spawnFireball(x, y, dir, form = "star") {
     sfx("shot", form);
     const pal = SHOT_PAL[form] ?? SHOT_PAL.star;
-    shots.push({ x, y, dir, form, life: 1.1, fx: spawn(fireball, { x, y, flip: dir < 0, palette: pal.fx, light: GLOW.skill, seed: (Math.random() * 99) | 0 }) });
+    shots.push({ x, y, dir, form, life: 1.1, mult: 1, gen: 0, fx: spawn(fireball, { x, y, flip: dir < 0, palette: pal.fx, light: GLOW.skill, seed: (Math.random() * 99) | 0 }) });
+  },
+  /** 技能樹「星光斬」：連段最後一下往前射一道月牙，穿過敵人、每隻打一次 */
+  spawnWave(x, y, dir) { waves.push({ x, y, dir, t: 0, hit: new Set(), seed: Math.random() }); sfx("swing", "star"); },
+  /** 技能樹的小彈（彈跳、分裂）：比較小、比較短、不會再分 */
+  spawnShotlet(x, y, dir, form, { vy = 0, mult = 0.6, life = 0.35, gen = 1 } = {}) {
+    const pal = SHOT_PAL[form] ?? SHOT_PAL.star;
+    shots.push({ x, y, dir, vy, form, life, mult, gen, small: true, fx: spawn(fireball, { x, y, flip: dir < 0, palette: pal.fx, light: GLOW.skill * 0.6, seed: (Math.random() * 99) | 0 }) });
   },
   dropCoins(x, y, n) {
     for (let i = 0; i < n; i++) coins.push({ x, y, vx: (Math.random() - 0.5) * 160, vy: -120 - Math.random() * 140, t: 0 });
@@ -510,6 +525,11 @@ const world = {
     }
   },
   onPlayerHurt() {
+    // 技能樹「彈性」（黏液星）：被打時 20% 把旁邊的敵人彈開
+    if (player.form === "slime" && rank("slime", "g_spring") && Math.random() < 0.2) {
+      for (const e of enemies) if (!e.dead && Math.abs(e.x - player.x) < 44 && Math.abs(e.y - player.y) < 40) { e.vx = (e.x >= player.x ? 1 : -1) * 260; e.vy = -160; e.stun = Math.max(e.stun, 0.5); }
+      flash(player.x, player.y - 12, 60, 2, 0.25, "#b4f890");
+    }
     stats.combo = 0;
     if (player.hp <= 0) {
       player.hp = player.maxHp;
@@ -529,6 +549,8 @@ const REACT_TIP = {
 setStatusContext({
   enemies,
   atk: () => player.stats.atk,
+  burnMul: () => 1 + 0.6 * rank("star", "s_fire"),     // 技能樹：星火
+  wildR: () => 1 + 0.3 * rank("slime", "g_fuel"),      // 技能樹：易燃體質
   onReaction(kind, e) {
     profile.react ??= {};
     if (!profile.react[kind]) { profile.react[kind] = 1; sayQueue.push([REACT_TIP[kind], 3]); }
@@ -644,11 +666,18 @@ initTownUI({
   onQuest: () => questProgress("tick"),
   flash: (col) => flash(player.x, FLOOR - 20, 80, 3, 0.5, col),
   shake: (t, a) => shake(t, a),
+  inTown: TOWN,
+  onTree: () => { save(profile); buildFormHud(); },
 });
 trackEl.addEventListener("click", (e) => { e.stopPropagation(); if (started && !dialog.open && !busy) openQuests(false); });
 renderTracker();
 $("btnQuest").style.backgroundImage = `url(${iconURL("paper", 2)})`;
 $("btnQuest").addEventListener("click", (e) => { e.stopPropagation(); if (started && !dialog.open && !busy) { sfx("ui"); openQuests(false); } });
+// 技能樹（第 4 批）：左上角，有沒花掉的點數時亮一顆點
+$("btnTree").style.backgroundImage = `url(${iconURL("star", 2)})`;
+const openTreeNow = () => { if (started && !dialog.open && !busy && !isWinOpen() && !inv.open) { sfx("ui"); openTree(player.form); } };
+$("btnTree").addEventListener("click", (e) => { e.stopPropagation(); openTreeNow(); });
+addEventListener("keydown", (e) => { if (e.code === "KeyT") openTreeNow(); });
 function townArrive() {
   refreshBoard(profile.quests, unlocked());
   questProgress("tick");
@@ -802,6 +831,22 @@ const SHOT_PAL = {
   star: { fx: PAL.gold, boom: PAL.gold, accent: PAL.holy, light: "#ffd27a", r: 46, push: 3 },
   slime: { fx: PAL.poison, boom: PAL.poison, accent: PAL.leaf, light: "#7ee86a", r: 62, push: 5 },
 };
+// ---- 技能樹：技能彈爆開之後的追加效果
+function skillTreeBoom(s) {
+  const x = s.x, y = s.y;
+  if (s.form === "star" && rank("star", "s_rain")) {
+    // 星雨：1 秒後天上落下一陣小星屑（pixelfx arcane/star-fall），範圍內每顆打一次
+    setTimeout(() => {
+      spawn(starFallFx, { x: Math.round(x), y: FLOOR, palette: PAL.gold, light: 0.4, seed: (Math.random() * 99) | 0 }, { speed: 1.2 });
+      for (let k = 0; k < 4; k++) setTimeout(() => world.hitArea({ x0: x - 50, x1: x + 50, y0: FLOOR - 60, y1: FLOOR }, () => player.roll(0.6 * (1 + player.stats.skill / 100)), s.dir, { push: 1 }), 150 + k * 180);
+    }, 1000);
+  }
+  if (s.form === "slime") {
+    if (rank("slime", "g_bounce")) world.spawnShotlet(x, y, s.dir, "slime", { mult: 0.6, life: 0.3 });
+    if (rank("slime", "g_ground")) hazards.addTemp({ type: "goo", x: Math.round(x), w: 40, ttl: 3 });
+    if (rank("slime", "g_split")) for (const vy of [-140, 0, 140]) world.spawnShotlet(x, y, vy ? s.dir : -s.dir, "slime", { vy, mult: 0.5, life: 0.28 });
+  }
+}
 // ---- 大招：打中怪會累積能量，滿了才能放
 function chargeUlt(n) {
   if (ult.on || cleared) return;
@@ -953,23 +998,37 @@ function tick(dt) {
   // 火球
   for (const s of shots) {
     s.x += s.dir * 290 * dt;
+    if (s.vy) s.y = Math.min(FLOOR - 6, s.y + s.vy * dt);
     s.life -= dt;
     s.fx.options.x = Math.round(s.x);
+    s.fx.options.y = Math.round(s.y);
     let hit = s.life <= 0 || s.x < WALL || s.x > LEVEL_W - WALL;
-    if (!hit) for (const e of enemies) if (!e.dead && overlaps(e.box(), { x0: s.x - 8, x1: s.x + 8, y0: s.y - 8, y1: s.y + 8 })) { hit = true; break; }
+    if (!hit) for (const e of enemies) if (!e.dead && e !== s.skip && overlaps(e.box(), { x0: s.x - 8, x1: s.x + 8, y0: s.y - 8, y1: s.y + 8 })) {
+      // 技能樹「貫穿」（星星）：穿過第一隻，打到第二隻才爆
+      if (s.form === "star" && !s.small && rank("star", "s_pierce") && !s.skip) { s.skip = e; e.hit(player.roll(1.2 * (1 + player.stats.skill / 100)), s.dir, { push: 2 }, world); continue; }
+      hit = true; break;
+    }
     if (hit) {
       s.done = true;
       s.fx.stop();
       const P = SHOT_PAL[s.form] ?? SHOT_PAL.star;
+      // 技能樹：爆炸範圍（星屑增量／大顆黏液，每級 +15%），小彈範圍小一半
+      const big = 1 + 0.15 * (s.form === "slime" ? rank("slime", "g_big") : rank("star", "s_big")), R = P.r * big * (s.small ? 0.55 : 1);
       sfx("boom");
-      spawn(explosion, { x: Math.round(s.x), y: Math.round(s.y), palette: P.boom, accent: P.accent, light: GLOW.skill, seed: (Math.random() * 99) | 0 }, { speed: 1.3 });
-      flash(s.x, s.y, 100, 4, 0.4, P.light);
-      world.hitArea({ x0: s.x - P.r, x1: s.x + P.r, y0: s.y - 40, y1: s.y + 40 }, () => player.roll(2.4 * (1 + player.stats.skill / 100)), s.dir, { launch: true, push: P.push, elem: ELEM[s.form] ?? "burn" });
-      hitStop(0.06);
-      shake(0.3, 3);
+      spawn(explosion, { x: Math.round(s.x), y: Math.round(s.y), palette: P.boom, accent: P.accent, light: GLOW.skill * (s.small ? 0.5 : 1), seed: (Math.random() * 99) | 0 }, { speed: s.small ? 1.8 : 1.3 });
+      flash(s.x, s.y, s.small ? 50 : 100, 4, 0.4, P.light);
+      world.hitArea({ x0: s.x - R, x1: s.x + R, y0: s.y - 40, y1: s.y + 40 }, () => player.roll(2.4 * s.mult * (1 + player.stats.skill / 100)), s.dir, { launch: true, push: P.push, elem: ELEM[s.form] ?? "burn" });
+      hitStop(s.small ? 0.03 : 0.06);
+      shake(s.small ? 0.12 : 0.3, s.small ? 1 : 3);
+      if (!s.small) skillTreeBoom(s);
     }
   }
   for (let i = shots.length - 1; i >= 0; i--) if (shots[i].done) shots.splice(i, 1);
+  for (const w of waves) {
+    w.t += dt; w.x += w.dir * WAVE_V * dt;
+    world.hitOnce({ x0: w.x - 8, x1: w.x + 8, y0: w.y - 14, y1: w.y + 14 }, w.hit, () => player.roll(1.0), w.dir, { push: 2 });
+  }
+  for (let i = waves.length - 1; i >= 0; i--) if (waves[i].t >= WAVE_T) waves.splice(i, 1);
 
   // 金幣：先噴出去，再被吸過來
   for (const c of coins) {
@@ -1040,6 +1099,7 @@ function render() {
   drops.draw(frame);
   for (const e of enemies) e.draw(frame);
   drawBolts(frame);
+  for (const w of waves) drawWave(frame, w);
   drawCoins();
   drawGems();
   if (ult.on) { dimScene(frame); drawFx(frame, "back"); }

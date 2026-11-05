@@ -2,7 +2,7 @@
 // ver 2（2026-11-04）：武器變成星核、加上形態。
 // ver 3（2026-11-05）：裝備改版（主屬性＋副屬性、6 階稀有度）。使用者決定舊裝備直接清掉，身上換回起始裝備；等級、金幣、形態、任務都保留。清之前先備份。
 import { starterGear } from "./items.js";
-import { freshForms } from "./forms.js";
+import { freshForms, migrateForms } from "./forms.js";
 import { freshQuests } from "./quests.js";
 
 const KEY = "zero-hero-save-v1";
@@ -28,7 +28,7 @@ export function load() {
       }
       const q = { ...freshQuests(), ...(s.quests ?? {}) };
       q.stats = { ...freshQuests().stats, ...(q.stats ?? {}) };
-      return { ...fresh(), ...s, forms: s.forms ?? freshForms(), guild: s.guild ?? freshGuild(), quests: q };
+      return { ...fresh(), ...s, forms: s.forms ? migrateForms(s.forms) : freshForms(), guild: s.guild ?? freshGuild(), quests: q };
     }
   } catch {}
   return fresh();

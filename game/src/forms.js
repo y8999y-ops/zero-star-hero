@@ -9,12 +9,9 @@ export const FORMS = {
   can: { name: "鐵罐星", combo: "hammer", skill: "charge", skillName: "蓋子衝撞", color: "#9aa6ba", from: "trash", desc: "慢、重、全部擊飛。技能：蓋子衝撞，往前衝，衝的時候不會受傷。" },
 };
 export const FORM_IDS = Object.keys(FORMS);
-export const FORM_MAX_LV = 10;
 export const CARRY_MAX = 3;
-/** 從 lv 升到 lv+1 需要幾顆重複的核 */
-export const coresToLevel = (lv) => lv;
-/** 形態等級的傷害加成 */
-export const formMul = (lv) => 1 + 0.06 * (lv - 1);
+// 2026-11-05 裝備改版第 4 批：形態不分等級（原本 Lv1～10、每級傷害 +6%，拿掉）；重複的核改成那個形態 +1 技能點（skilltree.js）
+export const formMul = () => 1;
 
 /** 掉核機率：還沒有這個形態時比較容易掉（讓玩家早點拿到） */
 export function coreChance(enemyKind, forms) {
@@ -25,20 +22,28 @@ export function coreChance(enemyKind, forms) {
   return [id, base];
 }
 
-export const freshForms = () => ({ owned: { star: { lv: 1, xp: 0 } }, carry: ["star"], cur: "star" });
+export const freshForms = () => ({ owned: { star: { pts: 0, tree: {} } }, carry: ["star"], cur: "star" });
+/** 舊存檔（有 lv、xp）→ 技能點：以前吸收過的重複核全部換成點數（Lv n 用掉 1+2+…+(n-1) 顆，加上 xp） */
+export function migrateForms(forms) {
+  for (const f of Object.values(forms.owned)) {
+    if (f.lv === undefined) { f.pts ??= 0; f.tree ??= {}; continue; }
+    f.pts = ((f.lv - 1) * f.lv) / 2 + (f.xp ?? 0);
+    f.tree = {};
+    delete f.lv; delete f.xp;
+  }
+  return forms;
+}
 
-/** 吸收一顆核。回傳 { unlocked, leveled, lv }。 */
+/** 吸收一顆核。回傳 { unlocked, point }：第一顆解鎖形態，之後每顆＋1 技能點。 */
 export function absorbCore(forms, id) {
   const f = forms.owned[id];
   if (!f) {
-    forms.owned[id] = { lv: 1, xp: 0 };
+    forms.owned[id] = { pts: 0, tree: {} };
     if (forms.carry.length < CARRY_MAX) forms.carry.push(id);
-    return { unlocked: true, leveled: false, lv: 1 };
+    return { unlocked: true, point: false };
   }
-  if (f.lv >= FORM_MAX_LV) return { unlocked: false, leveled: false, lv: f.lv };
-  f.xp++;
-  if (f.xp >= coresToLevel(f.lv)) { f.xp = 0; f.lv++; return { unlocked: false, leveled: true, lv: f.lv }; }
-  return { unlocked: false, leveled: false, lv: f.lv };
+  f.pts = (f.pts ?? 0) + 1;
+  return { unlocked: false, point: true, pts: f.pts };
 }
 
 /** 魔物核這個「掉落物」（不進背包，撿到就吸收） */

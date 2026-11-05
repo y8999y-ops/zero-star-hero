@@ -35,6 +35,8 @@ function tick(now) {
 /** 在螢幕座標 (x, y) 播一個特效 */
 export function uiFx(mod, opts, x, y) {
   ensure();
-  list.push(createFx(mod, { ...opts, x: Math.round(x / K), y: Math.round(y / K) }));
+  // 特效的原點多半在「地面」（下緣），介面上要的是畫面中心對準 (x, y)：照 meta 的 size／origin 往下移
+  const m = mod.meta ?? {}, dy = m.size && m.origin ? m.origin[1] - m.size[1] / 2 : 0;
+  list.push(createFx(mod, { ...opts, x: Math.round(x / K), y: Math.round(y / K + dy) }));
   if (!running) { running = true; last = performance.now(); requestAnimationFrame(tick); }
 }

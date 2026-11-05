@@ -671,3 +671,33 @@ body.touch #pcKeys, body.town #pcKeys, body:not(.playing) #pcKeys { display: non
 .react-pop { position: absolute; transform: translate(-50%, -100%); font-size: 15px; font-weight: 900; letter-spacing: 1px; white-space: nowrap; pointer-events: none; z-index: 5;
   text-shadow: 0 2px 0 #000, 1px 0 0 #000, -1px 0 0 #000, 0 -1px 0 #000, 0 0 8px currentColor; animation: reactPop 1s ease-out forwards; }
 @keyframes reactPop { 0% { transform: translate(-50%, -60%) scale(.4); opacity: 0; } 15% { transform: translate(-50%, -100%) scale(1.25); opacity: 1; } 30% { transform: translate(-50%, -100%) scale(1); } 100% { transform: translate(-50%, -190%); opacity: 0; } }
+/* 形態技能樹（第 4 批） */
+#hud #btnTree { position: relative; pointer-events: auto; margin: 10px 0 0 2px; width: 40px; height: 40px; border: 6px solid transparent; border-image: var(--inset) 6 / 6px; background: #1d1730 center / 22px no-repeat; image-rendering: pixelated; cursor: pointer; display: none; }
+body.playing #hud #btnTree { display: block; }
+#btnTree .dot { position: absolute; right: -8px; top: -8px; min-width: 16px; height: 16px; padding: 0 2px; background: var(--gold); border: 2px solid #0a0810; display: none; font: 700 9px/12px monospace; color: #0a0810; font-style: normal; text-align: center; }
+#btnTree .dot.on { display: block; }
+.fslot .ptdot { position: absolute; right: 1px; bottom: 1px; min-width: 12px; height: 12px; font: 700 8px/12px monospace; font-style: normal; color: #0a0810; background: var(--gold); text-align: center; }
+.tree-head { display: flex; align-items: center; justify-content: space-between; margin: 2px 0 6px; }
+.tpts { display: inline-flex; align-items: center; gap: 4px; color: var(--dim); font-size: 12px; }
+.tpts b { color: #ffe98a; font-size: 16px; }
+.tree-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tree-col { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 4px 0 6px; background: rgba(10, 30, 50, .35); border: 1px solid rgba(122, 232, 255, .18); }
+.tree-path { font-size: 11px; color: #9af0ff; letter-spacing: 2px; }
+.tree-path em { margin-left: 4px; font-style: normal; color: #ffe98a; }
+.tnode { position: relative; width: 42px; height: 42px; padding: 0; border: 2px solid #2a4a60; background: #0c1626; cursor: pointer; filter: grayscale(.85) brightness(.75); }
+.tnode img { width: 32px; height: 32px; image-rendering: pixelated; }
+.tnode.can { border-color: #7ae8ff; filter: grayscale(.4); animation: tnCan 1.2s ease-in-out infinite; }
+@keyframes tnCan { 50% { box-shadow: 0 0 8px #7ae8ff; } }
+.tnode.on { filter: none; border-color: #ffd84a; }
+.tnode.full { box-shadow: 0 0 6px rgba(255, 216, 74, .7); }
+.tnode.sel { outline: 2px solid #fff; outline-offset: 1px; }
+.tpip { position: absolute; right: -4px; bottom: -6px; font: 700 9px/11px monospace; padding: 0 2px; background: #0a0810; color: #ffe98a; border: 1px solid #5a4a20; }
+.tree-cap { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 8px 0 4px; }
+.tree-cap small { font-size: 10px; color: var(--dim); }
+.tree-info { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 6px 8px; border-top: 1px solid rgba(122, 232, 255, .25); }
+.tree-info .tn { display: flex; align-items: center; gap: 6px; flex: none; }
+.tree-info .tn img { width: 28px; height: 28px; }
+.tree-info .tn span { font-size: 11px; color: #ffe98a; }
+.tree-info .td { flex: 1; font-size: 12px; color: #d8f4ff; }
+.tree-info .td.dim { color: var(--dim); }
+.ibtn.off { filter: grayscale(1) brightness(.7); }

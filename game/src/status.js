@@ -31,7 +31,7 @@ export const REACTION = {
 };
 
 // 主程式給的東西：敵人清單、目前攻擊力、第一次觸發反應時的提示
-let C = { enemies: [], atk: () => 10, onReaction: () => {} };
+let C = { enemies: [], atk: () => 10, onReaction: () => {}, burnMul: () => 1, wildR: () => 1 };
 export const setStatusContext = (c) => (C = { ...C, ...c });
 
 const FIRE = ["#4a1712", "#c9281f", "#f2561d", "#ff8a2a", "#ffc23d", "#ffe26b", "#fff3a6", "#ffffff"];
@@ -64,7 +64,7 @@ export function applyStatus(e, id, depth = 0) {
   if (id === "poison" && has(e, "burn")) return react(e, "toxic", depth);
   // ---- 普通沾上
   S[id] = Math.max(S[id] ?? 0, STATUS[id].dur);
-  if (id === "burn") S.burnDps = C.atk() * 0.3;
+  if (id === "burn") S.burnDps = C.atk() * 0.3 * C.burnMul();
   if (id === "poison") S.poisonDps = C.atk() * 0.2;
   if (id === "shock") e.stun = Math.max(e.stun, 0.45);
 }
@@ -76,13 +76,13 @@ function react(e, kind, depth) {
     case "wildfire": {
       // 大火：燒得更久更痛，往旁邊 40px 擴散（只連 2 層）
       S.slime = 0; S.oil = 0;
-      S.burn = STATUS.burn.dur * 2; S.burnDps = atk * 0.6; S.big = 1;
+      S.burn = STATUS.burn.dur * 2; S.burnDps = atk * 0.6 * C.burnMul(); S.big = 1;
       e.tick(atk * 0.8, "#ff8a2a");
       spawn(plasmaFx, { x: Math.round(x), y: Math.round(b.y1), palette: FIRE, light: 0.6, seed: (Math.random() * 99) | 0 }, { speed: 1.6 });
       flash(x, y, 70, 3, 0.35, "#ff8a30");
       shake(0.18, 2);
       sfx("hitH");
-      if (depth < 2) for (const o of near(e, 46)) setTimeout(() => applyStatus(o, "burn", depth + 1), 120 + Math.random() * 120);
+      if (depth < 2) for (const o of near(e, 46 * C.wildR())) setTimeout(() => applyStatus(o, "burn", depth + 1), 120 + Math.random() * 120);
       break;
     }
     case "chain": {

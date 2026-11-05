@@ -14,6 +14,7 @@ import { input, consume } from "./input.js";
 import { A, slashAnim } from "./assets.js";
 import { FORMS, formMul } from "./forms.js";
 import { ELEM } from "./status.js";
+import { rank } from "./skilltree.js";
 import { reduction } from "./stats.js";
 import { spawn, hitStop, shake } from "./fx.js";
 import { sfx } from "./audio.js";
@@ -101,7 +102,6 @@ export class Player {
   /** 換形態：連段、技能、身體顏色一起換。 */
   setForm(id, lv) {
     this.form = id;
-    this.formLv = lv;
     this.combo = comboFor(FORMS[id].combo, id);
     this.step = 0;
     if (this.state === "attack") { this.state = "move"; this.atk = null; }
@@ -122,6 +122,8 @@ export class Player {
 
   update(dt, world) {
     this.clock += dt;
+    if (this.lightT > 0) this.lightT -= dt;
+    if (this.filmT > 0) this.filmT -= dt;
     this.leechBudget = Math.min(this.maxHp * 0.05, (this.leechBudget ?? 0) + this.maxHp * 0.05 * dt);
     this.t += dt;
     this.lastAtk += dt;
@@ -204,7 +206,7 @@ export class Player {
 
     // ---- 水平移動
     if (this.state !== "dash" && this.state !== "hurt" && this.state !== "charge" && this.state !== "fly") {
-      const target = input.move * RUN * (1 + this.stats.move / 100 + this.buff.move) * ctl;
+      const target = input.move * RUN * (1 + this.stats.move / 100 + this.buff.move + (this.lightT > 0 ? 0.2 : 0)) * ctl;
       const acc = (this.grounded ? ACC_GROUND : ACC_AIR) * dt;
       this.vx += Math.max(-acc, Math.min(acc, target - this.vx));
       if (this.state === "move" && input.move) this.face = Math.sign(input.move);
@@ -303,12 +305,19 @@ export class Player {
     }
     for (; a.nh < s.hits.length && s.hits[a.nh].t <= a.time; a.nh++) {
       const h = s.hits[a.nh], d = this.face;
-      const box = { x0: this.x - d * s.back, x1: this.x + d * s.reach, y0: this.y - 44, y1: this.y + 4 };
+      // 技能樹：長角（黏液星，普攻距離每級 +8%）、銳角（星星，普攻傷害每級 +5%）
+      const reach = s.reach * (this.form === "slime" ? 1 + 0.08 * rank("slime", "g_horn") : 1);
+      const box = { x0: this.x - d * s.back, x1: this.x + d * reach, y0: this.y - 44, y1: this.y + 4 };
       if (box.x0 > box.x1) [box.x0, box.x1] = [box.x1, box.x0];
-      const mult = s.dmg[a.nh] ?? s.dmg[0], force = a.crit && a.nh === 0;
-      // 連段最後一下會沾上形態的元素（星星燃燒、黏液星黏液、鐵罐星帶電、蝠翼星毒）
+      const mult = (s.dmg[a.nh] ?? s.dmg[0]) * (this.form === "star" ? 1 + 0.05 * rank("star", "s_edge") : 1), force = a.crit && a.nh === 0;
+      // 連段最後一下會沾上形態的元素（星星燃燒、黏液星黏液、鐵罐星帶電、蝠翼星毒）；黏液角：黏液星每一下都沾
       const fin = s.launch && a.nh === s.hits.length - 1;
-      const n = world.hitArea(box, () => this.roll(mult, force), d, { launch: fin, push: h.push ?? 2, elem: fin ? ELEM[this.form] : null });
+      const coat = fin || (this.form === "slime" && rank("slime", "g_coat"));
+      const n = world.hitArea(box, () => this.roll(mult, force), d, { launch: fin, push: h.push ?? 2, elem: coat ? ELEM[this.form] : null });
+      if (fin && this.form === "star") {
+        if (rank("star", "s_wave")) world.spawnWave?.(this.x + d * 10, this.y - 16, d);   // 星光斬
+        if (rank("star", "s_light")) this.lightT = 2;                                     // 收招輕盈
+      }
       if (n) {
         hitStop(Math.min(s.big ? 0.14 : 0.11, (h.stop ?? 0.06) * (n > 3 ? 0.7 : 1)));
         shake(h.shake ?? 0.15, Math.min(s.big ? 4 : 3, (h.amp ?? 2) + (n > 4 ? 1 : 0)));
@@ -319,7 +328,7 @@ export class Player {
 
   hurt(dmg, fromX, world) {
     if (this.invuln > 0 || this.state === "dash") return false;
-    dmg = Math.max(1, Math.round(dmg * (1 - reduction(this.stats.def))));
+    dmg = Math.max(1, Math.round(dmg * (1 - reduction(this.stats.def)) * (this.filmT > 0 ? 0.75 : 1)));   // 黏液護膜：-25%
     this.hp = Math.max(0, this.hp - dmg);
     this.invuln = 0.9;
     this.flash = 0.08;

@@ -33,6 +33,8 @@ export function createHazards({ stage, floor, torches = [], puddles = [] }) {
 
   function update(dt, enemies) {
     clock += dt;
+    // 暫時的（技能樹「黏液地面」）：時間到就消失
+    for (let i = list.length - 1; i >= 0; i--) if (list[i].ttl !== undefined && (list[i].ttl -= dt) <= 0) list.splice(i, 1);
     for (const h of list) { h.shakeT = Math.max(0, h.shakeT - dt); if (h.fireT > 0) h.fireT -= dt; if (h.type === "oil" && h.spill < 1) h.spill = Math.min(1, h.spill + dt * 2.5); }
     if ((tickT -= dt) > 0) return;
     tickT = 0.25;
@@ -72,10 +74,13 @@ export function createHazards({ stage, floor, torches = [], puddles = [] }) {
   function draw(frame) {
     for (const h of list) {
       if (h.x < frame.ox - 40 || h.x > frame.ox + frame.w + 40) continue;
+      if (h.ttl !== undefined && h.ttl < 0.6 && Math.floor(h.ttl * 12) % 2) continue;   // 快消失時閃
       drawHazard(frame, h, clock, floor, put);
     }
   }
-  return { list, update, hit, draw };
+  /** 放一個暫時的元素地面（ttl 秒後消失） */
+  const addTemp = (h) => list.push({ shakeT: 0, fireT: 0, spill: 1, hp: 2, ...h });
+  return { list, update, hit, draw, addTemp };
 }
 
 /** 畫一個場景物件（草稿工具也用） */
