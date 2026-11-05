@@ -1018,3 +1018,14 @@ body.touch #sys { left: 384px; max-width: min(380px, calc(100% - 450px)); }
 /* 開場第三版：系統報錯時台詞框變紅 */
 .introSay.err { border-image-source: none; border: 3px solid #ff3a4a; background: rgba(40, 4, 10, .92); box-shadow: 0 0 16px rgba(255, 60, 70, .55); }
 .introSay.err .introText { color: #ffd0c8; }
+
+/* ---- 使用者 2026-11-06：1-1 的按鈕跟著教學一個一個出現（還沒教的先藏起來，位置保留），教到時彈出來亮一下 ---- */
+body.lock-dash #btnDash, body.lock-skill #btnSkill, body.lock-skill #pcSkill, body.lock-ult #btnUlt, body.lock-ult #ultHud { visibility: hidden; pointer-events: none; }
+.reveal { animation: btnReveal 1.4s ease-out both !important; }
+@keyframes btnReveal {
+  0% { transform: scale(0); opacity: 0; }
+  25% { transform: scale(1.35); opacity: 1; filter: brightness(2.2) drop-shadow(0 0 10px #ffe066); }
+  45% { transform: scale(.92); }
+  60% { transform: scale(1.06); filter: brightness(1.4) drop-shadow(0 0 6px #ffe066); }
+  100% { transform: scale(1); filter: none; }
+}

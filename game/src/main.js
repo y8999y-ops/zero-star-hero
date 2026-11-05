@@ -295,6 +295,24 @@ function switchForm(id) {
   buildFormHud();
 }
 const $ = (id) => document.getElementById(id);
+// 使用者 2026-11-06：按鈕跟著教學一個一個出現（1-1 的新玩家）：一開始只有攻擊，教到閃避、技能才出現那顆；大招第一次夠魔力時出現。
+//   教過的記在 profile.taught；打過 1-1 的舊存檔全部照舊顯示。只有在 1-1 會藏。
+profile.taught ??= profile.cleared["1-1"] ? { dash: 1, skill: 1, ult: 1 } : {};
+const LOCKABLE = { dash: ["btnDash"], skill: ["btnSkill", "pcSkill"], ult: ["btnUlt", "ultHud"] };   // 手機的按鈕、電腦右下角的技能／大招圖示
+for (const k in LOCKABLE) document.body.classList.toggle("lock-" + k, STAGE_ID === "1-1" && !TOWN && !ENDLESS && !profile.taught[k]);
+function teach(k) {
+  if (profile.taught[k]) return;
+  profile.taught[k] = 1;
+  save(profile);
+  if (!document.body.classList.contains("lock-" + k)) return;
+  document.body.classList.remove("lock-" + k);
+  for (const id of LOCKABLE[k]) {
+    const el = $(id);
+    el.classList.remove("reveal"); void el.offsetWidth; el.classList.add("reveal");
+    setTimeout(() => el.classList.remove("reveal"), 1400);
+  }
+  sfx("chime");
+}
 // 右上角的形態按鈕（電腦也能點）：每格畫一個小星星，目前的形態有亮框
 const formHud = document.getElementById("forms");
 function buildFormHud() {
@@ -587,10 +605,17 @@ const stageApi = {
     const gy = floorAt(x, typeof y === "number" ? y - 4 : 0);
     const yy = y === "air" ? gy - 60 - Math.random() * 30 : typeof y === "number" ? y : gy;
     const e = kind === "boss" ? new Boss(x, STAGE.arena?.floor ?? FLOOR, bossApi) : new Enemy(kind, x, yy);
+    e.x0 = x;   // 擺放的位置（1-1 的 quiet 用來分「前面幾段的怪」）
     enemies.push(e);
     if (started) world.dust(e.x, e.k.fly ? e.y + 8 : e.y, 4);
   },
   say: (msg, sec, focus) => sayQueue.push([msg, sec, focus]),
+  // 使用者 2026-11-06：1-1 一段一段來——附近還有醒著的怪就先不講下一段
+  busy: (x, y, before) => enemies.some((e) => !e.dead && e.awake && e.kind !== "gold" && (e.x0 ?? e.x) < before && Math.abs(e.x - x) < 220 && Math.abs(e.y - y) < 120),
+  // 系統還在講（上一句至少要給 sysMin 秒看完）；cut＝看完了就直接換下一句，不用等它自己消失
+  talking: () => sayQueue.length > 0 || (sysT > 0.3 && sysAge < sysMin),
+  cut: () => { if (sysT > 0.2) toastT = sysT = 0.2; },
+  teach: (k) => teach(k),
   hint: (msg, sec) => showHint(msg, sec),
   // 金幣史萊姆只會逃跑，不算在「清光這一波」裡
   // 10 批：lock＝只算封住的王房裡的（大地圖上其他地方的怪不算）
@@ -709,8 +734,9 @@ const world = {
     const s = player.stats;
     gainXp((KILL_XP[e.kind] ?? 5) * (e.elite ? 4 : 1));
     chargeUlt(2);
+    // 使用者 2026-11-06：1-1（paced）一次只教一件事，不掉魔物核——形態從 1-2 開始
     const [coreId, coreP] = coreChance(e.kind, profile.forms);
-    if (coreId && Math.random() < (e.elite ? Math.min(1, coreP * 4) : coreP)) { const b = e.box(); drops.add(makeCore(coreId), e.x, (b.y0 + b.y1) / 2); }
+    if (coreId && !STAGE.paced && Math.random() < (e.elite ? Math.min(1, coreP * 4) : coreP)) { const b = e.box(); drops.add(makeCore(coreId), e.x, (b.y0 + b.y1) / 2); }
     const b = e.box(), cy = (b.y0 + b.y1) / 2;
     if (e.elite || Math.random() < (DROP_RATE[e.kind] ?? 0.1) * (1 + s.mf / 200)) dropItem(e.x, cy, e.kind === "gold" || e.elite ? R.fine : 0, e.elite && eliteLegend() ? { rarity: R.legend, ilvl: ilvlNow(1) } : e.elite && Math.random() < 0.03 ? { rarity: R.epic, ilvl: ilvlNow(1) } : { ilvl: ilvlNow(e.kind === "trash" || e.elite ? 1 : 0) });
     // 擊殺爆炸（只剩傳說「爆炸頭安全帽」有；詞綴已取消）：會連鎖，最多連 6 次
@@ -1300,7 +1326,7 @@ function tick(dt) {
   if (input.form) { consume("form"); const c = profile.forms.carry; switchForm(c[(c.indexOf(player.form) + 1) % c.length]); }
   for (let i = 0; i < CARRY_MAX; i++) if (input["form" + (i + 1)]) { consume("form" + (i + 1)); switchForm(profile.forms.carry[i]); }
   ultCd -= dt;
-  if (!ultTipped && ultReady() && stats.kills >= 3) { ultTipped = true; toast("系統：" + tipFor("魔力夠了就能放大招！按【大招】，讓牠們見識一下零星的厲害。", "魔力夠了就能放大招！按【Q】，讓牠們見識一下零星的厲害。"), 2.6, "ult"); }
+  if (!ultTipped && ultReady() && stats.kills >= 3 && (STAGE_ID !== "1-1" || director?.ultOK)) { ultTipped = true; teach("ult"); sayQueue.push(["系統：" + tipFor("魔力夠了就能放大招！按【大招】，讓牠們見識一下零星的厲害。", "魔力夠了就能放大招！按【Q】，讓牠們見識一下零星的厲害。"), 2.6, "ult"]); }   // 排隊，不要蓋掉系統正在講的話
   if (input.ult && !ultReady() && !ult.on) { consume("ult"); if (player.mp < ULT_MP) world.noMana?.("ult"); }
   if (input.ult && ultReady() && player.state !== "hurt") {
     consume("ult");
@@ -1640,7 +1666,7 @@ const ubFill = $("ubFill"), ubBar = $("ubBar"), ultG = $("ultCv").getContext("2d
 let toastT = 0;
 const sysEl = $("sys"), sysText = $("sysTyped"), sysGhost = $("sysGhost"), sysFaceCv = $("sysFace");
 let stopSysFace = null;
-let sysT = 0, sysTyping = null;
+let sysT = 0, sysTyping = null, sysAge = 0, sysMin = 0;   // sysAge／sysMin：這句講多久了、至少要看多久（1-1 一段一段來用）
 // focus：系統講到某個按鈕時，那顆按鈕跟著閃（教學）
 const FOCUS = { atk: "btnAtk", dash: "btnDash", skill: "btnSkill", ult: "btnUlt", bag: "btnBag", forms: "forms" };
 let focusEl = null;
@@ -1658,6 +1684,7 @@ function toast(msg, sec = 3, focus = null, icon = null) {
     // 打完之後把【】裡的字換成按鍵的樣子
     sysTyping.done.then(() => { if (sysTyping === mine) { sysText.innerHTML = keyChips(text); sysEl.classList.remove("typing"); } });
     sysT = toastT = sec + text.length * 0.035;   // 打字的時間另外加上去，看得完
+    sysAge = 0; sysMin = 1.4 + text.length * 0.035;
     focusEl?.classList.remove("teach");
     focusEl = focus ? $(FOCUS[focus]) : null;
     if (focusEl) { focusEl.classList.add("teach"); setTimeout(() => focusEl?.classList.remove("teach"), sysT * 1000); }
@@ -1671,7 +1698,8 @@ function toast(msg, sec = 3, focus = null, icon = null) {
 // 系統台詞排隊一句一句講，不會互相蓋掉
 const sayQueue = [];
 function updateSay() {
-  if (toastT <= 0.2 && sayQueue.length) { const [m, s, f] = sayQueue.shift(); toast(m, s, f); }
+  // 1-1（paced）：上一句看完（sysMin）就換下一句，不用等它整個消失
+  if ((toastT <= 0.2 || (STAGE.paced && sysT > 0 && sysAge >= sysMin)) && sayQueue.length) { const [m, s, f] = sayQueue.shift(); toast(m, s, f); }
 }
 const escHtml = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
 /** 【攻擊】→ 按鍵小方塊 */
@@ -1792,6 +1820,7 @@ function hud(dt) {
   ultImg.data.set(ultPixels(ult.on ? 0 : uk, performance.now() / 1000)); ultG.putImageData(ultImg, 0, 0); ultG2.putImageData(ultImg, 0, 0); ultHud.classList.toggle("ready", ready);   // 大招圖示：能量灌滿星星、集滿發光閃耀
   ubBar.classList.toggle("ready", ready);
   btnUlt.classList.toggle("ready", ready);
+  sysAge += dt;
   if ((toastT -= dt) <= 0) toastEl.classList.remove("on");
   if ((sysT -= dt) <= 0 && sysEl.classList.contains("on")) { sysEl.classList.remove("on"); stopSysFace?.(); stopSysFace = null; }
 }
@@ -1824,7 +1853,7 @@ requestAnimationFrame(loop);
 // 開發用效能測試：直接跑 n 幀（不受瀏覽器節流影響），回傳每幀平均毫秒數
 window.__game.bench = (n = 300) => {
   const t0 = performance.now();
-  for (let i = 0; i < n; i++) { tick(STEP); render(); }
+  for (let i = 0; i < n; i++) { tick(STEP); render(); hud(STEP); }   // hud 也跑：系統訊息的計時在這裡
   return +((performance.now() - t0) / n).toFixed(2);
 };
 
@@ -1854,21 +1883,25 @@ function start() {
   document.body.classList.toggle("town", TOWN);
   updateBagDot();
   const touch = document.body.classList.contains("touch");
-  if (touch) {
-    // 放在外框頁（iframe）裡時，請外框頁自己開全螢幕：瀏覽器在「要求全螢幕的那一頁」換頁時會退出全螢幕，
-    // 由外框頁開的話，換場景只重新載入 iframe，全螢幕就留著（點擊的使用者啟用會傳到外框頁）
-    if (window.top !== window) window.parent.postMessage({ type: "zero-hero-fullscreen" }, location.origin);
-    else if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().then(() => screen.orientation?.lock?.("landscape")).catch(() => {});
-  }
+  goFullscreen();
   if (TOWN) townArrive();
   else if (ENDLESS) toast("系統：無限模式。打到你手痠為止。");
   else director = new Director(STAGE, stageApi, touch);
+}
+// 手機：進全螢幕、轉橫向。要在點擊的當下呼叫（瀏覽器規定），所以開場動畫開始播的時候就先開（使用者 2026-11-06）
+function goFullscreen() {
+  if (!document.body.classList.contains("touch")) return;
+  // 放在外框頁（iframe）裡時，請外框頁自己開全螢幕：瀏覽器在「要求全螢幕的那一頁」換頁時會退出全螢幕，
+  // 由外框頁開的話，換場景只重新載入 iframe，全螢幕就留著（點擊的使用者啟用會傳到外框頁）
+  if (window.top !== window) window.parent.postMessage({ type: "zero-hero-fullscreen" }, location.origin);
+  else if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().then(() => screen.orientation?.lock?.("landscape")).catch(() => {});
 }
 // 開始冒險：新遊戲第一次進 1-1 時先播開場動畫（只播一次，可跳過），播完直接開始
 async function startOrIntro() {
   if (started || introOn) return;
   if (TOWN || ENDLESS || STAGE_ID !== "1-1" || profile.seenIntro) return start();
   introOn = true;
+  goFullscreen();
   unlockAudio();
   stopTitle?.(); stopTitle = null;
   $("helpPanel").classList.add("hidden");
@@ -1878,7 +1911,7 @@ async function startOrIntro() {
   profile.seenIntro = true;
   save(profile, true);
   // 開場已經講過「轉生成功、種族星星」，1-1 一開始改講別的
-  STAGE.intro = ["系統：……好，先站起來走走看吧。這裡是深淵的最底層，墜落之底。"];
+  STAGE.intro = [];   // 使用者 2026-11-06：直接接第一句教學（走路），不要多一句擋在前面
   const fade = $("fade");
   fade.style.transition = "none"; fade.classList.add("on");
   start();
@@ -1890,6 +1923,7 @@ $("startBtn").addEventListener("click", startOrIntro);
 async function replayIntro() {
   if (introOn) return;
   introOn = true;
+  goFullscreen();
   $("setPanel").classList.add("hidden");
   const wasStarted = started;
   stopTitle?.(); stopTitle = null;

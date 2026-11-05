@@ -4,74 +4,37 @@
 // side: 1 從畫面右邊出現、-1 從左邊、0 從上面掉下來（蝙蝠）
 export const STAGE_1_1 = {
   name: "1-1 墜落之底",
-  start: { x: 100, y: -40 },
-  exitX: 2200, exitY: 264,   // 8d：出口往左移，右邊留給封印後面的星之殘火
-  // 8c：大地圖的祭壇、怪物（約 50 隻，擺在各層）
-  // 8d：形態機關、一次性資源。下層洞穴右邊有一面裂牆（鐵罐星才撞得破，後面是寶箱）；最上層右邊有一扇星光封印（後面是星之殘火）
-  features: [
-    { t: "crack", x: 1328, y: 600, h: 120 }, { t: "safe", x: 1376, y: 600 },
-    { t: "seal", x: 2320, y: 264, h: 160 }, { t: "ember", x: 2360, y: 264 },
-    { t: "stele", x: 1000, y: 344, i: 0 }, { t: "fossil", x: 1600, y: 248, form: "slime" }, { t: "vein", x: 2300, y: 432 },
-  ],
-  // 10 批：元素物件（黏液池、油桶、廚餘堆、漏電管線）擺在各層地面 [種類, x, y]
-  hazards: [["goo", 560, 536], ["goo", 960, 600], ["drum", 1100, 432], ["junk", 1700, 432], ["pipe", 2060, 432]],
-  altars: [{ x: 720, y: 488 }, { x: 1500, y: 432 }, { x: 2100, y: 264 }],
+  paced: true,
+  start: { x: 84, y: -40 },
+  exitX: 3180, exitY: 384,
+  // 使用者 2026-11-06：1-1 重新設計——一次只教一件事。菁英、金幣史萊姆、形態機關、元素物件都移到後面的關卡。
+  // 怪物共 14 隻；每段的提示要等前面幾段的怪清掉（quiet）才講，最多等 8 秒；系統上一句還沒講完也先等。teach＝講到時那顆按鈕才出現。
+  features: [{ t: "stele", x: 2680, y: 384, i: 0 }],
+  hazards: [],
+  altars: [{ x: 1440, y: 384 }, { x: 2820, y: 384 }],
   spawns: [
-    // 最底層、台階
-    { k: "slime", x: 380, y: 600 }, { k: "slime", x: 440, y: 600 }, { k: "bat", x: 330, y: "air" },
-    { k: "slime", x: 540, y: 536 }, { k: "slime", x: 600, y: 536 }, { k: "slime", x: 690, y: 488 }, { k: "bat", x: 640, y: "air" },
-    // 上方大洞穴
-    { k: "bat", x: 1100, y: 300 }, { k: "bat", x: 900, y: 250 }, { k: "bat", x: 1120, y: 230 }, { k: "slime", x: 1240, y: 160 },
-    { k: "slime", x: 880, y: 344 }, { k: "slime", x: 1080, y: 344 }, { k: "trash", x: 1400, y: 296 }, { k: "bat", x: 200, y: 380 },
-    // 中層走廊（低矮）
-    { k: "slime", x: 880, y: 432 }, { k: "slime", x: 960, y: 432 }, { k: "slime", x: 1030, y: 432 }, { k: "bat", x: 1000, y: 395 },
-    { k: "trash", x: 1150, y: 432 }, { k: "slime", x: 1200, y: 432 },
-    // 下層洞穴（有寶）
-    { k: "slime", x: 900, y: 600 }, { k: "slimeE", x: 1010, y: 600 }, { k: "slime", x: 1100, y: 600 }, { k: "gold", x: 1180, y: 600 }, { k: "trash", x: 1320, y: 600 },
-    // 中層走廊後半
-    { k: "trash", x: 1350, y: 432 }, { k: "slime", x: 1420, y: 432 }, { k: "slime", x: 1470, y: 432 }, { k: "bat", x: 1450, y: 390 },
-    { k: "trash", x: 1600, y: 432 }, { k: "slime", x: 1650, y: 432 }, { k: "slime", x: 1760, y: 432 }, { k: "slime", x: 1850, y: 432 },
-    // 豎井、藏起來的平台
-    { k: "bat", x: 1780, y: 360 }, { k: "bat", x: 1800, y: 300 }, { k: "bat", x: 1760, y: 220 },
-    { k: "slime", x: 1560, y: 248 }, { k: "slime", x: 1610, y: 248 },
-    // 最上層底下的房間
-    { k: "slime", x: 1980, y: 432 }, { k: "slime", x: 2050, y: 432 }, { k: "trashE", x: 2120, y: 432 }, { k: "slime", x: 2220, y: 432 },
-    { k: "slime", x: 2300, y: 432 }, { k: "bat", x: 2150, y: 380 }, { k: "bat", x: 2260, y: 370 },
-    // 最上層
-    { k: "slime", x: 1960, y: 264 }, { k: "slime", x: 2020, y: 264 }, { k: "trash", x: 2150, y: 264 }, { k: "slime", x: 2230, y: 264 },
-    { k: "bat", x: 2100, y: 190 }, { k: "bat", x: 2300, y: 170 },
+    { k: "slime", x: 1230, y: 384 },                                                          // 段 4：一隻睡著的
+    { k: "slime", x: 1720, y: 384 }, { k: "slime", x: 1770, y: 384 }, { k: "slime", x: 1820, y: 384 },   // 段 6：連擊
+    { k: "bat", x: 2020, y: 310 }, { k: "bat", x: 2070, y: 316 },                             // 段 7：閃避
+    { k: "slime", x: 2270, y: 384 }, { k: "slime", x: 2286, y: 384 }, { k: "slime", x: 2302, y: 384 }, { k: "slime", x: 2318, y: 384 }, { k: "slime", x: 2334, y: 384 },   // 段 8：擠成一團
+    { k: "slime", x: 2920, y: 384 }, { k: "trash", x: 2970, y: 384 }, { k: "slime", x: 3010, y: 384 },   // 段 10：最後一場
   ],
   intro: ["系統：……你從天上掉下來了。恭喜，你還活著。", "系統：轉生成功。種族：星星。……不，我也是第一次看到。"],
-  // 高處的金幣（探索獎勵）
-  caches: [{ x: 396, y: 472, n: 6 }, { x: 1080, y: 560, n: 9 }, { x: 1584, y: 232, n: 10 }, { x: 2240, y: 152, n: 8 }],
+  caches: [{ x: 888, y: 288, n: 5 }, { x: 1552, y: 296, n: 6 }, { x: 2600, y: 376, n: 10 }],
   events: [
     // 教學寫成系統的台詞（tip），【】裡是按鍵／按鈕，focus＝講到時哪個按鈕會閃
-    { x: 120, tip: { touch: "先活動一下。左手在【螢幕左半邊】左右拖——這樣就能走了。", key: "先活動一下。【A】【D】或方向鍵——走路。星星也是要走路的。" } },
-    { x: 280, tip: { touch: "前面有高台。左手【往上快滑】跳，在空中再點一下左半邊——二段跳。別問我星星為什麼會二段跳。", key: "前面有高台。【空白鍵】或【↑】跳，在空中再按一次——二段跳。別問我星星為什麼會二段跳。" } },
-    {
-      x: 470,
-      say: "系統：史萊姆，深淵最弱的魔物。剛好適合零星的你。",
-      tip: { touch: "按住右下角的【攻擊】，會自己打出三連段。很方便吧？我設計的。", key: "按住【滑鼠左鍵】，會自己打出三連段。很方便吧？我設計的。", focus: "atk" },
-      waves: [[["slime", 1], ["slime", 1], ["slime", -1]]],
-    },
-    {
-      x: 900,
-      say: "系統：蝙蝠會俯衝，看準時機閃開。",
-      tip: { touch: "【閃避】的那一瞬間不會受傷。沒推方向的話，會往遠離敵人的那邊閃。", key: "按【滑鼠右鍵】衝刺閃避，閃的那一瞬間不會受傷。", focus: "dash" },
-      waves: [[["slime", 1], ["bat", 0], ["bat", 0]], [["slime", -1], ["slime", 1], ["bat", 0], ["slime", 1]]],
-    },
-    {
-      x: 1290,
-      say: "系統：……等等，那個垃圾桶是不是在動？",
-      tip: { touch: "用【技能】。星屑彈打中會爆炸，一整群一起送走。", key: "按【E】放技能——星屑彈，打中會爆炸，一整群一起送走。", focus: "skill" },
-      waves: [[["trash", 1]], [["trash", -1], ["slime", 1], ["bat", 0], ["slime", -1]]],
-    },
-    {
-      x: 1730,
-      say: "系統：最後一波了。撐住，我還不想換宿主。",
-      waves: [[["slime", 1], ["slime", 1], ["slime", -1], ["slime", -1], ["bat", 0], ["bat", 0]], [["trash", 1], ["trash", -1], ["bat", 0], ["bat", 0], ["gold", 1]]],
-    },
-    { x: 2180, say: "系統：前面有傳送門。……通往更深的地方。我就知道。" },
+    { x: 90, tip: { touch: "先活動一下。左手在【螢幕左半邊】左右拖——這樣就能走了。", key: "先活動一下。【A】【D】或方向鍵——走路。星星也是要走路的。" } },
+    { x: 320, tip: { touch: "前面有個小台階。左手【往上快滑】——跳。", key: "前面有個小台階。【空白鍵】或【↑】——跳。" } },
+    { x: 690, tip: { touch: "這個太高了。跳起來之後，在空中再滑一次——二段跳。別問我星星為什麼會二段跳。", key: "這個太高了。跳起來之後在空中再按一次——二段跳。別問我星星為什麼會二段跳。" } },
+    { x: 1030, tip: { touch: "前面那隻史萊姆還在睡，深淵最弱的魔物。按住右下角的【攻擊】，會自己打出三連段。我設計的。", key: "前面那隻史萊姆還在睡，深淵最弱的魔物。按住【滑鼠左鍵】，會自己打出三連段。我設計的。", focus: "atk" } },
+    { x: 1250, quiet: true, say: "系統：看到了嗎？打倒的魔物會變成光，被你吸進來。這就是你變強的方法——吸收。" },
+    { x: 1270, quiet: true, say: "系統：前面那個是星之祭壇。走過去點亮它——死掉的話會從這裡重來。" },   // 怎麼按：第一次站到旁邊時 main.js 會教（tipUse）
+    { x: 1500, say: "系統：前面三隻。按住攻擊不要停——連擊每滿 10 下，魔力 +10。" },
+    { x: 1850, quiet: true, teach: "dash", tip: { touch: "上面有翅膀的聲音——蝙蝠會俯衝。按【閃避】閃開，閃的那一瞬間不會受傷。", key: "上面有翅膀的聲音——蝙蝠會俯衝。按【滑鼠右鍵】衝刺閃開，閃的那一瞬間不會受傷。", focus: "dash" } },
+    { x: 2090, quiet: true, teach: "skill", tip: { touch: "一整團擠在一起，一隻一隻打太慢了。用【技能】——星屑彈打中會爆炸，一整群一起送走。", key: "一整團擠在一起，一隻一隻打太慢了。按【E】放星屑彈——打中會爆炸，一整群一起送走。", focus: "skill" } },
+    { x: 2530, quiet: true, tip: { touch: "前面被岩壁擋住了，路在下面。左手【往下快滑】——從平台穿下去。", key: "前面被岩壁擋住了，路在下面。按【S】或【↓】——從平台穿下去。" } },
+    { x: 2780, quiet: true, ult: true, say: "系統：又一座祭壇。……前面那個垃圾桶是不是在動？" },   // ult：從這裡開始才會教大招
+    { x: 3030, quiet: true, say: "系統：寶箱！還有傳送門……通往更深的地方。我就知道。" },
   ],
 };
 
@@ -176,7 +139,7 @@ export const STAGE_TEST = {
   ],
 };
 // 無限模式：用原本的 1-1（一個畫面高），只有起點和出口會用到
-export const STAGE_ENDLESS = { ...STAGE_1_1, start: { x: 200, y: 184 }, exitX: 2318, exitY: 0, altars: [], spawns: [], caches: [] };
+export const STAGE_ENDLESS = { ...STAGE_1_1, start: { x: 200, y: 184 }, exitX: 2318, exitY: 0, altars: [], spawns: [], caches: [], features: [], events: [] };
 export const STAGES = { endless: STAGE_ENDLESS, "1-1": STAGE_1_1, "1-2": STAGE_1_2, "1-3": STAGE_1_3, "1-4": STAGE_1_4, test: STAGE_TEST };
 
 const SAY_TIME = 3.2, HINT_TIME = 5;
@@ -218,8 +181,15 @@ export class Director {
     }
     // 走到下一個事件的位置就觸發
     const ev = this.stage.events[this.next];
-    if (ev && player.x >= ev.x && (ev.y == null || player.y >= ev.y)) {   // 10 批：y＝要在這個高度以下才算（王房在屋頂底下）
-      this.next++;
+    // 使用者 2026-11-06：一段一段來——系統上一句還沒講完就先等；quiet＝還要等前面幾段（擺在這個位置以前）醒著的怪清掉才講（最多等 8 秒）
+    const reached = ev && player.x >= ev.x && (ev.y == null || player.y >= ev.y);   // 10 批：y＝要在這個高度以下才算（王房在屋頂底下）
+    if (!reached) this.waitT = 0;
+    else if ((this.waitT = (this.waitT ?? 0) + dt) < 8 && ((ev.quiet && this.api.busy?.(player.x, player.y, ev.x)) || (this.stage.paced && this.api.talking?.()))) { /* 等一下 */ }
+    else {
+      this.next++; this.waitT = 0;
+      if (this.stage.paced && (ev.say || ev.tip)) this.api.cut?.();
+      if (ev.ult) this.ultOK = true;
+      if (ev.teach) this.api.teach?.(ev.teach);
       if (ev.say) this.api.say(ev.say, SAY_TIME);
       if (ev.hint) this.api.hint(this.isTouch ? ev.hint.touch : ev.hint.key, HINT_TIME);
       if (ev.tip) this.api.say("系統：" + (this.isTouch ? ev.tip.touch : ev.tip.key), HINT_TIME, ev.tip.focus);
