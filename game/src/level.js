@@ -7,6 +7,7 @@
 // 水晶、火球、爆炸照亮，而且顏色永遠是色票裡的顏色（規則v2：不漸層、不柔邊）。
 import { genPlatform } from "./platform-art.js";
 import { genLayer, THEME_LAYERS } from "./bg-art.js";
+import { paintLair } from "./lair-art.js";
 import { hex, rand } from "../../pixelfx/src/core/index.js";
 import { tintOf } from "./light.js";
 import { loadArt, cell, baseRow, blit, glows, glowClusters } from "./art.js";
@@ -78,6 +79,7 @@ function build() {
   if (LAYOUT.solids) {
     const gl = [];
     paintTerrain((x, y) => solidAt(x, y + 0.5), LEVEL_W, MAP_H, (x, y, c) => put(x, y, C(c)), (x, y, c) => { PFE[y * LEVEL_W + x] = 1; gl.push([x, y, C(c)]); }, THEME === "lair" ? "junk" : THEME);
+    if (THEME === "lair") paintLair((x, y) => solidAt(x, y + 0.5), LEVEL_W, MAP_H, (x, y, c) => put(x, y, C(c)), LAYOUT.arena);   // 特效補強 5：巢穴的黏液、抓痕、啃痕
     for (const g of glowClusters(gl, 24)) PROP_LIGHTS.push({ x: g.x, y: g.y, r: 26, lv: 1.3, col: g.col });
   } else {
   const STONE = (x, y) => gt.px[(16 + (y % 30)) * gt.w + 86 + (x % 30)];

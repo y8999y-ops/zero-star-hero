@@ -13,7 +13,7 @@
 import { setSolid, geo } from "./map.js";
 import { input } from "./input.js";
 import { FORMS } from "./forms.js";
-import { drawCrack, drawWind, drawShroom, drawSeal, drawEmber, drawVein, drawFossil, drawSafe, drawStele } from "./feature-art.js";
+import { crackDebris, updateDebris, drawDebris, drawCrack, drawWind, drawShroom, drawSeal, drawEmber, drawVein, drawFossil, drawSafe, drawStele } from "./feature-art.js";
 
 // 碑文的故事（接神話「星王之冠」）：每關一段一段讀
 export const STELE_LORE = [
@@ -49,11 +49,13 @@ export function createFeatures({ stageId, list = [], profile, player, api }) {
   function update(dt) {
     for (const f of items) {
       f.cd -= dt;
+      if (f.debris) { updateDebris(f.debris, dt); if (f.debris.every((d) => d.age > d.life)) f.debris = null; }
       if (f.t === "crack" && !f.done) {
         if (near(f, 30, (f.h ?? 48) + 10)) {
           if (player.form === "can" && player.state === "charge") {
             setSolid(box(f), false); take(f);
-            api.burst(f.x, f.y - (f.h ?? 48) / 2, "crack");
+            f.debris = crackDebris(f.x, f.y, f.h ?? 48, player.face);   // 特效補強 8：牆上每一塊垃圾各自噴飛
+            api.burst(f.x, f.y, "crack");
           } else if (Math.abs(player.x - f.x) < 26) hint(f);
         }
       } else if (f.t === "wind") {
@@ -73,11 +75,11 @@ export function createFeatures({ stageId, list = [], profile, player, api }) {
       } else if (f.done) continue;
       else if (f.t === "ember" && near(f, 10, 22)) {
         take(f); profile.mpBonus = (profile.mpBonus ?? 0) + 10; api.refresh();
-        api.burst(f.x, f.y - 10, "ember"); api.toast(`星之殘火：最大魔力 +10（${100 + profile.mpBonus}）。你墜落時散掉的一小塊自己，撿回來了。`, 3, "res_ember");
+        api.burst(f.x, f.y - 10, "ember"); api.banner("res_ember", "星之殘火", `最大魔力 +10（${100 + profile.mpBonus}）`, "你墜落時散掉的一小塊自己，撿回來了。");
       } else if (f.t === "fossil" && near(f, 14, 16)) {
         const form = profile.forms.owned[f.form] ? f.form : profile.forms.cur;
         profile.forms.owned[form].pts = (profile.forms.owned[form].pts ?? 0) + 1;
-        take(f); api.burst(f.x, f.y - 8, "fossil"); api.toast(`魔物化石核：${FORMS[form].name} 技能點 +1。很久以前的魔物核，變成化石了還吸收得到。`, 3.2, "res_fossil");
+        take(f); api.burst(f.x, f.y - 8, "fossil"); api.banner("res_fossil", "魔物化石核", `${FORMS[form].name} 技能點 +1`, "很久以前的魔物核，變成化石了還吸收得到。");
       } else if (f.t === "safe" && near(f, 16, 22) && player.grounded) {
         take(f); api.loot(f.x, f.y - 12); api.burst(f.x, f.y - 10, "safe"); api.toast("被丟下來的寶箱：上面的世界丟了一個保險箱下來……沒鎖。", 2.8, "res_safe");
       } else if (f.t === "stele" && near(f, 14, 34)) {
@@ -110,6 +112,7 @@ export function createFeatures({ stageId, list = [], profile, player, api }) {
   function draw(frame, t) {
     for (const f of items) {
       const tt = t + f.t0;
+      if (f.debris) drawDebris(frame, f.debris);
       if (f.t === "crack" && !f.done) drawCrack(frame, f.x, f.y, f.hp >= 3 ? 1 : 0.4, tt, f.h ?? 48);
       else if (f.t === "wind") drawWind(frame, f.x, f.y, f.w, f.h, tt);
       else if (f.t === "shroom") drawShroom(frame, f.x, f.y, f.squash, tt);

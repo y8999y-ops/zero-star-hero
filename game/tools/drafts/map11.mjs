@@ -3,6 +3,7 @@
 import { writeFileSync } from "node:fs";
 import { encodePNG } from "../../../pixelfx/tools/lib/png.mjs";
 import { paintTerrain } from "../../src/terrain-art.js";
+import { paintLair } from "../../src/lair-art.js";
 globalThis.location = { search: "" };
 const { LAYOUTS } = await import("../../src/stages.js");
 const { STAGES } = await import("../../src/stage.js");
@@ -12,6 +13,7 @@ const snap = (v) => Math.floor(v / 8) * 8;
 const solid = (x, y) => L.solids.some((r) => x >= snap(r.x) && x < Math.ceil((r.x + r.w) / 8) * 8 && y >= snap(r.y) && y < Math.ceil((r.y + r.h) / 8) * 8);
 const put = (x, y, hx) => { x = Math.round(x); y = Math.round(y); if (x < 0 || y < 0 || x >= W || y >= H) return; img.set([1, 3, 5].map((o) => parseInt(hx.slice(o, o + 2), 16)).concat(255), (y * W + x) * 4); };
 paintTerrain(solid, W, H, put, () => {}, L.theme === "lair" ? "junk" : L.theme);
+if (L.theme === "lair") paintLair(solid, W, H, put, L.arena);
 const box = (x, y, w, h, c) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) put(x + i, y + j, c); };
 for (const p of L.platforms) box(p.x, p.y, p.w, 3, "#e8c040");
 for (const a of S.altars) box(a.x - 5, a.y - 16, 10, 16, "#ffd84a");

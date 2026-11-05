@@ -138,7 +138,7 @@ export const STAGE_1_4 = {
   name: "1-4 大胃王的巢穴",
   start: { x: 60, y: 160 },
   exitX: 0,
-  arena: { l: 1256, r: 1784, floor: 600, top: { x: 1466, y: 512, w: 108 } },   // top＝王放大招時跳上去的中間高平台（stages.js 也有同一塊）
+  arena: { l: 1256, r: 1784, floor: 600, top: { x: 1466, y: 512, w: 108 }, hole: { x: 1312, y: 352, w: 64, h: 48 } },   // hole＝屋頂的破洞（王出場時被垃圾塞住）   // top＝王放大招時跳上去的中間高平台（stages.js 也有同一塊）
   features: [
     { t: "crack", x: 1624, y: 352, h: 120 }, { t: "fossil", x: 1690, y: 352, form: "star" }, { t: "ember", x: 1748, y: 352 },
     { t: "safe", x: 1180, y: 600 }, { t: "vein", x: 140, y: 600 }, { t: "stele", x: 1060, y: 352, i: 3 },

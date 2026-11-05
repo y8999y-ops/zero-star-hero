@@ -7,7 +7,8 @@ import * as explosion from "../../pixelfx/src/fx/explosions/plasma-explosion.js"
 import { A, GLOW } from "./assets.js";
 import { input, tickInput, initTouch, consume } from "./input.js";
 import { drawLevel, drawForeground, drawAtmosphere, sceneLights, LEVEL_W, FLOOR, H, TORCHES, TORCH_POS, WALL, geo, MAP_H } from "./level.js";
-import { initMap, flatMap, groundAt, floorAt, solidAt, moveX, surfaceRuns } from "./map.js";
+import { initMap, flatMap, groundAt, floorAt, solidAt, moveX, surfaceRuns, setSolid } from "./map.js";
+import { drawPlug } from "./feature-art.js";
 import { TOWN_W, NPCS, townLights, drawTown, drawTownNpcs, drawTownFg, nearby } from "./town.js";
 import { talk, ask, dialog, typewriter } from "./dialog.js";
 import * as frogFx from "../../pixelfx/src/fx/critters/frog.js";
@@ -88,6 +89,7 @@ const STAGE = STAGES[STAGE_ID];
 // ---- 8b：星之祭壇（存檔點）。碰到會點亮、回滿血和魔力；死掉從最後點亮的祭壇重來（還沒點過＝關卡起點）
 const altars = TOWN || ENDLESS ? [] : (STAGE.altars ?? (LAYOUTS[STAGE_ID].w > 1200 ? [{ x: Math.round(LAYOUTS[STAGE_ID].w * 0.5) }] : [])).map((a) => ({ x: a.x, y: a.y ?? floorAt(a.x, LAYOUTS[STAGE_ID].solids ? 0 : FLOOR - 4), lit: false, near: false }));
 let checkpoint = null;
+const plug = { on: false, t: 0, landed: false };   // 1-4 屋頂破洞的垃圾塞子
 let features = null;   // 8d：形態機關＋一次性資源（features.js），玩家和世界建好之後才建立
 // 關卡進度：哪幾關打過（舊存檔：通關過＝1-1 打過）
 profile.cleared ??= profile.clears > 0 ? { "1-1": true } : {};
@@ -98,6 +100,7 @@ const STEP = 1 / 60;
 const canvas = document.getElementById("screen");
 const ctx = canvas.getContext("2d");
 let W = 384, frame, img;
+const ZOOM = 1.2;   // 鏡頭拉近（看到的世界是原本的 1/1.2）
 
 // ---- 畫面大小：高度固定 216，寬度跟著螢幕比例走（手機長螢幕不會有黑邊）
 function resize() {
@@ -105,9 +108,14 @@ function resize() {
   W = Math.max(320, Math.min(480, Math.round((H * aspect) / 2) * 2));
   canvas.width = W;
   canvas.height = H;
-  const k = Math.min(innerWidth / W, innerHeight / H);
+  // 使用者 2026-11-05：鏡頭近 20%——畫面照原本的 216 高畫，顯示時放大 1.2 倍、置中，超出視窗的四周裁掉（#stage overflow: hidden）
+  const k = Math.min(innerWidth / W, innerHeight / H) * ZOOM;
   canvas.style.width = Math.floor(W * k) + "px";
   canvas.style.height = Math.floor(H * k) + "px";
+  // 置中（比視窗大時 grid 會靠左上，裁切就不對稱）：直接算左上角，offsetLeft／offsetTop 也跟著對
+  canvas.style.position = "absolute";
+  canvas.style.left = Math.round((innerWidth - Math.floor(W * k)) / 2) + "px";
+  canvas.style.top = Math.round((innerHeight - Math.floor(H * k)) / 2) + "px";
   frame = createFrame(W, H);
   img = new ImageData(W, H);
 }
@@ -477,9 +485,20 @@ if (!TOWN && !ENDLESS) features = createFeatures({
   api: {
     say: (m, sec) => sayQueue.push([m, sec]),
     toast: (m, sec, icon) => toast(m, sec, null, icon),
+    // 特效補強 9：拿到重要資源（星之殘火、魔物化石核）的大字橫幅
+    banner(icon, title, eff, flavor) {
+      const el = $("resBanner");
+      el.querySelector(".rb-icon").style.backgroundImage = `url(${iconURL(icon, 3)})`;
+      el.querySelector(".rb-title").textContent = title; el.querySelector(".rb-eff").textContent = eff; el.querySelector(".rb-flavor").textContent = flavor;
+      el.classList.remove("on"); void el.offsetWidth; el.classList.add("on"); sfx("rare");
+    },
     save: () => save(profile),
     refresh: () => refreshStats(),
-    burst: (x, y, kind) => { spawn(collectBurst, { x: Math.round(x), y: Math.round(y), palette: FX_PAL[kind], light: 0.6 }); flash(x, y, 90, 3, 0.6, FX_PAL[kind][5]); sfx(kind === "crack" ? "hitH" : "levelup"); if (kind === "crack") shake(0.3, 4); },
+    burst: (x, y, kind) => {
+      // 特效補強 8：裂牆不再放金色收集光爆，改成牆腳一大團灰塵（碎塊在 features.js 自己畫）
+      if (kind === "crack") { world.dust(x, y, 12); flash(x, y - 24, 90, 3, 0.5, FX_PAL.crack[5]); sfx("hitH"); shake(0.35, 4); hitStop(0.06); return; }
+      spawn(collectBurst, { x: Math.round(x), y: Math.round(y), palette: FX_PAL[kind], light: 0.6 }); flash(x, y, 90, 3, 0.6, FX_PAL[kind][5]); sfx("levelup");
+    },
     boing: (x, y) => { sfx("jump2"); world.dust(x, y, 6); },
     clink: (x, y) => { sfx("clank"); flash(x, y, 30, 1.5, 0.2, "#4cd8ec"); shake(0.08, 1); },
     loot: (x, y) => { world.dropCoins(x, y, 14); dropItem(x, y, R.rare, { rarity: R.rare, ilvl: ilvlNow(1), dir: -1 }); dropItem(x, y, R.epic, { rarity: R.epic, ilvl: ilvlNow(1), dir: 1 }); },
@@ -501,6 +520,7 @@ const mapView = TOWN || ENDLESS ? null : createMapView({
   onClose: () => sfx("close"),
 });
 window.__game.mapView = mapView;
+Object.defineProperty(window.__game, "portal", { get: () => ({ x: portalX, y: portalY, stageDone, leaving }) });   // 開發用：傳送門
 const openMap = () => { if (mapView && started && !dialog.open && !inv.open && !isWinOpen()) mapView.toggle(); };
 addEventListener("keydown", (e) => { if (e.code === "KeyM") openMap(); if (e.code === "Escape" && mapView?.open) mapView.hide(); });
 $("btnMap").style.backgroundImage = `url(${iconURL("map", 2)})`;
@@ -616,7 +636,16 @@ const world = {
     if (best) { best.stun = Math.max(best.stun, 1); best.dizzyT = 1; }
   },
   cometStart() { comet = { hit: new Set() }; },
-  noMana() { const b = $("mpBar"); b.classList.remove("lack"); void b.offsetWidth; b.classList.add("lack"); sfx("close"); },
+  // 特效補強 10：魔力不足——魔力條閃、按的那顆鍵左右抖、頭上冒「魔力不足」（0.6 秒內不重複冒）
+  noMana(kind = "skill") {
+    const b = $("mpBar"); b.classList.remove("lack"); void b.offsetWidth; b.classList.add("lack"); sfx("close");
+    for (const el of kind === "ult" ? [btnUlt, ultHud] : [$("btnSkill"), pcSkill]) { el.classList.remove("shakeNo"); void el.offsetWidth; el.classList.add("shakeNo"); }
+    const now = performance.now(); if (now - (world.noManaT ?? 0) < 600) return; world.noManaT = now;
+    const k = canvas.clientWidth / W, pop = document.createElement("div");
+    pop.className = "react-pop nomana"; pop.textContent = "魔力不足";
+    pop.style.left = canvas.offsetLeft + (player.x - camX) * k + "px"; pop.style.top = canvas.offsetTop + (player.y - camY - 30) * k + "px";
+    $("stage").appendChild(pop); setTimeout(() => pop.remove(), 900);
+  },
   spawnWave(x, y, dir) { waves.push({ x, y, dir, t: 0, hit: new Set(), seed: Math.random() }); sfx("swing", "star"); },
   /** 技能樹的小彈（彈跳、分裂）：比較小、比較短、不會再分 */
   spawnShotlet(x, y, dir, form, { vy = 0, mult = 0.6, life = 0.35, gen = 1 } = {}) {
@@ -628,6 +657,8 @@ const world = {
   },
   land(x, y, hard) { sfx("land", hard); dustFx("land", x, y, hard); props.landing(x, y, hard); scenery.landing(x, y, hard); },
   jumpDust(x, y, first) { dustFx(first ? "jump" : "double", x, y); },
+  stepDust(x, y) { dustFx("step", x, y); },
+  skidDust(x, y, dir) { dustFx("skid", x, y, false, dir); },
   dust(x, y, n) {
     spawn(A.dust, { x: Math.round(x), y: Math.round(y), flip: Math.random() < 0.5 }, { speed: 1.8 });
   },
@@ -690,7 +721,8 @@ const world = {
         fade.classList.remove("on");
         deathFx.regather(player.x, player.y, col);
         player.hideT = 0.52; player.invuln = 2;   // 光柱打下來的那一刻出現
-        setTimeout(() => sfx("levelup"), 480);
+        const altar = to === checkpoint ? checkpoint : null;
+        setTimeout(() => { sfx("levelup"); if (altar) { altar.pulse = 1; flash(altar.x, altar.y - 16, 90, 3, 0.5, "#ffe066"); } }, 480);   // 特效補強 12：從祭壇重生時，祭壇跟著亮一下
       }, 900);
       toast(checkpoint ? "系統：你死了。……從祭壇重來吧，打倒的怪不會回來。" : "系統：你死了。……算了，當我沒看到，再給你一次機會。");
     }
@@ -727,7 +759,7 @@ function reactPop(kind, e) {
   el.textContent = R.name;
   el.style.color = R.col;
   el.style.left = canvas.offsetLeft + (e.x - camX) * k + "px";
-  el.style.top = canvas.offsetTop + (b.y0 - 6) * k + "px";
+  el.style.top = canvas.offsetTop + (b.y0 - 6 - camY) * k + "px";   // 大地圖：扣掉鏡頭的高度（原本沒扣，鏡頭不在最上面時字跑到畫面外）
   $("stage").appendChild(el);
   setTimeout(() => el.remove(), 1000);
 }
@@ -789,7 +821,7 @@ function goScene(next, stageId) {
   setTimeout(() => location.replace(location.pathname), 380);   // 拿掉網址上的開發用參數
 }
 
-let prevAtk = false, near = null, busy = false;
+let prevAtk = false, near = null, busy = false, stuckT = 0;
 const folk = TOWN ? createFolk(FLOOR) : null;   // 路人
 window.__game.folk = folk;
 if (TOWN) {
@@ -859,6 +891,9 @@ function townArrive() {
 }
 function townTick(dt) {
   updateLight(dt);
+  // 使用者 2026-11-05 回報：打完王回城鎮方向鍵不能動——看門狗：busy／對話中是真，但畫面上其實沒有對話框、視窗、背包開著，超過 1.5 秒就解除
+  const shown = !$("dlg").classList.contains("hidden") || isWinOpen() || inv.open;
+  if ((busy || dialog.open) && !shown) { stuckT += dt; if (stuckT > 1.5) { console.warn("城鎮操作卡住，自動解除", { busy, dialog: dialog.open }); busy = false; dialog.open = false; stuckT = 0; } } else stuckT = 0;
   if (!dialog.open && !busy) {
     // 城鎮不能戰鬥：攻擊鍵＝對話，技能、大招不能用
     const atk = input.attack;
@@ -1039,6 +1074,7 @@ function heartBurst(from) {
 // ---- 史詩套裝「流星獵手」4 件：暴擊標記，5 秒內再暴擊同一隻 → 掉一顆小流星（攻擊力 80%）
 function updateAltars() {
   for (const a of altars) {
+    if (a.pulse > 0) a.pulse = Math.max(0, a.pulse - STEP / 0.8);
     const near = Math.abs(player.x - a.x) < 14 && Math.abs(player.y - a.y) < 24;
     if (near && !a.near) {
       player.hp = player.maxHp; player.mp = player.maxMp;
@@ -1210,7 +1246,7 @@ function tick(dt) {
   for (let i = 0; i < CARRY_MAX; i++) if (input["form" + (i + 1)]) { consume("form" + (i + 1)); switchForm(profile.forms.carry[i]); }
   ultCd -= dt;
   if (!ultTipped && ultReady() && stats.kills >= 3) { ultTipped = true; toast("系統：" + tipFor("魔力夠了就能放大招！按【大招】，讓牠們見識一下零星的厲害。", "魔力夠了就能放大招！按【Q】，讓牠們見識一下零星的厲害。"), 2.6, "ult"); }
-  if (input.ult && !ultReady() && !ult.on) { consume("ult"); if (player.mp < ULT_MP) world.noMana?.(); }
+  if (input.ult && !ultReady() && !ult.on) { consume("ult"); if (player.mp < ULT_MP) world.noMana?.("ult"); }
   if (input.ult && ultReady() && player.state !== "hurt") {
     consume("ult");
     player.mp -= ULT_MP; ultCd = 1;
@@ -1249,6 +1285,13 @@ function tick(dt) {
   separate(dt);
   updateCoreFx(dt);
   updateAltars();
+  // 特效補強 11：王房封住時，屋頂的破洞被一團垃圾砸進來塞住；王戰中死掉解除封鎖就打開，打倒王之後維持塞住
+  const hole = STAGE.arena?.hole;
+  if (hole) {
+    if (director?.lock && !plug.on) { plug.on = true; plug.t = 0; plug.landed = false; setSolid(hole, true); }
+    else if (plug.on && !director?.lock && !stageDone && !director?.done) { plug.on = false; setSolid(hole, false); }
+    if (plug.on) { plug.t += dt; if (!plug.landed && plug.t >= 0.3) { plug.landed = true; world.dust(hole.x + hole.w / 2, hole.y, 10); shake(0.3, 3); sfx("clank"); } }
+  }
   features?.update(dt);
   for (const e of enemies) {
     if (e.dead) continue;
@@ -1398,7 +1441,8 @@ function render() {
   const lv = computeLight(frame, lights);
   if (TOWN) drawTown(frame, lv, sceneClock);
   else { drawLevel(frame, lv); drawAtmosphere(frame, sceneClock); }
-  for (const a of altars) if (Math.abs(a.x - camX - W / 2) < W) drawAltar(frame, a.x, a.y, a.lit, sceneClock);
+  for (const a of altars) if (Math.abs(a.x - camX - W / 2) < W) drawAltar(frame, a.x, a.y, a.lit, sceneClock, a.pulse ?? 0);
+  if (plug.on) { const h = STAGE.arena.hole; drawPlug(frame, h.x, h.y, h.w, h.h, plug.t); }
   features?.draw(frame, sceneClock);
   props.draw(frame, lv);
   scenery.draw(frame, lv, sceneClock);
@@ -1429,7 +1473,7 @@ function render() {
   fxState.form = player.form;
   drawCombatFx(frame);
   drawUlt(frame);
-  if (!TOWN) drawLowHp(frame, lowHp.k, lowHp.pulse);
+  if (!TOWN) drawLowHp(frame, lowHp.k, lowHp.pulse, ZOOM);
   if (TOWN) drawTownFg(frame);
   if (director?.lock) drawBarrier(director.lock);
   if (!TOWN) drawForeground(frame);

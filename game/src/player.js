@@ -330,7 +330,12 @@ export class Player {
 
     // ---- 動畫
     // 轉身：臉朝的方向一改，先轉到正面一下再轉過去
-    if (this.face !== this.lastFace) { if (this.lastFace) this.turnT = 0.09; this.lastFace = this.face; }
+    if (this.face !== this.lastFace) {
+      if (this.lastFace) { this.turnT = 0.09; if (this.grounded && Math.abs(this.vx) > 40 && this.state === "move") world.skidDust?.(this.x, this.y, this.lastFace); }   // 特效補強 6：急轉身揚起灰塵（往原本跑的方向）
+      this.lastFace = this.face;
+    }
+    // 特效補強 6：跑步時每 18px 腳後跟冒一小團灰塵
+    if (this.grounded && this.state === "move" && Math.abs(this.vx) > 90) { this.stepAcc = (this.stepAcc ?? 0) + Math.abs(this.vx) * dt; if (this.stepAcc > 18) { this.stepAcc = 0; world.stepDust?.(this.x - Math.sign(this.vx) * 4, this.y); } }
     this.pose = this.poseNow();
     for (const g of this.ghosts) g.age += dt;
     while (this.ghosts.length && this.ghosts[0].age > 0.22) this.ghosts.shift();

@@ -101,6 +101,8 @@ function render() {
 }
 const msg = (text, good = true) => { const m = root.querySelector(".win-msg"); m.textContent = text; m.className = "win-msg on " + (good ? "good" : "bad"); clearTimeout(msg.t); msg.t = setTimeout(() => (m.className = "win-msg"), 2200); };
 function show(title, theme, emblem, tabs, tab) {
+  // 使用者 2026-11-05 回報：打完王回城鎮方向鍵不能動——已經有視窗開著時又開一個，前一個「等關閉」的人會永遠等不到（busy 卡住）。先把它送出去
+  if (open) { const r = resolveClose; resolveClose = null; r?.(); }
   state = { title, theme, emblem, tabs, tab: tab ?? tabs[0].id };
   open = true;
   root.classList.remove("hidden");

@@ -47,9 +47,10 @@ const SHARD = [
   "..ss..md...",
   "...s.......",
 ];
-export function drawAltar(frame, x, y, lit, t = 0) {
+/** pulse：0～1，重生（從這座祭壇的光柱裡出現）時的反應，由 main.js 每幀遞減（特效補強 12） */
+export function drawAltar(frame, x, y, lit, t = 0, pulse = 0) {
   const W = BASE[0].length, bx = Math.round(x - W / 2), by = Math.round(y - BASE.length);
-  const SC = { a: STONE[1], b: STONE[2], c: STONE[3], d: STONE[4], r: lit ? GOLD[3] : STONE[1] };
+  const SC = { a: STONE[1], b: STONE[2], c: STONE[3], d: pulse > 0.5 ? GOLD[4] : STONE[4], r: pulse > 0.3 ? GOLD[5] : lit ? GOLD[3] : STONE[1] };   // 重生時石台頂面那圈邊也亮
   const cells = (rows, ox, oy, map, glowKeys = "") => rows.forEach((r, j) => [...r].forEach((ch, i) => { if (ch !== ".") put(frame, ox + i, oy + j, map[ch], glowKeys.includes(ch)); }));
   // 外框
   const outline = (rows, ox, oy) => {
@@ -60,10 +61,18 @@ export function drawAltar(frame, x, y, lit, t = 0) {
   const sx = Math.round(x - 6), sy = by - SHARD.length + 3, bob = lit ? Math.round(Math.sin(t * 2) * 0.6) : 0;
   // 第 3 輪：先畫石台再畫碎片（原本石台蓋掉碎片下半），點亮的顏色降一階、只有尖端和中線發光（原本整片被光洗成白色）
   outline(BASE, bx, by);
-  cells(BASE, bx, by, SC, lit ? "r" : "");
+  cells(BASE, bx, by, SC, lit ? (pulse > 0.5 ? "rd" : "r") : "");
   outline(SHARD, sx, sy + bob);
-  const MC = lit ? { w: GOLD[5], s: GOLD[3], m: GOLD[4], d: GOLD[1] } : { w: DULL[3], s: DULL[3], m: DULL[2], d: DULL[1] };
-  cells(SHARD, sx, sy + bob, MC, lit ? "wm" : "");
+  const MC = pulse > 0.45 ? { w: GOLD[5], s: GOLD[5], m: GOLD[5], d: GOLD[3] } : pulse > 0.15 ? { w: GOLD[5], s: GOLD[4], m: GOLD[5], d: GOLD[2] } : lit ? { w: GOLD[5], s: GOLD[3], m: GOLD[4], d: GOLD[1] } : { w: DULL[3], s: DULL[3], m: DULL[2], d: DULL[1] };
+  cells(SHARD, sx, sy + bob, MC, lit || pulse > 0 ? (pulse > 0.15 ? "wsmd" : "wm") : "");
+  // 重生的反應：碎片上方一道細光柱（接重生光柱）、石台底部一圈光點往兩邊散開
+  if (pulse > 0) {
+    const hgt = Math.round(46 * pulse), cx = sx + 5;
+    // 第 2 輪：兩側原本一格有一格沒有像梯子 → 兩側實心，頂端用網點淡出
+    for (let j = 0; j < hgt; j++) { const yy = sy - 2 - j, e = 1 - j / (hgt + 1); if (e < 0.3 && j % 2) continue;   /* 第 3 輪：原本 (j + yy) 是常數、頂端整段被跳過 */ put(frame, cx, yy, e > 0.5 ? GOLD[5] : GOLD[4], true); if (pulse > 0.4 && e > 0.25) { put(frame, cx - 1, yy, GOLD[3], true); put(frame, cx + 1, yy, GOLD[3], true); } }
+    const spread = Math.round(4 + (1 - pulse) * 26);
+    for (const sgn of [-1, 1]) for (let q = 0; q < 3; q++) { const px = x + sgn * (spread + q * 5), py = y - 1 - Math.round(Math.sin((1 - pulse) * Math.PI) * (3 + q * 2)); put(frame, px, py, q === 0 ? GOLD[5] : GOLD[3], true); }
+  }
   if (!lit) return;
   // 點亮：碎片尖端的十字星光一閃一閃、往上飄的星屑
   const k = Math.sin(t * 3.1) * 0.5 + 0.5, tx = sx + 5, ty = sy + bob;

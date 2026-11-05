@@ -13,7 +13,7 @@ html, body {
   touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   overscroll-behavior: none;
 }
-#stage { position: fixed; inset: 0; display: grid; place-items: center; }
+#stage { position: fixed; inset: 0; display: grid; place-items: center; overflow: hidden; }   /* 鏡頭拉近 20%：畫布比視窗大，四周裁掉 */
 #screen { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
 .ic { display: inline-block; width: 16px; height: 16px; background: center / 100% no-repeat; image-rendering: pixelated; vertical-align: -3px; }
 .ic.heart { background-image: var(--ic-heart); width: 24px; height: 24px; }
@@ -917,3 +917,21 @@ body.touch #invBag > .ttl { padding-right: 30px; }
 .nomp .cost { color: #ff8a7a; border-color: #8a1a2a; }
 #toast .ticon { display: inline-block; width: 32px; height: 32px; margin: -8px 6px -10px -4px; vertical-align: middle; background: center / 100% no-repeat; image-rendering: pixelated; }
 body.touch #btnSkill .cost { right: auto; left: -4px; }   /* 手機：右下角會蓋到攻擊鍵，改放左下 */
+
+/* 特效補強 10：魔力不足 */
+.shakeNo { animation: shakeNo .32s steps(6); }
+@keyframes shakeNo { 0%, 100% { translate: 0 0; } 20% { translate: -4px 0; } 40% { translate: 4px 0; } 60% { translate: -3px 0; } 80% { translate: 2px 0; } }
+.react-pop.nomana { color: #9ad0ff; font-size: 13px; text-shadow: 0 2px 0 #0c1a3a, 0 0 4px #1e64b0; }
+
+/* 特效補強 9：重要資源的大字橫幅（跟大招特寫帶同一個語言：深色長帶＋上下金邊，從中間往上下展開） */
+#resBanner { position: absolute; left: 0; right: 0; top: 24%; display: flex; align-items: center; justify-content: center; gap: 14px; padding: 10px 16px;
+  background: #140c26e6; border-top: 2px solid #fff09a; border-bottom: 2px solid #fff09a; box-shadow: 0 -2px 0 #c48412, 0 2px 0 #c48412; pointer-events: none; z-index: 6; opacity: 0; transform: scaleY(0); }
+#resBanner.on { animation: rbIn 2.6s steps(40) forwards; }
+@keyframes rbIn { 0% { opacity: 1; transform: scaleY(0); } 6% { transform: scaleY(1.15); } 10% { transform: scaleY(1); } 85% { opacity: 1; transform: scaleY(1); } 100% { opacity: 0; transform: scaleY(1); } }
+#resBanner .rb-icon { width: 48px; height: 48px; background: center / 100% no-repeat; image-rendering: pixelated; filter: drop-shadow(0 0 6px #ffd84a); animation: rbIcon .5s steps(5); }
+@keyframes rbIcon { from { transform: scale(2); filter: brightness(3) drop-shadow(0 0 10px #fff); } }
+#resBanner .rb-text { display: flex; flex-direction: column; gap: 2px; }
+#resBanner .rb-title { color: #ffd84a; font-size: 22px; letter-spacing: 6px; text-shadow: 0 2px 0 #4a2a08, 0 0 8px #ffb030; }
+#resBanner .rb-eff { color: #ffffff; font-size: 14px; font-weight: 700; text-shadow: 0 1px 0 #000; }
+#resBanner .rb-flavor { color: #b8a8d0; font-size: 11px; }
+body.touch #resBanner { top: 18%; }

@@ -269,7 +269,7 @@ const bat = {
   start(U, player, kit, H) {
     U.side = player.face; U.x0 = player.x; U.y0 = player.y;
     const foes = H.enemies().filter((e) => Math.abs(e.x - player.x) < 210 && Math.abs(e.y - player.y) < 120).sort((a, b) => Math.abs(a.x - player.x) - Math.abs(b.x - player.x)).slice(0, BT.N);
-    U.targets = foes; U.k = -1; U.trails = []; U.claws = []; U.struck = new Set(); U.hits = 0; U.burst = false;
+    U.targets = foes; U.k = -1; U.trails = []; U.claws = []; U.struck = new Set(); U.hits = 0; U.burst = false; U.visits = new Map();
     U.prev = { x: player.x, y: player.y - 10 };
   },
   update(U, dt, player, kit, H) {
@@ -290,7 +290,10 @@ const bat = {
       // 抓三下（0、0.05、0.1 秒），最後一下帶毒
       if (U.cur && !U.cur.dead && U.n < 3 && local >= U.n * 0.05) {
         const e = U.cur; U.n++;
-        H.hit(e, 0.8, player.face, { push: 1, elem: U.n === 3 ? "poison" : null });
+        // 平衡（王戰實測：只有王一隻時 8 次突擊全打在王身上，約 21 倍攻擊力、一招秒殺）：同一隻最多吃 2 次完整突擊（加上毒爆約 9 倍，跟其他大招打平），之後只剩擦傷
+        const visits = (U.visits ??= new Map()), v = (visits.get(e) ?? 0) + (U.n === 1 ? 1 : 0);
+        if (U.n === 1) visits.set(e, v);
+        H.hit(e, v <= 2 ? 0.8 : 0.12, player.face, { push: 1, elem: U.n === 3 ? "poison" : null });
         U.struck.add(e); U.hits++;
         U.claws.push({ x: e.x, y: e.y - 12, t, flip: (U.k + U.n) % 2, n: U.n });
       }

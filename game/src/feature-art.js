@@ -52,6 +52,79 @@ export function drawCrack(frame, x, y, hp = 1, t = 0, H = 48) {
 
 // ---------- 深淵氣流：寬 w、高 h 的往上吹的風（一條條淡淡的風紋往上竄、捲起小碎屑），迴圈 ----------
 const WIND = [P("#1a3a5a"), P("#3a7aa8"), P("#7ac8f0"), P("#c8f0ff")];
+// ---------- 特效補強 8：裂牆被撞破——牆上的每一塊垃圾各自變成一塊碎片，往衝撞的方向噴飛、落地彈一下、網點淡出 ----------
+// 參考（只學做法）：pixelfx impacts/ground-slam、spawn/shatter-death 的碎片翻滾落地；碎片保留牆上那一塊的材質顏色
+/** 撞破的瞬間產生碎片：(x, y)＝牆底部中心、H＝牆高、dir＝衝撞的方向 */
+export function crackDebris(x, y, H = 48, dir = 1) {
+  const W = 32, x0 = x - W / 2, y0 = y - H, out = [];
+  for (let row = 0; row < Math.ceil(H / 8); row++) {
+    const off = row % 2 ? 5 : 0;
+    for (let bx = 0; bx <= 3; bx++) {
+      const l = Math.max(0, bx * 10 - off), r = Math.min(W, bx * 10 + 10 - off);
+      if (r - l < 3) continue;
+      const M = JUNK[Math.floor(hash(bx, row, 3) * JUNK.length)], k = hash(bx, row, 9);
+      const cx = x0 + (l + r) / 2, cy = y0 + row * 8 + 4, up = 1 - row / (H / 8);   // 上面的飛得高、下面的滾得遠
+      // 第 2 輪：原本整面牆像格子網慢慢散開、又往上飛出畫面 → 一開始就錯開位置、速度差異拉大，靠衝撞那側飛得最快、主要往前噴
+      const near = dir > 0 ? (cx - x0) / W : 1 - (cx - x0) / W, j1 = hash(bx, row, 12) - 0.5, j2 = hash(bx, row, 13) - 0.5;
+      out.push({ x: cx + j1 * 4, y: cy + j2 * 3, w: r - l - 1, h: 7, M, vx: dir * (70 + near * 170 + k * 150) * (hash(bx, row, 14) < 0.15 ? -0.35 : 1) + j1 * 90, vy: -40 - up * 120 - k * 70 + j2 * 70,   /* 第 3 輪：前兩格還看得出格子 → 初速加大、差異拉大、少數往後彈 */ floor: y, life: 1.2 + k * 0.5, age: 0, bounced: 0, spin: k });
+    }
+  }
+  return out;
+}
+export function updateDebris(list, dt) {
+  for (const d of list) {
+    d.age += dt; d.vy += 700 * dt; d.x += d.vx * dt; d.y += d.vy * dt;
+    if (d.y > d.floor - 2 && d.vy > 0) { d.y = d.floor - 2; d.vy *= -0.3; d.vx *= 0.5; d.bounced++; if (d.bounced > 2) { d.vy = 0; d.vx *= 0.6; } }
+  }
+}
+/** 碎片：越飛越小（翻滾的感覺）、落地之後最後 0.4 秒用網點淡出 */
+const BAY = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+export function drawDebris(frame, list) {
+  for (const d of list) {
+    if (d.age > d.life) continue;
+    const fade = Math.min(1, (d.life - d.age) / 0.4), shrink = d.bounced ? 0.75 : 1 - Math.min(0.25, d.age * 0.5);   // 第 2 輪：原本一下就縮成小點
+    const w = Math.max(2, Math.round(d.w * shrink * (0.7 + 0.3 * Math.abs(Math.cos(d.age * 9 + d.spin * 6))))), h = Math.max(2, Math.round(d.h * shrink));
+    const x0 = Math.round(d.x - w / 2), y0 = Math.round(d.y - h);
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      const X = x0 + i, Y = y0 + j;
+      if (fade < 1 && fade * 16 <= BAY[((Y & 3) << 2) | (X & 3)]) continue;
+      const edge = i === 0 || j === 0 || i === w - 1 || j === h - 1;
+      put(frame, X, Y, edge ? OUT : j === 1 || i === 1 ? d.M[2] : j === h - 2 ? d.M[0] : d.M[1]);
+    }
+  }
+}
+
+// ---------- 特效補強 11：王出場時，屋頂的破洞被一團垃圾塞住（從上面砸下來），底下滴著王的黏液 ----------
+// (x, y, w, h)＝破洞（實心的範圍），t＝塞住之後過了幾秒（0～0.3 從上面掉下來）
+const GOO_D = ["#1a4a20", "#2a8a3a", "#4cc04a", "#8ee86a"].map(P);
+export function drawPlug(frame, x, y, w, h, t) {
+  const drop = Math.max(0, 1 - t / 0.3), oy = -Math.round(70 * drop * drop);
+  // 第 2 輪：原本像一塊砌好的磚牆 → 上緣隆起一坨（凸出屋頂 6～10 格）、垃圾塊大小不一、圓角錯開，混木箱 X 和輪胎；底面一層黏液
+  for (let i = -3; i < w + 3; i++) {
+    const gooH = 1 + Math.round(hash(Math.floor((i + 3) / 3), 71) * 2);   // 第 3 輪：黏液層厚度 1～3 不等（原本一條直線）
+    const u = (i + 3) / (w + 6), top = -Math.round(10 * Math.sin(u * Math.PI) ** 0.6 + hash(Math.floor(i / 4), 51) * 3) + (i < 0 || i >= w ? 6 : 0);
+    for (let j = top; j < h + gooH; j++) {
+      // 不規則的塊：每層高 5～9、每塊寬 7～15、上下錯開 0～2
+      let by = top, band = 0, bh = 6;
+      while (true) { bh = 6 + Math.floor(hash(band, 61) * 5); if (j < by + bh) break; by += bh; band++; }   // 第 3 輪：塊放大一點（原本太碎太雜）
+      const off = Math.floor(hash(band, 62) * 11);
+      let bx = -3 - off, k = 0, bw = 0; while (true) { bw = 9 + Math.floor(hash(band, k, 63) * 10); if (i < bx + bw) break; bx += bw; k++; }
+      const lx = i - bx, ly = j - by, id = band * 37 + k, kind = hash(id, 64), M = JUNK[Math.floor(hash(id, 65) * JUNK.length)];
+      const gap = lx === bw - 1 || ly === bh - 1 || ((lx === 0 || lx === bw - 2) && (ly === 0 || ly === bh - 2));
+      let c = gap ? OUT : ly === 0 ? M[2] : lx >= bw - 3 || ly >= bh - 2 ? M[0] : M[1];
+      if (!gap && kind < 0.2 && (lx === ly || lx === bw - 2 - ly)) c = JUNK[2][0];   // 木箱的 X
+      if (!gap && kind > 0.9) { const d = Math.hypot(lx - (bw - 2) / 2, (ly - (bh - 2) / 2) * 1.4); c = d < 1.3 ? OUT : d < 2.4 ? JUNK[1][0] : JUNK[3][1]; }   // 輪胎
+      if (j >= h - 1) c = j === h - 1 ? GOO_D[3] : j === h ? GOO_D[2] : GOO_D[1];   // 底面的黏液
+      put(frame, x + i, y + j + oy, c);
+    }
+  }
+  // 落定之後：底面滴下黏液（2 格寬，慢慢往下拉長、尖端一顆亮點）
+  if (t > 0.3) for (let q = 0; q < 5; q++) {
+    const dx = Math.round((q + 0.5) * w / 5 + (hash(q, 41) - 0.5) * 6), len = 2 + Math.round(((t * (0.6 + hash(q, 42)) + hash(q, 43)) % 1.6) * 6);
+    for (let k = 0; k < len; k++) { put(frame, x + dx, y + h + 2 + k, k === len - 1 ? GOO_D[3] : GOO_D[2]); if (k < len - 2) put(frame, x + dx + 1, y + h + 2 + k, GOO_D[1]); }
+  }
+}
+
 export function drawWind(frame, x, y, w, h, t) {
   const x0 = Math.round(x - w / 2);
   for (let n = 0; n < Math.round(w / 1.6); n++) {   // 第 2 輪：風紋多一倍

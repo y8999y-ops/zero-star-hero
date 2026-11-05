@@ -32,8 +32,11 @@ export function hitFx(x, y, dir, heavy) {
 }
 
 /** 灰塵：kind＝"jump"（起跳）、"double"（二段跳）、"land"（落地，hard＝重落地） */
-export function dustFx(kind, x, y, hard = false) {
+export function dustFx(kind, x, y, hard = false, dir = 1) {
   x = Math.round(x); y = Math.round(y);
+  // 特效補強 6：腳步（很小的一團、往後飄）、急轉身（往原本跑的方向揚起兩三團）
+  if (kind === "step") { puffs.push({ x, y, vx: 0, r0: 0.5, r1: 1.5, t: 0, life: 0.2 }); return; }
+  if (kind === "skid") { for (let i = 0; i < 3; i++) puffs.push({ x: x + dir * (3 + i * 3), y, vx: dir * (40 - i * 10), r0: 1, r1: 2.5 - i * 0.4, t: 0, life: 0.3 + i * 0.05 }); return; }
   if (kind === "double") {
     // 腳下一圈星屑往外擴散（星星主角的二段跳）
     const pal = SPARK_C[fxState.form] ?? SPARK_C.star;
