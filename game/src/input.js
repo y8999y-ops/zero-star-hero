@@ -14,7 +14,7 @@ export function tickInput(dt) {
     pressed[k] = Math.max(0, pressed[k] - dt);
   }
   input.move = clampMove(keyMove() + touch.move);
-  input.attack = keys.attack || touch.attack;
+  input.attack = keys.attack || keys.mouse || touch.attack;
   input.down = keys.down;
 }
 /** 這個動作已經用掉了，清除緩衝。 */
@@ -22,7 +22,7 @@ export const consume = (k) => { pressed[k] = 0; input[k] = false; };
 const clampMove = (v) => Math.max(-1, Math.min(1, v));
 
 // ---- 鍵盤
-const keys = { left: false, right: false, down: false, attack: false };
+const keys = { left: false, right: false, down: false, attack: false, mouse: false };
 const MAP = {
   KeyA: "left", ArrowLeft: "left", KeyD: "right", ArrowRight: "right", KeyS: "down", ArrowDown: "down",
   KeyJ: "attack", KeyX: "attack",
@@ -38,8 +38,8 @@ addEventListener("keydown", (e) => {
     input.jumpHeld = true;
   }
   if (e.code === "KeyK" || e.code === "ShiftLeft" || e.code === "KeyC") press("dash");
-  if (e.code === "KeyU" || e.code === "KeyV") press("skill");
-  if (e.code === "KeyL" || e.code === "KeyB") press("ult");
+  if (e.code === "KeyE" || e.code === "KeyU" || e.code === "KeyV") press("skill");
+  if (e.code === "KeyQ" || e.code === "KeyL" || e.code === "KeyB") press("ult");
   if (e.code === "KeyO") press("form");
   if (e.code === "Digit1" || e.code === "Digit2" || e.code === "Digit3") press("form" + e.code.slice(5));
   if (k || ["Space", "ArrowUp", "ArrowDown"].includes(e.code)) e.preventDefault();
@@ -49,6 +49,17 @@ addEventListener("keyup", (e) => {
   if (k) keys[k] = false;
   if (e.code === "KeyW" || e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyZ") input.jumpHeld = false;
 });
+// ---- 滑鼠（電腦）：左鍵攻擊（按住連段）、右鍵衝刺。只算點在遊戲畫面上的，點介面（按鈕、視窗）不算
+const onField = (t) => t?.id === "screen" || (t?.closest?.("#touch") && !t.closest(".btn"));
+let lastTouch = -1e9;   // 手機點一下也會補發 mousedown，剛摸過螢幕就不算滑鼠
+addEventListener("touchstart", () => (lastTouch = performance.now()), { passive: true, capture: true });
+addEventListener("mousedown", (e) => {
+  if (performance.now() - lastTouch < 800 || !onField(e.target)) return;
+  if (e.button === 0) keys.mouse = true;
+  else if (e.button === 2) { press("dash"); e.preventDefault(); }
+});
+addEventListener("contextmenu", (e) => onField(e.target) && e.preventDefault());   // 右鍵＝衝刺，不跳出選單
+addEventListener("mouseup", (e) => { if (e.button === 0) keys.mouse = false; });
 addEventListener("blur", () => { for (const k in keys) keys[k] = false; touch.attack = false; touch.move = 0; });
 
 // ---- 觸控
@@ -70,6 +81,7 @@ export function initTouch() {
     knob.style.transform = `translate(${kx}px, ${Math.max(-30, Math.min(30, y - ay))}px)`;
   };
   zone.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse") return;   // 滑鼠左鍵＝攻擊，不叫出搖桿
     // 在空中點一下左半邊＝二段跳（抬手再點，或另一根手指點都可以）
     if (input.air) { press("jump"); input.jumpHeld = true; }
     if (id !== null) return;

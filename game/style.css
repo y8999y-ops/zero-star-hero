@@ -611,3 +611,24 @@ body.chestnear .btn.big.on { background-image: var(--tb-chest-on); }
 #startBtn.tbig { border: 16px solid transparent; border-image: var(--plate-main) 16 fill / 16px; padding: 0 22px 0 40px; }
 .tsmall { border: 12px solid transparent; border-image: var(--plate) 12 fill / 12px; }
 .tsmall:hover, .tsmall:focus-visible { border-image-source: var(--plate); filter: drop-shadow(0 0 8px rgba(255, 200, 90, .55)) brightness(1.15); }
+
+/* 大招鍵：專用圖示（src/ult-icon.js 每幀畫）——能量從下往上灌滿星星、外圈分段亮起，集滿發光閃耀 */
+.btn.ult, body.touch .btn.ult, .btn.ult.on { background-image: none; }
+#ultCv { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
+.btn.ult.on #ultCv { filter: brightness(1.25); }
+.btn.ult.ready, body.touch .btn.ult.ready { animation: ultGlow 1s ease-in-out infinite; }
+@keyframes ultGlow { 0%, 100% { filter: drop-shadow(0 0 4px rgba(255, 200, 70, .55)); } 50% { filter: drop-shadow(0 0 12px rgba(255, 216, 74, .95)); } }
+/* 電腦：沒有觸控按鈕，右下角放技能（E）和大招（Q），標出按鍵、技能顯示冷卻 */
+#pcKeys { position: absolute; right: 18px; bottom: 16px; display: flex; align-items: flex-end; gap: 14px; pointer-events: none; }
+.pk { position: relative; }
+.pk b { position: absolute; left: -4px; bottom: -4px; min-width: 20px; padding: 1px 5px; font-size: 13px; color: #fff6c0; background: #1a1230; border: 2px solid #6a5a9a; text-align: center; }
+#ultHud { width: 72px; height: 72px; }
+#ultHudCv { width: 100%; height: 100%; image-rendering: pixelated; }
+#ultHud.ready { animation: ultGlow 1s ease-in-out infinite; }
+#pcSkill { width: 56px; height: 56px; background: var(--tb-skill) center / 100% 100% no-repeat; image-rendering: pixelated; }
+#pcSkill .cdw { position: absolute; inset: 3px; border-radius: 50%; background: conic-gradient(rgba(6, 4, 16, .72) calc(var(--cd, 0) * 360deg), transparent 0); }
+#pcSkill span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 700; color: #fff; text-shadow: 0 2px 0 #000, 0 0 4px #000; }
+#pcSkill.cool { filter: saturate(.4); }
+#pcSkill.pop { animation: skillPop .35s ease-out; }
+@keyframes skillPop { 0% { transform: scale(1.25); filter: brightness(1.8) drop-shadow(0 0 8px #ffd8a0); } 100% { transform: scale(1); } }
+body.touch #pcKeys, body.town #pcKeys, body:not(.playing) #pcKeys { display: none; }

@@ -43,6 +43,7 @@ import { createComboArt } from "./combo-art.js";
 import { unlock as unlockAudio, sfx, music, jingle, vol as audioVol, setVolume } from "./audio.js";
 import { fxState, dustFx, updateCombatFx, drawCombatFx, drawDamageNumbers } from "./combatfx.js";
 import { PLATFORMS } from "./level.js";
+import { ultPixels, ULT_S } from "./ult-icon.js";
 import { ult, ULT_MAX, ULT_MULT, startUlt, updateUlt, ultLights, dimScene, drawUlt, drawCutIn, postUlt } from "./ult.js";
 
 installUiArt();
@@ -197,7 +198,7 @@ function absorb(it) {
   spawn(collectBurst, { x: Math.round(player.x), y: Math.round(player.y) - 12, palette: FORM_BURST[it.form], light: 0.5 });
   flash(player.x, player.y - 12, 80, 3, 0.6, F.color);
   if (res.unlocked) {
-    toast(`系統：吸收了${F.name}的核！新形態「${F.name}」。${profile.forms.carry.includes(it.form) ? tipFor("點右邊的【形態】就能變身。", "按【O】或【1】～【3】就能變身。") : "已經帶滿 3 個了，回城鎮再換。"}`, 3.4, "forms");
+    toast(`系統：吸收了${F.name}的核！新形態「${F.name}」。${profile.forms.carry.includes(it.form) ? tipFor("點右邊的【形態】就能變身。", "按【1】～【3】就能變身。") : "已經帶滿 3 個了，回城鎮再換。"}`, 3.4, "forms");
     sayQueue.unshift([`系統：你把${F.from === "slime" ? "史萊姆" : "垃圾桶"}的核吃掉了？不對，是吸收。好吧，差不多。`, 2.8]);
   } else if (res.leveled) {
     toast(`系統：${F.name}升到 Lv ${res.lv}！`, 2.2);
@@ -772,7 +773,7 @@ function chargeUlt(n) {
   if (ult.on || cleared) return;
   const was = ult.charge;
   ult.charge = Math.min(ULT_MAX, ult.charge + n);
-  if (was < ULT_MAX && ult.charge >= ULT_MAX) toast("系統：" + tipFor("大招集滿了！按【大招】，讓牠們見識一下零星的厲害。", "大招集滿了！按【L】，讓牠們見識一下零星的厲害。"), 2.6, "ult");
+  if (was < ULT_MAX && ult.charge >= ULT_MAX) toast("系統：" + tipFor("大招集滿了！按【大招】，讓牠們見識一下零星的厲害。", "大招集滿了！按【Q】，讓牠們見識一下零星的厲害。"), 2.6, "ult");
 }
 const ultHooks = {
   // 衝擊波掃到的怪：每隻只打一次
@@ -1083,7 +1084,7 @@ function updateBagDot() {
   bagDot.textContent = up ? "▲" : nw ? "!" : "";
 }
 const comboEl = $("combo"), comboArt = createComboArt(comboEl), hpFill = $("hpFill"), hpText = $("hpText"), coinsEl = $("coins"), killsEl = $("kills"), fpsEl = $("fps"), cdEl = $("skillCd"), toastEl = $("toast");
-const ubFill = $("ubFill"), ubBar = $("ubBar"), ultFill = $("ultFill"), btnUlt = $("btnUlt");
+const ubFill = $("ubFill"), ubBar = $("ubBar"), ultG = $("ultCv").getContext("2d"), ultG2 = $("ultHudCv").getContext("2d"), ultHud = $("ultHud"), pcSkill = $("pcSkill"), pcSkillT = $("pcSkillT"), ultImg = new ImageData(ULT_S, ULT_S), btnUlt = $("btnUlt");
 let toastT = 0;
 const sysEl = $("sys"), sysText = $("sysTyped"), sysGhost = $("sysGhost"), sysFaceCv = $("sysFace");
 let stopSysFace = null;
@@ -1207,9 +1208,15 @@ function hud(dt) {
   killsEl.textContent = stats.kills;
   comboArt.update(stats.combo, stats.comboT / 2.2, dt);
   cdEl.style.height = Math.max(0, player.skillCd / player.skillMax) * 100 + "%";
+  // 電腦版右下角的技能圖示：冷卻用一圈變暗的扇形倒數，中間顯示剩幾秒；好了閃一下
+  const cdk = Math.max(0, player.skillCd / player.skillMax);
+  pcSkill.style.setProperty("--cd", cdk.toFixed(3));
+  pcSkillT.textContent = player.skillCd > 0.05 ? (player.skillCd >= 1 ? Math.ceil(player.skillCd) : player.skillCd.toFixed(1)) : "";
+  if (pcSkill.classList.contains("cool") && cdk <= 0) { pcSkill.classList.remove("cool"); pcSkill.classList.remove("pop"); void pcSkill.offsetWidth; pcSkill.classList.add("pop"); }
+  else if (cdk > 0) pcSkill.classList.add("cool");
   const uk = ult.charge / ULT_MAX, ready = uk >= 1 && !ult.on;
   ubFill.style.width = uk * 100 + "%";
-  ultFill.style.height = (1 - uk) * 100 + "%";
+  ultImg.data.set(ultPixels(ult.on ? 0 : uk, performance.now() / 1000)); ultG.putImageData(ultImg, 0, 0); ultG2.putImageData(ultImg, 0, 0); ultHud.classList.toggle("ready", ready);   // 大招圖示：能量灌滿星星、集滿發光閃耀
   ubBar.classList.toggle("ready", ready);
   btnUlt.classList.toggle("ready", ready);
   if ((toastT -= dt) <= 0) toastEl.classList.remove("on");

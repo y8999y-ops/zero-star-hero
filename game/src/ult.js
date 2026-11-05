@@ -15,7 +15,7 @@ import { flash, global as globalLight } from "./light.js";
 import { paintStar, POSES } from "./star.js";
 import { FLOOR, LEVEL_W, WALL } from "./level.js";
 
-export const ULT_MAX = 100;
+export const ULT_MAX = 70;   // 2026-11-05 使用者：集大招所需能量降低約 30%（原 100）
 export const ULT_MULT = 9;   // 傷害倍率（× 攻擊力，再乘技能傷害加成）
 const T = { rise: 0.65, top: 1.0, cut0: 0.7, cut1: 1.15, throw: 1.15, drop: 1.28, hit: 1.46, land: 1.64, end: 2.7 };
 
