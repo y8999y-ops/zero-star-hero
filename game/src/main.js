@@ -22,7 +22,7 @@ import * as collectBurst from "../../pixelfx/src/fx/pickups/collect-burst.js";
 import { createFx } from "../../pixelfx/src/core/index.js";
 import { load, save, BAG_SIZE } from "./save.js";
 import { computeStats, compare, xpNeed, MAX_LV } from "./stats.js";
-import { makeItem, rollRarity, R, RARITY, JUNK } from "./items.js";
+import { makeItem, rollRarity, R, RARITY, JUNK, MYTHS, AWAKEN, awakenStage } from "./items.js";
 import { Drops, feed } from "./loot.js";
 import { createInventory } from "./inventory.js";
 import { playFace, moodOf } from "./system-face.js";
@@ -44,7 +44,7 @@ import { createComboArt } from "./combo-art.js";
 import { unlock as unlockAudio, sfx, music, jingle, vol as audioVol, setVolume } from "./audio.js";
 import { fxState, dustFx, updateCombatFx, drawCombatFx, drawDamageNumbers } from "./combatfx.js";
 import { PLATFORMS } from "./level.js";
-import { ELEM, setStatusContext, updateStatus, drawBolts, REACTION } from "./status.js";
+import { ELEM, setStatusContext, updateStatus, drawBolts, REACTION, applyStatus } from "./status.js";
 import { createHazards } from "./hazards.js";
 import * as starFallFx from "../../pixelfx/src/fx/arcane/star-fall.js";
 import { drawWave, WAVE_T, WAVE_V } from "./starwave.js";
@@ -52,7 +52,7 @@ const waves = [];   // 技能樹「星光斬」
 const minis = [];   // 技能樹「蝙蝠群」的小蝙蝠
 import * as slamFx from "../../pixelfx/src/fx/impacts/ground-slam.js";
 import { drawMiniBat } from "./minibat.js";
-import { drawMark, drawStrike, drawShield, drawReson, STRIKE_T } from "./setfx.js";
+import { drawMark, drawStrike, drawShield, drawReson, drawKingBack, drawKingFront, STRIKE_T } from "./setfx.js";
 import * as sparkFx from "../../pixelfx/src/fx/impacts/hit-spark.js";
 const strikes = [];   // 流星獵手 4 件的小流星
 let hudFadeT = 0, inCombat = false;   // 戰鬥中 HUD 變淡
@@ -233,6 +233,7 @@ function absorb(it) {
 function switchForm(id) {
   if (!id || id === player.form || !profile.forms.owned[id] || ult.on) return;
   sfx("form");
+  const prevForm = player.form;
   profile.forms.cur = id;
   player.setForm(id);
   player.turnT = 0.09;
@@ -241,6 +242,7 @@ function switchForm(id) {
   if (id === "star" && rank("star", "s_return")) player.skillCd *= 0.5;
   if (id === "slime" && rank("slime", "g_film")) player.filmT = 3;
   if (id === "can" && rank("can", "c_dent")) player.dentT = 3;
+  heartBurst(prevForm);
   if (id === "bat" && rank("bat", "b_night")) player.nightT = 3;
   player.invuln = Math.max(player.invuln, 0.15);
   spawn(collectBurst, { x: Math.round(player.x), y: Math.round(player.y) - 12, palette: FORM_BURST[id], light: 0.4 });
@@ -343,9 +345,13 @@ function updateChest(dt) {
     const T = CHEST_TIERS[chest.tier];
     spawnLoot(chest.x, FLOOR - 14, T.coins, T.gems, chest.tier);
     let k = 0;
-    for (const [rar, n] of T.items) for (let i = 0; i < n; i++, k++) {
-      const legend = false;   // 目前進度只掉普通、精良、稀有（傳說第 6 批再開放）
-      dropItem(chest.x, FLOOR - 12, legend ? R.legend : R[rar], { rarity: legend ? R.legend : R[rar], ilvl: ilvlNow(1 + chest.tier), dir: k % 2 ? 1 : -1 });
+    for (const [rar, n] of T.items) for (let i = 0; i < n; i++, k++) dropItem(chest.x, FLOOR - 12, R[rar], { rarity: R[rar], ilvl: ilvlNow(1 + chest.tier), dir: k % 2 ? 1 : -1 });
+    // 星箱（王）額外：傳說 15%；神話 3%，連續 10 個星箱沒出就保底
+    if (chest.tier >= 3) {
+      profile.pity ??= { legend: 0, myth: 0 };
+      if (Math.random() < 0.15) dropItem(chest.x, FLOOR - 12, R.legend, { rarity: R.legend, ilvl: ilvlNow(2), dir: 1 });
+      if (Math.random() < 0.03 || profile.pity.myth >= 9) { profile.pity.myth = 0; setTimeout(() => dropItem(chest.x, FLOOR - 12, R.myth, { rarity: R.myth, ilvl: ilvlNow(2), dir: -1 }), 500); }
+      else profile.pity.myth++;
     }
   }
 }
@@ -502,10 +508,10 @@ const world = {
     return n;
   },
   // 形態技能的投射物：星星＝金色星屑彈，黏液星＝綠色黏液彈（爆開範圍大、推得遠）
-  spawnFireball(x, y, dir, form = "star") {
+  spawnFireball(x, y, dir, form = "star", vy = 0) {
     sfx("shot", form);
     const pal = SHOT_PAL[form] ?? SHOT_PAL.star;
-    shots.push({ x, y, dir, form, life: 1.1, mult: 1, gen: 0, fx: spawn(fireball, { x, y, flip: dir < 0, palette: pal.fx, light: GLOW.skill, seed: (Math.random() * 99) | 0 }) });
+    shots.push({ x, y, dir, vy, form, life: 1.1, mult: 1, gen: 0, fx: spawn(fireball, { x, y, flip: dir < 0, palette: pal.fx, light: GLOW.skill, seed: (Math.random() * 99) | 0 }) });
   },
   /** 範圍裡活著的敵人 */
   enemiesIn(box) { return enemies.filter((e) => !e.dead && overlaps(box, e.box())); },
@@ -539,6 +545,7 @@ const world = {
   },
   onKill(e) {
     stats.kills++;
+    mythKill();
     questProgress("kill", { kind: e.kind, elite: e.elite });
     if (stats.kills === 30) toast("系統：……你真的是零星嗎？");
     if (stats.kills === 100) toast("系統：好啦，我承認你有一點點厲害。");
@@ -549,7 +556,7 @@ const world = {
     const [coreId, coreP] = coreChance(e.kind, profile.forms);
     if (coreId && Math.random() < (e.elite ? Math.min(1, coreP * 4) : coreP)) { const b = e.box(); drops.add(makeCore(coreId), e.x, (b.y0 + b.y1) / 2); }
     const b = e.box(), cy = (b.y0 + b.y1) / 2;
-    if (e.elite || Math.random() < (DROP_RATE[e.kind] ?? 0.1) * (1 + s.mf / 200)) dropItem(e.x, cy, e.kind === "gold" || e.elite ? R.fine : 0, e.elite && Math.random() < 0.03 ? { rarity: R.epic, ilvl: ilvlNow(1) } : { ilvl: ilvlNow(e.kind === "trash" || e.elite ? 1 : 0) });
+    if (e.elite || Math.random() < (DROP_RATE[e.kind] ?? 0.1) * (1 + s.mf / 200)) dropItem(e.x, cy, e.kind === "gold" || e.elite ? R.fine : 0, e.elite && eliteLegend() ? { rarity: R.legend, ilvl: ilvlNow(1) } : e.elite && Math.random() < 0.03 ? { rarity: R.epic, ilvl: ilvlNow(1) } : { ilvl: ilvlNow(e.kind === "trash" || e.elite ? 1 : 0) });
     // 擊殺爆炸（只剩傳說「爆炸頭安全帽」有；詞綴已取消）：會連鎖，最多連 6 次
     if (player.has("hardhat") && boomDepth < 6 && Math.random() * 100 < 25) {
       const big = player.has("hardhat") ? 1.5 : 1, rx = 34 * big;
@@ -879,6 +886,40 @@ const SHOT_PAL = {
   star: { fx: PAL.gold, boom: PAL.gold, accent: PAL.holy, light: "#ffd27a", r: 46, push: 3 },
   slime: { fx: PAL.poison, boom: PAL.poison, accent: PAL.leaf, light: "#7ee86a", r: 62, push: 5 },
 };
+// ---- 傳說保底：菁英 0.5%，每隻沒掉傳說的菁英 +0.5%
+function eliteLegend() {
+  profile.pity ??= { legend: 0, myth: 0 };
+  if (Math.random() < 0.005 * (1 + profile.pity.legend)) { profile.pity.legend = 0; return true; }
+  profile.pity.legend++;
+  return false;
+}
+// ---- 神話：身上的神話、覺醒（穿著擊殺累積，到 300／1000 升階，解鎖一段故事）
+const mythOn = (id) => Object.values(profile.equip).find((it) => it?.myth === id);
+function mythKill() {
+  for (const it of Object.values(profile.equip)) {
+    if (!it?.myth) continue;
+    const before = awakenStage(it);
+    it.awaken.kills++;
+    const after = awakenStage(it);
+    if (after > before) {
+      const M = MYTHS[it.myth];
+      toast(`${M.name} 覺醒到第 ${after} 階！`, 2.6);
+      sayQueue.push([`系統：${M.lore[after - 1]}`, 4]);
+      flash(player.x, player.y - 14, 120, 4, 0.6, "#fff0a0"); shake(0.3, 3); sfx("levelup");
+      refreshStats();
+    }
+  }
+}
+/** 墜落之心：切換形態時，原地爆出前一個形態的元素 */
+function heartBurst(from) {
+  const it = mythOn("fallheart");
+  if (!it) return;
+  const st = awakenStage(it), r = st >= 2 ? 60 : 40, mult = st >= 3 ? 1.6 : 0.8, el = ELEM[from];
+  const pal = { burn: ["#4a1712", "#c9281f", "#f2561d", "#ff8a2a", "#ffc23d", "#ffe26b", "#fff3a6", "#ffffff"], slime: PAL.poison, shock: ["#0c2a60", "#1e64b0", "#3ab8f0", "#9af0ff", "#f0ffff", "#ffffff"], poison: ["#1a0a2a", "#3e1466", "#6a28a8", "#8ae040", "#e8ff70", "#ffffff"] }[el];
+  spawn(explosion, { x: Math.round(player.x), y: Math.round(player.y - 10), palette: pal, accent: pal, light: 0.6, seed: (Math.random() * 99) | 0 }, { speed: 1.6 });
+  flash(player.x, player.y - 10, r * 2, 3, 0.3, pal[4]);
+  world.hitArea({ x0: player.x - r, x1: player.x + r, y0: player.y - r, y1: player.y + 10 }, () => player.roll(mult), player.face, { push: 3, elem: el });
+}
 // ---- 史詩套裝「流星獵手」4 件：暴擊標記，5 秒內再暴擊同一隻 → 掉一顆小流星（攻擊力 80%）
 function onCritHit(e, r) {
   if (!r?.crit || !player.set4("meteor") || !e.box) return;
@@ -1008,6 +1049,9 @@ function tick(dt) {
     consume("ult");
     startUlt(player, director?.lock);
     if (player.set4("reson")) player.resonT = 10;   // 星辰共鳴 4 件
+    // 星王之冠：星王化（8 秒，覺醒 2 階 12 秒；3 階大招能量留一半）
+    const crown = mythOn("starking");
+    if (crown) { const st = awakenStage(crown); player.kingT = st >= 2 ? 12 : 8; if (st >= 3) ult.charge = ULT_MAX * 0.5; toast("星王化！", 1.6); }
     sfx("ultCharge");
     return;
   }
@@ -1079,6 +1123,8 @@ function tick(dt) {
       hitStop(s.small ? 0.03 : 0.06);
       shake(s.small ? 0.12 : 0.3, s.small ? 1 : 3);
       if (!s.small) skillTreeBoom(s);
+      // 星王化＋黏液星：黏液彈連火一起點（黏液＋燃燒＝大火）
+      if (s.form === "slime" && player.kingT > 0) for (const e of world.enemiesIn({ x0: s.x - R, x1: s.x + R, y0: s.y - 40, y1: s.y + 40 })) applyStatus(e, "burn");
     }
   }
   for (let i = shots.length - 1; i >= 0; i--) if (shots[i].done) shots.splice(i, 1);
@@ -1188,7 +1234,9 @@ function render() {
   drawCoins();
   drawGems();
   if (ult.on) { dimScene(frame); drawFx(frame, "back"); }
+  if (player.kingT > 0) drawKingBack(frame, player.x, player.y - 12, sceneClock);   // 星王化：光芒在主角後面
   player.draw(frame);
+  if (player.kingT > 0) drawKingFront(frame, player.x, player.y - 12, sceneClock);   // 王冠
   drawFx(frame, "front");
   fxState.form = player.form;
   drawCombatFx(frame);

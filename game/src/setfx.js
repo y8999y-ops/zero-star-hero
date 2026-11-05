@@ -66,3 +66,31 @@ export function drawReson(frame, x, y, t) {
     }
   }
 }
+
+/** 星王化（神話「星王之冠」，第 2 輪：光芒改成畫在主角後面、根部 2 格寬往外變細變暗；王冠放大、只有寶石發光）
+ *  drawKingBack 在主角之前畫（光芒、星屑），drawKingFront 在主角之後畫（王冠）。中心 (x, y)＝主角身體中心 */
+const CROWN = [
+  ".G....G....G.", ".GH...GH...GH", ".GHG.GHHG.GHI", ".GHHGHHHHGHHI", ".GrHHHbHHHrHI", "..GHHHHHHHHI.", "..IJJJJJJJJI.",
+];
+const J = P("#6e3a0c");
+export function drawKingBack(frame, x, y, t) {
+  for (let k = 0; k < 8; k++) {
+    const a = t * 0.6 + (k * Math.PI) / 4, len = k % 2 ? 16 : 22, nx = -Math.sin(a), ny = Math.cos(a);
+    for (let r = 8; r < len; r++) {
+      const f = (r - 8) / (len - 8), c = f < 0.3 ? GOLD[3] : f < 0.65 ? GOLD[2] : GOLD[1];
+      put(frame, x + Math.cos(a) * r, y + Math.sin(a) * r, c, f < 0.5);
+      if (f < 0.4) put(frame, x + Math.cos(a) * r + nx, y + Math.sin(a) * r + ny, GOLD[2]);
+    }
+  }
+  for (let k = 0; k < 5; k++) {
+    const p = (t * 0.7 + k / 5) % 1, sx = x - 12 + ((k * 7) % 24) + Math.sin(p * 6 + k) * 2, sy = y + 12 - p * 34;
+    put(frame, sx, sy, p < 0.5 ? GOLD[5] : GOLD[3], 1);
+  }
+}
+export function drawKingFront(frame, x, y, t) {
+  const cy = Math.round(y - 28 + Math.sin(t * 3)), cx = x - 6;
+  const C = { G: GOLD[2], H: GOLD[3], I: GOLD[1], J, r: P("#ff4a5a"), b: P("#5ab8ff") };   // 第 3 輪：深一階，不然太淡
+  const at = (i, j) => CROWN[j]?.[i] && CROWN[j][i] !== ".";
+  for (let j = -1; j <= CROWN.length; j++) for (let i = -1; i <= 13; i++) if (!at(i, j) && (at(i + 1, j) || at(i - 1, j) || at(i, j + 1) || at(i, j - 1))) put(frame, cx + i, cy + j, J);
+  CROWN.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== ".") put(frame, cx + i, cy + j, C[ch], ch === "r" || ch === "b"); }));
+}

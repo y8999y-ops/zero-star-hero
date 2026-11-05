@@ -754,3 +754,12 @@ body.touch #invTabs { margin-right: 44px; }
 .setbox .sb b { flex: none; width: 16px; height: 16px; text-align: center; border: 1px solid #4a3a60; color: var(--dim); }
 .setbox .sb.on { color: var(--ink); }
 .setbox .sb.on b { color: #0a0810; background: var(--sc); border-color: var(--sc); }
+/* 神話（第 6 批）：背包詳細的形態效果、覺醒進度 */
+.mythbox { margin-top: 4px; padding: 4px 6px; border: 1px solid #fff0a0; background: linear-gradient(135deg, rgba(255, 240, 160, .12), rgba(160, 120, 255, .12)); }
+.mythbox .mf div { font-size: 12px; color: var(--dim); line-height: 16px; }
+.mythbox .mf div b { display: inline-block; min-width: 46px; color: var(--dim); }
+.mythbox .mf div.on, .mythbox .mf div.on b { color: #fff0a0; }
+.mythbox .aw { display: flex; align-items: center; gap: 6px; margin: 4px 0 2px; font-size: 12px; color: #fff0a0; }
+.mythbox .aw i { flex: 1; height: 6px; background: #1a1430; border: 1px solid #5a4a20; }
+.mythbox .aw em { display: block; height: 100%; background: linear-gradient(90deg, #ffe066, #fff0a0); }
+.mythbox .aw small { color: var(--dim); font-size: 12px; }

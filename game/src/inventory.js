@@ -1,7 +1,8 @@
 // 背包畫面：左邊身上裝備＋數值，中間背包格子，右邊選中物品的詳細資料和比較。
 // 手機：點一下選取，再點一次同一格就直接穿上。電腦：I / B / Tab 開關，Esc 關閉。
 import { createFrame, composite } from "../../pixelfx/src/core/index.js";
-import { SLOTS, RARITY, R, UNIQUES, describe, kindLabel, colorOf, SETS, setCounts } from "./items.js";
+import { SLOTS, RARITY, R, UNIQUES, describe, kindLabel, colorOf, SETS, setCounts, MYTHS, AWAKEN, awakenStage } from "./items.js";
+import { FORMS } from "./forms.js";
 import { computeStats, compare, power, STAT_ROWS, xpNeed, MAX_LV } from "./stats.js";
 import { BAG_SIZE } from "./save.js";
 import { iconURL } from "./ui-art.js";
@@ -262,6 +263,13 @@ export function createInventory(profile, { onChange, onClose }) {
     }
     if (sel.where === "bag") btns += `<button class="pbtn red" data-act="salvage">拆解 <small>+${r.scrap}星塵</small></button>`;
     let lore = it.unique ? `<div class="lore">${UNIQUES[it.unique].lore}</div>` : "";
+    // 神話：四種形態各自的效果（目前的形態亮）、覺醒階段與進度、解鎖的故事
+    if (it.myth) {
+      const M = MYTHS[it.myth], st = awakenStage(it), k = it.awaken?.kills ?? 0, next = AWAKEN[st];
+      lore += `<div class="mythbox"><div class="mf">${Object.entries(M.forms).map(([f, t]) => `<div class="${profile.forms.cur === f ? "on" : ""}"><b>${FORMS[f].name}</b>${t}</div>`).join("")}</div>`
+        + `<div class="aw"><span>覺醒 ${"★".repeat(st)}${"☆".repeat(3 - st)}</span>${next ? `<i><em style="width:${Math.round((k / next) * 100)}%"></em></i><small>${k}/${next}</small>` : "<small>MAX</small>"}</div>`
+        + M.lore.slice(0, st).map((l) => `<div class="lore">${l}</div>`).join("") + `</div>`;
+    }
     // 套裝：套名＋身上穿了幾件，2 件／4 件效果（達成的亮起來）
     if (it.set) {
       const S = SETS[it.set], n = setCounts(profile.equip)[it.set] ?? 0;

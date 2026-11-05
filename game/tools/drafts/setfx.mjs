@@ -2,13 +2,14 @@
 import { writeFileSync } from "node:fs";
 import { encodePNG } from "../../../pixelfx/tools/lib/png.mjs";
 import { createFrame, composite, hex } from "../../../pixelfx/src/core/index.js";
-import { drawMark, drawStrike, drawShield, drawReson, STRIKE_T } from "../../src/setfx.js";
-const CW = 50, CH = 70, K = 6, W = CW * 4, H = CH * 3;
+import { drawMark, drawStrike, drawShield, drawReson, drawKingBack, drawKingFront, STRIKE_T } from "../../src/setfx.js";
+const CW = 50, CH = 70, K = 6, W = CW * 4, H = CH * 4;
 const frame = createFrame(W, H);
 const hero = (x, y) => { for (let j = -10; j <= 10; j++) for (let i = -7; i <= 7; i++) if (Math.abs(i) + Math.abs(j) * 0.6 < 8) frame.color[(y + j) * W + x + i] = hex("#f0b424") >>> 0; };
 [0, 0.15, 0.3, 0.45].forEach((t, c) => { const x = c * CW + 25, y = 30; hero(x, y + 10); drawMark(frame, x, y - 6, t); });
 [0, 0.07, 0.14, 0.21].forEach((t, c) => drawStrike(frame, { x: c * CW + 20, y: CH + 64, t: Math.min(t, STRIKE_T) }));
 [[1, 0], [0.5, 0.5], [1, 1.2], [0, 0.3]].forEach(([k, t], c) => { const x = c * CW + 25, y = CH * 2 + 35; hero(x, y); if (c < 3) drawShield(frame, x, y, k, t); else drawReson(frame, x, y, t); });
+[0, 0.3, 0.6, 0.9].forEach((t, c) => { const x = c * CW + 25, y = CH * 3 + 40; drawKingBack(frame, x, y, t); hero(x, y); drawKingFront(frame, x, y, t); });
 const out = new Uint8ClampedArray(W * H * 4);
 composite(frame, out, new Uint32Array(W * H).fill(hex("#1c1830") >>> 0));
 const big = new Uint8Array(W * K * H * K * 4);

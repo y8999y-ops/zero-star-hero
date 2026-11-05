@@ -349,6 +349,32 @@ export const ICON_DEFS = {
     "...OOOO...", "..O....O..", "..O....O..", "...O..O...", "...OPPO...", "..OPfgPO..", "..OPgiPO..",
     "...A..A...", "...AB.AB..", "....B..B..",
   ] },
+  // ---- 神話（第 6 批）
+  myth_crown: { ox: 1, oy: 1, rows: [
+    "......a.......", ".....aba......", "......a.......", "..G...G...G...", "..GH.GHH.GH...", ".GHHGHaHHGHI..",
+    ".GHHHHHHHHHI..", ".GfHHHpHHHfI..", ".GHHHHHHHHHI..", "..IIIIIIIIIJ..", "..JJJJJJJJJJ..",
+  ] },
+  myth_heart: { ox: 1, oy: 1, rows: [
+    "..QQQ...QQQ...", ".QRaRQ.QRaRQ..", "QRRaRRQRRRSSQ.", "QRRRRRGRRRSST.", "QRRRRGaHRRSST.", "QRRGGaaaHHSST.",
+    ".QRRRHaHRRST..", "..QRRRHRRRT...", "...QRRRRST....", "....QRRST.....", ".....QST......", "......T.......",
+  ] },
+  // ---- 傳說（第 6 批重畫，照 pixelfx skill）
+  leg_slipper: { ox: 3, oy: 1, rows: [
+    ".AAAAA....", "ABBBBBC...", "ABBBBBBC..", "ABBBBBBC..", "pApApApq..", "qaqAqAqr..", "ABBBBBBC..", ".ABBBBBC..",
+    "..ABBBC...", "..ABBBC...", "..ABBBC...", "...CCC..G.", ".......GaH",
+  ] },
+  leg_overtime: { ox: 2, oy: 1, rows: [
+    "AAAAAAAAA..", "ABBBBBBBBC.", "ABDDDDDDBC.", "ABBBBBBBBC.", "ABDDDDDBBC.", "ABBBBhhhBC.", "ABDDhBBBhC.",
+    "ABBBhBhBhC.", "ABBBBhhhBC.", "ABBBBBBBBC.", ".CCCCCCCCC.",
+  ] },
+  leg_noisy: { ox: 1, oy: 1, rows: [
+    "........AAAAA.", ".......ABBhBBC", ".......ABBhBBC", "..GGG..ABBBBBC", ".GaHHI..ABhBC.", "GaHHHHI..AC...",
+    "GHHHHHI.......", "GHjjjHI.......", "GHHjHHIJ......", ".HIIIIJ.......", "..JJJJ........",
+  ] },
+  leg_hardhat: { ox: 1, oy: 1, rows: [
+    "......h.......", "..f...g..h....", "...g..H.g.....", "....GGGGG.....", "...GaAHHHI....", "..GHHAHHHII...",
+    ".GHHHAHHHHIJ..", ".GHHHAHHHHIJ..", "GGGGGGGGGGGIJ.", "IIIIIIIIIIIJJ.",
+  ] },
   // ---- 元素狀態圖示（第 4 批，技能樹說明用）
   el_burn: { ox: 3, oy: 1, rows: [
     "....f.....", "...fg.....", "...fgh....", "..fggh..f.", "..fgGgh.gh", ".fgGHGghgh", ".fgHaHGggh", "fgGHHHGghi",

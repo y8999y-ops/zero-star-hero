@@ -111,7 +111,7 @@ export class Player {
    *  吸血：傷害的 leech% 回復生命，每秒最多回最大生命的 5%（leechBudget）。 */
   roll(mult, force = false) {
     const s = this.stats, crit = force || Math.random() * 100 < s.crit;
-    const dmg = s.atk * mult * (1 + this.buff.atk) * this.dmgMul * formMul(this.formLv) * (crit ? 1 + s.critDmg / 100 : 1);
+    const dmg = s.atk * mult * (1 + this.buff.atk) * this.dmgMul * formMul(this.formLv) * (crit ? 1 + s.critDmg / 100 : 1) * (this.kingT > 0 ? 1.2 : 1);
     if (s.leech > 0 && this.hp > 0) {
       // 夜宴 4 件：生命低於 30% 吸血加倍；生命滿了，多吸的變成護盾（最多最大生命的 20%）
       const feast = this.set4("feast"), k = feast && this.hp < this.maxHp * 0.3 ? 2 : 1;
@@ -132,6 +132,7 @@ export class Player {
   update(dt, world) {
     this.clock += dt;
     if (this.resonT > 0) this.resonT -= dt;
+    if (this.kingT > 0) this.kingT -= dt;   // 星王化（神話「星王之冠」）
     if (this.lightT > 0) this.lightT -= dt;
     if (this.filmT > 0) this.filmT -= dt;
     if (this.dentT > 0) this.dentT -= dt;
@@ -201,7 +202,11 @@ export class Player {
           this.state = "fly"; this.t = 0; this.chargeHit = new Set(); this.grounded = false; this.invuln = Math.max(this.invuln, this.flyDur + 0.05); sfx("dash");
           if (this.doubleT > 0) this.doubleT = 0; else this.doubleReady = !!rank("bat", "b_double");
         }
-        else world.spawnFireball(this.x + this.face * 18, this.y - 14, this.face, this.form);
+        else {
+          world.spawnFireball(this.x + this.face * 18, this.y - 14, this.face, this.form);
+          // 星王化＋星星：一次射 3 發（上、中、下）
+          if (this.kingT > 0 && this.form === "star") for (const vy of [-70, 70]) world.spawnFireball(this.x + this.face * 18, this.y - 14, this.face, this.form, vy);
+        }
       }
       if (this.state === "cast" && this.t >= 0.28) this.state = "move";
     } else if (this.state === "charge") {
@@ -217,6 +222,7 @@ export class Player {
       }
       if (this.t >= (this.chargeDur ?? CHARGE_T)) {
         this.state = "move"; this.vx *= 0.3;
+        if (this.kingT > 0) this.skillCd = Math.min(this.skillCd, 0.15);   // 星王化＋鐵罐星：衝撞沒有冷卻
         if (this.truck?.size) { for (const e of this.truck) if (!e.dead) e.hit(this.roll(1.2 * this.skillMul()), this.face, { launch: true, push: 6, elem: "shock" }, world); this.truck.clear(); }
         if (rank("can", "c_brake")) world.groundSlam?.(this.x, this.y, 46, 1.2);   // 急停震地
       }
@@ -229,6 +235,7 @@ export class Player {
       world.hitOnce({ x0: this.x - 14, x1: this.x + 14, y0: this.y - 28, y1: this.y + 2 }, this.chargeHit, () => this.roll(1.8 * this.skillMul()), this.face, { push: 3, elem: "poison" });
       if (this.t >= (this.flyDur ?? FLY_T)) {
         this.state = "move"; this.vx *= 0.5; this.jumps = Math.min(this.jumps, 1);
+        if (this.kingT > 0) this.skillCd = Math.min(this.skillCd, 0.15);   // 星王化＋蝠翼星：飛行沒有冷卻
         if (this.doubleReady) { this.doubleReady = false; this.doubleT = 1.2; }   // 二段飛：1.2 秒內可以再飛一次
       }
     } else if (this.state === "hurt") {
@@ -271,7 +278,7 @@ export class Player {
       const g = this.state === "attack" && !this.grounded && this.vy > -40 ? GRAV * (bat ? (rank("bat", "b_hover") ? 0.03 : 0.08) : 0.25) : GRAV;   // 懸停：停更久
       // 蝠翼星按住跳往下掉時：滑翔
       const gliding = bat && input.jumpHeld && this.state === "move" && !this.grounded && this.vy > 0;
-      const cap = gliding ? GLIDE_FALL : MAX_FALL;
+      const cap = gliding ? (this.kingT > 0 ? 0 : GLIDE_FALL) : MAX_FALL;   // 星王化＋蝠翼星：滑翔不會往下掉
       if (gliding) world.onGlide?.(dt);   // 技能樹「蝙蝠群」
       this.vy = Math.min(cap, this.vy + g * dt);
     }

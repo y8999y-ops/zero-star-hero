@@ -108,11 +108,29 @@ export const JUNK_CHANCE = 0.35;
 
 // 傳說：固定底材＋獨特效果（效果本身寫在 player.js / main.js，用 unique id 判斷）。目前進度不會掉（第 6 批改版）。
 export const UNIQUES = {
-  slipper: { kind: "feet", name: "前任勇者的拖鞋", icon: "goldslipper", text: "閃避後的下一擊必定暴擊；閃避距離 +50%", lore: "前任勇者逃跑時掉的。跑得很快。" },
-  overtime: { kind: "acc", name: "加班證明", icon: "paper", text: "戰鬥越久傷害越高：每 10 秒 +5%，上限 +100%，戰鬥結束歸零", lore: "上面蓋著「已讀不回」的章。" },
-  noisy: { kind: "weapon", name: "很吵的星核", icon: "core_noisy", atk: 18, text: "每 10 秒吐槽你一次，並給予隨機增益 5 秒", lore: "「拜託你認真打好嗎。」" },
-  hardhat: { kind: "head", name: "爆炸頭安全帽", icon: "hardhat", text: "擊殺時 25% 機率爆炸", lore: "工地主任的遺物。施工中，請勿靠近。" },
+  slipper: { kind: "feet", name: "前任勇者的拖鞋", icon: "leg_slipper", text: "閃避後的下一擊必定暴擊；閃避距離 +50%", lore: "前任勇者逃跑時掉的。跑得很快。" },
+  overtime: { kind: "acc", name: "加班證明", icon: "leg_overtime", text: "戰鬥越久傷害越高：每 10 秒 +5%，上限 +100%，戰鬥結束歸零", lore: "上面蓋著「已讀不回」的章。" },
+  noisy: { kind: "weapon", name: "很吵的星核", icon: "leg_noisy", atk: 18, text: "每 10 秒吐槽你一次，並給予隨機增益 5 秒", lore: "「拜託你認真打好嗎。」" },
+  hardhat: { kind: "head", name: "爆炸頭安全帽", icon: "leg_hardhat", text: "擊殺時 25% 機率爆炸", lore: "工地主任的遺物。施工中，請勿靠近。" },
 };
+
+// ---- 神話（第 6 批，docs/裝備系統企劃.md 第 8 章）：效果隨目前的形態改變；穿著累積擊殺會覺醒（3 階），每一階解鎖一段星王的故事
+export const MYTHS = {
+  starking: {
+    kind: "head", name: "星王之冠", icon: "myth_crown",
+    text: (st) => `放完大招後 ${st >= 2 ? 12 : 8} 秒「星王化」：全身發光、傷害 +20%${st >= 3 ? "；星王化開始時大招能量留一半" : ""}`,
+    forms: { star: "星屑彈一次射 3 發", slime: "黏液彈爆開時連火一起點（直接大火）", can: "衝撞沒有冷卻", bat: "可以一直飛（滑翔不會往下掉、飛行沒有冷卻）" },
+    lore: ["王冠內側刻著一行小字：「給最亮的那一顆」。", "你聽見王冠裡有人在數數：一、二、三……數到第九就停了。九顆星星？", "星王沒有死。祂只是碎成了很多很多片——其中一片，正戴著祂的王冠。"],
+  },
+  fallheart: {
+    kind: "acc", name: "墜落之心", icon: "myth_heart",
+    text: (st) => `每次切換形態，原地爆出「前一個形態」的元素（範圍 ${st >= 2 ? 60 : 40}、攻擊力 ${st >= 3 ? 160 : 80}%）`,
+    forms: { star: "爆出星火（燃燒）", slime: "爆出黏液", can: "爆出電流（帶電）", bat: "爆出毒霧（中毒）" },
+    lore: ["一顆還在跳動的星星碎片。摸起來是溫的。", "它跳動的節奏，跟你切換形態的節奏一模一樣。", "這是星王的心。祂把心留給了下一顆星星——也就是你。"],
+  },
+};
+export const AWAKEN = [0, 300, 1000];   // 第 1、2、3 階需要的擊殺數
+export const awakenStage = (it) => (it.awaken?.kills ?? 0) >= AWAKEN[2] ? 3 : (it.awaken?.kills ?? 0) >= AWAKEN[1] ? 2 : 1;
 
 // ---- 史詩套裝（第 5 批，docs/裝備系統企劃.md 3.1）：不跟形態綁；同一套穿 2 件、4 件有效果（stats.js 算 2 件的數值，4 件的效果在 player.js／main.js）
 export const SETS = {
@@ -212,6 +230,7 @@ export function rerollAffix(item, i) {
 /** 產生一件物品。opts.kind / opts.base 指定部位或底材；opts.noJunk 不出純垃圾。 */
 export function makeItem(ilvl, rarity, opts = {}) {
   ilvl = Math.max(1, Math.round(ilvl));
+  if (rarity === R.myth) return makeMyth(opts.myth ?? pick(Object.keys(MYTHS)), ilvl);
   if (rarity === R.legend && !opts.base) {
     const ids = Object.keys(UNIQUES).filter((u) => !opts.kind || UNIQUES[u].kind === opts.kind);
     if (ids.length) return makeUnique(opts.unique ?? pick(ids), ilvl);
@@ -250,6 +269,11 @@ export function makeUnique(id, ilvl) {
   return { uid: uid(), unique: id, kind: u.kind, icon: u.icon, rarity: R.legend, ilvl, main, affixes: rollSubs(4, ilvl, main.id), plus: 0, name: u.name };
 }
 
+export function makeMyth(id, ilvl) {
+  const m = MYTHS[id], main = rollMain({}, m.kind, ilvl, R.myth);
+  return { uid: uid(), myth: id, kind: m.kind, icon: m.icon, rarity: R.myth, ilvl, main, affixes: rollSubs(4, ilvl, main.id), plus: 0, name: m.name, awaken: { kills: 0 } };
+}
+
 /** 物品名稱：普通＝底材名；精良＝「主屬性的形容詞＋的＋短名」；稀有以上＝「隨機名字之短名」。 */
 const MAIN_ADJ = { atk: "鋒利", atkPct: "鋒利", hp: "結實", hpPct: "結實", crit: "精準", critDmg: "殘暴", skill: "魔力", ult: "星爆", charge: "共鳴", leech: "嗜血", move: "疾風" };
 export function nameFor(item, rareName) {
@@ -285,6 +309,7 @@ export function describe(item) {
     lines.push([perfect ? "perfect" : "affix", a.id, fmtStat(a.id, a.v), "T" + a.tier]);
   }
   if (item.unique) lines.push(["unique", null, UNIQUES[item.unique].text]);
+  if (item.myth) lines.push(["unique", null, MYTHS[item.myth].text(awakenStage(item))]);
   return lines;
 }
 /** 身上每一套穿了幾件：{ meteor: 2, ... } */
