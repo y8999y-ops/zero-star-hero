@@ -13,6 +13,7 @@ import * as hammerSmash from "../../pixelfx/src/fx/melee/hammer-smash.js";
 import { input, consume } from "./input.js";
 import { A, slashAnim } from "./assets.js";
 import { FORMS, formMul } from "./forms.js";
+import { ELEM } from "./status.js";
 import { reduction } from "./stats.js";
 import { spawn, hitStop, shake } from "./fx.js";
 import { sfx } from "./audio.js";
@@ -187,7 +188,7 @@ export class Player {
       this.vx = this.face * CHARGE_V;
       this.ghostAcc += dt;
       if (this.ghostAcc > 1 / 30) { this.ghostAcc = 0; this.ghosts.push({ x: this.x, y: this.y, q: this.pose, flip: this.drawFlip(), age: 0 }); }
-      world.hitOnce({ x0: this.x - 12, x1: this.x + 12, y0: this.y - 26, y1: this.y + 2 }, this.chargeHit, () => this.roll(2.2 * (1 + this.stats.skill / 100)), this.face, { launch: true, push: 4 });
+      world.hitOnce({ x0: this.x - 12, x1: this.x + 12, y0: this.y - 26, y1: this.y + 2 }, this.chargeHit, () => this.roll(2.2 * (1 + this.stats.skill / 100)), this.face, { launch: true, push: 4, elem: "shock" });
       if (this.t >= CHARGE_T) { this.state = "move"; this.vx *= 0.3; }
     } else if (this.state === "fly") {
       // 蝠翼星：往前上方飛，越飛越平；路上的怪每隻打一次。飛完可以再跳一次。
@@ -195,7 +196,7 @@ export class Player {
       this.vy = FLY_VY * (1 - this.t / FLY_T);
       this.ghostAcc += dt;
       if (this.ghostAcc > 1 / 30) { this.ghostAcc = 0; this.ghosts.push({ x: this.x, y: this.y, q: this.pose, flip: this.drawFlip(), age: 0 }); }
-      world.hitOnce({ x0: this.x - 14, x1: this.x + 14, y0: this.y - 28, y1: this.y + 2 }, this.chargeHit, () => this.roll(1.8 * (1 + this.stats.skill / 100)), this.face, { push: 3 });
+      world.hitOnce({ x0: this.x - 14, x1: this.x + 14, y0: this.y - 28, y1: this.y + 2 }, this.chargeHit, () => this.roll(1.8 * (1 + this.stats.skill / 100)), this.face, { push: 3, elem: "poison" });
       if (this.t >= FLY_T) { this.state = "move"; this.vx *= 0.5; this.jumps = Math.min(this.jumps, 1); }
     } else if (this.state === "hurt") {
       if (this.t >= 0.32) this.state = "move";
@@ -305,7 +306,9 @@ export class Player {
       const box = { x0: this.x - d * s.back, x1: this.x + d * s.reach, y0: this.y - 44, y1: this.y + 4 };
       if (box.x0 > box.x1) [box.x0, box.x1] = [box.x1, box.x0];
       const mult = s.dmg[a.nh] ?? s.dmg[0], force = a.crit && a.nh === 0;
-      const n = world.hitArea(box, () => this.roll(mult, force), d, { launch: s.launch && a.nh === s.hits.length - 1, push: h.push ?? 2 });
+      // 連段最後一下會沾上形態的元素（星星燃燒、黏液星黏液、鐵罐星帶電、蝠翼星毒）
+      const fin = s.launch && a.nh === s.hits.length - 1;
+      const n = world.hitArea(box, () => this.roll(mult, force), d, { launch: fin, push: h.push ?? 2, elem: fin ? ELEM[this.form] : null });
       if (n) {
         hitStop(Math.min(s.big ? 0.14 : 0.11, (h.stop ?? 0.06) * (n > 3 ? 0.7 : 1)));
         shake(h.shake ?? 0.15, Math.min(s.big ? 4 : 3, (h.amp ?? 2) + (n > 4 ? 1 : 0)));

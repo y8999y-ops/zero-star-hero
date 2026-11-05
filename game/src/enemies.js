@@ -8,6 +8,7 @@ import { flash } from "./light.js";
 import { blit } from "./bake.js";
 import { A } from "./assets.js";
 import { FLOOR, LEVEL_W, WALL } from "./level.js";
+import { applyStatus, drawStatus, slowOf } from "./status.js";
 
 const GRAV = 900;
 // 史萊姆動畫裡「跳起來」到「落地」的時間（見 pixelfx/src/fx/critters/slime.js）
@@ -45,12 +46,14 @@ export class Enemy {
 
   update(dt, player, world) {
     this.clock += dt;
+    dt *= slowOf(this);   // 黏液：動作、移動都變慢
     this.flash -= dt;
     const stunned = this.stun > 0;
     this.stun -= dt;
     if (!stunned) this.t += dt;   // 硬直時動畫停住
     const toward = player.x >= this.x ? 1 : -1;
 
+    this.world = world;   // 狀態傷害打死的時候要用（掉錢、經驗）
     if (this.k.fly) {
       if (stunned) {
         this.vx *= 1 - 5 * dt;
@@ -127,7 +130,7 @@ export class Enemy {
   }
 
   /** 受到攻擊。roll 是 { dmg, crit }（主角算好的），或單純的數字。 */
-  hit(roll, dir, { launch = false, push = 2 } = {}, world) {
+  hit(roll, dir, { launch = false, push = 2, elem = null } = {}, world) {
     const { dmg, crit } = typeof roll === "number" ? { dmg: roll, crit: false } : roll;
     const d = Math.max(1, Math.round(dmg * (0.9 + Math.random() * 0.2)));
     this.hp -= d;
@@ -143,6 +146,18 @@ export class Enemy {
     flash(this.x, cy, heavy ? 36 : 18, heavy ? 2.2 : 1.1, heavy ? 0.14 : 0.08);   // 命中時照亮周圍一下
     damageFx(this, this.x, b.y0 - 3, d, { crit, heavy });
     if (this.hp <= 0) this.die(world);
+    else if (elem) applyStatus(this, elem);
+  }
+
+  /** 狀態、反應造成的傷害：不會硬直、不會擊退，只跳數字（small＝持續傷害，數字小一點） */
+  tick(dmg, col, small = false) {
+    if (this.dead) return;
+    const d = Math.max(1, Math.round(dmg));
+    this.hp -= d;
+    if (!small) this.flash = 0.05;
+    const b = this.box();
+    damageFx(this, this.x, b.y0 - 3, d, { heavy: !small });
+    if (this.hp <= 0 && this.world) this.die(this.world);
   }
 
   die(world) {
@@ -159,5 +174,6 @@ export class Enemy {
     // 受擊閃白
     if (this.biting) blit(frame, this.flash > 0 ? this.k.whiteBite : this.k.bite, this.biteT, this.x, this.y, this.face < 0);
     else blit(frame, this.flash > 0 ? this.k.white : this.k.anim, this.t, this.x, this.y, this.face < 0);
+    drawStatus(frame, this);
   }
 }

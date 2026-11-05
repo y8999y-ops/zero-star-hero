@@ -43,6 +43,8 @@ import { createComboArt } from "./combo-art.js";
 import { unlock as unlockAudio, sfx, music, jingle, vol as audioVol, setVolume } from "./audio.js";
 import { fxState, dustFx, updateCombatFx, drawCombatFx, drawDamageNumbers } from "./combatfx.js";
 import { PLATFORMS } from "./level.js";
+import { ELEM, setStatusContext, updateStatus, drawBolts, REACTION } from "./status.js";
+import { createHazards } from "./hazards.js";
 import { ultPixels, ULT_S } from "./ult-icon.js";
 import { ult, ULT_MAX, ULT_MULT, startUlt, updateUlt, ultLights, dimScene, drawUlt, drawCutIn, postUlt } from "./ult.js";
 
@@ -397,9 +399,12 @@ function drawGems() {
 
 // 場景互動物件：草叢、木箱、垃圾堆、水晶（props）；小生物、垂掛物、水窪（scenery）
 const scenery = createScenery({ floor: FLOOR, w: geo.w, platforms: TOWN ? [] : PLATFORMS, town: TOWN });
+// 元素場景物件（第 3 批）：黏液池、油桶、廚餘堆、漏電管線；水窪＝潮濕、火盆＝燃燒
+const hazards = createHazards({ stage: TOWN || ENDLESS ? "" : STAGE_ID, floor: FLOOR, torches: TOWN ? [] : TORCHES, puddles: TOWN ? [] : scenery.puddles });
+window.__game.hazards = hazards;
 const props = createProps({
   floor: FLOOR, w: geo.w, platforms: TOWN ? [] : PLATFORMS, town: TOWN,
-  avoid: TOWN ? [...NPCS.map((n) => n.x), 924] : [...TORCHES, STAGE.exitX - 120, STAGE.exitX + 26, STAGE.start.x, ...scenery.puddles.flatMap((p) => [p.x - p.w / 4, p.x, p.x + p.w / 4])],
+  avoid: TOWN ? [...NPCS.map((n) => n.x), 924] : [...TORCHES, ...hazards.list.flatMap((h) => [h.x - 14, h.x, h.x + 14]), STAGE.exitX - 120, STAGE.exitX + 26, STAGE.start.x, ...scenery.puddles.flatMap((p) => [p.x - p.w / 4, p.x, p.x + p.w / 4])],
 });
 props.onBreak = (o) => {
   world.dropCoins(o.x, o.y - 10, o.type ? 2 + Math.floor(Math.random() * 3) : 1 + Math.floor(Math.random() * 3));
@@ -452,6 +457,7 @@ const world = {
     let n = 0;
     props.hit(box, dir);
     scenery.hit(box, dir);
+    hazards.hit(box);
     for (const e of enemies) if (!e.dead && overlaps(box, e.box())) { e.hit(typeof dmg === "function" ? dmg() : dmg, dir, opts, world, box); n++; }
     if (n) { addCombo(n); chargeUlt(n * 0.8); }
     return n;
@@ -512,6 +518,35 @@ const world = {
     }
   },
 };
+// 元素反應（第 3 批）：第一次觸發某種反應時，系統順便解釋一下
+const REACT_TIP = {
+  wildfire: "系統：大火！黏液和油遇到火會燒得更兇，還會傳給旁邊的。",
+  chain: "系統：感電連鎖！潮濕的傢伙會導電，旁邊濕的一起被電。",
+  steam: "系統：蒸氣。水把火澆熄了，冒出來的熱霧還是會燙。",
+  toxic: "系統：毒氣爆炸！中毒的再點火，砰。",
+  stuck: "系統：麻痺黏住。黏液導電，牠會黏在原地動不了。",
+};
+setStatusContext({
+  enemies,
+  atk: () => player.stats.atk,
+  onReaction(kind, e) {
+    profile.react ??= {};
+    if (!profile.react[kind]) { profile.react[kind] = 1; sayQueue.push([REACT_TIP[kind], 3]); }
+    reactPop(kind, e);
+  },
+});
+/** 反應名稱從敵人頭上彈出來（像原神的反應字）：DOM 字，跟著畫面縮放算位置 */
+function reactPop(kind, e) {
+  const R = REACTION[kind], k = canvas.clientWidth / W, b = e.box();
+  const el = document.createElement("div");
+  el.className = "react-pop";
+  el.textContent = R.name;
+  el.style.color = R.col;
+  el.style.left = canvas.offsetLeft + (e.x - camX) * k + "px";
+  el.style.top = canvas.offsetTop + (b.y0 - 6) * k + "px";
+  $("stage").appendChild(el);
+  setTimeout(() => el.remove(), 1000);
+}
 
 let boomDepth = 0;
 
@@ -846,6 +881,8 @@ function tick(dt) {
   if (TOWN) { townTick(dt); return; }
 
   updateLight(dt);
+  updateStatus(dt, enemies);   // 元素狀態：持續傷害、倒數、蒸氣霧
+  hazards.update(dt, enemies);
   if (cleared) { updateFx(dt); return; }
   // 通關後踩到傳送門：回碎星鎮
   if (stageDone && !leaving && portalX !== null && player.grounded && Math.abs(player.x - portalX) < 12) {
@@ -927,7 +964,7 @@ function tick(dt) {
       sfx("boom");
       spawn(explosion, { x: Math.round(s.x), y: Math.round(s.y), palette: P.boom, accent: P.accent, light: GLOW.skill, seed: (Math.random() * 99) | 0 }, { speed: 1.3 });
       flash(s.x, s.y, 100, 4, 0.4, P.light);
-      world.hitArea({ x0: s.x - P.r, x1: s.x + P.r, y0: s.y - 40, y1: s.y + 40 }, () => player.roll(2.4 * (1 + player.stats.skill / 100)), s.dir, { launch: true, push: P.push });
+      world.hitArea({ x0: s.x - P.r, x1: s.x + P.r, y0: s.y - 40, y1: s.y + 40 }, () => player.roll(2.4 * (1 + player.stats.skill / 100)), s.dir, { launch: true, push: P.push, elem: ELEM[s.form] ?? "burn" });
       hitStop(0.06);
       shake(0.3, 3);
     }
@@ -995,12 +1032,14 @@ function render() {
   else { drawLevel(frame, lv); drawAtmosphere(frame, sceneClock); }
   props.draw(frame, lv);
   scenery.draw(frame, lv, sceneClock);
+  hazards.draw(frame);
   if (TOWN) { drawTownNpcs(frame, sceneClock); folk.draw(frame); drawPrompt(); }
   if (chest && !chest.opened && Math.abs(chest.x - camX - W / 2) < W) chest.fx.draw(frame);
   // 大招時：先畫怪再暗場，法陣這些背景特效畫在暗場之後才會亮
   if (!ult.on) drawFx(frame, "back");
   drops.draw(frame);
   for (const e of enemies) e.draw(frame);
+  drawBolts(frame);
   drawCoins();
   drawGems();
   if (ult.on) { dimScene(frame); drawFx(frame, "back"); }

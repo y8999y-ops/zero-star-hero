@@ -667,3 +667,7 @@ body.touch #pcKeys, body.town #pcKeys, body:not(.playing) #pcKeys { display: non
 .pips i { width: 7px; height: 7px; transform: rotate(45deg); border-radius: 1px; }
 .frow.fail .fimg { animation: failShake .35s steps(6); filter: grayscale(.8) brightness(.8); }
 @keyframes failShake { 25% { transform: translateX(-3px); } 50% { transform: translateX(3px); } 75% { transform: translateX(-2px); } }
+/* 元素反應的名稱（第 3 批）：從敵人頭上彈出、往上飄、淡出 */
+.react-pop { position: absolute; transform: translate(-50%, -100%); font-size: 15px; font-weight: 900; letter-spacing: 1px; white-space: nowrap; pointer-events: none; z-index: 5;
+  text-shadow: 0 2px 0 #000, 1px 0 0 #000, -1px 0 0 #000, 0 -1px 0 #000, 0 0 8px currentColor; animation: reactPop 1s ease-out forwards; }
+@keyframes reactPop { 0% { transform: translate(-50%, -60%) scale(.4); opacity: 0; } 15% { transform: translate(-50%, -100%) scale(1.25); opacity: 1; } 30% { transform: translate(-50%, -100%) scale(1); } 100% { transform: translate(-50%, -190%); opacity: 0; } }
