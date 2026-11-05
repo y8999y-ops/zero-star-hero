@@ -133,9 +133,23 @@ const UTH = THEME === "lair" ? "junk" : THEME;
 const UP_FAR = TALL ? toPx(genUpper("far", 640, UH, UTH)) : null, UP_MID = TALL ? toPx(genUpper("mid", 768, UH, UTH)) : null;
 // 垂直視差（使用者回報：越跳越高，頭頂的尖刺會變低）——原本 0.5／0.7／0.85，爬高 432 時洞頂的鐘乳石往下移 200 多格，
 // 跑到主角腳下像天花板掉下來。改小：遠景、中景幾乎跟著鏡頭走（只動一點點，還是有深度感）
-const VPAR = { 1: 0.08, 2: 0.14, 3: 0.22 };
+// 使用者 2026-11-05：頭頂的尖刺要固定在「地圖的最上面」——在底部時看不到，爬到上面才看到。
+// 每層拆成上下兩段：上段（第 0～PIN 列：洞頂垂下來的尖刺、鐵鍊）掛在地圖頂端、下段（地上的岩石垃圾）擺在地圖底部，
+// 跟著鏡頭上下捲（遠的層捲慢一點＝VPAR，近景跟世界一樣）；兩段中間接 upper-art 的上層背景。
+const VPAR = { 1: 0.7, 2: 0.85, 3: 1 }, PIN = 100;
 /** 某一層在螢幕第 y 列要取原圖的哪一列：>=0 原圖、<0 上層圖（從上層圖底部往上數）、null＝這層在這裡是空的 */
-function layerRow(y, cy, k) { return TALL ? y + Math.round((cy - (MAP_H - H)) * VPAR[k]) : y; }
+/** 某一層在螢幕第 y 列：[上段的列（-1＝不在上段）, 下段的列（>=PIN 原圖、<0 上層圖、其他＝空）]。上段透明的地方要再看下段／上層圖 */
+function layerRows(y, cy, k) {
+  if (!TALL) return [-1, y];
+  const top = y + Math.round(cy * VPAR[k]), bot = y + Math.round((cy - (MAP_H - H)) * VPAR[k]);
+  return [top >= 0 && top < PIN ? top : -1, bot >= PIN && bot < H ? bot : bot < 0 ? bot : H];
+}
+/** 取一層的像素：先看上段（掛在地圖頂端的尖刺），透明的話看下段（地上的東西）或上層背景 */
+function sampleLayer(img, up, [t, b], x) {
+  if (t >= 0) { const v = img.px[t * img.w + wrap(x, img.w)]; if (v) return v; }
+  if (b >= 0) return b < H ? img.px[b * img.w + wrap(x, img.w)] : 0;
+  return up && UH + b >= 0 ? up.px[(UH + b) * up.w + wrap(x, up.w)] : 0;
+}
 let vig = new Float32Array(0), vigW = 0;
 function vignette(W) {
   if (vigW === W) return vig;
@@ -158,14 +172,14 @@ export function drawLevel(frame, lv) {
     const wy = y + cy, row = y * W;
     if (wy < 0 || wy >= MAP_H) { out.fill(BACK_COLOR, row, row + W); continue; }
     // 8b：背景圖只有一個畫面高——用螢幕的 y，鏡頭往上時背景只稍微往下移一點（垂直視差），貼齊地圖最底下時跟以前一樣
-    const by = Math.max(0, Math.min(H - 1, y + Math.round((cy - (MAP_H - H)) * 0.12)));
-    const r1 = layerRow(y, cy, 1), r2 = layerRow(y, cy, 2), r3 = layerRow(y, cy, 3);
+    const by = y;   // 最遠的背景也固定（使用者 2026-11-05）
+    const r1 = layerRows(y, cy, 1), r2 = layerRows(y, cy, 2), r3 = layerRows(y, cy, 3);
     for (let x = 0; x < W; x++) {
       const i = row + x, gx = x + cx;
       let v = gx >= 0 && gx < LEVEL_W ? PF[wy * LEVEL_W + gx] : 0, layer = 4;
-      if (!v && r3 >= 0 && r3 < H) { v = N3.px[r3 * N3.w + wrap(x + o3, N3.w)]; layer = 3; }
-      if (!v) { v = r2 >= 0 ? (r2 < H ? M2.px[r2 * M2.w + wrap(x + o2, M2.w)] : 0) : UP_MID && UH + r2 >= 0 ? UP_MID.px[(UH + r2) * UP_MID.w + wrap(x + o2, UP_MID.w)] : 0; layer = 2; }
-      if (!v) { v = r1 >= 0 ? (r1 < H ? F1.px[r1 * F1.w + wrap(x + o1, F1.w)] : 0) : UP_FAR && UH + r1 >= 0 ? UP_FAR.px[(UH + r1) * UP_FAR.w + wrap(x + o1, UP_FAR.w)] : 0; layer = 1; }
+      if (!v) { v = sampleLayer(N3, null, r3, x + o3); layer = 3; }
+      if (!v) { v = sampleLayer(M2, UP_MID, r2, x + o2); layer = 2; }
+      if (!v) { v = sampleLayer(F1, UP_FAR, r1, x + o1); layer = 1; }
       if (!v) { out[i] = B.px[by * B.w + wrap(x + o0, B.w)] || BACK_COLOR; continue; }
       if (layer === 4 && PFE[wy * LEVEL_W + gx]) { out[i] = v; continue; }
       // 越遠越暗（近景、中景退後一步，遊玩層最清楚），再加四角暗角
@@ -187,9 +201,10 @@ export function drawForeground(frame) {
   if (!FGI) return;
   const W = frame.w, cy = frame.oy | 0, out = frame.color, of = Math.floor((frame.ox | 0) * PAR.F);
   for (let y = 0; y < H; y++) {
-    // 高地圖：前景的垂掛岩塊固定在畫面上緣（跟著鏡頭，不會往下掉到主角腳下），地上的剪影只在最底層才畫
-    const wy = TALL ? (y < 110 ? y : y + cy - (MAP_H - H)) : y + cy - (MAP_H - H), sy = wy < 110 ? wy + FG_DROP : wy;   // 8b：前景只在地圖最底下那一個畫面   // 上半（垂掛的岩塊）往上收，下半（地上剪影）不動
-    if (wy < 0 || sy >= H) continue;
+    // 使用者 2026-11-05：前景的垂掛岩塊也掛在地圖頂端（底部看不到），地上的剪影擺在地圖底部；上半往上收 FG_DROP 格
+    let sy;
+    if (TALL) { const top = y + cy; if (top < 110 - FG_DROP) sy = top + FG_DROP; else { const bot = y + cy - (MAP_H - H); if (bot < 110 || bot >= H) continue; sy = bot; } }
+    else { const wy = y + cy - (MAP_H - H); if (wy < 0) continue; sy = wy < 110 ? wy + FG_DROP : wy; if (sy >= H) continue; }
     const r = sy * FGI.w, row = y * W;
     for (let x = 0; x < W; x++) {
       const v = FGI.px[r + wrap(x + of, FGI.w)];

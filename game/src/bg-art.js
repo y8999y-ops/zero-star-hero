@@ -160,7 +160,7 @@ function caveMid(put, w) {
   for (let x = 0; x < w; x++) for (let y = top[x]; y < H; y++) put(x, y, y - top[x] < 1 ? ROCK[3] : (y + (x >> 3)) % 9 === 0 ? ROCK[1] : ROCK[2]);
   // 石柱（有的接到洞頂）
   for (let k = 0; k < 4; k++) {
-    const cx = Math.round((k + 0.3 + hash(k, 43) * 0.4) * w / 4), hw = 7 + Math.round(hash(k, 44) * 6), full = hash(k, 45) < 0.5, hgt = full ? H : 60 + Math.round(hash(k, 46) * 50);
+    const cx = Math.round((k + 0.3 + hash(k, 43) * 0.4) * w / 4), hw = 7 + Math.round(hash(k, 44) * 6), full = false,   /* 使用者 2026-11-05：背景上下拆兩段，從頂到底的石柱會斷掉 → 只留從地上長出來的 */ hgt = full ? H : 60 + Math.round(hash(k, 46) * 50);
     for (let y = H - hgt; y < top[cx] + 2; y++) {
       const neck = full ? Math.round(3 * Math.sin((y / H) * Math.PI * 2 + k)) : 0, ww = hw + neck - (y < H - hgt + 6 ? 6 - (y - (H - hgt)) : 0);
       for (let i = -ww; i <= ww; i++) put(cx + i, y, i === -ww ? ROCK[3] : i >= ww - 1 ? ROCK[0] : i < -ww / 3 ? ROCK[2] : ROCK[1]);
