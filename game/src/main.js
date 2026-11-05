@@ -881,13 +881,19 @@ function questProgress(ev, d) {
 const trackEl = $("qtrack");
 function renderTracker() {
   const Q = profile.quests, I = (n) => `<img class="ico" src="${iconURL(n, 2)}" alt="">`;
-  const lines = Q.active.map((q) => { const L = questLook(q), ok = q.have >= q.need; return `<div class="${ok ? "ok" : ""}">${I(L.icon)}${L.label}　<b>${ok ? "✓" : q.have + "/" + q.need}</b></div>`; });
-  const sys = sysActive(profile)[0];
-  if (sys) lines.push(`<div class="sys">${I("xp")}${sys.title}</div>`);
+  // 使用者 2026-11-05：只顯示「追蹤中」的任務（任務視窗裡點星星），最多 3 個；舊存檔第一次自動追蹤前 3 個
+  const sysNow = sysActive(profile);
+  if (!Q.tracked) Q.tracked = [...Q.active.map((q) => q.id), ...sysNow.map((s) => "sys:" + s.id)].slice(0, 3);
+  Q.tracked = Q.tracked.filter((k) => (k.startsWith("sys:") ? sysNow.some((s) => "sys:" + s.id === k) : Q.active.some((q) => q.id === k)));
+  const lines = Q.tracked.map((k) => {
+    if (k.startsWith("sys:")) { const s = sysNow.find((x) => "sys:" + x.id === k); return `<div class="sys">${I("xp")}${s.title}</div>`; }
+    const q = Q.active.find((x) => x.id === k), L = questLook(q), ok = q.have >= q.need;
+    return `<div class="${ok ? "ok" : ""}">${I(L.icon)}${L.label}　<b>${ok ? "✓" : q.have + "/" + q.need}</b><i class="qbar"><em style="width:${Math.min(100, (q.have / q.need) * 100)}%"></em></i></div>`;
+  });
   const m = MEALS[profile.meal];
   if (m) lines.push(`<div class="meal">${I(m.icon)}${m.buff[1]}</div>`);
-  // 2026-11-05 介面減量：最多顯示 2 行（其餘用「＋N」），有變化時亮 3 秒，之後變淡
-  const html = lines.slice(0, 2).join("") + (lines.length > 2 ? `<div class="more">＋${lines.length - 2}</div>` : "");
+  if (!lines.length && (Q.active.length || sysNow.length)) lines.push(`<div class="hint">${I("paper")}點這裡選要追蹤的任務</div>`);
+  const html = lines.join("");
   if (html !== trackEl.innerHTML) {
     trackEl.innerHTML = html;
     trackEl.classList.remove("dim");
@@ -1711,11 +1717,14 @@ function showClear() {
 $("againBtn").addEventListener("click", () => goScene(ENDLESS ? "endless" : "stage", STAGE_ID));
 $("nextBtn").addEventListener("click", () => nextStage() && goScene("stage", nextStage()));
 $("homeBtn").addEventListener("click", () => goScene("town"));
-$("btnHome").addEventListener("click", async () => {
+// 使用者 2026-11-05：右上角的回城鍵拿掉（H 鍵也拿掉），改放在設定裡「放棄這趟，回城鎮」；戰鬥中（附近有怪）按不了
+$("btnGoHome").addEventListener("click", async (e) => {
+  e.stopPropagation();
   if (TOWN || dialog.open || !started) return;
-  if (await ask("系統", "要回碎星鎮嗎？這趟撿到的東西都會留著。", [["回城鎮", true], ["繼續打", false]])) goScene("town");
+  if (inCombat) { sfx("close"); toast("系統：附近還有怪。先脫離戰鬥再說。", 2); return; }
+  $("setPanel").classList.add("hidden");
+  if (await ask("系統", "要放棄這趟回碎星鎮嗎？撿到的東西都會留著，但這關要重來。", [["回城鎮", true], ["繼續打", false]])) goScene("town");
 });
-addEventListener("keydown", (e) => { if (e.code === "KeyH" && !TOWN && started && !dialog.open) $("btnHome").click(); });
 // 聲音設定
 {
   const panel = $("setPanel"), m = $("volMusic"), s = $("volSfx"), mute = $("btnMute");
@@ -1838,7 +1847,7 @@ function start() {
   started = true;
   unlockAudio();
   music(TOWN ? "town" : STAGE_ID === "1-4" ? null : "stage");   // 1-4 王出場大吼時才開始王戰音樂
-  if (!TOWN) { $("btnHome").classList.remove("hidden"); $("btnHome").style.backgroundImage = `url(${iconURL("home", 3)})`; }
+  $("goHomeRow").classList.toggle("hidden", TOWN);
   $("start").classList.add("hidden");
   stopTitle?.();
   document.body.classList.add("playing");

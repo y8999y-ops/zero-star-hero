@@ -990,3 +990,31 @@ body.touch #invBox > .pn, body.touch #invBox > #invDetail { display: flex !impor
 .tree-wrap .tree-col { gap: 4px; padding: 2px 0 4px; }
 .tree-wrap .tree-cap { margin: 4px 0 0; }
 .tree-wrap .tree-head { margin: 0 0 4px; }
+
+/* ---- 使用者 2026-11-05 介面調整：
+   右上角只留圓形設定鍵（金幣搬到背包、回城鍵搬進設定）；☰ 選單拿掉，背包／技能樹／地圖直接排在血條右邊；
+   左上角整體放大 20%；頭像下方是「追蹤中」的任務（最多 3 個，任務視窗裡點星星） ---- */
+#topR .coins, #btnHome { display: none !important; }
+#btnSet { width: 46px; height: 46px; border: 0; padding: 0; background: var(--tb-set) center / 100% no-repeat; image-rendering: pixelated; }
+#btnSet::after { content: none; }
+#btnSet:active { filter: brightness(1.4); }
+#hud #btnMenu, #hud #btnQuest, #hud #hudMenu #btnQuest { display: none !important; }
+body.playing #hud #hudMenu, body.playing.menuOpen #hud #hudMenu { display: flex !important; position: static; flex-direction: row !important; gap: 4px; margin: 12px 0 0 4px; padding: 0; background: none; border: 0; animation: none; pointer-events: auto; }
+#hud { transform: scale(1.2); transform-origin: 0 0; }
+body.touch #hud { transform: scale(.96); }
+#qtrack { top: max(100px, calc(env(safe-area-inset-top) + 94px)); font-size: 14px; max-width: 310px; }
+body.touch #qtrack { top: max(84px, calc(env(safe-area-inset-top) + 78px)); font-size: 14px; max-width: 270px; }
+#qtrack .qbar { display: block; height: 3px; margin: 1px 0 3px 22px; background: rgba(0, 0, 0, .5); }
+#qtrack .qbar em { display: block; height: 100%; background: linear-gradient(90deg, #c8861a, #ffd84a); }
+#qtrack .ok .qbar em { background: #3ad06a; }
+#qtrack .hint { color: var(--dim); }
+#goHomeRow.hidden { display: none; }
+.ibtn.trk { filter: grayscale(1) brightness(.6); }
+.ibtn.trk.on { filter: none; border-color: var(--gold); }
+/* 系統訊息框原本置中，會蓋到血條右邊新放的背包／技能樹／地圖鍵 → 改成接在那排鍵的右邊 */
+#sys { left: 470px; transform: translate(0, -8px); max-width: min(400px, calc(100% - 540px)); }
+#sys.on { transform: translate(0, 0); }
+body.touch #sys { left: 384px; max-width: min(380px, calc(100% - 450px)); }
+/* 開場第三版：系統報錯時台詞框變紅 */
+.introSay.err { border-image-source: none; border: 3px solid #ff3a4a; background: rgba(40, 4, 10, .92); box-shadow: 0 0 16px rgba(255, 60, 70, .55); }
+.introSay.err .introText { color: #ffd0c8; }

@@ -117,9 +117,24 @@ const say = (who, text) => h("div", "wsay", `<b>${who}</b>${text}`);
 
 // ================= 任務 =================
 /** 任務視窗。atGuild：在公會（可以接任務、交付、放棄） */
+// 使用者 2026-11-05：追蹤任務——每張任務卡右邊一顆星，亮＝追蹤中，最多 TRACK_MAX 個，顯示在左上角頭像下方
+//   Q.tracked：["公會任務 id", "sys:系統任務 id"]；新接的任務沒滿的話自動追蹤
+export const TRACK_MAX = 3;
 export function openQuests(atGuild = false, tab = "guild") {
   const P = ctx.profile, Q = P.quests;
   if (atGuild) refreshBoard(Q, ctx.unlocked());
+  const tracked = (Q.tracked ??= []);
+  const trackBtn = (key) => {
+    const on = tracked.includes(key), b = ibtn("star", "", () => {
+      const i = tracked.indexOf(key);
+      if (i >= 0) tracked.splice(i, 1);
+      else if (tracked.length >= TRACK_MAX) { ctx.sfx("close"); return msg(`最多追蹤 ${TRACK_MAX} 個`, false); }
+      else tracked.push(key);
+      ctx.sfx("ui"); ctx.onQuest(); render();
+    }, "trk mini" + (on ? " on" : ""));
+    b.title = on ? "取消追蹤" : "追蹤（顯示在左上角）";
+    return b;
+  };
   const card = (q, offer) => {
     const L = questLook(q), ready = !offer && isReady(q);
     const c = h("div", "qcard" + (offer ? " offer" : "") + (ready ? " ready" : ""));
@@ -128,8 +143,9 @@ export function openQuests(atGuild = false, tab = "guild") {
       <div class="qmain"><div class="qt">${L.label}${L.tag ? `<em class="tag bad">${L.tag}</em>` : ""}${ready ? '<em class="tag ok">完成</em>' : ""}</div>${offer ? "" : bar(q.have, q.need)}${offer && q.need > 1 ? `<div class="qneed">×${q.need}</div>` : ""}</div>
       <div class="qrw">${chips(q.reward)}</div>`;
     const act = h("div", "qact");
+    if (!offer) act.appendChild(trackBtn(q.id));
     if (offer) {
-      const b = ibtn("check", "接受", () => { if (accept(Q, q.id)) { ctx.sfx("pickup"); msg(`接下了：${L.label}`); ctx.onQuest(); render(); } else msg(`最多同時 ${GUILD_MAX} 個`, false); });
+      const b = ibtn("check", "接受", () => { if (accept(Q, q.id)) { if (tracked.length < TRACK_MAX && !tracked.includes(q.id)) tracked.push(q.id); ctx.sfx("pickup"); msg(`接下了：${L.label}`); ctx.onQuest(); render(); } else msg(`最多同時 ${GUILD_MAX} 個`, false); });
       if (Q.active.length >= GUILD_MAX) b.disabled = true;
       act.appendChild(b);
     } else if (atGuild && ready) act.appendChild(ibtn("seal", "交付", () => {
@@ -171,6 +187,7 @@ export function openQuests(atGuild = false, tab = "guild") {
       const c = h("div", "qcard sys");
       c.title = s.desc;
       c.innerHTML = `<div class="qic">${ico(SYS_ICON[s.id] ?? "xp", "big")}</div><div class="qmain"><div class="qt">${s.title}</div><div class="qd">${s.desc}</div></div><div class="qrw">${chips(s.reward)}</div>`;
+      const act = h("div", "qact"); act.appendChild(trackBtn("sys:" + s.id)); c.appendChild(act);
       body.appendChild(c);
     }
     const done = SYSTEM.filter((s) => Q.sysDone[s.id]);

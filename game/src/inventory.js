@@ -374,7 +374,7 @@ export function createInventory(profile, { onChange, onClose }) {
       if (old?.unique) rows.push(`<div class="b">失去：${UNIQUES[old.unique].name} 的效果</div>`);
       // 使用者 2026-11-05：不寫各項差距，左邊半透明視窗放身上那件讓玩家自己看；這裡只留一句整體變強／變弱
       void rows;
-      cmp = `<div class="cmp"><div class="ch">${old ? "◀ 左邊是身上的" : "這個部位是空的"}${c.better ? ' <em class="up">▲ 變強</em>' : c.worse ? ' <em class="down">▼ 變弱</em>' : ""}</div></div>`;
+      cmp = "";   // 使用者 2026-11-05：變強／變弱也不寫字（左邊的對比視窗自己看；格子右下的 ▲ 還在）
       btns = `<button class="pbtn" data-act="equip">裝備</button>`;
     } else if (sel.where === "equip") {
       cmp = `<div class="cmp"><div class="ch">已裝備</div></div>`;
