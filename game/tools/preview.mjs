@@ -58,6 +58,21 @@ if (mode === "hero") {
   });
   console.log(list.map(([n]) => n).join(" "));
   savePng(f, K, a);
+} else if (mode === "forms") {
+  // 形態對照：每列一個形態，每欄一個關鍵姿勢（FORMS=star,slime 可指定）
+  const { POSES, starPixels } = await import("../src/star.js");
+  const forms = (process.env.FORMS ?? "star,slime,can").split(",");
+  const keys = process.env.KEYS ? process.env.KEYS.split(",").map((k) => (k.includes(":") ? [k.split(":")[0], +k.split(":")[1]] : k)) : ["stand", ["run", 0], ["run", 2], "jump", "fall", "windF", "smearF", "punchF", "hurt", "dash", "windB", "back", "turn", "cast"];
+  const CW = 48, CH = 44, K = +(process.env.K ?? 5), W = CW * keys.length, H = CH * forms.length;
+  const f = createFrame(W, H);
+  f.color.fill(0xff2a2018);
+  forms.forEach((form, r) => keys.forEach((k, i) => {
+    const q = Array.isArray(k) ? POSES[k[0]][k[1]] : POSES[k], sp = starPixels(form === "star" ? q : { ...q, form });
+    const ox = i * CW + 24, oy = r * CH + 38;
+    for (let x = i * CW; x < (i + 1) * CW; x++) f.color[oy * W + x] = 0xff5a4650;
+    sp.px.forEach((row, j) => row.forEach((c, x) => { const X = ox + x - sp.ax, Y = oy + j - sp.ay; if (c && X >= 0 && X < W && Y >= 0 && Y < H) f.color[Y * W + X] = c; }));
+  }));
+  savePng(f, K, a);
 } else if (mode === "icons") {
   // 所有自製圖示排成一張表
   const { ICONS, ICON_SIZE: S } = await import("../src/icons.js");
@@ -92,7 +107,7 @@ if (mode === "hero") {
 } else if (mode === "fx") {
   const file = resolve(a), fx = await loadEffect(basename(file, ".js"), dirname(file));
   const r = renderFrames(fx, { options: c ? JSON.parse(c) : {} });
-  writeFileSync(b, contactSheet(fx, r, { max: 16, zoom: 4 }));
+  writeFileSync(b, contactSheet(fx, r, { max: +(process.env.MAX ?? 16), zoom: +(process.env.ZOOM ?? 4) }));
   console.log("wrote", b);
 }
 

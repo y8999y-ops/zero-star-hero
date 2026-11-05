@@ -1,10 +1,11 @@
 // 形態系統（企劃書 3.1、3.2）：打倒狂化魔物有機率掉「魔物核」，撿到就解鎖那個形態；撿到重複的核，形態升級。
 // 最多帶 3 個形態，戰鬥中切換。每個形態決定：普攻連段（player.js 的 COMBO_DEF）、形態技能、身體顏色。
-// 黏液星、鐵罐星的正式造型還在草稿階段，現在先用換色的星星代替（star.js 的 FORM_RAMPS）。
+// 各形態的外觀畫在 star.js（黏液星、鐵罐星、蝠翼星）。
 
 export const FORMS = {
   star: { name: "星星", combo: "sword", skill: "stardust", skillName: "星屑彈", color: "#ffd84a", desc: "均衡的連段。技能：星屑彈，直線射出、打中會爆開。" },
   slime: { name: "黏液星", combo: "spear", skill: "goo", skillName: "黏液彈", color: "#7ee86a", from: "slime", desc: "角甩出去很遠。技能：黏液彈，爆開範圍大、把怪推開。" },
+  bat: { name: "蝠翼星", combo: "dagger", skill: "flight", skillName: "蝠翼飛行", color: "#b48ae8", from: "bat", desc: "快速連續抓擊，空中攻擊時停得更久、按住跳可以滑翔。技能：蝠翼飛行，往前上方飛一小段，撞到的怪都會受傷。" },
   can: { name: "鐵罐星", combo: "hammer", skill: "charge", skillName: "蓋子衝撞", color: "#9aa6ba", from: "trash", desc: "慢、重、全部擊飛。技能：蓋子衝撞，往前衝，衝的時候不會受傷。" },
 };
 export const FORM_IDS = Object.keys(FORMS);

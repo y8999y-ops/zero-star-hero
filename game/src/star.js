@@ -22,11 +22,14 @@ const GLASS = ["#d08a1c", "#f5c040", "#ffe27a", "#fff4b8", "#ffffff"].map(C);
 // 造型：黏液星＝草稿 S3（果凍＋滴落＋氣泡），鐵罐星＝草稿 C1（下半身鐵罐＋罐蓋），使用者 2026-11-04 選定。
 const FORM_RAMPS = {
   slime: ["#1f6a3a", "#36a04a", "#6cd45a", "#b8f4a0", "#ffffff"].map(C),
+  bat: ["#4a2a6e", "#6e44a0", "#9a72d0", "#d4bcf4", "#ffffff"].map(C),
 };
+// 蝠翼星：兩個側角換成蝙蝠翅膀（翼膜＋指骨＋下緣扇形缺口），頭頂兩隻小耳朵
+const MEMBRANE = ["#3e2462", "#5c388c", "#8058b8"].map(C), BONE = C("#26143c");
 const METAL = ["#2e3440", "#4a5468", "#6e7a90", "#9aa6ba", "#d0d8e6", "#ffffff"].map(C);
 const RUST = ["#6e3218", "#a4552a"].map(C);
 // 罐蓋（頭上）：# 把手、數字＝METAL 的第幾階＋1
-const LID = ["....##....", "...#..#...", ".44555544.", "3444444443", ".22222221."];
+const LID = ["....##....", "...#..#...", ".44555544.", "3444444443", ".22222222."];
 const SHOE = ["#1c2448", "#2c3c78", "#4a62b0", "#7a96e0"].map(C);
 const TEAL = ["#126068", "#1f8a8c", "#3cc8c0", "#9af0e0"].map(C);
 const EYE = C("#40204a"), WHITE = C("#ffffff"), BLUSH = C("#ff9a6a");
@@ -159,8 +162,37 @@ function build(q) {
       if (inHull(hull, x, y)) mat[y][x] = 1;
     }
   };
-  arm(-1, q.hb ?? [0, 0]);
-  arm(1, q.hf ?? [0, 0]);
+  // 蝠翼星的翅膀：肩膀（底邊）＋三個指尖圍成一片翼膜，再挖兩個圓形缺口做出扇形下緣。指尖跟著角的位移移動。
+  const wings = [];
+  // o：指尖「往外」的位移（左翼往外是 -x、右翼往外是 +x），先用左翼的座標算，最後 mx 鏡像成右翼
+  const wing = (side, [ox, oy]) => {
+    const mx = (x) => (side < 0 ? x : BW - 1 - x), conv = ([x, y]) => [PAD + mx(x) + lean, top + y];
+    const T = [[-4 - ox, 1 + oy], [-4 - ox * 0.9, 8 + oy], [0 - ox * 0.5, 12 + oy * 0.5]];
+    const P = [[5, 6], [5, 12], ...T].map(conv), hull = convexHull(P);
+    const mid = (p, q2, dx, dy) => [(p[0] + q2[0]) / 2 + dx, (p[1] + q2[1]) / 2 + dy];
+    const cut = [[mid(T[0], T[1], -1.6, 0), 1.7], [mid(T[1], T[2], -1.2, 1.4), 2.4]].map(([c, r]) => [...conv(c), r]);
+    const xs = P.map((p) => p[0]), ys = P.map((p) => p[1]);
+    for (let y = Math.floor(Math.min(...ys)); y <= Math.ceil(Math.max(...ys)); y++) for (let x = Math.floor(Math.min(...xs)); x <= Math.ceil(Math.max(...xs)); x++) {
+      if (y < 0 || x < 0 || y >= H || x >= W || mat[y][x] || !inHull(hull, x, y)) continue;
+      if (cut.some(([cx2, cy2, r]) => Math.hypot(x - cx2, y - cy2) < r)) continue;
+      mat[y][x] = 6;
+    }
+    // 挖完缺口後只剩一兩格連著的碎點拿掉（規則：不留孤立點、無功能凸齒）
+    for (let pass = 0; pass < 2; pass++) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      if (mat[y][x] !== 6) continue;
+      const nb = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([a, b2]) => mat[y + b2]?.[x + a]).length;
+      if (nb < 2) mat[y][x] = 0;
+    }
+    wings.push({ sh: conv([5, 8]), tips: T.map(conv) });
+  };
+  if (q.form === "bat") {
+    // 翅膀的指尖位移：角的 dx 是「往臉朝的方向」，左翼（後）往外是 -x，右翼（前）往外是 +x。把位移換成「往外」的量。
+    wing(-1, [-(q.hb?.[0] ?? 0), q.hb?.[1] ?? 0]);
+    wing(1, [q.hf?.[0] ?? 0, q.hf?.[1] ?? 0]);
+  } else {
+    arm(-1, q.hb ?? [0, 0]);
+    arm(1, q.hf ?? [0, 0]);
+  }
   // 鞋子：前腳在右
   const shoe = (side, [dx, dy]) => {
     const bx = side < 0 ? PAD + 2 : PAD + BW - 8, by = top + BH + dy, ox = bx + dx;
@@ -196,10 +228,23 @@ function build(q) {
     if (!m) continue;
     const tl = empty(x - 1, y) || empty(x, y - 1), br = empty(x + 1, y) || empty(x, y + 1);
     if (m === 3) { px[y][x] = SHOE[tl ? 3 : br ? 1 : 2]; continue; }
+    if (m === 6) { px[y][x] = empty(x, y - 1) ? MEMBRANE[2] : empty(x, y + 1) || empty(x + 1, y) && !empty(x - 1, y) ? MEMBRANE[0] : MEMBRANE[1]; continue; }
     const d = dist[y][x], side = (x - cx) + (y - cy) > 2, r = Math.hypot((x - cx) * 0.9, y - cy);
     const arm = core === 0 ? 0 : core;
     const plus = (x === cx && Math.abs(y - cy) <= arm) || (y === cy && Math.abs(x - cx) <= arm);
     let c;
+    if (q.form === "slime") {
+      // 果凍：大塊中間色，右下一整片暗、左上外緣亮、肚子裡亮的核心透出來；不用交錯的格子（避免變成棋盤格）
+      const t = (x - cx) / 14 + (y - cy) / 11;
+      if (plus) c = back ? G[3] : G[4];
+      else if (r < 1.6 + core * 0.6) c = G[3];
+      else if (d === 1 && br && t > 0.15) c = G[0];
+      else if (d === 1 && tl && t < 0.2) c = G[3];
+      else if (t > 0.55 || (d <= 2 && t > 0.2 && br)) c = G[1];
+      else c = G[2];
+      px[y][x] = c;
+      continue;
+    }
     if (plus) c = back ? G[3] : G[4];   // 背面：光隔著身體，只透出淡淡一點
     else if (r < 1.6 + core * 0.6) c = G[3];
     else if (d === 1) c = tl ? G[3] : G[2];
@@ -260,25 +305,53 @@ function build(q) {
       }
     }
     if (!back) for (const [x, y, k] of [[11, 19, 2], [11, 20, 1]]) if (!onBody(x, y)) putX(x, y, G[k]);
-    for (const [cx2, cy2] of [[8, 15], [19, 17], [16, 8]]) for (const [dx, dy] of [[0, -1], [-1, 0], [1, 0], [0, 1]]) if (onBody(cx2 + dx, cy2 + dy) && px[top + rowOf(cy2 + dy)][PAD + cx2 + dx + (cy2 + dy < WAIST ? lean : 0)] !== EYE) put(cx2 + dx, cy2 + dy, G[3]);
-    if (!back) for (const [x, y] of [[20, 14], [21, 15], [9, 3]]) put(x, y, G[4]);
+    // 氣泡：暗的那一側兩顆小亮點（一顆 2 格、一顆 1 格），頭頂一道濕亮的高光
+    for (const [x, y] of [[19, 16], [19, 17], [8, 16]]) if (onBody(x, y)) put(x, y, G[3]);
+    if (!back) for (const [x, y] of [[12, 2], [5, 8]]) put(x, y, G[4]);
+  }
+  if (q.form === "bat") {
+    // 指骨：肩膀到三個指尖的骨頭線（只畫在翼膜上，最後一格留給外框收尾）
+    for (const w of wings) for (const [tx, ty] of w.tips.slice(1)) {
+      const [x0, y0] = w.sh, n = Math.max(Math.abs(tx - x0), Math.abs(ty - y0));
+      for (let k = 1; k < n - 0.5; k++) {
+        const X = Math.round(x0 + ((tx - x0) * k) / n), Y = Math.round(y0 + ((ty - y0) * k) / n);
+        if (mat[Y]?.[X] === 6) px[Y][X] = G[1];
+      }
+    }
+    // 頭頂兩隻小耳朵（尖的，外側暗、內側亮）
+    for (const [x, y, k] of [[11, 0, 1], [11, -1, 1], [12, 0, 2], [17, 0, 1], [17, -1, 1], [16, 0, 2]]) putX(x, y, G[k], true);
   }
   if (q.form === "can") {
     // 下半身套著鐵罐：每一列左亮右暗的縱向亮帶，上緣凸紋一亮一暗，底下暗一階；肚子的光、眼睛、領巾不蓋
-    const skip = new Set([EYE, WHITE, BLUSH, ...TEAL, G[4]]);
-    for (let y = 13; y <= 20; y++) {
-      const Y = top + rowOf(y), xs = [];
-      for (let X = 0; X < W; X++) if (mat[Y][X] === 1 && !skip.has(px[Y][X])) xs.push(X);
-      if (!xs.length) continue;
-      const a = Math.min(...xs), w = Math.max(...xs) - a + 1;
-      for (const X of xs) {
-        const u = (X - a) / w;
-        let k = u < 0.12 ? 3 : u < 0.3 ? 4 : u < 0.55 ? 3 : u < 0.8 ? 2 : 1;
-        if (y === 13) k = Math.min(5, k + 1); else if (y === 14) k = Math.max(0, k - 1); else if (y === 20) k = Math.max(0, k - 1);
-        px[Y][X] = METAL[k];
+    // 下半身整個套進一個直筒鐵罐（直的側邊，不跟著星星的腳形，才不會看起來像褲子）：
+    // 上緣捲邊比罐身寬 1 格、中間一道凸紋、底下一圈暗邊；縱向亮帶表示圓柱；兩顆鉚釘、兩塊鏽斑。
+    // 肚子的光從罐子上一個星形的小洞透出來。抬起的鞋子蓋在罐子前面。
+    const CAN_TOP = 12, CAN_BOT = 20, CL = 4, CR = BW - 5;
+    const Yt = top + rowOf(CAN_TOP), Yb = top + rowOf(CAN_BOT);
+    for (let Y = Yt + 1; Y < H; Y++) for (let X = 0; X < W; X++) if (mat[Y][X] === 1) { mat[Y][X] = 0; px[Y][X] = 0; }
+    for (let Y = Yt; Y <= Yb; Y++) {
+      const rim = Y === Yt, a = rim ? CL - 1 : CL, b = rim ? CR + 1 : CR;
+      for (let i = a; i <= b; i++) {
+        const X = PAD + i;
+        if (mat[Y][X] === 3) continue;
+        const u = (i - a) / (b - a);
+        let k = u < 0.1 ? 2 : u < 0.3 ? 4 : u < 0.62 ? 3 : u < 0.86 ? 2 : 1;
+        const row = Y === Yt ? "rim" : Y === Yt + 1 ? "under" : Y === Yb ? "bot" : Y === top + rowOf(16) ? "ridge" : Y === top + rowOf(17) ? "ridgeS" : "";
+        if (row === "rim" || row === "ridge") k = k + 1;
+        else if (row === "under" || row === "ridgeS" || row === "bot") k = k - 1;
+        mat[Y][X] = 5;
+        px[Y][X] = k >= 5 ? WHITE : METAL[Math.max(1, Math.min(4, k))];   // 色盤精簡：鐵只用 4 階，最亮的反光借白色
       }
     }
-    for (const [x, y, k] of back ? [[17, 16, 1], [18, 16, 0]] : [[10, 16, 1], [11, 16, 0], [19, 18, 1]]) if (onBody(x, y)) put(x, y, RUST[k]);
+    const canPut = (i, y, c) => { const X = PAD + i, Y = top + rowOf(y); if (mat[Y]?.[X] === 5) px[Y][X] = c; };
+    if (!back) {
+      for (const i of [CL + 2, CR - 2]) { canPut(i, 14, WHITE); canPut(i, 15, METAL[1]); }   // 鉚釘
+      // 星形小洞：十字＋中心，透出肚子的光
+      const k = core;
+      canPut(MID, 18, G[4]); if (k > 0) { canPut(MID - 1, 18, G[3]); canPut(MID + 1, 18, G[3]); canPut(MID, 19, G[3]); canPut(MID, 18 - 0, G[4]); }
+      if (k > 1) canPut(MID, 17, G[3]);
+    }
+    for (const [i, y, k] of back ? [[16, 14], [17, 14], [9, 19]] : [[7, 18], [8, 18], [20, 14]]) canPut(i, y, RUST[1]);
     LID.forEach((r, j) => [...r].forEach((ch, i) => { if (ch !== ".") putX(9 + i, j - 3, ch === "#" ? METAL[3] : METAL[+ch - 1]); }));
   }
   // 側身：臉朝的那半邊往後轉，拿掉兩欄（看起來比正面窄）

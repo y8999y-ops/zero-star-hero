@@ -49,8 +49,8 @@ export const A = {
   // 菁英（紅色）
   slimeElite: bake(slimeFx, { palette: ["#14060a", "#3a0a14", "#6e1220", "#b01e2a", "#e84a3a", "#ff9a70", "#ffe0c8"], light: GLOW.enemy * 1.6 }),
   batElite: bake(batFx, { palette: ["#14060a", "#2e0a18", "#5a1228", "#8e1e3a", "#c83a4a", "#ff7a6a", "#ffd0c0"], eyes: ["#5a2a00", "#ffd84a", "#fff3a6", "#ffffff"], light: GLOW.enemy * 1.6 }),
-  trashEliteWalk: bake(trashCan, { palette: ["#140a0e", "#2a1418", "#44202a", "#64303c", "#8a4650", "#b46a6a", "#e0a8a0"], rust: ["#4a0e0e", "#8c1a18", "#c8362a", "#ff6a4a"], eyes: ["#5a0a00", "#e0301a", "#ff8a4a", "#ffe0c0"], light: GLOW.enemy * 3 }),
-  trashEliteBite: bake(trashCan, { mode: "bite", palette: ["#140a0e", "#2a1418", "#44202a", "#64303c", "#8a4650", "#b46a6a", "#e0a8a0"], rust: ["#4a0e0e", "#8c1a18", "#c8362a", "#ff6a4a"], eyes: ["#5a0a00", "#e0301a", "#ff8a4a", "#ffe0c0"], light: GLOW.enemy * 3 }),
+  trashEliteWalk: bake(trashCan, { palette: ["#16060a", "#320c14", "#561420", "#7e1c2a", "#b02a34", "#e0504a", "#ffa08a"], rust: ["#4a0e0e", "#8c1a18", "#c8362a", "#ff6a4a"], eyes: ["#5a0a00", "#e0301a", "#ff8a4a", "#ffe0c0"], light: GLOW.enemy * 3 }),
+  trashEliteBite: bake(trashCan, { mode: "bite", palette: ["#16060a", "#320c14", "#561420", "#7e1c2a", "#b02a34", "#e0504a", "#ffa08a"], rust: ["#4a0e0e", "#8c1a18", "#c8362a", "#ff6a4a"], eyes: ["#5a0a00", "#e0301a", "#ff8a4a", "#ffe0c0"], light: GLOW.enemy * 3 }),
   poofTrash: bake(poof, { palette: ["#1f272c", "#313d42", "#485a5c", "#667a78", "#8ea29c", "#c4d4cc"], light: GLOW.poof }),
 };
 
@@ -62,6 +62,7 @@ const soft = (pal) => pal?.map((c) => (c.toLowerCase() === "#ffffff" ? "#e8dcc4"
 const FORM_SLASH = {
   star: { ramp: ["#2a1608", "#6b3c10", "#b8701a", "#f0b42e", "#ffe27a", "#fff6cf", "#ffffff"], sparks: ["#fff6cf", "#ffe27a", "#f0b42e", "#b8701a"] },
   slime: { ramp: ["#0c2010", "#1a4a20", "#2a8a3a", "#4cc04a", "#8ee86a", "#d4ffb0", "#f0fff0"], sparks: ["#d4ffb0", "#8ee86a", "#4cc04a", "#2a8a3a"] },
+  bat: { ramp: ["#160c24", "#2e1a4a", "#5c388c", "#8058b8", "#b48ae8", "#e2d0ff", "#ffffff"], sparks: ["#e2d0ff", "#b48ae8", "#8058b8", "#5c388c"] },
   can: { ramp: ["#14161c", "#2a2e38", "#4a5468", "#6e7a90", "#9aa6ba", "#d0d8e6", "#eef2f8"], sparks: ["#fff3a6", "#ffc23d", "#ff8a2a", "#c44a1a"] },
 };
 // 把 7 色的 ramp 換成特效要的長度

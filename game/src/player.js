@@ -65,6 +65,8 @@ function comboFor(key, form = "star") {
   return comboCache[ck];
 }
 const CHARGE_T = 0.3, CHARGE_V = 330;   // 鐵罐星的蓋子衝撞
+const FLY_T = 0.34, FLY_VX = 290, FLY_VY = -170;   // 蝠翼星的蝠翼飛行：往前上方飛
+const GLIDE_FALL = 90;                            // 蝠翼星按住跳：慢慢滑翔
 
 const WHITE = hex("#f0ecff") >>> 0, GHOST = ["#8ae8ff", "#4ab0d8", "#2a6ea0", "#1c3e6a"].map((c) => hex(c) >>> 0);
 
@@ -168,6 +170,7 @@ export class Player {
       if (!this.cast && this.t >= 0.1) {
         this.cast = true;
         if (FORMS[this.form].skill === "charge") { this.state = "charge"; this.t = 0; this.chargeHit = new Set(); this.invuln = Math.max(this.invuln, CHARGE_T + 0.05); }
+        else if (FORMS[this.form].skill === "flight") { this.state = "fly"; this.t = 0; this.chargeHit = new Set(); this.grounded = false; this.invuln = Math.max(this.invuln, FLY_T + 0.05); sfx("dash"); }
         else world.spawnFireball(this.x + this.face * 18, this.y - 14, this.face, this.form);
       }
       if (this.state === "cast" && this.t >= 0.28) this.state = "move";
@@ -178,12 +181,20 @@ export class Player {
       if (this.ghostAcc > 1 / 30) { this.ghostAcc = 0; this.ghosts.push({ x: this.x, y: this.y, q: this.pose, flip: this.drawFlip(), age: 0 }); }
       world.hitOnce({ x0: this.x - 12, x1: this.x + 12, y0: this.y - 26, y1: this.y + 2 }, this.chargeHit, () => this.roll(2.2 * (1 + this.stats.skill / 100)), this.face, { launch: true, push: 4 });
       if (this.t >= CHARGE_T) { this.state = "move"; this.vx *= 0.3; }
+    } else if (this.state === "fly") {
+      // 蝠翼星：往前上方飛，越飛越平；路上的怪每隻打一次。飛完可以再跳一次。
+      this.vx = this.face * FLY_VX;
+      this.vy = FLY_VY * (1 - this.t / FLY_T);
+      this.ghostAcc += dt;
+      if (this.ghostAcc > 1 / 30) { this.ghostAcc = 0; this.ghosts.push({ x: this.x, y: this.y, q: this.pose, flip: this.drawFlip(), age: 0 }); }
+      world.hitOnce({ x0: this.x - 14, x1: this.x + 14, y0: this.y - 28, y1: this.y + 2 }, this.chargeHit, () => this.roll(1.8 * (1 + this.stats.skill / 100)), this.face, { push: 3 });
+      if (this.t >= FLY_T) { this.state = "move"; this.vx *= 0.5; this.jumps = Math.min(this.jumps, 1); }
     } else if (this.state === "hurt") {
       if (this.t >= 0.32) this.state = "move";
     }
 
     // ---- 水平移動
-    if (this.state !== "dash" && this.state !== "hurt" && this.state !== "charge") {
+    if (this.state !== "dash" && this.state !== "hurt" && this.state !== "charge" && this.state !== "fly") {
       const target = input.move * RUN * (1 + this.stats.move / 100 + this.buff.move) * ctl;
       const acc = (this.grounded ? ACC_GROUND : ACC_AIR) * dt;
       this.vx += Math.max(-acc, Math.min(acc, target - this.vx));
@@ -212,10 +223,13 @@ export class Player {
     if (!input.jumpHeld && this.vy < -150 && this.state === "move") this.vy = -150; // 短按跳得低
 
     // ---- 重力
-    if (this.state !== "dash") {
-      // 空中攻擊時懸停一下，比較好打空中的敵人
-      const g = this.state === "attack" && !this.grounded && this.vy > -40 ? GRAV * 0.25 : GRAV;
-      this.vy = Math.min(MAX_FALL, this.vy + g * dt);
+    if (this.state !== "dash" && this.state !== "fly") {
+      // 空中攻擊時懸停一下，比較好打空中的敵人（蝠翼星停得更久）
+      const bat = this.form === "bat";
+      const g = this.state === "attack" && !this.grounded && this.vy > -40 ? GRAV * (bat ? 0.08 : 0.25) : GRAV;
+      // 蝠翼星按住跳往下掉時：滑翔
+      const cap = bat && input.jumpHeld && this.state === "move" && !this.grounded && this.vy > 0 ? GLIDE_FALL : MAX_FALL;
+      this.vy = Math.min(cap, this.vy + g * dt);
     }
     const prevY = this.y;
     this.x += this.vx * dt;
@@ -331,6 +345,7 @@ export class Player {
     switch (this.state) {
       case "attack": return this.attackPose();
       case "dash": case "charge": return POSES.dash;
+      case "fly": return POSES.jump;
       case "cast": return POSES.cast;
       case "hurt": return POSES.hurt;
     }

@@ -3,6 +3,9 @@
 // 咬人：蹲低蓄力 → 蓋子往後翻開露出牙齒和舌頭 → 停住 → 啪一聲闔上 → 回原位。
 // 參考：Recycle Items 的鐵罐、Spidrbot 與 Space Merc 圓桶的金屬明暗、Animated Slime 的眼睛（docs/素材參考.md）。
 // 規則：整數格、1px 外框、圓柱用縱向亮帶表現、鏽斑固定位置（不用隨機雜訊）、不抖色。
+// 第三版（2026-11-05）：在新場景裡太像背景的廢鐵 → 換成綠色烤漆、蓋子一直留一條縫露出大眼睛、蓋子上掛香蕉皮（剪影多一個辨識點）、
+// 蓋子抬高時舌頭從縫裡垂出來。參考：Penusbmic Monster Pack 的 Trash Monster、各家寶箱怪（Mimic）的咬人動作、敵人與背景的對比原則。
+const PEEL = ["#5a3a10", "#c08a1c", "#f0d048"], TONGUE = ["#a03050", "#e05a7a", "#ff9ab0"];
 import { hex } from "../../../pixelfx/src/core/index.js";
 
 export const meta = {
@@ -16,7 +19,8 @@ export const meta = {
   fps: 30,
   bg: "ground",
   options: {
-    palette: ["#101318", "#1f272c", "#313d42", "#485a5c", "#667a78", "#8ea29c", "#c4d4cc"],
+    // 綠色烤漆的鐵桶：場景裡的廢鐵都是灰、鏽橘、紫，怪物用場景沒有的綠，一眼就分得出來（參考：敵人要用背景沒有的顏色）
+    palette: ["#0c1412", "#18302a", "#22483c", "#2c6450", "#3c8862", "#5eae78", "#a4dcaa"],
     rust: ["#3a1a10", "#6e3218", "#a4552a", "#cf7c3c"],
     eyes: ["#5a2a00", "#c07a10", "#ffd84a", "#fff6c0"],
     mode: "walk",
@@ -85,7 +89,10 @@ function biteState(t) {
 }
 
 export function draw(p, t, o) {
-  const P = o.palette.map(hex), Rr = o.rust.map(hex), Ey = o.eyes.map(hex);
+  const P = o.palette.map(hex), Rr = o.rust.map(hex), Ey = o.eyes.map(hex), TEETH0 = ["#b8b49c", "#ecead8"].map(hex);
+  // 受擊閃白（palette 換成灰白）時，香蕉皮、舌頭、牙齒也要一起變白
+  const W = o.palette[o.palette.length - 1].toLowerCase() === "#ffffff";
+  const TEETH = W ? [P[5], P[6]] : TEETH0, pk = W ? [P[4], P[5], P[6]] : PEEL.map(hex), tk = W ? [P[3], P[4], P[5]] : TONGUE.map(hex);
   const grid = new Map();
   const set = (x, y, c) => c != null && grid.set(x + "," + y, [x, y, c]);
   const tone = (k) => (typeof k === "string" ? Rr[+k[1]] : P[k]);
@@ -126,30 +133,48 @@ export function draw(p, t, o) {
     for (let y = my; y < top; y++) for (let x = mx; x < mx + mw; x++) set(x, y, P[0]);
     // 牙齒：上下兩排鋸齒（一整列＋隔一格往內一格）
     for (let x = mx; x < mx + mw; x++) {
-      set(x, my, P[6]); set(x, top - 1, P[5]);
-      if ((x - mx) % 2 === 0) { set(x, my + 1, P[5]); set(x, top - 2, P[6]); }
+      set(x, my, TEETH[1]); set(x, top - 1, TEETH[0]);
+      if ((x - mx) % 2 === 0) { set(x, my + 1, TEETH[0]); set(x, top - 2, TEETH[1]); }
     }
     if (open === 2) {
-      for (let x = mx + 4; x < mx + 11; x++) set(x, top - 3, Rr[2]);   // 舌頭
-      for (let x = mx + 5; x < mx + 10; x++) set(x, top - 4, Rr[3]);
+      for (let x = mx + 4; x < mx + 11; x++) set(x, top - 3, tk[1]);   // 舌頭
+      for (let x = mx + 5; x < mx + 10; x++) set(x, top - 4, tk[2]);
     }
     const ey = my + (open === 2 ? 3 : 2);
     set(mx + 9, ey, Ey[2]); set(mx + 10, ey, Ey[3]); set(mx + 12, ey, Ey[2]); set(mx + 13, ey, Ey[3]);
     // 蓋子翻到後面立著
-    LID_UP.forEach((row, j) => [...row].forEach((ch, i) => ch !== "." && set(x0 - 2 + i, my - LID_UP.length + 4 + j + (open === 1 ? 3 : 0), P[+ch])));
+    const lidTop = my - LID_UP.length + 4 + (open === 1 ? 3 : 0);
+    LID_UP.forEach((row, j) => [...row].forEach((ch, i) => ch !== "." && set(x0 - 2 + i, lidTop + j, P[+ch])));
+    // 香蕉皮還掛在翻起來的蓋子頂端
+    for (const [dx, dy, k] of [[0, -3, 0], [-1, -2, 2], [0, -2, 2], [1, -2, 1], [-2, -1, 2], [-1, -1, 2], [1, -1, 1], [2, -1, 1], [-3, 0, 1], [2, 0, 1], [-3, 1, 0]]) set(x0 + dx, lidTop + dy, pk[k]);
     p.light(mx + 11, ey, o.eyes[2], 0.5);
   } else {
     // 蓋子蓋著：前半段依 st.lid 抬起，縫裡露出眼睛
-    const lift = st.lid;
+    const lift = st.lid + 1;   // 蓋子一直留一條縫
+    const shiftAll = 1;
     for (let x = x0 + 9; x < x0 + 17; x++) set(x, top - 1, P[0]);   // 蓋子和桶身之間的縫
     if (lift) for (let x = x0 + 8; x < x0 + 18; x++) for (let k = 0; k < lift; k++) set(x, top - 2 - k, P[0]);
     const ey = top - 1 - Math.max(0, lift - 1);
-    set(x0 + 11, ey, Ey[2]); set(x0 + 12, ey, Ey[3]); set(x0 + 14, ey, Ey[2]); set(x0 + 15, ey, Ey[3]);
+    // 大眼睛：縫夠高時是 2×2（上排亮、下排一亮一中），只有一列高時是 2×1
+    set(x0 + 11, ey, Ey[3]); set(x0 + 12, ey, Ey[2]); set(x0 + 14, ey, Ey[3]); set(x0 + 15, ey, Ey[2]);
+    if (lift >= 2) { set(x0 + 11, ey + 1, Ey[2]); set(x0 + 12, ey + 1, Ey[1]); set(x0 + 14, ey + 1, Ey[2]); set(x0 + 15, ey + 1, Ey[1]); }
+    // 舌頭：蓋子抬最高時從縫的前緣垂出來
+    if (lift >= 3) for (const [dx, dy, k] of [[15, -1, 1], [16, -1, 2], [17, -1, 2], [18, 0, 2], [18, 1, 1], [18, 2, 0]]) set(x0 + dx, top + dy, tk[k]);
     LID.forEach((row, j) => [...row].forEach((ch, i) => {
       if (ch === ".") return;
-      const up = i >= 10 ? lift : i >= 6 && lift === 2 ? 1 : 0;   // 前半抬起，越前面抬越高
-      set(x0 - 1 + i, top - 1 - LID.length + j - up - (lift ? 1 : 0), P[+ch]);
+      const up = i >= 10 ? lift : i >= 6 ? Math.max(0, lift - 1) : 0;   // 前半抬起，越前面抬越高
+      set(x0 - 1 + i, top - 1 - LID.length + j - up - shiftAll, P[+ch]);
     }));
+    // 香蕉皮：躺在蓋子後半，一條皮從後緣垂下來（跟著蓋子）
+    const py = top - shiftAll;
+    for (const [dx, dy, k] of [
+      [3, -7, 0],                                                     // 蒂頭
+      [2, -6, 2], [3, -6, 2], [4, -6, 1],
+      [1, -5, 2], [2, -5, 2], [3, -5, 2], [4, -5, 1], [5, -5, 1],     // 皮攤在蓋子上
+      [0, -4, 2], [1, -4, 2], [2, -4, 1], [6, -4, 1], [7, -4, 1],     // 右邊一條往前攤
+      [-1, -3, 2], [0, -3, 1],                                        // 左邊一條翻過蓋子邊緣
+      [-2, -2, 2], [-1, -2, 1], [-2, -1, 1], [-2, 0, 1], [-2, 1, 0],  // 垂到桶外
+    ]) set(x0 + dx, py + dy, pk[k]);
     if (st.snap) { set(x0 + 19, top - 7, P[6]); set(x0 + 20, top - 8, P[6]); set(x0 + 19, top - 9, P[6]); }  // 闔上的「喀」
     p.light(x0 + 13, ey, o.eyes[1], 0.25);
   }
