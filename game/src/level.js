@@ -9,6 +9,9 @@ import { hex, rand } from "../../pixelfx/src/core/index.js";
 import { tintOf } from "./light.js";
 import { loadArt, cell, baseRow, blit, glows, glowClusters } from "./art.js";
 import { LAYOUT, STAGE_ID } from "./stages.js";
+import { initMap, flatMap, geo, groundAt, onPlatform, floorAt, solidAt } from "./map.js";
+import { paintTerrain } from "./terrain-art.js";
+import { genUpper } from "./upper-art.js";
 
 export const H = 216;
 export const LEVEL_W = LAYOUT.w;
@@ -18,20 +21,27 @@ const S = { abyss: 0, junk: 100, cave: 200, lair: 300 }[THEME] ?? 0;
 const JUNKY = THEME === "junk" || THEME === "lair";   // 巢穴＝垃圾山的最深處   // 亂數種子錯開，每關長得不一樣
 export const FLOOR = 184;
 export const WALL = 16;
+// 8b：地圖高度（舊關卡＝一個畫面高）。地形碰撞在 map.js
+export const MAP_H = LAYOUT.h ?? H;
+initMap(LAYOUT.solids ? { w: LAYOUT.w, h: MAP_H, solids: LAYOUT.solids, platforms: LAYOUT.platforms } : flatMap(LAYOUT.w, MAP_H, FLOOR, WALL, LAYOUT.platforms));
+export { geo, groundAt, onPlatform, floorAt, solidAt };
 /** 單向平台：從下面可以跳上來，往下滑可以穿過去。 */
 export const PLATFORMS = LAYOUT.platforms;
 /** 火把位置（插在地上）。 */
-export const TORCHES = LAYOUT.torches;
+export const TORCHES = LAYOUT.torches.map((t) => t.x ?? t);
+// 8b：火把可以放在任何一層（{ x, y }），舊關卡只寫 x＝插在地板上
+export const TORCH_POS = LAYOUT.torches.map((t) => ({ x: t.x ?? t, y: t.y ?? FLOOR }));
 
 // ---- 美術素材（game/art/approved/valley＋道具，Aseprite 重繪稿）
 // 圖層（視差）：最遠背景 back（0.05）→ 遠景 far（0.12）→ 中景 mid（0.3）→ 近景 near（0.6）→ 遊玩層（1）→ 前景 fg（1.35）
 const ART = await loadArt(["valley/back", "valley/far", "valley/mid", "valley/near", "valley/fg", "valley/ground", "valley/platform",
   "props/rocks", "props/junk", "props/crystals", "props/grass", "props/flowers", "props/moss"]);
 const C = (s) => hex(s) >>> 0;
+const dim = (c, k) => 0xff000000 | ((((c >>> 16) & 255) * k) << 16) | ((((c >>> 8) & 255) * k) << 8) | ((c & 255) * k);
 const PAR = { 0: 0.05, 1: 0.12, 2: 0.3, 3: 0.6, F: 1.35 };
 const BACK_COLOR = C("#07070f");
-const PF = new Uint32Array(LEVEL_W * H);     // 遊玩層（地面、牆、平台、地上的道具）
-const PFE = new Uint8Array(LEVEL_W * H);     // 自己會發光的像素（水晶），光影不改它
+const PF = new Uint32Array(LEVEL_W * MAP_H);     // 遊玩層（地面、牆、平台、地上的道具）
+const PFE = new Uint8Array(LEVEL_W * MAP_H);     // 自己會發光的像素（水晶），光影不改它
 const FG_DROP = 26;                          // 前景往上收：垂掛的岩塊只露出下半，不擋到平台
 /** 近景水晶的光（座標在近景圖層裡，會跟著畫面循環） */
 const CRYSTAL_LIGHTS = [];
@@ -55,13 +65,32 @@ const MIX = {
 function build() {
   if (!ART["valley/ground"]) return;
   const gt = ART["valley/ground"];
-  const put = (x, y, c) => { if (x >= 0 && y >= 0 && x < LEVEL_W && y < H && c) PF[y * LEVEL_W + x] = c; };
-  // 地面：草皮最上緣在第 9 列 → 對準 FLOOR；超出圖塊的部分用最下面那列補
-  for (let x = 0; x < LEVEL_W; x++) for (let y = FLOOR - 9; y < H; y++) put(x, y, gt.px[Math.min(gt.h - 1, y - FLOOR + 9) * gt.w + (x % gt.w)]);
-  // 兩側的牆：用地面圖塊的石頭部分（第 16 列以下）往上疊，內側一條暗邊
-  for (const side of [0, LEVEL_W - WALL]) for (let x = side; x < side + WALL; x++) for (let y = 0; y < FLOOR - 9; y++) {
-    const inner = side === 0 ? x === WALL - 1 : x === side;
-    put(x, y, inner ? C("#12122a") : gt.px[(16 + (y % 30)) * gt.w + 86 + (x % 30)]);   // 地面圖塊 86～115 欄只有石頭
+  const put = (x, y, c) => { if (x >= 0 && y >= 0 && x < LEVEL_W && y < MAP_H && c) PF[y * LEVEL_W + x] = c; };
+  // 8b：地形照 map.js 的實心方塊畫——每一欄由上往下，算「離上面地表多深」：
+  //   地表上方 9 列畫草（地面圖塊第 0～8 列），地表往下照圖塊的列數畫土，超過圖塊高度改畫石頭（圖塊 86～115 欄只有石頭）；
+  //   旁邊是空的那一格畫一條暗邊（牆的內側），下面是空的（天花板）最下兩列壓暗。
+  // 8c：新的大地圖（有 solids）用 terrain-art.js 畫（地表、牆、天花板、轉角、水晶礦脈）；舊關卡維持原本的地面圖
+  if (LAYOUT.solids) {
+    const gl = [];
+    paintTerrain((x, y) => solidAt(x, y + 0.5), LEVEL_W, MAP_H, (x, y, c) => put(x, y, C(c)), (x, y, c) => { PFE[y * LEVEL_W + x] = 1; gl.push([x, y, C(c)]); });
+    for (const g of glowClusters(gl, 24)) PROP_LIGHTS.push({ x: g.x, y: g.y, r: 26, lv: 1.3, col: g.col });
+  } else {
+  const STONE = (x, y) => gt.px[(16 + (y % 30)) * gt.w + 86 + (x % 30)];
+  const EDGE = C("#12122a");
+  for (let x = 0; x < LEVEL_W; x++) {
+    let d = 999;
+    for (let y = 0; y < MAP_H; y++) {
+      if (!solidAt(x, y + 0.5)) { d = -1; continue; }
+      d = d < 0 ? 0 : d + 1;
+      if (d === 0 && y > 0) for (let g = 1; g <= 9; g++) if (!solidAt(x, y - g + 0.5) && !PF[(y - g) * LEVEL_W + x]) put(x, y - g, gt.px[(9 - g) * gt.w + (x % gt.w)]);
+      let c = d + 9 < gt.h - 1 ? gt.px[(d + 9) * gt.w + (x % gt.w)] : STONE(x, y);
+      if (!c) c = STONE(x, y);
+      const side = !solidAt(x - 1, y + 0.5) || !solidAt(x + 1, y + 0.5), under = !solidAt(x, y + 1.5) || !solidAt(x, y + 2.5);
+      if (side && d > 3) c = EDGE;
+      else if (under && y < MAP_H - 3) c = dim(c, 0.55);
+      put(x, y, c);
+    }
+  }
   }
   // 地上的道具：照主題輪流挑，避開火把；水晶標成自己發光
   const glow = [];
@@ -71,7 +100,7 @@ function build() {
     if (TORCHES.some((t) => Math.abs(t - cx) < 34)) continue;
     const [sheet, cw, ch, cells] = KIT[MIX.pick[k % MIX.pick.length]];
     const img = cell(ART[sheet], cells[Math.floor(rand(k + S, 52) * cells.length)], cw, ch);
-    blit(PF, LEVEL_W, H, img, Math.round(cx - cw / 2), FLOOR + 1 - baseRow(img), { onPx: (i, c, x, y) => { if (glows(c)) { PFE[i] = 1; glow.push([x, y, c]); } } });
+    blit(PF, LEVEL_W, MAP_H, img, Math.round(cx - cw / 2), (LAYOUT.solids ? floorAt(cx, FLOOR - 20) : FLOOR) + 1 - baseRow(img), { onPx: (i, c, x, y) => { if (glows(c)) { PFE[i] = 1; glow.push([x, y, c]); } } });
   }
   for (const g of glowClusters(glow, 24)) PROP_LIGHTS.push({ x: g.x, y: g.y, r: 30, lv: 1.6, col: g.col });
   // 平台：浮空岩台的左半＋右半拼成平台的寬度；苔蘚頂面（第 4 列）對準平台的高度
@@ -91,6 +120,13 @@ function build() {
 build();
 
 // 四角暗角：每個畫面大小算一次（0～1，平滑）
+// 8c：高地圖的上層遠景、中景（upper-art.js）。原本的圖層只有一個畫面高，鏡頭往上時接到這兩張
+const TALL = MAP_H > H, UH = TALL ? Math.ceil((MAP_H - H) * 0.75) + 16 : 0;
+const toPx = (a) => { const out = new Uint32Array(a.w * a.h); a.px.forEach((c, i) => { if (c) out[i] = C(c); }); return { w: a.w, h: a.h, px: out }; };
+const UP_FAR = TALL ? toPx(genUpper("far", 640, UH)) : null, UP_MID = TALL ? toPx(genUpper("mid", 768, UH)) : null;
+const VPAR = { 1: 0.5, 2: 0.7, 3: 0.85 };   // 垂直視差
+/** 某一層在螢幕第 y 列要取原圖的哪一列：>=0 原圖、<0 上層圖（從上層圖底部往上數）、null＝這層在這裡是空的 */
+function layerRow(y, cy, k) { return TALL ? y + Math.round((cy - (MAP_H - H)) * VPAR[k]) : y; }
 let vig = new Float32Array(0), vigW = 0;
 function vignette(W) {
   if (vigW === W) return vig;
@@ -103,7 +139,6 @@ function vignette(W) {
   return vig;
 }
 const LAYER_DIM = { 1: 0.78, 2: 0.66, 3: 0.6, 4: 1 };
-const dim = (c, k) => 0xff000000 | ((((c >>> 16) & 255) * k) << 16) | ((((c >>> 8) & 255) * k) << 8) | ((c & 255) * k);
 
 /** 畫背景＋遊玩層。lv 是 light.js 算出來的亮度（螢幕座標，小數）：照到的地方加上光源的顏色。 */
 export function drawLevel(frame, lv) {
@@ -112,14 +147,17 @@ export function drawLevel(frame, lv) {
   const o0 = Math.floor(cx * PAR[0]), o1 = Math.floor(cx * PAR[1]), o2 = Math.floor(cx * PAR[2]), o3 = Math.floor(cx * PAR[3]);
   for (let y = 0; y < H; y++) {
     const wy = y + cy, row = y * W;
-    if (wy < 0 || wy >= H) { out.fill(BACK_COLOR, row, row + W); continue; }
+    if (wy < 0 || wy >= MAP_H) { out.fill(BACK_COLOR, row, row + W); continue; }
+    // 8b：背景圖只有一個畫面高——用螢幕的 y，鏡頭往上時背景只稍微往下移一點（垂直視差），貼齊地圖最底下時跟以前一樣
+    const by = Math.max(0, Math.min(H - 1, y + Math.round((cy - (MAP_H - H)) * 0.12)));
+    const r1 = layerRow(y, cy, 1), r2 = layerRow(y, cy, 2), r3 = layerRow(y, cy, 3);
     for (let x = 0; x < W; x++) {
       const i = row + x, gx = x + cx;
       let v = gx >= 0 && gx < LEVEL_W ? PF[wy * LEVEL_W + gx] : 0, layer = 4;
-      if (!v) { v = N3.px[wy * N3.w + wrap(x + o3, N3.w)]; layer = 3; }
-      if (!v) { v = M2.px[wy * M2.w + wrap(x + o2, M2.w)]; layer = 2; }
-      if (!v) { v = F1.px[wy * F1.w + wrap(x + o1, F1.w)]; layer = 1; }
-      if (!v) { out[i] = B.px[wy * B.w + wrap(x + o0, B.w)] || BACK_COLOR; continue; }
+      if (!v && r3 >= 0 && r3 < H) { v = N3.px[r3 * N3.w + wrap(x + o3, N3.w)]; layer = 3; }
+      if (!v) { v = r2 >= 0 ? (r2 < H ? M2.px[r2 * M2.w + wrap(x + o2, M2.w)] : 0) : UP_MID && UH + r2 >= 0 ? UP_MID.px[(UH + r2) * UP_MID.w + wrap(x + o2, UP_MID.w)] : 0; layer = 2; }
+      if (!v) { v = r1 >= 0 ? (r1 < H ? F1.px[r1 * F1.w + wrap(x + o1, F1.w)] : 0) : UP_FAR && UH + r1 >= 0 ? UP_FAR.px[(UH + r1) * UP_FAR.w + wrap(x + o1, UP_FAR.w)] : 0; layer = 1; }
+      if (!v) { out[i] = B.px[by * B.w + wrap(x + o0, B.w)] || BACK_COLOR; continue; }
       if (layer === 4 && PFE[wy * LEVEL_W + gx]) { out[i] = v; continue; }
       // 越遠越暗（近景、中景退後一步，遊玩層最清楚），再加四角暗角
       const k = LAYER_DIM[layer] * (1 - V[i] * (layer >= 3 ? 0.35 : 0.15));
@@ -140,7 +178,7 @@ export function drawForeground(frame) {
   if (!FGI) return;
   const W = frame.w, cy = frame.oy | 0, out = frame.color, of = Math.floor((frame.ox | 0) * PAR.F);
   for (let y = 0; y < H; y++) {
-    const wy = y + cy, sy = wy < 110 ? wy + FG_DROP : wy;   // 上半（垂掛的岩塊）往上收，下半（地上剪影）不動
+    const wy = y + cy - (MAP_H - H), sy = wy < 110 ? wy + FG_DROP : wy;   // 8b：前景只在地圖最底下那一個畫面   // 上半（垂掛的岩塊）往上收，下半（地上剪影）不動
     if (wy < 0 || sy >= H) continue;
     const r = sy * FGI.w, row = y * W;
     for (let x = 0; x < W; x++) {
@@ -197,7 +235,7 @@ export function drawAtmosphere(frame, time) {
 /** 這一幀要算的固定光源：火把（遊玩層）＋中景水晶（會循環，挑畫面附近的）。 */
 export function sceneLights(camX, W, time) {
   const list = [];
-  for (const x of TORCHES) list.push({ x, y: FLOOR - 26, r: 74 + (Math.floor(time * 8) % 3), lv: 3, col: "#ff8a3a" });
+  for (const t of TORCH_POS) list.push({ x: t.x, y: t.y - 26, r: 74 + (Math.floor(time * 8) % 3), lv: 3, col: "#ff8a3a" });
   const o = camX * PAR[3], W3 = ART["valley/near"]?.w || 896;
   for (const c of CRYSTAL_LIGHTS) {
     const k = Math.round((o - c.x + W / 2) / W3);
@@ -207,12 +245,3 @@ export function sceneLights(camX, W, time) {
   return list;
 }
 
-/** 腳下的地面高度：先找平台（只有從上方落下時），再退回地板。 */
-// 目前地圖的平台與寬度（城鎮會換成沒有平台、比較窄）
-export const geo = { platforms: PLATFORMS, w: LEVEL_W };
-export function groundAt(x, prevY, y, dropping) {
-  if (!dropping) for (const p of geo.platforms) if (x >= p.x - 2 && x <= p.x + p.w + 2 && prevY <= p.y + 0.5 && y >= p.y) return p.y;
-  return y >= FLOOR ? FLOOR : null;
-}
-/** 是否站在平台上（不是地板）。 */
-export const onPlatform = (x, y) => geo.platforms.some((p) => Math.abs(y - p.y) < 0.5 && x >= p.x - 2 && x <= p.x + p.w + 2);

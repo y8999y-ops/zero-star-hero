@@ -1,18 +1,19 @@
 // 遊戲主程式：第一章的關卡（1-1～1-3）、碎星鎮。網址加 ?endless 是無限出怪的測試模式，?stage=1-2 直接進那一關。
 import { playOpen } from "./ui-trans.js";
-import { setNum } from "./bump.js";
+import { setNum, bump } from "./bump.js";
 import { createFrame, composite, hex, PAL } from "../../pixelfx/src/core/index.js";
 import * as fireball from "../../pixelfx/src/fx/fire/fireball.js";
 import * as explosion from "../../pixelfx/src/fx/explosions/plasma-explosion.js";
 import { A, GLOW } from "./assets.js";
 import { input, tickInput, initTouch, consume } from "./input.js";
-import { drawLevel, drawForeground, drawAtmosphere, sceneLights, LEVEL_W, FLOOR, H, TORCHES, WALL, geo } from "./level.js";
+import { drawLevel, drawForeground, drawAtmosphere, sceneLights, LEVEL_W, FLOOR, H, TORCHES, TORCH_POS, WALL, geo, MAP_H } from "./level.js";
+import { initMap, flatMap, groundAt, floorAt, solidAt, moveX } from "./map.js";
 import { TOWN_W, NPCS, townLights, drawTown, drawTownNpcs, drawTownFg, nearby } from "./town.js";
 import { talk, ask, dialog, typewriter } from "./dialog.js";
 import * as frogFx from "../../pixelfx/src/fx/critters/frog.js";
 import { computeLight, flash, updateLight } from "./light.js";
 import { spawn, updateFx, drawFx, juice, hitStop, shake, shakeOffset, fxCount } from "./fx.js";
-import { Player } from "./player.js";
+import { Player, MP_COST } from "./player.js";
 import { Enemy } from "./enemies.js";
 import { Director, STAGES } from "./stage.js";
 import { STAGE_KEY, STAGE_ORDER, STAGE_ID, LAYOUTS } from "./stages.js";
@@ -55,8 +56,13 @@ const minis = [];   // 技能樹「蝙蝠群」的小蝙蝠
 import * as slamFx from "../../pixelfx/src/fx/impacts/ground-slam.js";
 import { drawMiniBat } from "./minibat.js";
 import { drawMark, drawStrike, drawShield, drawReson, drawKingBack, drawKingFront, STRIKE_T } from "./setfx.js";
+import { drawTrail, drawDizzy, TRAIL_T } from "./corefx.js";
+import { drawAltar } from "./altar-art.js";
 import * as sparkFx from "../../pixelfx/src/fx/impacts/hit-spark.js";
-const strikes = [];   // 流星獵手 4 件的小流星
+const strikes = [];   // 流星獵手 4 件的小流星（星核「隕鐵」的小隕石也用這個）
+let comet = null;     // 星核「彗尾」：這次衝刺打過誰
+
+const trail = [];     // 彗尾留下的星光點 { x, y, t }
 let hudFadeT = 0, inCombat = false;   // 戰鬥中 HUD 變淡
 import { ultPixels, ULT_S } from "./ult-icon.js";
 import { ult, ULT_MAX, ULT_MULT, startUlt, updateUlt, ultLights, dimScene, drawUlt, drawCutIn, postUlt } from "./ult.js";
@@ -73,6 +79,9 @@ const profile = load();
 const ENDLESS = nextScene ? nextScene === "endless" : QS.has("endless");
 const TOWN = nextScene ? nextScene === "town" : !QS.has("endless") && !QS.has("stage") && (profile.clears > 0 || profile.guild.registered);
 const STAGE = STAGES[STAGE_ID];
+// ---- 8b：星之祭壇（存檔點）。碰到會點亮、回滿血和魔力；死掉從最後點亮的祭壇重來（還沒點過＝關卡起點）
+const altars = TOWN || ENDLESS ? [] : (STAGE.altars ?? (LAYOUTS[STAGE_ID].w > 1200 ? [{ x: Math.round(LAYOUTS[STAGE_ID].w * 0.5) }] : [])).map((a) => ({ x: a.x, y: a.y ?? floorAt(a.x, LAYOUTS[STAGE_ID].solids ? 0 : FLOOR - 4), lit: false, near: false }));
+let checkpoint = null;
 // 關卡進度：哪幾關打過（舊存檔：通關過＝1-1 打過）
 profile.cleared ??= profile.clears > 0 ? { "1-1": true } : {};
 const unlocked = () => STAGE_ORDER.filter((id, i) => i === 0 || profile.cleared[STAGE_ORDER[i - 1]]);
@@ -99,13 +108,13 @@ addEventListener("resize", resize);
 resize();
 
 // ---- 世界
-if (TOWN) { geo.platforms = []; geo.w = TOWN_W; }
+if (TOWN) initMap(flatMap(TOWN_W, H, FLOOR, WALL));
 const player = TOWN ? new Player(120, FLOOR) : ENDLESS ? new Player(200, FLOOR) : new Player(STAGE.start.x, STAGE.start.y);
 const enemies = [];
 const coins = [];
 const shots = [];
 const stats = { coins: 0, kills: 0, combo: 0, comboT: 0, best: 0, time: 0, deaths: 0 };
-let camX = 0, started = false, director = null, cleared = false, introOn = false;   // introOn：開場動畫播放中（遊戲暫停）
+let camX = 0, camY = TOWN ? 0 : Math.max(0, MAP_H - H), started = false, director = null, cleared = false, introOn = false;   // introOn：開場動畫播放中（遊戲暫停）
 
 // ---- 存檔與刷寶
 const drops = new Drops();
@@ -114,6 +123,7 @@ let slowT = 0;        // 傳說掉落時的慢動作
 // 數值：裝備＋等級，再加上旅館料理的效果（下一趟冒險有效）
 function statsNow() {
   const s = computeStats(profile.equip, profile.lv), m = MEALS[profile.meal];
+  s.maxMp = 100 + (profile.mpBonus ?? 0);   // 魔力（8 批）：基礎 100，星之殘火加上限
   if (m) m.apply(s);
   return s;
 }
@@ -308,7 +318,7 @@ function updateUniques(dt) {
   if (player.has("noisy") && (noisyT -= dt) <= 0) {
     noisyT = 10;
     const [line, buff] = NOISY[Math.floor(Math.random() * NOISY.length)];
-    Object.assign(player.buff, { atk: 0, spd: 0, move: 0, ...buff, t: 5 });
+    Object.assign(player.buff, { atk: 0, spd: 0, move: 0, ...buff, t: player.core("noisy") || 5 });   // 星核：等級越高增益越久
     sayQueue.unshift([line, 2.4]);
   }
   const fighting = stageApi.alive() > 0;
@@ -322,18 +332,19 @@ function updateUniques(dt) {
 // 各關的寶箱：1-1 木箱、1-2 鐵箱、1-3 紅漆金箱；1-4 打倒王之後在王倒下的地方出現星箱。
 const STAGE_CHEST = { "1-1": 0, "1-2": 1, "1-3": 2 };
 const chestOpts = (tier) => { const T = CHEST_TIERS[tier]; return { tier, wood: T.wood, palette: T.palette, coins: 0, gems: 0, light: 0.3 + tier * 0.08 }; };
-function makeChest(x, tier) { return { x: Math.round(x), tier, opened: false, t: 0, fx: createFx(treasureChest, { x: Math.round(x), y: FLOOR, ...chestOpts(tier) }) }; }
-let chest = ENDLESS || TOWN || STAGE_ID === "1-4" ? null : makeChest(STAGE.exitX - 120, STAGE_CHEST[STAGE_ID] ?? 0);
+function makeChest(x, tier, y = FLOOR) { return { x: Math.round(x), y, tier, opened: false, t: 0, fx: createFx(treasureChest, { x: Math.round(x), y, ...chestOpts(tier) }) }; }
+let chest = ENDLESS || TOWN || STAGE_ID === "1-4" ? null : makeChest(STAGE.exitX - 120, STAGE_CHEST[STAGE_ID] ?? 0, floorAt(STAGE.exitX - 120, (STAGE.exitY || FLOOR) - 8));
 let chestNear = false, prevChestAtk = false;
 /** 可以開箱嗎：站在旁邊、在地上、沒有在打仗 */
-const canOpenChest = () => !!chest && !chest.opened && Math.abs(player.x - chest.x) < 24 && player.grounded && !director?.lock && stageApi.alive() === 0;
+// 8b：怪物擺滿整張地圖，改成「附近 160 以內沒有活的怪」就能開（不用清光整關）
+const canOpenChest = () => !!chest && !chest.opened && Math.abs(player.x - chest.x) < 24 && Math.abs(player.y - chest.y) < 20 && player.grounded && !director?.lock && !enemies.some((e) => !e.dead && e.kind !== "gold" && Math.abs(e.x - chest.x) < 160 && Math.abs(e.y - chest.y) < 80);
 function openChest() {
   chest.opened = true;
   chest.t = 0;
   const T = CHEST_TIERS[chest.tier], c = chest;
-  spawn(treasureChest, { x: c.x, y: FLOOR, ...chestOpts(c.tier) }, { layer: "back" });
+  spawn(treasureChest, { x: c.x, y: c.y, ...chestOpts(c.tier) }, { layer: "back" });
   sfx("chest");
-  setTimeout(() => { flash(c.x, FLOOR - 16, 80 + c.tier * 30, 3, 1 + c.tier * 0.4, T.palette[5]); shake(0.15 + c.tier * 0.08, 2 + c.tier); if (c.tier >= 2) sfx("rare"); }, 800);
+  setTimeout(() => { flash(c.x, c.y - 16, 80 + c.tier * 30, 3, 1 + c.tier * 0.4, T.palette[5]); shake(0.15 + c.tier * 0.08, 2 + c.tier); if (c.tier >= 2) sfx("rare"); }, 800);
   sayQueue.unshift([["系統：木箱。……聊勝於無。", "系統：鐵箱！裡面應該不是垃圾吧。", "系統：紅漆金箱！我聞到錢的味道了。", "系統：星箱……！這是傳說中的那個嗎？"][c.tier], 2.6]);
 }
 function updateChest(dt) {
@@ -345,14 +356,14 @@ function updateChest(dt) {
   // 蓋子彈開那一刻（0.8 秒）噴出金幣、寶石、裝備
   if (before < 0.8 && chest.t >= 0.8) {
     const T = CHEST_TIERS[chest.tier];
-    spawnLoot(chest.x, FLOOR - 14, T.coins, T.gems, chest.tier);
+    spawnLoot(chest.x, chest.y - 14, T.coins, T.gems, chest.tier);
     let k = 0;
-    for (const [rar, n] of T.items) for (let i = 0; i < n; i++, k++) dropItem(chest.x, FLOOR - 12, R[rar], { rarity: R[rar], ilvl: ilvlNow(1 + chest.tier), dir: k % 2 ? 1 : -1 });
+    for (const [rar, n] of T.items) for (let i = 0; i < n; i++, k++) dropItem(chest.x, chest.y - 12, R[rar], { rarity: R[rar], ilvl: ilvlNow(1 + chest.tier), dir: k % 2 ? 1 : -1 });
     // 星箱（王）額外：傳說 15%；神話 3%，連續 10 個星箱沒出就保底
     if (chest.tier >= 3) {
       profile.pity ??= { legend: 0, myth: 0 };
-      if (Math.random() < 0.15) dropItem(chest.x, FLOOR - 12, R.legend, { rarity: R.legend, ilvl: ilvlNow(2), dir: 1 });
-      if (Math.random() < 0.03 || profile.pity.myth >= 9) { profile.pity.myth = 0; setTimeout(() => dropItem(chest.x, FLOOR - 12, R.myth, { rarity: R.myth, ilvl: ilvlNow(2), dir: -1 }), 500); }
+      if (Math.random() < 0.15) dropItem(chest.x, chest.y - 12, R.legend, { rarity: R.legend, ilvl: ilvlNow(2), dir: 1 });
+      if (Math.random() < 0.03 || profile.pity.myth >= 9) { profile.pity.myth = 0; setTimeout(() => dropItem(chest.x, chest.y - 12, R.myth, { rarity: R.myth, ilvl: ilvlNow(2), dir: -1 }), 500); }
       else profile.pity.myth++;
     }
   }
@@ -390,10 +401,11 @@ function lootPhysics(c, dt, onGet) {
   const m = 30;
   if (c.lay) {
     c.vy += 700 * dt;
-    c.x += c.vx * dt;
+    const py = c.y + 2;
+    c.x = moveX(c.x, c.x + c.vx * dt, c.y + 2, 4, 3);
     c.y += c.vy * dt;
-    c.x = Math.max(WALL + 4, Math.min(geo.w - WALL - 4, c.x));
-    if (c.y > FLOOR - 2) { c.y = FLOOR - 2; c.vy *= -0.4; c.vx *= 0.55; if (Math.abs(c.vy) < 30) c.vy = 0; }
+    const gy = c.vy >= 0 ? groundAt(c.x, py, c.y + 2) : null;   // 8b：落在地形上
+    if (gy !== null) { c.y = gy - 2; c.vy *= -0.4; c.vx *= 0.55; if (Math.abs(c.vy) < 30) c.vy = 0; }
     if (c.t > 0.5 && Math.abs(player.x - c.x) < m && Math.abs(player.y - 10 - c.y) < m) { c.lay = false; c.t = 0.45; }
     return;
   }
@@ -430,12 +442,14 @@ function drawGems() {
 }
 
 // 場景互動物件：草叢、木箱、垃圾堆、水晶（props）；小生物、垂掛物、水窪（scenery）
-const scenery = createScenery({ floor: FLOOR, w: geo.w, platforms: TOWN ? [] : PLATFORMS, town: TOWN });
+// 8b：新的大地圖（有 solids）先不放草叢、木箱、水窪這些貼地板的東西（8c、8d 改成照地形擺）
+const BARE = !TOWN && !!LAYOUTS[STAGE_ID].solids;
+const scenery = createScenery({ floor: FLOOR, w: BARE ? 0 : geo.w, platforms: TOWN || BARE ? [] : PLATFORMS, town: TOWN });
 // 元素場景物件（第 3 批）：黏液池、油桶、廚餘堆、漏電管線；水窪＝潮濕、火盆＝燃燒
-const hazards = createHazards({ stage: TOWN || ENDLESS ? "" : STAGE_ID, floor: FLOOR, torches: TOWN ? [] : TORCHES, puddles: TOWN ? [] : scenery.puddles });
+const hazards = createHazards({ stage: TOWN || ENDLESS || BARE ? "" : STAGE_ID, floor: FLOOR, torches: TOWN ? [] : TORCHES, puddles: TOWN ? [] : scenery.puddles });
 window.__game.hazards = hazards;
 const props = createProps({
-  floor: FLOOR, w: geo.w, platforms: TOWN ? [] : PLATFORMS, town: TOWN,
+  floor: FLOOR, w: BARE ? 0 : geo.w, platforms: TOWN || BARE ? [] : PLATFORMS, town: TOWN,
   avoid: TOWN ? [...NPCS.map((n) => n.x), 924] : [...TORCHES, ...hazards.list.flatMap((h) => [h.x - 14, h.x, h.x + 14]), STAGE.exitX - 120, STAGE.exitX + 26, STAGE.start.x, ...scenery.puddles.flatMap((p) => [p.x - p.w / 4, p.x, p.x + p.w / 4])],
 });
 props.onBreak = (o) => {
@@ -451,17 +465,20 @@ const propView = () => ({ x0: camX, x1: camX + W });
 window.__game.props = props;
 window.__game.scenery = scenery;
 
-if (!TOWN) for (const x of TORCHES) spawn(A.brazier, { x, y: FLOOR }, { layer: "back", keep: true }).update(Math.random() * 3);
+if (!TOWN) for (const t of TORCH_POS) spawn(A.brazier, { x: t.x, y: t.y }, { layer: "back", keep: true }).update(Math.random() * 3);
 // 出口的傳送門：通關（走到出口、或 1-4 打倒王）之後，踩上去才回碎星鎮（2026-11-05：不再跳結算頁）
-let portalX = !ENDLESS && !TOWN && STAGE_ID !== "1-4" ? STAGE.exitX + 26 : null, stageDone = false, leaving = false;
-if (portalX !== null) spawn(A.portal, { x: portalX, y: FLOOR }, { layer: "back", keep: true });
+let portalX = !ENDLESS && !TOWN && STAGE_ID !== "1-4" ? STAGE.exitX + 26 : null, portalY = STAGE.exitY || FLOOR, stageDone = false, leaving = false;
+if (portalX !== null) spawn(A.portal, { x: portalX, y: portalY }, { layer: "back", keep: true });
 
 // 關卡流程需要的操作
 const stageApi = {
   spawnEnemy(kind, x, y) {
-    const e = kind === "boss" ? new Boss(x, FLOOR, bossApi) : new Enemy(kind, x, y ?? FLOOR);
+    // 8b：y 沒給＝放在 x 那裡的地面上；"air"＝飛的，地面上方 60～90
+    const gy = floorAt(x, typeof y === "number" ? y - 4 : 0);
+    const yy = y === "air" ? gy - 60 - Math.random() * 30 : typeof y === "number" ? y : gy;
+    const e = kind === "boss" ? new Boss(x, FLOOR, bossApi) : new Enemy(kind, x, yy);
     enemies.push(e);
-    world.dust(e.x, e.k.fly ? e.y + 8 : e.y, 4);
+    if (started) world.dust(e.x, e.k.fly ? e.y + 8 : e.y, 4);
   },
   say: (msg, sec, focus) => sayQueue.push([msg, sec, focus]),
   hint: (msg, sec) => showHint(msg, sec),
@@ -519,9 +536,10 @@ const world = {
   enemiesIn(box) { return enemies.filter((e) => !e.dead && overlaps(box, e.box())); },
   /** 技能樹「急停震地」「震波」（鐵罐星）：地上一圈震波（pixelfx impacts/ground-slam），範圍內的地面敵人受傷、彈起 */
   groundSlam(x, y, r, mult) {
-    spawn(slamFx, { x: Math.round(x), y: Math.round(FLOOR), palette: ["#14161c", "#2a2e38", "#4a5468", "#6e7a90", "#9aa6ba", "#d0d8e6", "#ffffff"], light: 0.4, seed: (Math.random() * 99) | 0 }, { speed: 1.8 });
+    const fy = floorAt(x, y - 8);   // 8b：貼著腳下的地面
+    spawn(slamFx, { x: Math.round(x), y: Math.round(fy), palette: ["#14161c", "#2a2e38", "#4a5468", "#6e7a90", "#9aa6ba", "#d0d8e6", "#ffffff"], light: 0.4, seed: (Math.random() * 99) | 0 }, { speed: 1.8 });
     shake(0.25, 3); sfx("land", true);
-    world.hitArea({ x0: x - r, x1: x + r, y0: FLOOR - 30, y1: FLOOR + 2 }, () => player.roll(mult * player.skillMul()), player.face, { launch: true, push: 3 });
+    world.hitArea({ x0: x - r, x1: x + r, y0: fy - 30, y1: fy + 2 }, () => player.roll(mult * player.skillMul()), player.face, { launch: true, push: 3 });
   },
   /** 技能樹「蝙蝠群」（蝠翼星）：滑翔時每 0.5 秒放一隻小蝙蝠，最多 3 隻 */
   onGlide(dt) {
@@ -531,6 +549,18 @@ const world = {
     minis.push({ x: player.x, y: player.y - 16, vx: 0, vy: -40, t: 0, life: 4, cd: 0, seed: Math.random() * 9 });
   },
   /** 技能樹「星光斬」：連段最後一下往前射一道月牙，穿過敵人、每隻打一次 */
+  // ---- 星核的核心效果（8a）
+  coreMeteor() {   // 隕鐵：前方最近的敵人頭上砸一顆小隕石
+    const e = world.nearestEnemy(player.x, player.y, 320, player.face) ?? world.nearestEnemy(player.x, player.y, 320);
+    if (e) strikes.push({ x: e.x, y: (e.box().y0 + e.box().y1) / 2, t: 0, e, mult: 1.2 });
+  },
+  coreStun(fromX, y) {   // 鈍光：攻擊你的那隻暈 1 秒
+    let best = null, bd = 48;
+    for (const e of enemies) { if (e.dead) continue; const d = Math.abs(e.x - fromX) + Math.abs(e.y - y) * 0.3; if (d < bd) { bd = d; best = e; } }
+    if (best) { best.stun = Math.max(best.stun, 1); best.dizzyT = 1; }
+  },
+  cometStart() { comet = { hit: new Set() }; },
+  noMana() { const b = $("mpBar"); b.classList.remove("lack"); void b.offsetWidth; b.classList.add("lack"); sfx("close"); },
   spawnWave(x, y, dir) { waves.push({ x, y, dir, t: 0, hit: new Set(), seed: Math.random() }); sfx("swing", "star"); },
   /** 技能樹的小彈（彈跳、分裂）：比較小、比較短、不會再分 */
   spawnShotlet(x, y, dir, form, { vy = 0, mult = 0.6, life = 0.35, gen = 1 } = {}) {
@@ -578,9 +608,18 @@ const world = {
     }
     stats.combo = 0;
     if (player.hp <= 0) {
-      player.hp = player.maxHp;
       stats.deaths++;
-      toast("系統：你死了。……算了，當我沒看到，再給你一次機會。");
+      // 8b：從最後點亮的祭壇重來（還沒點過＝關卡起點）；打死的怪不會回來
+      const to = checkpoint ?? (TOWN || ENDLESS ? null : { x: STAGE.start.x, y: floorAt(STAGE.start.x, 0) });
+      const fade = $("fade");
+      fade.classList.add("on");
+      player.invuln = 2;
+      setTimeout(() => {
+        if (to) { player.x = to.x; player.y = to.y; player.vx = player.vy = 0; player.state = "move"; camX = Math.max(0, Math.min(LEVEL_W - W, to.x - W / 2)); camY = Math.max(0, Math.min(MAP_H - H, to.y - H * 0.62)); }
+        player.hp = player.maxHp; player.mp = player.maxMp; player.invuln = 1.5;
+        fade.classList.remove("on");
+      }, 420);
+      toast(checkpoint ? "系統：你死了。……從祭壇重來吧，打倒的怪不會回來。" : "系統：你死了。……算了，當我沒看到，再給你一次機會。");
     }
   },
 };
@@ -637,7 +676,7 @@ const bossApi = {
   dropLoot(x) {
     // 王倒下的地方出現一個星箱（最高級），戰鬥結束後走過去開
     chest = makeChest(Math.max(WALL + 30, Math.min(geo.w - WALL - 30, x)), 3);
-    flash(chest.x, FLOOR - 12, 90, 3, 0.8, "#d08cff");
+    flash(chest.x, chest.y - 12, 90, 3, 0.8, "#d08cff");
     sayQueue.unshift(["系統：……王掉了一個星箱。走過去，按【攻擊】打開它。", 3]);
   },
   absorb() {
@@ -925,7 +964,44 @@ function heartBurst(from) {
   world.hitArea({ x0: player.x - r, x1: player.x + r, y0: player.y - r, y1: player.y + 10 }, () => player.roll(mult), player.face, { push: 3, elem: el });
 }
 // ---- 史詩套裝「流星獵手」4 件：暴擊標記，5 秒內再暴擊同一隻 → 掉一顆小流星（攻擊力 80%）
+function updateAltars() {
+  for (const a of altars) {
+    const near = Math.abs(player.x - a.x) < 14 && Math.abs(player.y - a.y) < 24;
+    if (near && !a.near) {
+      player.hp = player.maxHp; player.mp = player.maxMp;
+      checkpoint = a;
+      if (!a.lit) {
+        a.lit = true;
+        spawn(collectBurst, { x: a.x, y: a.y - 18, palette: ["#1e1206", "#4a2c08", "#86520c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"], light: 0.6 });
+        flash(a.x, a.y - 16, 110, 3, 0.8, "#ffe066"); sfx("levelup");
+        toast("星之祭壇點亮了：生命、魔力回滿。死掉的話會從這裡重來。", 2.6);
+      } else { flash(a.x, a.y - 16, 60, 2, 0.3, "#ffe066"); sfx("chime"); }
+    }
+    a.near = near;
+  }
+}
+/** 星核效果每幀：沉重（被打飛的撞到別人）、彗尾（衝刺留星光）、鈍光（暈眩計時） */
+function updateCoreFx(dt) {
+  for (const e of enemies) {
+    if (e.dizzyT > 0) e.dizzyT -= dt;
+    if (!(e.flungT > 0) || e.dead) continue;
+    e.flungT -= dt;
+    if (Math.abs(e.vx) < 40) continue;
+    for (const o of enemies) if (!o.dead && !e.flungHit.has(o) && overlaps(e.box(), o.box())) { e.flungHit.add(o); o.hit({ dmg: e.flungDmg, crit: false }, Math.sign(e.vx), { push: 3 }, world); }
+  }
+  const x = player.core("comet");
+  if (comet && player.state === "dash" && x) trail.push({ x: player.x, y: player.y - 10, t: 0, seed: trail.length * 7 + (sceneClock * 60 | 0) });
+  else if (player.state !== "dash") comet = null;
+  for (const p of trail) {
+    p.t += dt;
+    if (!comet || p.t > 0.45) continue;
+    for (const e of enemies) if (!e.dead && !comet.hit.has(e) && overlaps({ x0: p.x - 6, x1: p.x + 6, y0: p.y - 14, y1: p.y + 10 }, e.box())) { comet.hit.add(e); e.hit(player.roll(x / 100), player.face, { push: 1 }, world); }
+  }
+  for (let i = trail.length - 1; i >= 0; i--) if (trail[i].t > TRAIL_T) trail.splice(i, 1);
+}
 function onCritHit(e, r) {
+  // 星核「尖銳」：暴擊時多打一次星光傷害
+  if (r?.crit && player.core("sharp") && !e.dead) e.hit({ dmg: r.dmg * player.core("sharp") / 100, crit: false }, player.face, { push: 0 }, world);
   if (!r?.crit || !player.set4("meteor") || !e.box) return;
   if (e.meteorMark > 0) { e.meteorMark = 0; strikes.push({ x: e.x, y: (e.box().y0 + e.box().y1) / 2, t: 0, e }); }
   else e.meteorMark = 5;
@@ -935,9 +1011,10 @@ function skillTreeBoom(s) {
   const x = s.x, y = s.y;
   if (s.form === "star" && rank("star", "s_rain")) {
     // 星雨：1 秒後天上落下一陣小星屑（pixelfx arcane/star-fall），範圍內每顆打一次
+    const fy = floorAt(x, y - 8);   // 8b：落在爆炸位置底下的地面
     setTimeout(() => {
-      spawn(starFallFx, { x: Math.round(x), y: FLOOR, palette: PAL.gold, light: 0.4, seed: (Math.random() * 99) | 0 }, { speed: 1.2 });
-      for (let k = 0; k < 4; k++) setTimeout(() => world.hitArea({ x0: x - 50, x1: x + 50, y0: FLOOR - 60, y1: FLOOR }, () => player.roll(0.6 * player.skillMul()), s.dir, { push: 1 }), 150 + k * 180);
+      spawn(starFallFx, { x: Math.round(x), y: fy, palette: PAL.gold, light: 0.4, seed: (Math.random() * 99) | 0 }, { speed: 1.2 });
+      for (let k = 0; k < 4; k++) setTimeout(() => world.hitArea({ x0: x - 50, x1: x + 50, y0: fy - 60, y1: fy }, () => player.roll(0.6 * player.skillMul()), s.dir, { push: 1 }), 150 + k * 180);
     }, 1000);
   }
   if (s.form === "slime") {
@@ -958,7 +1035,7 @@ const ultHooks = {
   wave(x0, x1, tx) {
     let n = 0;
     for (const e of enemies) {
-      if (e.dead || ult.hitSet.has(e) || e.x < x0 || e.x > x1) continue;
+      if (e.dead || ult.hitSet.has(e) || e.x < x0 || e.x > x1 || Math.abs(e.y - (ult.fy ?? e.y)) > 130) continue;   // 8b：只打同一層附近的
       ult.hitSet.add(e);
       e.hit(player.roll(ULT_MULT * (1 + player.stats.ult / 100)), e.x < tx ? -1 : 1, { launch: true, push: 4 }, world);
       n++;
@@ -994,6 +1071,7 @@ function spawnEnemies(dt) {
   x = Math.max(WALL + 20, Math.min(LEVEL_W - WALL - 20, x));
   const r = Math.random();
   const e = r < 0.04 ? new Enemy("gold", x, FLOOR) : r < 0.36 ? new Enemy("bat", x, 50 + Math.random() * 60) : new Enemy("slime", x, FLOOR);
+  e.awake = true;   // 無限模式：一出來就追
   enemies.push(e);
   world.dust(e.x, e.k.fly ? e.y + 8 : e.y, 4);
 }
@@ -1032,10 +1110,10 @@ function tick(dt) {
   if ((hudFadeT > 0) !== inCombat) { inCombat = hudFadeT > 0; document.body.classList.toggle("combat", inCombat); }
   if (cleared) { updateFx(dt); return; }
   // 通關後踩到傳送門：回碎星鎮
-  if (stageDone && !leaving && portalX !== null && player.grounded && Math.abs(player.x - portalX) < 12) {
+  if (stageDone && !leaving && portalX !== null && player.grounded && Math.abs(player.x - portalX) < 12 && Math.abs(player.y - portalY) < 20) {
     leaving = true;
     sfx("form");
-    flash(portalX, FLOOR - 16, 90, 3, 0.5, "#a8f0ff");
+    flash(portalX, portalY - 16, 90, 3, 0.5, "#a8f0ff");
     goScene("town");
   }
   // 大招進行中：世界停住，只有主角、特效和攝影機在動
@@ -1084,6 +1162,8 @@ function tick(dt) {
     }
   }
   separate(dt);
+  updateCoreFx(dt);
+  updateAltars();
   for (const e of enemies) {
     if (e.dead) continue;
     // 戰鬥區封鎖時，敵人也出不去
@@ -1093,7 +1173,7 @@ function tick(dt) {
       if (e.kind === "gold") e.hopDir = -e.hopDir;
     }
     // 金幣史萊姆 10 秒沒抓到就逃走
-    if (e.kind === "gold" && e.clock > 10) {
+    if (e.kind === "gold" && (e.awakeT ?? 0) > 10) {   // 8b：從被發現開始算
       e.dead = true;
       spawn(A.poofGold, { x: Math.round(e.x), y: Math.round(e.y) });
       sayQueue.unshift(["系統：金幣史萊姆逃走了……我的晚餐……", 2.5]);
@@ -1104,11 +1184,11 @@ function tick(dt) {
   // 火球
   for (const s of shots) {
     s.x += s.dir * 290 * dt;
-    if (s.vy) s.y = Math.min(FLOOR - 6, s.y + s.vy * dt);
+    if (s.vy) s.y = Math.min(floorAt(s.x, s.y) - 6, s.y + s.vy * dt);
     s.life -= dt;
     s.fx.options.x = Math.round(s.x);
     s.fx.options.y = Math.round(s.y);
-    let hit = s.life <= 0 || s.x < WALL || s.x > LEVEL_W - WALL;
+    let hit = s.life <= 0 || solidAt(s.x, s.y);   // 8b：技能彈撞到地形就爆
     if (!hit) for (const e of enemies) if (!e.dead && e !== s.skip && overlaps(e.box(), { x0: s.x - 8, x1: s.x + 8, y0: s.y - 8, y1: s.y + 8 })) {
       // 技能樹「貫穿」（星星）：穿過第一隻，打到第二隻才爆
       if (s.form === "star" && !s.small && rank("star", "s_pierce") && !s.skip) { s.skip = e; e.hit(player.roll(1.2 * player.skillMul()), s.dir, { push: 2 }, world); continue; }
@@ -1155,7 +1235,7 @@ function tick(dt) {
       s.done = true;
       spawn(sparkFx, { x: Math.round(s.x), y: Math.round(s.y), palette: ["#6e3a0c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"], light: 0.6 });
       flash(s.x, s.y, 50, 2.5, 0.2, "#ffe066"); shake(0.12, 2);
-      if (!s.e.dead) s.e.hit(player.roll(0.8), player.face, { push: 2 }, world);
+      if (!s.e.dead) s.e.hit(player.roll(s.mult ?? 0.8), player.face, { push: 2 }, world);
     }
   }
   for (let i = strikes.length - 1; i >= 0; i--) if (strikes[i].done) strikes.splice(i, 1);
@@ -1172,9 +1252,11 @@ function tick(dt) {
     }
     if (c.t < 0.45) {
       c.vy += 700 * dt;
-      c.x += c.vx * dt;
+      const py = c.y + 2;
+      c.x = moveX(c.x, c.x + c.vx * dt, c.y + 2, 4, 3);
       c.y += c.vy * dt;
-      if (c.y > FLOOR - 2) { c.y = FLOOR - 2; c.vy *= -0.45; c.vx *= 0.6; }
+      const gy = c.vy >= 0 ? groundAt(c.x, py, c.y + 2) : null;
+      if (gy !== null) { c.y = gy - 2; c.vy *= -0.45; c.vx *= 0.6; }
     } else {
       const dx = player.x - c.x, dy = player.y - 12 - c.y, d = Math.hypot(dx, dy) || 1, sp = 120 + (c.t - 0.45) * 900;
       c.x += (dx / d) * sp * dt;
@@ -1196,6 +1278,12 @@ function followCam(dt) {
   camX += (want - camX) * Math.min(1, 5 * dt);
   camX = Math.max(0, Math.min(LEVEL_W - W, camX));
   if (director?.lock) camX = Math.max(director.lock.l, Math.min(director.lock.r - W, camX));
+  // 8b：上下跟。主角站在畫面約 6 成高的地方；往下掉的時候跟快一點，才看得到底下
+  if (MAP_H > H) {
+    const wy = player.y - H * 0.62 + (player.vy > 120 ? 30 : 0);
+    camY += (wy - camY) * Math.min(1, (player.vy > 120 ? 7 : 4) * dt);
+    camY = Math.max(0, Math.min(MAP_H - H, camY));
+  }
 }
 
 // ---- 繪製
@@ -1203,7 +1291,7 @@ let sceneClock = 0;
 function render() {
   const [sx, sy] = shakeOffset();
   frame.ox = Math.round(camX) + sx;
-  frame.oy = sy;
+  frame.oy = Math.round(camY) + sy;
   frame.light.fill(0);
   // 場景光影：火把、水晶、主角、飛行中的火球、稀有以上的掉寶光柱都是光源
   sceneClock += 1 / 60;
@@ -1216,9 +1304,11 @@ function render() {
   ultLights(lights);
   props.lights(lights);
   scenery.lights(lights);
+  for (const a of altars) lights.push(a.lit ? { x: a.x, y: a.y - 18, r: 70, lv: 2.4, col: "#ffd060" } : { x: a.x, y: a.y - 14, r: 26, lv: 0.8, col: "#7488aa" });
   const lv = computeLight(frame, lights);
   if (TOWN) drawTown(frame, lv, sceneClock);
   else { drawLevel(frame, lv); drawAtmosphere(frame, sceneClock); }
+  for (const a of altars) if (Math.abs(a.x - camX - W / 2) < W) drawAltar(frame, a.x, a.y, a.lit, sceneClock);
   props.draw(frame, lv);
   scenery.draw(frame, lv, sceneClock);
   hazards.draw(frame);
@@ -1233,6 +1323,8 @@ function render() {
   for (const m of minis) drawMiniBat(frame, m);
   for (const e of enemies) if (e.meteorMark > 0 && !e.dead) drawMark(frame, e.x, e.box().y0 - 7, sceneClock);
   for (const s of strikes) drawStrike(frame, s);
+  drawTrail(frame, trail);
+  for (const e of enemies) if (e.dizzyT > 0 && !e.dead) drawDizzy(frame, e.x, e.box().y0 - 4, sceneClock);
   if (player.shield > 0) drawShield(frame, player.x, player.y - 12, player.shield / (player.maxHp * 0.2), sceneClock);
   if (player.resonT > 0) drawReson(frame, player.x, player.y - 12, sceneClock);
   drawCoins();
@@ -1330,6 +1422,7 @@ $("btnMenu").addEventListener("click", (e) => { e.stopPropagation(); sfx("ui"); 
 for (const id of ["btnBag", "btnQuest", "btnTree"]) $(id).addEventListener("click", () => document.body.classList.remove("menuOpen"));
 addEventListener("pointerdown", (e) => { if (!e.target.closest?.("#hud")) document.body.classList.remove("menuOpen"); });
 const comboEl = $("combo"), comboArt = createComboArt(comboEl), hpFill = $("hpFill"), hpText = $("hpText"), coinsEl = $("coins"), killsEl = $("kills"), fpsEl = $("fps"), cdEl = $("skillCd"), toastEl = $("toast");
+const mpFill = $("mpFill"), mpText = $("mpText");
 const ubFill = $("ubFill"), ubBar = $("ubBar"), ultG = $("ultCv").getContext("2d"), ultG2 = $("ultHudCv").getContext("2d"), ultHud = $("ultHud"), pcSkill = $("pcSkill"), pcSkillT = $("pcSkillT"), ultImg = new ImageData(ULT_S, ULT_S), btnUlt = $("btnUlt");
 let toastT = 0;
 const sysEl = $("sys"), sysText = $("sysTyped"), sysGhost = $("sysGhost"), sysFaceCv = $("sysFace");
@@ -1392,8 +1485,9 @@ function showClear() {
   // 1-4 沒有出口傳送門：打倒王之後，在主角前面打開一個
   if (portalX === null && !ENDLESS) {
     portalX = Math.round(Math.max(60, Math.min(geo.w - 60, player.x + player.face * 70)));
-    spawn(A.portal, { x: portalX, y: FLOOR }, { layer: "back", keep: true });
-    flash(portalX, FLOOR - 16, 110, 3, 0.6, "#a8f0ff");
+    portalY = floorAt(portalX, player.y - 8);
+    spawn(A.portal, { x: portalX, y: portalY }, { layer: "back", keep: true });
+    flash(portalX, portalY - 16, 110, 3, 0.6, "#a8f0ff");
   }
   sayQueue.length = 0;
   toast(`系統：通關！${mm}:${ss}，擊倒 ${stats.kills}、最高連擊 ${stats.best}${stats.deaths ? "、死了 " + stats.deaths + " 次" : "，一次都沒死"}。`, 3.2);
@@ -1456,6 +1550,11 @@ function hud(dt) {
   killsEl.textContent = stats.kills;
   comboArt.update(stats.combo, stats.comboT / 2.2, dt);
   cdEl.style.height = Math.max(0, player.skillCd / player.skillMax) * 100 + "%";
+  // 魔力條；魔力不夠放技能時，技能鍵變暗
+  mpFill.style.width = (player.mp / player.maxMp) * 100 + "%";
+  setNum(mpText, Math.floor(player.mp));
+  const noMp = player.mp < MP_COST;
+  $("btnSkill").classList.toggle("nomp", noMp); pcSkill.classList.toggle("nomp", noMp);
   // 電腦版右下角的技能圖示：冷卻用一圈變暗的扇形倒數，中間顯示剩幾秒；好了閃一下
   const cdk = Math.max(0, player.skillCd / player.skillMax);
   pcSkill.style.setProperty("--cd", cdk.toFixed(3));
@@ -1604,4 +1703,4 @@ for (const ev of ["pointerdown", "keydown", "touchstart"]) addEventListener(ev, 
 addEventListener("keydown", (e) => { if (!started && (e.code === "Enter" || e.code === "Space")) startOrIntro(); });
 window.__loadDone?.();   // 第 7 批：載入畫面淡掉
 // 開發用：主控台直接掉寶、加經驗
-Object.assign(window.__game, { dropItem, gainXp, R, toast, gems, coins, minis, get chest() { return chest; } });
+Object.assign(window.__game, { dropItem, gainXp, R, toast, gems, coins, minis, refreshStats, world, strikes, trail, altars, get chest() { return chest; } });

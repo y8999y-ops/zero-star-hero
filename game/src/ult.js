@@ -14,6 +14,7 @@ import { spawn, hitStop, shake } from "./fx.js";
 import { flash, global as globalLight } from "./light.js";
 import { paintStar, POSES } from "./star.js";
 import { FLOOR, LEVEL_W, WALL } from "./level.js";
+import { floorAt } from "./map.js";
 
 export const ULT_MAX = 70;   // 2026-11-05 使用者：集大招所需能量降低約 30%（原 100）
 export const ULT_MULT = 9;   // 傷害倍率（× 攻擊力，再乘技能傷害加成）
@@ -45,6 +46,7 @@ export function startUlt(player, lock) {
   ult.hitSet.clear();
   const l = lock ? lock.l + 24 : WALL + 24, r = lock ? lock.r - 24 : LEVEL_W - WALL - 24;
   ult.tx = Math.max(l, Math.min(r, player.x + player.face * 72));
+  ult.fy = floorAt(ult.tx, player.y - 8);   // 8b：落點是那裡的地面（大地圖不再是固定高度）
   ult.circle = spawn(runeCircle, { x: Math.round(player.x), y: Math.round(player.y), palette: PAL.gold, light: 0.6, seed: 4 }, { layer: "back", speed: 1.4 });
   ult.burst = null;
   ult.core = { x: player.x, y: player.y - 22, r: 0, rot: 0 };
@@ -98,18 +100,18 @@ export function updateUlt(dt, player, hooks) {
   // ---- 巨大的星星從天上斜斜砸下
   if (t >= T.drop && t < T.hit) {
     const p = clamp01((t - T.drop) / (T.hit - T.drop)) ** 1.6;
-    const sx = ult.tx - side * 120, sy = -24;
-    ult.star = { x: sx + (ult.tx - sx) * p, y: sy + (FLOOR - 8 - sy) * p, dx: ult.tx - sx, dy: FLOOR - 8 - sy };
+    const sx = ult.tx - side * 120, sy = ult.fy - 208;
+    ult.star = { x: sx + (ult.tx - sx) * p, y: sy + (ult.fy - 8 - sy) * p, dx: ult.tx - sx, dy: ult.fy - 8 - sy };
   } else ult.star = null;
 
   // ---- 落地
   if (t >= T.hit && !ult.impacted) {
     ult.impacted = true;
     const tx = Math.round(ult.tx);
-    spawn(groundSlam, { x: tx, y: FLOOR, reach: 150, light: 0.7, seed: 9 }, { layer: "back" });
-    spawn(starFall, { x: tx, y: FLOOR, palette: PAL.holy, light: 0.6, seed: 21 }, { speed: 1.2 });
-    spawn(starFall, { x: tx + side * 90, y: FLOOR, palette: PAL.gold, light: 0.5, seed: 5 }, { speed: 1.3 });
-    flash(tx, FLOOR - 24, 260, 4, 1.1, "#ffe08a");
+    spawn(groundSlam, { x: tx, y: ult.fy, reach: 150, light: 0.7, seed: 9 }, { layer: "back" });
+    spawn(starFall, { x: tx, y: ult.fy, palette: PAL.holy, light: 0.6, seed: 21 }, { speed: 1.2 });
+    spawn(starFall, { x: tx + side * 90, y: ult.fy, palette: PAL.gold, light: 0.5, seed: 5 }, { speed: 1.3 });
+    flash(tx, ult.fy - 24, 260, 4, 1.1, "#ffe08a");
     hitStop(0.16);
     shake(0.7, 6);
     ult.post = 1;   // 黑白衝擊定格
@@ -248,15 +250,15 @@ export function drawUlt(frame) {
         const x = fx - dir * k, a = (1 - k / 10) * fade;
         for (let yy = 0; yy < hgt; yy++) {
           const up = 1 - yy / hgt;
-          P.blend(x, FLOOR - 1 - yy, k < 2 ? GOLD[3] : GOLD[2], a * up * (k < 2 ? 1 : 0.5));
-          P.glow(x, FLOOR - 1 - yy, LIGHT_GOLD, a * up * 0.6);
+          P.blend(x, ult.fy - 1 - yy, k < 2 ? GOLD[3] : GOLD[2], a * up * (k < 2 ? 1 : 0.5));
+          P.glow(x, ult.fy - 1 - yy, LIGHT_GOLD, a * up * 0.6);
         }
       }
     }
     for (let x = -w; x <= w; x += 1) {
       const e = Math.abs(x) / (w || 1), y = Math.round(Math.sqrt(Math.max(0, 1 - e * e)) * Math.min(10, w * 0.08));
-      P.glow(ult.tx + x, FLOOR + 2 + y, LIGHT_GOLD, 0.5 * fade * e);
-      P.glow(ult.tx + x, FLOOR - 1 - y * 0.4, LIGHT_GOLD, 0.35 * fade * e);
+      P.glow(ult.tx + x, ult.fy + 2 + y, LIGHT_GOLD, 0.5 * fade * e);
+      P.glow(ult.tx + x, ult.fy - 1 - y * 0.4, LIGHT_GOLD, 0.35 * fade * e);
     }
   }
 }

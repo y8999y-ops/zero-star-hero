@@ -1,6 +1,6 @@
 // 主角數值：等級＋身上裝備 → 戰鬥用的數值。背包比較裝備也用這裡算。
 // 2026-11-05 裝備改版第 1 批：滿級 100、成長緩和、暴擊率基礎 0%／暴擊傷害基礎 +10%、14 種屬性（docs/裝備系統企劃.md）。
-import { mainValue, setCounts } from "./items.js";
+import { mainValue, setCounts, coreOf } from "./items.js";
 
 export const MAX_LV = 100;
 /** 升到下一級需要的經驗。 */
@@ -25,6 +25,7 @@ export function computeStats(equip, lv) {
   return {
     uniques,
     sets,
+    core: coreOf(equip.weapon),   // 8a：星核的核心效果 { id, tier, x }
     // 攻擊 ＝（角色每級 +0.3 ＋ 星核、星爪等固定攻擊）×（1＋攻擊%）
     atk: Math.round((0.3 * (lv - 1) + g("atk")) * (1 + g("atkPct") / 100)),
     maxHp: Math.round((100 + 3 * (lv - 1) + g("hp")) * (1 + g("hpPct") / 100)),
@@ -67,7 +68,7 @@ export function power(s) {
   const surv = s.maxHp / (1 - reduction(s.def)) * (1 + s.leech / 25);
   const util = 1 + (s.move + s.mf / 3) / 400;
   const four = Object.values(s.sets ?? {}).filter((n) => n >= 4).length;
-  return Math.sqrt(off) * Math.pow(surv, 0.35) * util * (1 + 0.12 * s.uniques.size) * (1 + 0.15 * four);
+  return Math.sqrt(off) * Math.pow(surv, 0.35) * util * (1 + 0.12 * s.uniques.size) * (1 + 0.15 * four) * (1 + 0.03 * (s.core?.tier ?? 0));   // 星核每一階 +3%
 }
 
 /** 把 item 穿上後會換掉哪一格（碎片挑空的，或比較弱的那個）。 */

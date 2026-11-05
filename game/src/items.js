@@ -110,7 +110,7 @@ export const JUNK_CHANCE = 0.35;
 export const UNIQUES = {
   slipper: { kind: "feet", name: "前任勇者的拖鞋", icon: "leg_slipper", text: "閃避後的下一擊必定暴擊；閃避距離 +50%", lore: "前任勇者逃跑時掉的。跑得很快。" },
   overtime: { kind: "acc", name: "加班證明", icon: "leg_overtime", text: "戰鬥越久傷害越高：每 10 秒 +5%，上限 +100%，戰鬥結束歸零", lore: "上面蓋著「已讀不回」的章。" },
-  noisy: { kind: "weapon", name: "很吵的星核", icon: "leg_noisy", atk: 18, text: "每 10 秒吐槽你一次，並給予隨機增益 5 秒", lore: "「拜託你認真打好嗎。」" },
+  noisy: { kind: "weapon", name: "很吵的星核", icon: "leg_noisy", atk: 18, text: "", lore: "「拜託你認真打好嗎。」" },   // 效果改成星核的核心效果（CORES.noisy）
   hardhat: { kind: "head", name: "爆炸頭安全帽", icon: "leg_hardhat", text: "擊殺時 25% 機率爆炸", lore: "工地主任的遺物。施工中，請勿靠近。" },
 };
 
@@ -160,19 +160,56 @@ export const plusMul = (p) => 1 + 0.05 * (p ?? 0);
 // ---- 強化（第 2 批，2026-11-05）：上限看稀有度（普通 +5 … 傳說、神話 +25）；每 +5 提升一條副屬性，
 // 副屬性還沒滿 4 條時改成新增一條（原神聖遺物式）。+10 以前不會失敗，+11 以後可能失敗（失敗只扣材料）。
 export const MAX_PLUS = [5, 10, 15, 20, 25, 25];
-export const maxPlus = (item) => MAX_PLUS[item.rarity] ?? 5;
-/** 從 +p 強化到 +p+1 的成功率（%） */
+// 8a（docs/關卡與星核改版企劃.md 第 2 章）：星核上限是別人的兩倍，每 10 級開一次副屬性
+export const isCore = (item) => item?.kind === "weapon";
+export const maxPlus = (item) => (MAX_PLUS[item.rarity] ?? 5) * (isCore(item) ? 2 : 1);
+export const subStep = (item) => (isCore(item) ? 10 : 5);
+/** 從 +p 強化到 +p+1 的成功率（%）。+25 以後只有星核會到：+26～29 20%、+30～39 15%、+40～50 10% */
 export function enhanceRate(p) {
   const t = p + 1;
   if (t <= 10) return 100;
+  if (t >= 40) return 10;
+  if (t >= 30) return 15;
+  if (t >= 26) return 20;
   return [90, 80, 70, 60, 50, 40, 30, 25][Math.min(7, Math.floor((t - 11) / 2))];
 }
+
+// ---- 星核的核心效果（8a）：每顆星核看底材有一個固定效果；+0／10／20／30／40／50 各一階（共 6 階），稀有度越高數字越大。
+// v 是第 1 階、w 是第 6 階，中間平均；效果寫在 player.js／main.js（用 stats.core.id 判斷）。
+const CORE_RMUL = [1, 1.1, 1.2, 1.35, 1.5, 1.5];
+export const CORES = {
+  rust: { name: "鏽蝕終擊", v: 20, w: 60, text: (x) => `連段最後一下傷害 +${x}%` },
+  dawn: { name: "晨光", v: 8, w: 24, text: (x) => `生命 80% 以上時，傷害 +${x}%` },
+  heavy: { name: "沉重", v: 20, w: 60, text: (x) => `普攻擊退 +${x}%；被打飛的敵人撞到別的敵人時，對方也會受傷` },
+  meteor: { name: "隕鐵", v: 12, w: 7, inv: true, dec: 1, text: (x) => `每 ${x} 秒，下一次技能多叫一顆小隕石` },
+  sharp: { name: "尖銳", v: 10, w: 30, text: (x) => `暴擊時多打一次 ${x}% 的星光傷害` },
+  shadow: { name: "暗影", v: 10, w: 30, text: (x) => `閃避後 2 秒內，傷害 +${x}%` },
+  long: { name: "細長", v: 10, w: 30, text: (x) => `普攻距離 +${x}%` },
+  comet: { name: "彗尾", v: 20, w: 60, text: (x) => `衝刺留下一道星光尾巴，敵人碰到受到攻擊力 ${x}% 的傷害` },
+  dull: { name: "鈍光", v: 8, w: 20, text: (x) => `被打時 ${x}% 機率讓攻擊你的敵人暈 1 秒` },
+  rock: { name: "巨岩", v: 20, w: 60, text: (x) => `生命低於 40% 時，防禦 +${x}%` },
+  noisy: { name: "吐槽", v: 5, w: 10, dec: 0, text: (x) => `每 10 秒吐槽你一次，並給予隨機增益 ${x} 秒` },
+};
+// 底材 → 核心效果
+const CORE_OF = { sword1: "rust", sword2: "dawn", great1: "heavy", great2: "meteor", dagger1: "sharp", dagger2: "shadow", spear1: "long", spear2: "comet", hammer1: "dull", hammer2: "rock" };
+export const coreTier = (item) => Math.min(6, 1 + Math.floor((item.plus ?? 0) / 10));
+/** 這顆星核的核心效果：{ id, tier, x（數值）}；不是星核回傳 null */
+export function coreOf(item) {
+  if (!isCore(item)) return null;
+  const id = item.unique === "noisy" ? "noisy" : CORE_OF[item.base];
+  const C = CORES[id];
+  if (!C) return null;
+  const tier = coreTier(item), raw = C.v + ((C.w - C.v) * (tier - 1)) / 5, m = id === "noisy" ? 1 : CORE_RMUL[item.rarity] ?? 1;
+  const x = C.inv ? raw / m : raw * m, d = C.dec ?? 0;
+  return { id, tier, x: Number(x.toFixed(d)) };
+}
+export const coreText = (item) => { const c = coreOf(item); return c ? CORES[c.id].text(c.x) : ""; };
 /** 強化的花費：星塵（存檔欄位沿用 scrap）＋金幣 */
 export const enhanceCost = (p, item) => ({ scrap: 2 + p * 2 + item.rarity * 2, coins: 15 + p * 12 });
 /** 強化成功：+1。到 +5 的倍數時開副屬性，回傳 { add|up, id, before, after }，沒有就回傳 null。 */
 export function enhanceUp(item) {
   item.plus = (item.plus ?? 0) + 1;
-  if (item.plus % 5 || item.kind === "junk") return null;
+  if (item.plus % subStep(item) || item.kind === "junk") return null;
   if (item.affixes.length < 4) {
     const have = new Set([item.main?.id, ...item.affixes.map((x) => x.id)]);
     const n = rollSub(pick(Object.keys(STATS).filter((id) => !have.has(id))), item.ilvl);
@@ -252,8 +289,8 @@ export function makeItem(ilvl, rarity, opts = {}) {
   const main = rollMain(b, b.kind, ilvl, rarity);
   const affixes = rollSubs(s0 + Math.floor(Math.random() * (s1 - s0 + 1)), ilvl, main.id, b.sub);
   const item = { uid: uid(), base: baseId, kind: b.kind, icon: b.icon, rarity, ilvl, main, affixes, plus: 0 };
-  // 史詩＝套裝：隨機一套（或指定 opts.set），圖示和名字換成套裝的
-  if (rarity === R.epic) {
+  // 史詩＝套裝：隨機一套（或指定 opts.set），圖示和名字換成套裝的。星核不參與套裝（8a），史詩星核照一般命名
+  if (rarity === R.epic && b.kind !== "weapon") {
     item.set = opts.set ?? pick(SET_IDS);
     item.icon = `set_${item.set}_${b.kind}`;
     item.name = `${SETS[item.set].name}之${SET_KIND_NAME[b.kind]}`;
@@ -308,16 +345,25 @@ export function describe(item) {
     const S = STATS[a.id], perfect = a.tier === 1 && a.v === S.t[0][1];
     lines.push([perfect ? "perfect" : "affix", a.id, fmtStat(a.id, a.v), "T" + a.tier]);
   }
-  if (item.unique) lines.push(["unique", null, UNIQUES[item.unique].text]);
+  if (isCore(item)) { const c = coreOf(item); if (c) lines.push(["core", null, `【${CORES[c.id].name}】${CORES[c.id].text(c.x)}`, `第 ${c.tier} 階`]); }
+  if (item.unique && UNIQUES[item.unique].text) lines.push(["unique", null, UNIQUES[item.unique].text]);
   if (item.myth) lines.push(["unique", null, MYTHS[item.myth].text(awakenStage(item))]);
   return lines;
 }
 /** 身上每一套穿了幾件：{ meteor: 2, ... } */
 export function setCounts(equip) {
   const n = {};
-  for (const it of Object.values(equip)) if (it?.set) n[it.set] = (n[it.set] ?? 0) + 1;
+  for (const it of Object.values(equip)) if (it?.set && it.kind !== "weapon") n[it.set] = (n[it.set] ?? 0) + 1;
   return n;
 }
 
 export const kindLabel = (item) => KIND_NAME[item.kind];
 export const rarityOf = (item) => RARITY[item.rarity];
+
+/** 8a 存檔轉換：舊的「套裝星核」拿掉套裝、改回一般名字和圖示 */
+export function migrateCore(it) {
+  if (!it || it.kind !== "weapon" || !it.set) return;
+  delete it.set;
+  it.icon = BASES[it.base]?.icon ?? it.icon;
+  it.name = nameFor(it, pick(RARE_NAMES));
+}

@@ -1,7 +1,7 @@
 // 存檔：等級、經驗、金幣、碎屑、背包、身上裝備、形態。存在瀏覽器的 localStorage（單機，不用伺服器）。
 // ver 2（2026-11-04）：武器變成星核、加上形態。
 // ver 3（2026-11-05）：裝備改版（主屬性＋副屬性、6 階稀有度）。使用者決定舊裝備直接清掉，身上換回起始裝備；等級、金幣、形態、任務都保留。清之前先備份。
-import { starterGear } from "./items.js";
+import { starterGear, migrateCore } from "./items.js";
 import { freshForms, migrateForms } from "./forms.js";
 import { freshQuests } from "./quests.js";
 
@@ -26,6 +26,9 @@ export function load() {
         s.inv = [];
         s.ver = 3;
       }
+      // 8a：星核不參與套裝了，舊的套裝星核轉成一般史詩星核
+      migrateCore(s.equip.weapon);
+      for (const it of s.inv) migrateCore(it);
       const q = { ...freshQuests(), ...(s.quests ?? {}) };
       q.stats = { ...freshQuests().stats, ...(q.stats ?? {}) };
       return { ...fresh(), ...s, forms: s.forms ? migrateForms(s.forms) : freshForms(), guild: s.guild ?? freshGuild(), quests: q };

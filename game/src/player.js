@@ -19,11 +19,14 @@ import { reduction } from "./stats.js";
 import { spawn, hitStop, shake } from "./fx.js";
 import { sfx } from "./audio.js";
 import { groundAt, onPlatform, geo, WALL } from "./level.js";
+import { moveX, ceilingAt } from "./map.js";
 
 const RUN = 128, ACC_GROUND = 1500, ACC_AIR = 950, GRAV = 1000, MAX_FALL = 430;
 const JUMP_V = -335, JUMP2_V = -295, COYOTE = 0.08;
 const DASH_T = 0.19, DASH_V = 345, DASH_CD = 0.32;
 const SKILL_CD = 1.1;
+// 魔力（使用者 2026-11-05：技能改成消耗魔力，冷卻保留）：每次技能 25，每秒回 8；最大魔力基礎 100，星之殘火加上限
+export const MP_COST = 25, MP_REGEN = 8;
 
 // 連段。每一段：特效、前搖壓縮比例、何時可以接下一段、何時結束、各下傷害（攻擊力的倍數）、攻擊範圍。
 // 換形態＝換這一整組（forms.js 的 combo 指到這裡的 key；key 沿用舊的武器名）。
@@ -93,11 +96,15 @@ export class Player {
     this.maxHp = s.maxHp;
     this.hp = Math.max(1, Math.min(this.maxHp, this.hp + Math.max(0, grow)));
     this.skillMax = SKILL_CD * (1 - s.cdr / 100);
+    this.maxMp = s.maxMp ?? 100;
+    this.mp = Math.min(this.maxMp, this.mp ?? this.maxMp);
     if (this.state === "attack") { this.state = "move"; this.atk = null; }
     this.step = 0;
   }
 
   has(u) { return this.stats.uniques.has(u); }
+  /** 8a：身上星核的核心效果是 id 的話回傳數值，不是回傳 0 */
+  core(id) { return this.stats.core?.id === id ? this.stats.core.x : 0; }
 
   /** 換形態：連段、技能、身體顏色一起換。 */
   setForm(id, lv) {
@@ -111,7 +118,9 @@ export class Player {
    *  吸血：傷害的 leech% 回復生命，每秒最多回最大生命的 5%（leechBudget）。 */
   roll(mult, force = false) {
     const s = this.stats, crit = force || Math.random() * 100 < s.crit;
-    const dmg = s.atk * mult * (1 + this.buff.atk) * this.dmgMul * formMul(this.formLv) * (crit ? 1 + s.critDmg / 100 : 1) * (this.kingT > 0 ? 1.2 : 1);
+    // 星核：晨光（生命 80% 以上）、暗影（閃避後 2 秒）
+    const coreMul = (this.hp >= this.maxHp * 0.8 ? 1 + this.core("dawn") / 100 : 1) * (this.shadowT > 0 ? 1 + this.core("shadow") / 100 : 1);
+    const dmg = s.atk * mult * (1 + this.buff.atk) * this.dmgMul * formMul(this.formLv) * (crit ? 1 + s.critDmg / 100 : 1) * (this.kingT > 0 ? 1.2 : 1) * coreMul;
     if (s.leech > 0 && this.hp > 0) {
       // 夜宴 4 件：生命低於 30% 吸血加倍；生命滿了，多吸的變成護盾（最多最大生命的 20%）
       const feast = this.set4("feast"), k = feast && this.hp < this.maxHp * 0.3 ? 2 : 1;
@@ -137,12 +146,15 @@ export class Player {
     if (this.filmT > 0) this.filmT -= dt;
     if (this.dentT > 0) this.dentT -= dt;
     if (this.nightT > 0) this.nightT -= dt;
+    if (this.shadowT > 0) this.shadowT -= dt;
+    this.meteorT = (this.meteorT ?? 0) + dt;   // 星核「隕鐵」：每 N 秒下一次技能多一顆小隕石
     if (this.doubleT > 0) this.doubleT -= dt;
     this.leechBudget = Math.min(this.maxHp * 0.05, (this.leechBudget ?? 0) + this.maxHp * 0.05 * dt);
     this.t += dt;
     this.lastAtk += dt;
     this.dashCd -= dt;
     this.skillCd -= dt;
+    this.mp = Math.min(this.maxMp, this.mp + MP_REGEN * dt);
     this.invuln -= dt;
     this.flash -= dt;
     this.landT -= dt;
@@ -165,19 +177,26 @@ export class Player {
       this.atk = null;
       this.vx = dir * DASH_V * (this.has("slipper") ? 1.5 : 1);
       if (this.has("slipper")) this.critNext = true;
+      if (this.core("shadow")) this.shadowT = 2;          // 星核「暗影」
+      if (this.core("comet")) world.cometStart?.();        // 星核「彗尾」：開始留尾巴
       this.vy = 0;
       if (!this.grounded) this.airDash = false;
       this.invuln = Math.max(this.invuln, DASH_T + 0.06);
       this.dashCd = DASH_CD * (this.nightT > 0 ? 0.7 : 1);   // 夜行：衝刺冷卻 -30%
     }
+    // 魔力不夠：按了沒反應，魔力條閃一下（二段飛不用魔力）
+    if (input.skill && this.skillCd <= 0 && !(this.doubleT > 0) && this.mp < MP_COST && this.state !== "hurt" && this.state !== "dash") { consume("skill"); world.noMana?.(); }
     if (input.skill && (this.skillCd <= 0 || this.doubleT > 0) && this.state !== "hurt" && this.state !== "dash") {
       consume("skill");
+      if (!(this.doubleT > 0)) this.mp -= MP_COST;
       this.aim(world);
       this.state = "cast";
       this.t = 0;
       this.atk = null;
       this.cast = false;
       this.skillCd = this.skillMax * (this.resonT > 0 ? 0.7 : 1);   // 星辰共鳴 4 件：冷卻 -30%
+      const mt = this.core("meteor");
+      if (mt && this.meteorT >= mt) { this.meteorT = 0; world.coreMeteor?.(); }
     }
     if (input.attack && (this.state === "move" || (this.state === "attack" && this.atk.time >= this.atk.s.cancel))) this.startAttack(world);
     if ((this.buff.t -= dt) <= 0) Object.assign(this.buff, { atk: 0, spd: 0, move: 0 });
@@ -283,9 +302,12 @@ export class Player {
       this.vy = Math.min(cap, this.vy + g * dt);
     }
     const prevY = this.y;
-    this.x += this.vx * dt;
+    // 8b：撞牆、撞天花板（map.js）。身高 24、半寬 7
+    const nx = moveX(this.x, this.x + this.vx * dt, this.y, 24, 7);
+    if (nx !== this.x + this.vx * dt && this.state !== "dash") this.vx = 0;
+    this.x = Math.max(7, Math.min(geo.w - 7, nx));
     this.y += this.vy * dt;
-    this.x = Math.max(WALL + 7, Math.min(geo.w - WALL - 7, this.x));
+    if (this.vy < 0) { const cy = ceilingAt(this.x, prevY, this.y, 24); if (cy !== null) { this.y = cy; this.vy = 0; } }
     const wasGrounded = this.grounded;
     const gy = this.vy >= 0 ? groundAt(this.x, prevY, this.y, this.dropT > 0) : null;
     if (gy !== null) {
@@ -346,15 +368,16 @@ export class Player {
     for (; a.nh < s.hits.length && s.hits[a.nh].t <= a.time; a.nh++) {
       const h = s.hits[a.nh], d = this.face;
       // 技能樹：長角（黏液星，普攻距離每級 +8%）、銳角（星星，普攻傷害每級 +5%）
-      const reach = s.reach * (this.form === "slime" ? 1 + 0.08 * rank("slime", "g_horn") : 1);
+      const reach = s.reach * (this.form === "slime" ? 1 + 0.08 * rank("slime", "g_horn") : 1) * (1 + this.core("long") / 100);   // 星核「細長」
       const box = { x0: this.x - d * s.back, x1: this.x + d * reach, y0: this.y - 44, y1: this.y + 4 };
       if (box.x0 > box.x1) [box.x0, box.x1] = [box.x1, box.x0];
       const mult = (s.dmg[a.nh] ?? s.dmg[0]) * (this.form === "star" ? 1 + 0.05 * rank("star", "s_edge") : this.form === "bat" ? 1 + 0.04 * rank("bat", "b_claw") : 1), force = a.crit && a.nh === 0;
       // 連段最後一下會沾上形態的元素（星星燃燒、黏液星黏液、鐵罐星帶電、蝠翼星毒）；黏液角：黏液星每一下都沾
       const fin = s.launch && a.nh === s.hits.length - 1;
+      const finMul = fin ? 1 + this.core("rust") / 100 : 1;   // 星核「鏽蝕終擊」
       const coat = fin || (this.form === "slime" && rank("slime", "g_coat"));
-      const push = (h.push ?? 2) * (this.form === "can" ? 1 + 0.1 * rank("can", "c_weight") : 1);   // 重量
-      const n = world.hitArea(box, () => this.roll(mult, force), d, { launch: fin, push, elem: coat ? ELEM[this.form] : null });
+      const push = (h.push ?? 2) * (this.form === "can" ? 1 + 0.1 * rank("can", "c_weight") : 1) * (1 + this.core("heavy") / 100);   // 重量、星核「沉重」
+      const n = world.hitArea(box, () => this.roll(mult * finMul, force), d, { launch: fin, push, elem: coat ? ELEM[this.form] : null, fling: this.core("heavy") > 0 });
       if (fin && this.form === "can" && rank("can", "c_quake")) world.groundSlam?.(this.x + d * 18, this.y, 54, 0.6);   // 震波
       if (fin && this.form === "star") {
         if (rank("star", "s_wave")) world.spawnWave?.(this.x + d * 10, this.y - 16, d);   // 星光斬
@@ -373,7 +396,9 @@ export class Player {
     if (this.invuln > 0 || this.state === "dash") return false;
     // 夜宴的護盾先擋
     if (this.shield > 0) { const a = Math.min(this.shield, dmg); this.shield -= a; dmg -= a; if (dmg <= 0) { this.invuln = 0.5; this.flash = 0.06; sfx("hitL"); return true; } }
-    const def = this.stats.def * (this.dentT > 0 ? 1.5 : 1);   // 凹痕記憶：防禦 +50%
+    const def = this.stats.def * (this.dentT > 0 ? 1.5 : 1) * (this.hp < this.maxHp * 0.4 ? 1 + this.core("rock") / 100 : 1);   // 凹痕記憶：防禦 +50%；星核「巨岩」
+    // 星核「鈍光」：一定機率讓攻擊你的敵人暈 1 秒
+    if (this.core("dull") && Math.random() * 100 < this.core("dull")) world.coreStun?.(fromX, this.y);
     dmg = Math.max(1, Math.round(dmg * (1 - reduction(def)) * (this.filmT > 0 ? 0.75 : 1)));   // 黏液護膜：-25%
     // 鐵皮（鐵罐星）：攻擊中被打不會中斷，只扣血
     if (this.form === "can" && this.state === "attack" && rank("can", "c_iron")) {

@@ -6,6 +6,7 @@
 import { playOpen } from "./ui-trans.js";
 import { bump } from "./bump.js";
 import { GUILD_MAX, SYSTEM, sysActive, accept, abandon, turnIn, isReady, refreshBoard } from "./quests.js";
+import { isCore, subStep, coreTier, coreOf, CORES } from "./items.js";
 import { SLOTS, RARITY, AFFIXES, rerollAffix, maxPlus, enhanceRate, enhanceCost, enhanceUp, fmtStat, mainValue } from "./items.js";
 import { uiFx } from "./ui-fx.js";
 import { TREES, PATHS, rank as treeRank, canBuy, buy, refund, freePts, pathSpent, CAP_NEED } from "./skilltree.js";
@@ -189,7 +190,7 @@ function itemsForForge(P) {
 }
 const itemHead = (it, eq) => `<span class="fimg">${ico(it.icon, "big")}${eq ? '<i class="eqmark">E</i>' : ""}</span><span class="fn" style="color:${RARITY[it.rarity].color}">${it.name}</span>`;
 /** 強化進度：+p／上限，下面每 +5 一顆菱形（亮＝已經開過副屬性） */
-const pips = (p, max) => `<span class="plv"><b>+${p}</b>/${max}</span><span class="pips">${Array.from({ length: max / 5 }, (_, i) => `<i class="${p >= (i + 1) * 5 ? "on" : ""}"></i>`).join("")}</span>`;
+const pips = (p, max, step = 5) => `<span class="plv"><b>+${p}</b>/${max}</span><span class="pips">${Array.from({ length: max / step }, (_, i) => `<i class="${p >= (i + 1) * step ? "on" : ""}"></i>`).join("")}</span>`;
 // 特效顏色：打鐵火花（金）、失敗（灰）、開副屬性（看稀有度）
 const SPARK = ["#3a1a06", "#8a4a10", "#e0901c", "#ffc83a", "#ffe98a", "#fff8d8", "#ffffff"];
 const DULL = ["#141018", "#2a2430", "#463e4c", "#6a6070", "#8a8090", "#a8a0ae", "#c0bac4"];
@@ -197,11 +198,11 @@ const gauge = (rate) => `<span class="gauge" title="成功率"><i style="width:$
 export function openForge() {
   const P = ctx.profile;
   const enhanceTab = (body) => {
-    body.appendChild(say("岩叔", "……每 +5 會多一條能力。+10 以後會失敗，失敗只會少材料。"));
+    body.appendChild(say("岩叔", "……每 +5 會多一條能力，星核是每 +10，但能打到兩倍高、核心效果會升階。+10 以後會失敗，失敗只會少材料。"));
     for (const { it, eq } of itemsForForge(P)) {
       const p = it.plus ?? 0, max = maxPlus(it), c = enhanceCost(p, it), rate = enhanceRate(p), top = p >= max;
       const row = h("div", "frow");
-      row.innerHTML = `<div class="fhead">${itemHead(it, eq)}</div><div class="fmid">${pips(p, max)}${top ? '<span class="maxed">MAX</span>' : gauge(rate)}</div><div class="fcost">${top ? "" : costChips(c, P)}</div>`;
+      row.innerHTML = `<div class="fhead">${itemHead(it, eq)}</div><div class="fmid">${pips(p, max, subStep(it))}${isCore(it) ? `<span class="ctier">第 ${coreTier(it)} 階</span>` : ""}${top ? '<span class="maxed">MAX</span>' : gauge(rate)}</div><div class="fcost">${top ? "" : costChips(c, P)}</div>`;
       if (!top) row.appendChild(ibtn("hammer", "強化", () => {
         if (P.scrap < c.scrap || P.coins < c.coins) { ctx.sfx("close"); return msg("材料不夠", false); }
         P.scrap -= c.scrap; P.coins -= c.coins;
@@ -212,6 +213,8 @@ export function openForge() {
           P.quests.stats.enhanceMax = Math.max(P.quests.stats.enhanceMax, it.plus);
           ctx.sfx("chime"); ctx.flash("#ff9a40");
           uiFx(parryFx, { palette: SPARK, light: 0.5, seed: it.plus }, x, y);
+          // 8a：星核升階（+10、+20…）——核心效果變強
+          if (isCore(it) && it.plus % 10 === 0) { const c = coreOf(it); setTimeout(() => msg(`核心效果升到第 ${c.tier} 階：${CORES[c.id].text(c.x)}`), 1300); }
           if (up) {
             // 每 +5：開副屬性（新增一條，或提升一條）
             const col = RARITY[it.rarity].color;

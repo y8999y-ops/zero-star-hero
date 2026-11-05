@@ -8,6 +8,7 @@ import { flash } from "./light.js";
 import { blit } from "./bake.js";
 import { A } from "./assets.js";
 import { FLOOR, LEVEL_W, WALL } from "./level.js";
+import { groundAt, floorAt, moveX, geo } from "./map.js";
 import { applyStatus, drawStatus, slowOf } from "./status.js";
 
 const GRAV = 900;
@@ -53,7 +54,17 @@ export class Enemy {
     if (!stunned) this.t += dt;   // 硬直時動畫停住
     const toward = player.x >= this.x ? 1 : -1;
 
-    this.world = world;   // 狀態傷害打死的時候要用（掉錢、經驗）
+    this.world = world;
+    // 8b：怪物擺在地圖上，主角靠近（左右 200、上下 90 以內）或被打到才醒來追；還沒醒的在原地待著（史萊姆原地輕跳、蝙蝠在原地飛）
+    if (!this.awake) {
+      if (Math.abs(player.x - this.x) < 200 && Math.abs(player.y - this.y) < 90 || this.hp < this.k.hp) this.awake = true;
+      else {
+        if (!this.k.fly) { this.vx *= 1 - 8 * dt; this.vy += GRAV * dt; this.land(dt); }
+        else { this.homeY ??= this.y; this.y = this.homeY + Math.sin(this.clock * 2.2) * 4; }
+        return;
+      }
+    }
+    this.awakeT = (this.awakeT ?? 0) + dt;   // 狀態傷害打死的時候要用（掉錢、經驗）
     if (this.k.fly) {
       if (stunned) {
         this.vx *= 1 - 5 * dt;
@@ -79,9 +90,9 @@ export class Enemy {
       } else if (this.mode === "swoop") {
         if ((this.modeT -= dt) <= 0) { this.mode = "hover"; this.modeT = 1.6 + rand(this.clock, 7) * 1.8; this.side = -this.side; }
       }
-      this.x += this.vx * dt;
+      this.x = moveX(this.x, this.x + this.vx * dt, this.y + 6, 12, 6);
       this.y += this.vy * dt;
-      this.y = Math.min(FLOOR - 12, Math.max(20, this.y));
+      this.y = Math.min(floorAt(this.x, this.y - 12) - 12, Math.max(12, this.y));   // 8b：不鑽進地裡
       if (Math.abs(this.vx) > 10) this.face = Math.sign(this.vx);
     } else if (this.kind === "trash") {
       this.biteCd = (this.biteCd ?? 1) - dt;
@@ -104,9 +115,7 @@ export class Enemy {
         }
       } else this.vx *= 1 - 4 * dt;
       this.vy += GRAV * dt;
-      this.x += this.vx * dt;
-      this.y += this.vy * dt;
-      if (this.y >= FLOOR) { this.y = FLOOR; this.vy = 0; }
+      this.land(dt);
     } else {
       // 史萊姆：只在自己動畫的「跳起來」那段時間移動
       const t = this.t % this.k.anim.duration;
@@ -116,22 +125,26 @@ export class Enemy {
       else if (!stunned) this.vx *= 1 - 12 * dt;
       else this.vx *= 1 - 4 * dt;
       this.vy += GRAV * dt;
-      this.x += this.vx * dt;
-      this.y += this.vy * dt;
-      if (this.y >= FLOOR) { this.y = FLOOR; this.vy = 0; }
+      this.land(dt);
       this.face = this.hopDir;
     }
-    // 牆壁
-    if (this.x < WALL + 10 || this.x > LEVEL_W - WALL - 10) {
-      this.x = Math.max(WALL + 10, Math.min(LEVEL_W - WALL - 10, this.x));
-      this.vx = -this.vx * 0.5;
-      if (this.kind === "gold") this.hopDir = -this.hopDir;
-    }
+  }
+  /** 8b：地上的怪移動＋落地＋撞牆（map.js）。撞牆就彈回來 */
+  land(dt) {
+    const prevY = this.y, want = this.x + this.vx * dt, nx = moveX(this.x, want, this.y, 18, 9);
+    if (nx !== want) { this.vx = -this.vx * 0.5; if (this.kind === "gold") this.hopDir = -this.hopDir; }
+    this.x = Math.max(9, Math.min(geo.w - 9, nx));
+    this.y += this.vy * dt;
+    const g = this.vy >= 0 ? groundAt(this.x, prevY, this.y) : null;
+    if (g !== null) { this.y = g; this.vy = 0; }
+    if (this.y > geo.h + 40) { this.y = floorAt(this.x, 0); this.vy = 0; }   // 掉出地圖：放回最上面的地面
   }
 
   /** 受到攻擊。roll 是 { dmg, crit }（主角算好的），或單純的數字。 */
-  hit(roll, dir, { launch = false, push = 2, elem = null } = {}, world) {
+  hit(roll, dir, { launch = false, push = 2, elem = null, fling = false } = {}, world) {
     const { dmg, crit } = typeof roll === "number" ? { dmg: roll, crit: false } : roll;
+    // 星核「沉重」：被打飛的這隻，0.4 秒內撞到別的敵人時對方也受傷（main.js 判斷）
+    if (fling) { this.flungT = 0.4; this.flungDmg = dmg * 0.5; this.flungHit = new Set([this]); }
     const d = Math.max(1, Math.round(dmg * (0.9 + Math.random() * 0.2)));
     this.hp -= d;
     this.flash = 0.07;

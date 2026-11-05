@@ -1,14 +1,41 @@
-// 關卡流程：照 x 位置觸發提示、對話、封鎖戰鬥區、一波一波出怪，最後走到出口過關。
+// 關卡流程：照 x 位置觸發提示、對話；怪物一開始就擺在地圖上（8b）；王的房間封住、一波一波出；最後走到出口過關。
 // 關卡內容全部是資料（STAGE_1_1），之後的關卡照同樣格式寫就好。
 
 // side: 1 從畫面右邊出現、-1 從左邊、0 從上面掉下來（蝙蝠）
 export const STAGE_1_1 = {
   name: "1-1 墜落之底",
-  start: { x: 90, y: -40 },
-  exitX: 2318,
+  start: { x: 100, y: -40 },
+  exitX: 2318, exitY: 264,
+  // 8c：大地圖的祭壇、怪物（約 50 隻，擺在各層）
+  altars: [{ x: 720, y: 488 }, { x: 1500, y: 432 }, { x: 2100, y: 264 }],
+  spawns: [
+    // 最底層、台階
+    { k: "slime", x: 380, y: 600 }, { k: "slime", x: 440, y: 600 }, { k: "bat", x: 330, y: "air" },
+    { k: "slime", x: 540, y: 536 }, { k: "slime", x: 600, y: 536 }, { k: "slime", x: 690, y: 488 }, { k: "bat", x: 640, y: "air" },
+    // 上方大洞穴
+    { k: "bat", x: 1100, y: 300 }, { k: "bat", x: 900, y: 250 }, { k: "bat", x: 1120, y: 230 }, { k: "slime", x: 1240, y: 160 },
+    { k: "slime", x: 880, y: 344 }, { k: "slime", x: 1080, y: 344 }, { k: "trash", x: 1400, y: 296 }, { k: "bat", x: 200, y: 380 },
+    // 中層走廊（低矮）
+    { k: "slime", x: 880, y: 432 }, { k: "slime", x: 960, y: 432 }, { k: "slime", x: 1030, y: 432 }, { k: "bat", x: 1000, y: 395 },
+    { k: "trash", x: 1150, y: 432 }, { k: "slime", x: 1200, y: 432 },
+    // 下層洞穴（有寶）
+    { k: "slime", x: 900, y: 600 }, { k: "slimeE", x: 1010, y: 600 }, { k: "slime", x: 1100, y: 600 }, { k: "gold", x: 1180, y: 600 }, { k: "trash", x: 1320, y: 600 },
+    // 中層走廊後半
+    { k: "trash", x: 1350, y: 432 }, { k: "slime", x: 1420, y: 432 }, { k: "slime", x: 1470, y: 432 }, { k: "bat", x: 1450, y: 390 },
+    { k: "trash", x: 1600, y: 432 }, { k: "slime", x: 1650, y: 432 }, { k: "slime", x: 1760, y: 432 }, { k: "slime", x: 1850, y: 432 },
+    // 豎井、藏起來的平台
+    { k: "bat", x: 1780, y: 360 }, { k: "bat", x: 1800, y: 300 }, { k: "bat", x: 1760, y: 220 },
+    { k: "slime", x: 1560, y: 248 }, { k: "slime", x: 1610, y: 248 },
+    // 最上層底下的房間
+    { k: "slime", x: 1980, y: 432 }, { k: "slime", x: 2050, y: 432 }, { k: "trashE", x: 2120, y: 432 }, { k: "slime", x: 2220, y: 432 },
+    { k: "slime", x: 2300, y: 432 }, { k: "bat", x: 2150, y: 380 }, { k: "bat", x: 2260, y: 370 },
+    // 最上層
+    { k: "slime", x: 1960, y: 264 }, { k: "slime", x: 2020, y: 264 }, { k: "trash", x: 2150, y: 264 }, { k: "slime", x: 2230, y: 264 },
+    { k: "bat", x: 2100, y: 190 }, { k: "bat", x: 2300, y: 170 },
+  ],
   intro: ["系統：……你從天上掉下來了。恭喜，你還活著。", "系統：轉生成功。種族：星星。……不，我也是第一次看到。"],
   // 高處的金幣（探索獎勵）
-  caches: [{ x: 556, y: 96, n: 6 }, { x: 1212, y: 84, n: 9 }, { x: 2092, y: 100, n: 7 }],
+  caches: [{ x: 396, y: 472, n: 6 }, { x: 1080, y: 560, n: 9 }, { x: 1584, y: 232, n: 10 }, { x: 2240, y: 152, n: 8 }],
   events: [
     // 教學寫成系統的台詞（tip），【】裡是按鍵／按鈕，focus＝講到時哪個按鈕會閃
     { x: 120, tip: { touch: "先活動一下。左手在【螢幕左半邊】左右拖——這樣就能走了。", key: "先活動一下。【A】【D】或方向鍵——走路。星星也是要走路的。" } },
@@ -81,7 +108,19 @@ export const STAGE_1_4 = {
   caches: [],
   events: [{ x: 70, lock: [16, 544], waves: [[["boss", 0]]] }],
 };
-export const STAGES = { "1-1": STAGE_1_1, "1-2": STAGE_1_2, "1-3": STAGE_1_3, "1-4": STAGE_1_4 };
+// 8b 測試地圖：怪擺在各層、兩座祭壇、出口在最上層
+export const STAGE_TEST = {
+  name: "測試：大地圖", start: { x: 60, y: 600 }, exitX: 1140, exitY: 300, intro: ["系統：這是測試用的大地圖。往上爬。"], caches: [], events: [],
+  altars: [{ x: 300 }, { x: 640, y: 420 }],
+  spawns: [
+    { k: "slime", x: 600, y: 600 }, { k: "slime", x: 700, y: 600 }, { k: "trash", x: 900, y: 600 }, { k: "bat", x: 800, y: 540 },
+    { k: "slime", x: 200, y: 420 }, { k: "slime", x: 800, y: 420 }, { k: "slimeE", x: 900, y: 420 }, { k: "bat", x: 500, y: 380 },
+    { k: "trash", x: 400, y: 220 }, { k: "slime", x: 600, y: 220 }, { k: "bat", x: 1100, y: 250 },
+  ],
+};
+// 無限模式：用原本的 1-1（一個畫面高），只有起點和出口會用到
+export const STAGE_ENDLESS = { ...STAGE_1_1, start: { x: 200, y: 184 }, exitX: 2318, exitY: 0, altars: [], spawns: [], caches: [] };
+export const STAGES = { endless: STAGE_ENDLESS, "1-1": STAGE_1_1, "1-2": STAGE_1_2, "1-3": STAGE_1_3, "1-4": STAGE_1_4, test: STAGE_TEST };
 
 const SAY_TIME = 3.2, HINT_TIME = 5;
 
@@ -91,6 +130,18 @@ export class Director {
     Object.assign(this, { stage, api, isTouch, next: 0, lock: null, waves: null, wave: 0, waveDelay: 0, done: false, time: 0 });
     for (const m of stage.intro) api.say(m, SAY_TIME);
     for (const c of stage.caches) api.dropCache(c.x, c.y, c.n);
+    // 8b（使用者 2026-11-05：不要隱形牆和遭遇戰，參考 Ori）：怪物一開始就擺在地圖上。
+    // 有 spawns 的關卡照 spawns 擺；還沒重新設計的舊關卡，把原本每個事件的波次攤開，擺在事件位置前面一段路上。
+    // 重生規則 2：打死就不見，重進關卡才會再出現（重進＝重新載入頁面，自然又是一整批）。
+    if (stage.spawns) for (const sp of stage.spawns) api.spawnEnemy(sp.k, sp.x, sp.y);
+    else for (const ev of stage.events) {
+      if (!ev.waves || ev.lock) continue;
+      const all = ev.waves.flat();
+      all.forEach(([kind], i) => {
+        const x = ev.x + 150 + i * 34 + (i % 2) * 9;
+        this.api.spawnEnemy(kind, x, kind.startsWith("bat") ? "air" : undefined);
+      });
+    }
   }
 
   update(dt, player, camX, W) {
@@ -114,14 +165,14 @@ export class Director {
       if (ev.say) this.api.say(ev.say, SAY_TIME);
       if (ev.hint) this.api.hint(this.isTouch ? ev.hint.touch : ev.hint.key, HINT_TIME);
       if (ev.tip) this.api.say("系統：" + (this.isTouch ? ev.tip.touch : ev.tip.key), HINT_TIME, ev.tip.focus);
-      if (ev.waves) {
+      if (ev.waves && ev.lock) {   // 只剩王的房間會封住（真的牆圍起來的場地）
         this.lock = ev.lock ? { l: ev.lock[0], r: ev.lock[1] } : { l: Math.round(camX), r: Math.round(camX) + W };
         this.waves = ev.waves;
         this.wave = 0;
         this.waveDelay = 0.4;
       }
     }
-    if (!this.lock && this.next >= this.stage.events.length && player.x >= this.stage.exitX) {
+    if (!this.lock && this.next >= this.stage.events.length && player.x >= this.stage.exitX && (!this.stage.exitY || Math.abs(player.y - this.stage.exitY) < 40)) {
       this.done = true;
       this.api.clear();
     }

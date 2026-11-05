@@ -4,6 +4,7 @@ import { hex } from "../../pixelfx/src/core/index.js";
 import { ICONS, ICON_SIZE as S } from "./icons.js";
 import { RARITY, R, colorOf } from "./items.js";
 import { groundAt, LEVEL_W, WALL } from "./level.js";
+import { moveX } from "./map.js";
 import { iconURL } from "./ui-art.js";
 
 const OUTLINE = hex("#1a1424") >>> 0;
@@ -40,7 +41,7 @@ export class Drops {
       if (!d.landed) {
         d.vy = Math.min(420, d.vy + 820 * dt);
         const prevY = d.y;
-        d.x = Math.max(WALL + 8, Math.min(LEVEL_W - WALL - 8, d.x + d.vx * dt));
+        d.x = moveX(d.x, d.x + d.vx * dt, d.y, 8, 6);
         d.y += d.vy * dt;
         const g = d.vy >= 0 ? groundAt(d.x, prevY, d.y, false) : null;
         if (g !== null) { d.y = g; d.landed = true; }

@@ -268,6 +268,7 @@ export function createInventory(profile, { onChange, onClose }) {
     // 主屬性一行大字（強化等級標在右邊）；副屬性每行前面是層級 T1～T5
     const lines = describe(it).map(([t, id, txt, tag]) => t === "main"
       ? `<div class="ln main">${stIco(id)}${txt}${tag ? `<em>${tag}</em>` : ""}</div>`
+      : t === "core" ? `<div class="ln core">${txt}<em>${tag}</em></div>`   // 8a：星核的核心效果＋第幾階
       : `<div class="ln ${t}">${stIco(id)}${txt}</div>`).join("");
     let cmp = "", btns = "";
     if (sel.where === "bag" && it.kind !== "junk") {
