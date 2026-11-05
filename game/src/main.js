@@ -100,7 +100,9 @@ const STEP = 1 / 60;
 const canvas = document.getElementById("screen");
 const ctx = canvas.getContext("2d");
 let W = 384, frame, img;
-const ZOOM = 1.2;   // 鏡頭拉近（看到的世界是原本的 1/1.2）
+const ZOOM = 1.38;   // 鏡頭拉近（看到的世界是原本的 1/1.38）；使用者 2026-11-05：1.2 → 再放大 15%
+// 使用者 2026-11-05：鏡頭往下 15%——看得到的範圍在畫布裡往下移（看得到腳下多一點），單位：畫布像素
+const VIEW_DY = Math.round(0.15 * H / ZOOM);
 
 // ---- 畫面大小：高度固定 216，寬度跟著螢幕比例走（手機長螢幕不會有黑邊）
 function resize() {
@@ -115,7 +117,7 @@ function resize() {
   // 置中（比視窗大時 grid 會靠左上，裁切就不對稱）：直接算左上角，offsetLeft／offsetTop 也跟著對
   canvas.style.position = "absolute";
   canvas.style.left = Math.round((innerWidth - Math.floor(W * k)) / 2) + "px";
-  canvas.style.top = Math.round((innerHeight - Math.floor(H * k)) / 2) + "px";
+  canvas.style.top = Math.round((innerHeight - Math.floor(H * k)) / 2 - VIEW_DY * k) + "px";
   frame = createFrame(W, H);
   img = new ImageData(W, H);
 }
@@ -1473,7 +1475,7 @@ function render() {
   fxState.form = player.form;
   drawCombatFx(frame);
   drawUlt(frame);
-  if (!TOWN) drawLowHp(frame, lowHp.k, lowHp.pulse, ZOOM);
+  if (!TOWN) drawLowHp(frame, lowHp.k, lowHp.pulse, ZOOM, VIEW_DY);
   if (TOWN) drawTownFg(frame);
   if (director?.lock) drawBarrier(director.lock);
   if (!TOWN) drawForeground(frame);

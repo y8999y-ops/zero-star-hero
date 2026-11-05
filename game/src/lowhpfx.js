@@ -4,15 +4,15 @@
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 const RED = [[160, 18, 26], [86, 6, 14]];   // 外圈、最角落（第 2 輪：原本偏紫紅，不像危險 → 純一點的紅）
 /** k＝血量比例（0～0.3 有效）、pulse＝0～1 的脈動（剛跳的瞬間 1，慢慢退） */
-export function drawLowHp(frame, k, pulse, zoom = 1) {   // zoom：鏡頭拉近時畫布四周會被裁掉，照「看得到的範圍」算四角
+export function drawLowHp(frame, k, pulse, zoom = 1, dy0 = 0) {   // zoom：鏡頭拉近時畫布四周會被裁掉，照「看得到的範圍」算四角；dy0：看得到的範圍往下移幾格
   if (k >= 0.3) return;
   const W = frame.w, H = frame.h, C = frame.color, danger = 1 - k / 0.3;   // 0（剛好 30%）～ 1（快死）
   // 第 2 輪：原本 29% 沒跳的時候就紅到整片地面 → 起點往外推，剛到 30% 只有一條細邊；中間永遠不染（不蓋到主角）
   const reach = Math.max(0.6, 0.93 - 0.22 * danger - 0.1 * pulse);   // 紅色從多遠開始（越小越往中間）
   const amt = 0.3 + 0.3 * danger + 0.4 * pulse;
-  const cx = W / 2, cy = H / 2;
+  const cx = W / 2, cy = H / 2 + dy0;
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    const dx = ((x - cx) / cx) * zoom, dy = ((y - cy) / cy) * zoom, d = Math.sqrt(dx * dx * 0.7 + dy * dy * 1.0) / Math.sqrt(1.7) * 1.3;
+    const dx = ((x - cx) / cx) * zoom, dy = ((y - cy) / (H / 2)) * zoom, d = Math.sqrt(dx * dx * 0.7 + dy * dy * 1.0) / Math.sqrt(1.7) * 1.3;
     let v = (d - reach) / (1 - reach) * amt;
     if (v <= 0) continue;
     const th = BAYER[((y & 3) << 2) | (x & 3)] / 16;
