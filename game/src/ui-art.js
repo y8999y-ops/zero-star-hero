@@ -253,6 +253,7 @@ function bubbleTail(k) {
 }
 
 /** 把所有介面素材設成 CSS 變數。在遊戲一開始呼叫一次。 */
+import { btnArt } from "./btn-art.js";
 export function installUiArt() {
   const root = document.documentElement.style;
   const set = (name, c) => root.setProperty(name, `url(${url(c)})`);
@@ -294,6 +295,11 @@ export function installUiArt() {
   set("--sbtn-down", button(2, true));
   set("--sbtn-red", button(2, false, RED));
   set("--sbtn-red-down", button(2, true, RED));
+  // 第 7 批：遊戲內按鈕重新設計（btn-art.js）：同一種風格、只用三個顏色分功能（使用者：少量顏色、不要五顏六色）
+  for (const k of ["go", "bad", "plain"]) for (const st of ["n", "h", "d", "x"]) {
+    const a = btnArt(k, st);
+    set(`--b-${k}-${st}`, pixels(a.w, a.h, 2, (px) => a.px.forEach((c, i) => c && px(i % a.w, (i / a.w) | 0, c))));
+  }
   set("--slot-empty", slot(2, "#3a2f52"));
   RARITY.forEach((r, i) => set(`--slot-${i}`, slot(2, r.color, i >= 2)));
   set("--slot-sel", slot(2, "#ffffff", true));

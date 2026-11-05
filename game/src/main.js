@@ -1,4 +1,6 @@
 // 遊戲主程式：第一章的關卡（1-1～1-3）、碎星鎮。網址加 ?endless 是無限出怪的測試模式，?stage=1-2 直接進那一關。
+import { playOpen } from "./ui-trans.js";
+import { setNum } from "./bump.js";
 import { createFrame, composite, hex, PAL } from "../../pixelfx/src/core/index.js";
 import * as fireball from "../../pixelfx/src/fx/fire/fireball.js";
 import * as explosion from "../../pixelfx/src/fx/explosions/plasma-explosion.js";
@@ -906,6 +908,8 @@ function mythKill() {
       toast(`${M.name} 覺醒到第 ${after} 階！`, 2.6);
       sayQueue.push([`系統：${M.lore[after - 1]}`, 4]);
       flash(player.x, player.y - 14, 120, 4, 0.6, "#fff0a0"); shake(0.3, 3); sfx("levelup");
+      // 第 7 批：覺醒特效——跟升級一樣的金色光柱，字換成 AWAKEN
+      spawn(levelUpFx, { x: Math.round(player.x), y: Math.round(player.y), light: 0.55, seed: after * 7, text: "AWAKEN!", palette: ["#2a1405", "#5c3008", "#9a5a0e", "#d48e18", "#f5b92c", "#ffde5e", "#fff4bc", "#ffffff"] });
       refreshStats();
     }
   }
@@ -1407,7 +1411,7 @@ addEventListener("keydown", (e) => { if (e.code === "KeyH" && !TOWN && started &
 {
   const panel = $("setPanel"), m = $("volMusic"), s = $("volSfx"), mute = $("btnMute");
   const sync = () => { m.value = Math.round(audioVol.music * 100); s.value = Math.round(audioVol.sfx * 100); $("volMusicV").textContent = m.value; $("volSfxV").textContent = s.value; mute.textContent = "全部靜音：" + (audioVol.mute ? "開" : "關"); };
-  $("btnSet").addEventListener("click", () => { unlockAudio(); panel.classList.toggle("hidden"); sync(); sfx("ui"); });
+  $("btnSet").addEventListener("click", () => { unlockAudio(); panel.classList.toggle("hidden"); if (!panel.classList.contains("hidden")) playOpen(panel, "sys"); sync(); sfx("ui"); });
   $("setClose").addEventListener("click", () => { panel.classList.add("hidden"); sfx("close"); });
   m.addEventListener("input", () => { setVolume("music", m.value / 100); sync(); });
   s.addEventListener("input", () => { setVolume("sfx", s.value / 100); sync(); sfx("coin"); });
@@ -1415,7 +1419,9 @@ addEventListener("keydown", (e) => { if (e.code === "KeyH" && !TOWN && started &
   for (const el of [panel, $("btnSet")]) el.addEventListener("pointerdown", (e) => e.stopPropagation());
 }
 $("bagBtn2").addEventListener("click", () => inv.show());
-$("btnBag").addEventListener("click", () => inv.show());
+$("btnBag").addEventListener("click", () => inv.show("invBag"));
+// 點左上主角頭像＝打開背包的「裝備」頁（手機回報點不到：原本頭像沒有作用，觸控層又蓋在上面）
+$("medal").addEventListener("click", (e) => { if (!document.body.classList.contains("playing")) return; e.stopPropagation(); inv.show("invHero"); });
 addEventListener("keydown", (e) => {
   if (!started || !["KeyI", "KeyB", "Tab"].includes(e.code)) return;
   e.preventDefault();
@@ -1444,7 +1450,7 @@ function hud(dt) {
   if (stats.kills !== lastKills) { lastKills = stats.kills; killShowT = 3; }
   killBox.classList.toggle("on", (killShowT -= dt) > 0);
   hpText.textContent = Math.ceil(player.hp);
-  coinsEl.textContent = profile.coins;
+  setNum(coinsEl, profile.coins);
   lvEl.textContent = "Lv " + profile.lv;
   xpFill.style.width = (profile.lv >= MAX_LV ? 100 : (profile.xp / xpNeed(profile.lv)) * 100) + "%";
   killsEl.textContent = stats.kills;
@@ -1596,5 +1602,6 @@ if (sessionStorage.getItem(AUTO_KEY)) {
 }
 for (const ev of ["pointerdown", "keydown", "touchstart"]) addEventListener(ev, unlockAudio, { capture: true, passive: true });
 addEventListener("keydown", (e) => { if (!started && (e.code === "Enter" || e.code === "Space")) startOrIntro(); });
+window.__loadDone?.();   // 第 7 批：載入畫面淡掉
 // 開發用：主控台直接掉寶、加經驗
 Object.assign(window.__game, { dropItem, gainXp, R, toast, gems, coins, minis, get chest() { return chest; } });

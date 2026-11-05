@@ -53,8 +53,8 @@
     <div class="setTtl">設定</div>
     <label>音樂<input type="range" id="volMusic" min="0" max="100" step="5"><b id="volMusicV"></b></label>
     <label>音效<input type="range" id="volSfx" min="0" max="100" step="5"><b id="volSfxV"></b></label>
-    <div class="row"><button id="btnMute" class="pbtn">全部靜音：關</button></div>
-    <div class="row"><button id="btnIntro" class="pbtn">重看開場動畫</button><button id="btnTitle" class="pbtn">回主畫面</button></div>
+    <div class="row"><button id="btnMute" class="pbtn plain">全部靜音：關</button></div>
+    <div class="row"><button id="btnIntro" class="pbtn plain">重看開場動畫</button><button id="btnTitle" class="pbtn plain">回主畫面</button></div>
     <div class="row"><button id="setClose" class="pbtn">關閉</button></div>
   </div>
   <div id="bossDim"></div>
@@ -88,9 +88,9 @@
         <div class="ttl"><b>背包</b><span id="bagN"></span><span class="cur"><i class="ic coin"></i><span id="invCoins"></span><i class="ic scrap"></i><span id="invScrap"></span></span></div>
         <div id="grid"></div>
         <div class="row">
-          <button class="pbtn" id="btnSort">整理</button>
+          <button class="pbtn plain" id="btnSort">整理</button>
           <button class="pbtn red" id="btnSalvageAll">拆解垃圾</button>
-          <button class="pbtn" id="btnAuto">自動拆解：關</button>
+          <button class="pbtn plain" id="btnAuto">自動拆解：關</button>
         </div>
         <div id="invSay"></div>
       </div>
@@ -124,8 +124,9 @@
     <div id="clearStats"></div>
     <div id="clearLoot"></div>
     <p id="clearLine"></p>
-    <div class="row"><button id="bagBtn2" class="pbtn">打開背包</button><button id="againBtn" class="pbtn">再刷一次</button><button id="homeBtn">回碎星鎮</button><button id="nextBtn" class="pbtn hidden">下一關</button></div>
+    <div class="row"><button id="bagBtn2" class="pbtn plain">打開背包</button><button id="againBtn" class="pbtn plain">再刷一次</button><button id="homeBtn">回碎星鎮</button><button id="nextBtn" class="pbtn hidden">下一關</button></div>
   </div>
+  <div id="loading"><canvas id="loadCv"></canvas><div class="lt">載入中<i>.</i><i>.</i><i>.</i></div></div>
   <div id="rotate" class="overlay"><p>請把手機轉成橫向 ↻</p></div>
 </div>
 <script>
@@ -133,6 +134,7 @@
   if (location.protocol === "file:") document.getElementById("start").innerHTML =
     '<h1>轉生成星星碎片的我，靠吸收魔物變成最強</h1><p class="sub">不能直接打開這個檔案</p><div class="help">請回到「像素小遊戲」資料夾，雙擊 <b>開始遊戲.bat</b>，<br>它會自動用瀏覽器打開遊戲。玩完把黑色視窗關掉就好。</div>';
 </script>
+<script type="module" src="src/loading.js"></script>
 <script type="module" src="src/main.js"></script>
 </body>
 </html>

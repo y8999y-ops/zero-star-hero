@@ -95,8 +95,9 @@ em.down { color: #ff5a5a; font-style: normal; }
 #touch { position: absolute; inset: 0; display: none; }
 body.touch #touch { display: block; }
 #leftZone { position: absolute; left: 0; top: 0; bottom: 0; width: 50%; }
-#stickBase { position: absolute; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); background: rgba(255,255,255,.05); display: none; pointer-events: none; }
-#stickBase.on { display: block; }
+#stickBase { position: absolute; left: max(92px, calc(env(safe-area-inset-left) + 80px)); bottom: max(36px, env(safe-area-inset-bottom)); width: 110px; height: 110px; margin: 0 0 0 -55px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); background: rgba(255,255,255,.05); display: none; pointer-events: none; }
+#stickBase.on { display: block; animation: stickIn .12s ease-out; }
+@keyframes stickIn { from { transform: scale(.7); opacity: 0; } }
 #stickKnob { position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; background: rgba(255,255,255,.3); }
 #rightPad { position: absolute; right: max(18px, env(safe-area-inset-right)); bottom: max(18px, env(safe-area-inset-bottom)); width: 230px; height: 200px; }
 .btn { position: absolute; border-radius: 50%; border: 0; background: center / 100% no-repeat; image-rendering: pixelated; padding: 0; touch-action: none; overflow: hidden; }
@@ -763,3 +764,96 @@ body.touch #invTabs { margin-right: 44px; }
 .mythbox .aw i { flex: 1; height: 6px; background: #1a1430; border: 1px solid #5a4a20; }
 .mythbox .aw em { display: block; height: 100%; background: linear-gradient(90deg, #ffe066, #fff0a0); }
 .mythbox .aw small { color: var(--dim); font-size: 12px; }
+
+/* ---- 第 7 批：手機操作修正 ---- */
+#hud { z-index: 3; }                          /* 觸控層（#touch）原本蓋在左上介面上面，選單、背包、頭像都點不到 */
+body.playing #medal { pointer-events: auto; cursor: pointer; }
+body.playing #medal:active canvas { transform: scale(.94); }
+#dlgOpts .pbtn.wait { opacity: .45; pointer-events: none; filter: saturate(.4); }
+#dlgOpts .pbtn { transition: opacity .18s, filter .18s; }
+
+/* ---- 第 7 批：按鈕重新設計（btn-art.js 的九宮格）：同一種風格，只用三個顏色分功能——
+   金＝主要／確認（預設）、紅（.red / .bad）＝危險（拆解、放棄）、紫灰（.plain、對話選項）＝一般。
+   停留亮一階、按下整顆往下沉 4px、停用一律變灰 */
+.pbtn, .ibtn { --bn: var(--b-go-n); --bh: var(--b-go-h); --bd: var(--b-go-d); --bx: var(--b-go-x); --ink: #3a1c04; --inkS: rgba(255, 246, 200, .5);
+  border: 8px solid transparent !important; border-image: var(--bn) 8 fill / 8px !important; image-rendering: pixelated; background: none !important; box-shadow: none !important; border-radius: 0 !important;
+  color: var(--ink) !important; text-shadow: 0 1px 0 var(--inkS) !important; padding-top: 0; transform: none; }
+.pbtn.red, .ibtn.bad { --bn: var(--b-bad-n); --bh: var(--b-bad-h); --bd: var(--b-bad-d); --bx: var(--b-bad-x); --ink: #fff2ec; --inkS: #5a0c1a; }
+.pbtn.plain, .ibtn.plain, #dlgOpts .pbtn { --bn: var(--b-plain-n); --bh: var(--b-plain-h); --bd: var(--b-plain-d); --bx: var(--b-plain-x); --ink: #f4eeff; --inkS: #261c44; }
+.ibtn { padding: 0 8px 0 2px; height: 34px; font-size: 14px; }
+@media (hover: hover) { .pbtn:hover:not(:disabled), .ibtn:hover:not(:disabled) { border-image-source: var(--bh) !important; } }
+.pbtn:active:not(:disabled), .ibtn:active:not(:disabled) { border-image-source: var(--bd) !important; padding-top: 4px; transform: none; }
+.pbtn:disabled, .ibtn:disabled, .ibtn.off { border-image-source: var(--bx) !important; --ink: #8a8496; --inkS: transparent; filter: none !important; opacity: 1 !important; cursor: default; }
+.ibtn:disabled .ico, .ibtn.off .ico { filter: grayscale(1) brightness(.7); }
+.pbtn:focus-visible, .ibtn:focus-visible { outline: 2px solid #fff6c0; outline-offset: 1px; }
+
+/* ---- 第 7 批：載入畫面（蹦蹦跳的小星星，loading-art.js）---- */
+#loading { position: absolute; inset: 0; z-index: 8; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: #0d0b14; transition: opacity .35s; }
+#loading.done { opacity: 0; pointer-events: none; }
+#loadCv { width: 144px; height: 120px; image-rendering: pixelated; }
+#loading .lt { color: #ffe98a; font-size: 14px; font-weight: 900; letter-spacing: 3px; text-shadow: 0 2px 0 #2a1406; }
+#loading .lt i { font-style: normal; display: inline-block; animation: loadDot 1s steps(2) infinite; }
+#loading .lt i:nth-child(2) { animation-delay: .15s; } #loading .lt i:nth-child(3) { animation-delay: .3s; }
+@keyframes loadDot { 0%, 60%, 100% { transform: none; } 30% { transform: translateY(-4px); } }
+
+/* ---- 第 7 批：視窗開啟轉場（ui-trans.js）---- */
+.tfx { position: absolute; inset: -16px; overflow: hidden; pointer-events: none; z-index: 9; }
+.tfx canvas { position: absolute; image-rendering: pixelated; }
+/* 工坊：鐵門往左右拉開（先停一下、震一下，再拉開） */
+.tfx-forge .dL { left: 0; top: 0; animation: doorL .55s steps(11) forwards; }
+.tfx-forge .dR { right: 0; top: 0; animation: doorR .55s steps(11) forwards; }
+@keyframes doorL { 0%, 18% { transform: translateX(0); } 24% { transform: translateX(3px); } 30% { transform: translateX(0); } 100% { transform: translateX(-102%); } }
+@keyframes doorR { 0%, 18% { transform: translateX(0); } 24% { transform: translateX(-3px); } 30% { transform: translateX(0); } 100% { transform: translateX(102%); } }
+.win-box.t-forge { animation: none; }
+/* 旅館：木門以左邊為軸往外轉開 */
+.tfx-inn { perspective: 900px; }
+.tfx-inn .dW { left: 0; top: 0; transform-origin: 0 50%; animation: doorW .6s cubic-bezier(.5, 0, .3, 1) forwards; }
+@keyframes doorW { 0%, 15% { transform: rotateY(0); filter: brightness(1); } 100% { transform: rotateY(-100deg); filter: brightness(.5); } }
+.win-box.t-inn { animation: none; }
+/* 公會：卷軸從中間往上下展開 */
+.win-box.t-guild { animation: scrollOpen .5s steps(10) both; }
+@keyframes scrollOpen { from { clip-path: inset(46% -20px 46% -20px); } to { clip-path: inset(-20px -20px -20px -20px); } }
+.tfx-guild { overflow: visible; }
+.tfx-guild .rod { left: 12px; animation: .5s steps(10) both; }
+.tfx-guild .rT { top: calc(50% - 7px); animation-name: rodT; }
+.tfx-guild .rB { top: calc(50% - 7px); animation-name: rodB; }
+@keyframes rodT { to { top: 2px; } } @keyframes rodB { to { top: calc(100% - 16px); } }
+.tfx-guild .rod { animation-fill-mode: both; }
+.win-box.t-guild > .tfx { animation: fadeOut .2s .5s forwards; }
+@keyframes fadeOut { to { opacity: 0; } }
+/* 系統：一條亮線 → 上下展開，掃描線閃一下淡掉 */
+.win-box.t-sys, #setPanel.t-sys { animation: holoOpen .42s steps(7) both; }
+@keyframes holoOpen { 0% { transform: scaleY(.02) scaleX(.6); filter: brightness(3); } 35% { transform: scaleY(.02) scaleX(1); filter: brightness(3); } 100% { transform: none; filter: none; } }
+.tfx-sys .scan { position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(140, 240, 255, .22) 0 2px, transparent 2px 6px); animation: scanOut .6s steps(6) forwards; }
+.tfx-sys .beam { position: absolute; left: 0; right: 0; height: 4px; background: #c8fbff; box-shadow: 0 0 12px #6ad8ff; animation: beam .6s steps(12) forwards; }
+@keyframes scanOut { 0%, 50% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes beam { from { top: 0; opacity: 1; } to { top: 100%; opacity: 0; } }
+/* 背包：從下面彈上來 */
+#invBox.t-bag { animation: bagUp .34s cubic-bezier(.3, 1.5, .5, 1) both; }
+@keyframes bagUp { from { translate: 0 60px; opacity: 0; } to { translate: 0 0; opacity: 1; } }
+
+/* ---- 第 7 批：數字跳動（bump.js）---- */
+.bump-up, .bump-dn { display: inline-block; }
+.bump-up { animation: bumpUp .45s steps(6); }
+.bump-dn { animation: bumpDn .45s steps(6); }
+@keyframes bumpUp { 0% { transform: translateY(0) scale(1); } 30% { transform: translateY(-5px) scale(1.25); color: #fff6c0; text-shadow: 0 0 6px #ffd84a; } 100% { transform: none; } }
+@keyframes bumpDn { 0% { transform: none; } 30% { transform: translateY(3px) scale(.9); color: #ff8a7a; } 100% { transform: none; } }
+.atext.newaff { animation: newAff .8s steps(8); }
+@keyframes newAff { 0% { color: #ffffff; text-shadow: 0 0 8px #9af0ff; transform: scale(1.12); } 100% { transform: none; } }
+/* ---- 第 7 批：通關畫面開啟——標題蓋章落下、下面一行一行滑進來 ---- */
+#clear:not(.hidden) h1 { animation: clearStamp .45s cubic-bezier(.3, 1.6, .5, 1) both; }
+#clear:not(.hidden) > *:not(h1) { animation: clearIn .35s ease-out both; }
+#clear:not(.hidden) > :nth-child(2) { animation-delay: .25s; } #clear:not(.hidden) > :nth-child(3) { animation-delay: .35s; }
+#clear:not(.hidden) > :nth-child(4) { animation-delay: .45s; } #clear:not(.hidden) > :nth-child(5) { animation-delay: .55s; } #clear:not(.hidden) > :nth-child(6) { animation-delay: .65s; }
+@keyframes clearStamp { from { transform: scale(2.4); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes clearIn { from { transform: translateY(12px); opacity: 0; } }
+/* 設定、說明視窗、技能樹的形態按鈕也有按下回饋 */
+#forms > * { transition: transform .08s; }
+#forms > *:active { transform: scale(.9); }
+/* 修正：視窗內容很長時（工坊強化清單），格線列被撐高，視窗跑到畫面下面 */
+.win { grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
+/* 視窗開啟改由 ui-trans.js 的主題轉場負責；轉場結束拿掉 t-* 時不要重播舊的 dlgIn */
+.win-box:not(.t-guild):not(.t-sys) { animation: none; }
+/* 固定搖桿看得清楚一點（場景亮的地方原本幾乎看不到） */
+#stickBase { border-color: rgba(255, 255, 255, .55); background: rgba(10, 8, 26, .28); box-shadow: 0 0 0 2px rgba(10, 8, 26, .35); }
+#stickKnob { background: rgba(255, 246, 200, .55); box-shadow: 0 0 0 2px rgba(10, 8, 26, .4); }

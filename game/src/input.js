@@ -75,9 +75,9 @@ export function initTouch() {
   const zone = document.getElementById("leftZone");
   const base = document.getElementById("stickBase"), knob = document.getElementById("stickKnob");
   let id = null, ax = 0, ay = 0, hist = [], lock = 0;   // lock：剛滑出一跳，一小段時間內不連發（一次長滑不會變成兩段跳）
+  // 搖桿固定在左下角（2026-11-05 手機回報：浮動搖桿位置不固定不好找）；平常看不見，手指按下左半邊任何地方才顯示，
+  // 方向用「手指跟按下去的點」的差，搖桿頭照這個差在固定的底座裡移動
   const showStick = (x, y, kx) => {
-    base.style.left = ax + "px";
-    base.style.top = ay + "px";
     knob.style.transform = `translate(${kx}px, ${Math.max(-30, Math.min(30, y - ay))}px)`;
   };
   zone.addEventListener("pointerdown", (e) => {

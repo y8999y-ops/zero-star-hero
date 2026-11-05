@@ -177,15 +177,19 @@ export function ask(name, text, options) {
     const b = document.createElement("button");
     b.className = "pbtn";
     b.textContent = `${i + 1}. ${label}`;
-    b.addEventListener("click", (e) => { e.stopPropagation(); blip(1200, "square"); choosePick(i); });
+    b.addEventListener("click", (e) => { e.stopPropagation(); if (b.classList.contains("wait")) return; blip(1200, "square"); choosePick(i); });
+    b.classList.add("wait");
     optEl.appendChild(b);
   });
+  // 防誤觸（手機回報：點村民、連點跳過對話時會直接點到選項）：字打完再等 0.45 秒，選項才能點
+  const t = typing, ready = () => { if (typing === t) for (const b of optEl.children) b.classList.remove("wait"); };
+  t.done.then(() => setTimeout(ready, 450));
   return new Promise((r) => (pick = r));
 }
 
 box.addEventListener("pointerdown", (e) => { if (!e.target.closest("button")) next(); });
 addEventListener("keydown", (e) => {
   if (!dialog.open) return;
-  if (pick && /^Digit[1-9]$/.test(e.code)) { choosePick(+e.code.slice(5) - 1); e.preventDefault(); return; }
+  if (pick && /^Digit[1-9]$/.test(e.code)) { if (optEl.querySelector(".wait")) { next(); e.preventDefault(); return; } choosePick(+e.code.slice(5) - 1); e.preventDefault(); return; }
   if (["Space", "KeyJ", "Enter", "KeyX", "KeyZ"].includes(e.code)) { next(); e.preventDefault(); }
 }, true);

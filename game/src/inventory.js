@@ -1,5 +1,9 @@
 // 背包畫面：左邊身上裝備＋數值，中間背包格子，右邊選中物品的詳細資料和比較。
 // 手機：點一下選取，再點一次同一格就直接穿上。電腦：I / B / Tab 開關，Esc 關閉。
+import { playOpen } from "./ui-trans.js";
+import { setNum, bump } from "./bump.js";
+import { uiFx } from "./ui-fx.js";
+import * as burstFx from "../../pixelfx/src/fx/pickups/collect-burst.js";
 import { createFrame, composite } from "../../pixelfx/src/core/index.js";
 import { SLOTS, RARITY, R, UNIQUES, describe, kindLabel, colorOf, SETS, setCounts, MYTHS, AWAKEN, awakenStage } from "./items.js";
 import { FORMS } from "./forms.js";
@@ -27,7 +31,7 @@ export function createInventory(profile, { onChange, onClose }) {
 
   // ---- 版面：固定 760×360，等比縮放塞進螢幕
   // 手機：三欄改成分頁（裝備／背包／詳細），一次只看一頁，字才不會被縮得太小
-  let pane = "invBag", moreStats = false;
+  let pane = "invBag", moreStats = false, prevSt = null, prevPw = 0, prevSets = null;
   const setPane = (id) => { pane = id; box.dataset.pane = id; box.querySelectorAll("#invTabs button").forEach((b) => b.classList.toggle("on", b.dataset.pane === id)); };
   box.querySelectorAll("#invTabs button").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); sfx("ui"); setPane(b.dataset.pane); }));
   setPane(pane);
@@ -220,17 +224,36 @@ export function createInventory(profile, { onChange, onClose }) {
       if (it && compare(it, eq, lv)?.better) el.insertAdjacentHTML("beforeend", "<i class='badge up'>▲</i>");
     });
     $("bagN").textContent = `${profile.inv.length} / ${BAG_SIZE}`;
-    $("invCoins").textContent = profile.coins;
-    $("invScrap").textContent = profile.scrap;
+    setNum($("invCoins"), profile.coins);
+    setNum($("invScrap"), profile.scrap);
     $("btnAuto").textContent = "自動拆解：" + AUTO[profile.auto];
     // 數值
     // 左邊數值：圖示＋數字（三欄，滑過去看名稱），沒有的屬性不顯示（前 5 個一定顯示）
     // 只顯示 5 個主要數值，按「更多」才展開其他（有數值的）
     const extra = STAT_ROWS.filter(([k], i) => i >= 5 && st[k]);
-    $("invStats").innerHTML = STAT_ROWS.filter(([k], i) => i < 5 || (moreStats && st[k])).map(([k, n, f]) => `<div title="${n}">${stIco(k)}<b>${f(st[k])}</b></div>`).join("")
+    $("invStats").innerHTML = STAT_ROWS.filter(([k], i) => i < 5 || (moreStats && st[k])).map(([k, n, f]) => `<div title="${n}">${stIco(k)}<b data-k="${k}">${f(st[k])}</b></div>`).join("")
       + (extra.length ? `<button class="more" id="statMore">${moreStats ? "收起" : `更多 ＋${extra.length}`}</button>` : "")
       + `<div class="pw"><span>戰力</span><b>${Math.round(power(st) * 10)}</b></div>`;
     $("statMore")?.addEventListener("click", (e) => { e.stopPropagation(); moreStats = !moreStats; render(); });
+    // 第 7 批：數值跟上次畫的時候比，有變的跳一下（穿上更好的裝備時一眼看出哪裡變了）
+    const pw = Math.round(power(st) * 10);
+    if (prevSt) {
+      for (const b of $("invStats").querySelectorAll("b[data-k]")) { const k = b.dataset.k; if ((prevSt[k] ?? 0) !== (st[k] ?? 0)) bump(b, (st[k] ?? 0) > (prevSt[k] ?? 0)); }
+      if (prevPw !== pw) bump($("invStats").querySelector(".pw b"), pw > prevPw);
+    }
+    prevSt = { ...st }; prevPw = pw;
+    // 第 7 批：套裝湊到 2 件或 4 件的那一下——人像那邊爆一圈套裝顏色的光、背包說一句
+    const sc = setCounts(profile.equip);
+    if (prevSets) for (const [id, n] of Object.entries(sc)) {
+      const was = prevSets[id] ?? 0, hit = [4, 2].find((k) => was < k && n >= k);
+      if (!hit) continue;
+      const S = SETS[id], r = $("portrait").getBoundingClientRect();
+      uiFx(burstFx, { palette: ["#1a1430", S.color, S.color, "#ffffff"], light: 0.7, seed: n }, r.left + r.width / 2, r.top + r.height / 2);
+      if (hit === 4) setTimeout(() => uiFx(burstFx, { palette: ["#1a1430", S.color, "#fff0a0", "#ffffff"], light: 0.8, seed: 9 }, r.left + r.width / 2, r.top + r.height / 2), 200);
+      say(`套裝「${S.name}」${hit} 件效果啟動！`);
+      sfx("levelup");
+    }
+    prevSets = sc;
     renderDetail(st);
     drawPortrait(st);
   }
@@ -259,7 +282,7 @@ export function createInventory(profile, { onChange, onClose }) {
       btns = `<button class="pbtn" data-act="equip">裝備</button>`;
     } else if (sel.where === "equip") {
       cmp = `<div class="cmp"><div class="ch">已裝備</div></div>`;
-      if (sel.key !== "weapon") btns = `<button class="pbtn" data-act="unequip">卸下</button>`;
+      if (sel.key !== "weapon") btns = `<button class="pbtn plain" data-act="unequip">卸下</button>`;
     }
     if (sel.where === "bag") btns += `<button class="pbtn red" data-act="salvage">拆解 <small>+${r.scrap}星塵</small></button>`;
     let lore = it.unique ? `<div class="lore">${UNIQUES[it.unique].lore}</div>` : "";
@@ -297,13 +320,15 @@ export function createInventory(profile, { onChange, onClose }) {
     pctx.putImageData(pimg, 0, 0);
   }
 
-  function show() {
+  function show(want) {
+    if (want) setPane(want);
     if (open) return;
     open = true;
     sfx("open");
     root.classList.remove("hidden");
     fit();
     render();
+    playOpen(box, "bag");   // 第 7 批：背包從下面彈上來
   }
   function close() {
     if (!open) return;

@@ -3,6 +3,8 @@
 //   公會＝金（盾牌）、系統＝青（四芒星）、鍛造＝橘紅（鐵砧）、旅館＝暖綠（碗）。
 //   文字盡量換成圖：任務種類用圖示、獎勵用「圖示＋數字」小籌碼、強化等級用 10 格亮點、成功率用量條、按鈕是「圖示＋兩個字」。
 // 對話當入口，正事在這些面板裡做。視窗打開時遊戲暫停（isWinOpen）。
+import { playOpen } from "./ui-trans.js";
+import { bump } from "./bump.js";
 import { GUILD_MAX, SYSTEM, sysActive, accept, abandon, turnIn, isReady, refreshBoard } from "./quests.js";
 import { SLOTS, RARITY, AFFIXES, rerollAffix, maxPlus, enhanceRate, enhanceCost, enhanceUp, fmtStat, mainValue } from "./items.js";
 import { uiFx } from "./ui-fx.js";
@@ -10,6 +12,10 @@ import { TREES, PATHS, rank as treeRank, canBuy, buy, refund, freePts, pathSpent
 import { FORMS } from "./forms.js";
 import * as parryFx from "../../pixelfx/src/fx/impacts/parry.js";
 import * as burstFx from "../../pixelfx/src/fx/pickups/collect-burst.js";
+import * as questFx from "../../pixelfx/src/fx/ui/quest-complete.js";
+import * as coinFx from "../../pixelfx/src/fx/ui/coin-collect.js";
+// 第 7 批：在某個元素中心播介面特效
+const fxAt = (el, mod, opts) => { if (!el) return; const r = el.getBoundingClientRect(); uiFx(mod, opts, r.left + r.width / 2, r.top + r.height / 2); };
 import { LAYOUTS } from "./stages.js";
 import { iconURL } from "./ui-art.js";
 
@@ -68,7 +74,7 @@ function close() {
   ctx.afterChange();
   resolveClose?.();
 }
-let state = null;
+let state = null, lastMoney = [];
 function render() {
   const { title, tabs, tab } = state, t = tabs.find((x) => x.id === tab);
   const box = root.querySelector(".win-box");
@@ -83,7 +89,11 @@ function render() {
     tb.appendChild(b);
   }
   const P = ctx.profile;
-  root.querySelector(".win-money").innerHTML = chip("coin", P.coins) + chip("scrap", P.scrap);
+  const mEl = root.querySelector(".win-money");
+  mEl.innerHTML = chip("coin", P.coins) + chip("scrap", P.scrap);
+  // 第 7 批：金幣、星塵有變就跳一下
+  const chipsEl = mEl.querySelectorAll(".chip");
+  [P.coins, P.scrap].forEach((v, i) => { if (lastMoney[i] != null && lastMoney[i] !== v) bump(chipsEl[i], v > lastMoney[i]); lastMoney[i] = v; });
   const body = root.querySelector(".win-body");
   body.innerHTML = "";
   t.render(body);
@@ -95,6 +105,8 @@ function show(title, theme, emblem, tabs, tab) {
   root.classList.remove("hidden");
   ctx.sfx("open");
   render();
+  // 第 7 批：開啟轉場依照視窗主題（公會卷軸、工坊鐵門、旅館木門、系統全息）
+  playOpen(root.querySelector(".win-box"), tabs.find((x) => x.id === state.tab).theme ?? theme);
   return new Promise((r) => (resolveClose = r));
 }
 const bar = (have, need) => `<div class="qbar"><i style="width:${Math.round((have / need) * 100)}%"></i><span>${have}/${need}</span></div>`;
@@ -126,6 +138,9 @@ export function openQuests(atGuild = false, tab = "guild") {
       msg("交付完成！");
       ctx.onQuest();
       render();
+      // 第 7 批：交付特效——視窗中間蓋一條「QUEST COMPLETE」緞帶，金幣飛向右上的錢
+      fxAt(root.querySelector(".win-box"), questFx, { seed: P.guild.done });
+      if (r.coins) fxAt(root.querySelector(".win-money .chip"), coinFx, { count: 8, seed: P.guild.done });
     }));
     else if (atGuild) act.appendChild(ibtn("close", "", () => { abandon(Q, q.id); ctx.sfx("close"); msg("放棄了任務", false); render(); }, "bad mini"));
     else if (ready) act.appendChild(h("span", "qgo", `${ico("guild")}回公會`));
@@ -233,7 +248,12 @@ export function openForge() {
           ctx.sfx("chime"); ctx.flash("#a8f0ff");
           msg(`→ ${AFFIXES[na.id].fmt(na.v)}`);
           ctx.onQuest();
+          const rr = row.getBoundingClientRect();
           render();
+          // 第 7 批：重鑄特效——那一行爆一圈青色光點，新的副屬性閃一下
+          uiFx(burstFx, { palette: ["#0c2a60", "#3ab8f0", "#9af0ff", "#ffffff"], light: 0.5, seed: P.quests.stats.rerolls }, rr.left + rr.width * 0.3, rr.top + rr.height / 2);
+          const nr = [...root.querySelectorAll(".faff")].find((x) => Math.abs(x.getBoundingClientRect().top - rr.top) < 4);
+          nr?.querySelector(".atext")?.classList.add("newaff");
         }, "plain"));
         card.appendChild(row);
       });
