@@ -73,13 +73,13 @@ export function createFeatures({ stageId, list = [], profile, player, api }) {
       } else if (f.done) continue;
       else if (f.t === "ember" && near(f, 10, 22)) {
         take(f); profile.mpBonus = (profile.mpBonus ?? 0) + 10; api.refresh();
-        api.burst(f.x, f.y - 10, "ember"); api.toast(`星之殘火：最大魔力 +10（${100 + profile.mpBonus}）。你墜落時散掉的一小塊自己，撿回來了。`, 3);
+        api.burst(f.x, f.y - 10, "ember"); api.toast(`星之殘火：最大魔力 +10（${100 + profile.mpBonus}）。你墜落時散掉的一小塊自己，撿回來了。`, 3, "res_ember");
       } else if (f.t === "fossil" && near(f, 14, 16)) {
         const form = profile.forms.owned[f.form] ? f.form : profile.forms.cur;
         profile.forms.owned[form].pts = (profile.forms.owned[form].pts ?? 0) + 1;
-        take(f); api.burst(f.x, f.y - 8, "fossil"); api.toast(`魔物化石核：${FORMS[form].name} 技能點 +1。很久以前的魔物核，變成化石了還吸收得到。`, 3.2);
+        take(f); api.burst(f.x, f.y - 8, "fossil"); api.toast(`魔物化石核：${FORMS[form].name} 技能點 +1。很久以前的魔物核，變成化石了還吸收得到。`, 3.2, "res_fossil");
       } else if (f.t === "safe" && near(f, 16, 22) && player.grounded) {
-        take(f); api.loot(f.x, f.y - 12); api.burst(f.x, f.y - 10, "safe"); api.toast("被丟下來的寶箱：上面的世界丟了一個保險箱下來……沒鎖。", 2.8);
+        take(f); api.loot(f.x, f.y - 12); api.burst(f.x, f.y - 10, "safe"); api.toast("被丟下來的寶箱：上面的世界丟了一個保險箱下來……沒鎖。", 2.8, "res_safe");
       } else if (f.t === "stele" && near(f, 14, 34)) {
         take(f); profile.lore = (profile.lore ?? 0) + 1;
         api.say(STELE_LORE[(f.i ?? 0) % STELE_LORE.length], 5); api.burst(f.x, f.y - 20, "stele");
@@ -92,7 +92,7 @@ export function createFeatures({ stageId, list = [], profile, player, api }) {
       if (f.t !== "vein" || f.done || f.cd > 0) continue;
       if (b.x1 < f.x - 14 || b.x0 > f.x + 14 || b.y1 < f.y - 18 || b.y0 > f.y) continue;
       f.cd = 0.25; f.hp--; api.clink(f.x, f.y - 8);
-      if (f.hp <= 0) { take(f); const n = 60 + Math.floor(Math.random() * 61); profile.scrap += n; api.burst(f.x, f.y - 8, "vein"); api.toast(`星塵礦脈：星塵 +${n}`, 2.4); }
+      if (f.hp <= 0) { take(f); const n = 60 + Math.floor(Math.random() * 61); profile.scrap += n; api.burst(f.x, f.y - 8, "vein"); api.toast(`星塵礦脈：星塵 +${n}`, 2.4, "res_vein"); }
     }
   }
   /** 技能彈飛到封印門：星星的星屑彈會點亮；回傳 true＝彈打到門了（要爆開） */

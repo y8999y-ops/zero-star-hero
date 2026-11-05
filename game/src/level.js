@@ -5,6 +5,7 @@
 //   越遠越接近霧色、越近越暗；遊玩層對比最高；前景幾乎全黑，框住畫面。
 // 每個環境像素存「色票編號＋明暗階」，畫的時候依光源（light.js）把明暗階往上加，所以場景會被火把、
 // 水晶、火球、爆炸照亮，而且顏色永遠是色票裡的顏色（規則v2：不漸層、不柔邊）。
+import { genPlatform } from "./platform-art.js";
 import { hex, rand } from "../../pixelfx/src/core/index.js";
 import { tintOf } from "./light.js";
 import { loadArt, cell, baseRow, blit, glows, glowClusters } from "./art.js";
@@ -104,7 +105,8 @@ function build() {
   }
   for (const g of glowClusters(glow, 24)) PROP_LIGHTS.push({ x: g.x, y: g.y, r: 30, lv: 1.6, col: g.col });
   // 平台：浮空岩台的左半＋右半拼成平台的寬度；苔蘚頂面（第 4 列）對準平台的高度
-  const pl = ART["valley/platform"];
+  // 10 批（美術需求 A4）：垃圾山、巢穴用木板垃圾平台，洞窟用苔蘚岩架（platform-art.js）；深淵照舊
+  const pl = JUNKY ? genPlatform("junk") : THEME === "cave" ? genPlatform("cave") : ART["valley/platform"];
   for (const p of PLATFORMS) {
     const half = Math.floor(p.w / 2), x0 = p.x;
     for (let y = 0; y < pl.h; y++) for (let i = 0; i < p.w; i++) {

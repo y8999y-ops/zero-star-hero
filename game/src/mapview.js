@@ -26,6 +26,7 @@ const ICON = {
   seal: { rows: ["aaaaaaa", "abbcbba", "abcccba", "acccccа".replace("а", "a"), "abcbcba", "abbbbba", "aaaaaaa"], col: { a: "#2a2e48", b: "#3c4466", c: "#ffe066" } },
   shroom: { rows: [".aaaaa.", "abcbbba", "abbbcba", "aaaaaaa", "..ddd..", "..ddd..", "......."], col: { a: "#2a6a2a", b: "#5ac84a", c: "#e8ffd8", d: "#c8b08a" } },
   wind: { rows: ["...a...", "..aaa..", ".a.a.a.", "...a...", "...a...", "...a...", "...b..."], col: { a: "#7ac8f0", b: "#3a7aa8" } },
+  boss: { rows: [".a.a.a.", ".aaaaa.", "..bbb..", ".bbbbb.", "bcbbbcb", "bbbbbbb", "ddddddd"], col: { a: "#ffd84a", b: "#5ac84a", c: "#ff4a5a", d: "#2a6a2a" } },   // 10 批：王房（戴王冠的史萊姆）
   done: { rows: ["......", ".a..a.", "..aa..", "..aa..", ".a..a.", "......"], col: { a: "#5a5274" } },
 };
 /** 畫一張地圖：solidAt(x, y)（世界座標）、seen（字串，'1'＝走過）、marks [{ icon, x, y, dim }] */
@@ -78,7 +79,7 @@ export function createMapView({ stageId, name, layout, solidAt, platforms, profi
   root.querySelector(".map-x").addEventListener("click", (e) => { e.stopPropagation(); hide(); });
   root.addEventListener("pointerdown", (e) => { e.stopPropagation(); if (e.target === root) hide(); });
   // 圖例
-  const LEG = [["player", "你"], ["altarOn", "祭壇"], ["exit", "出口"], ["ember", "星之殘火"], ["vein", "礦脈"], ["fossil", "化石核"], ["safe", "寶箱"], ["stele", "碑文"], ["crack", "裂牆"], ["seal", "封印"], ["shroom", "黏液菇"], ["wind", "氣流"]];
+  const LEG = [["player", "你"], ["altarOn", "祭壇"], ...(stageId === "1-4" ? [["boss", "王房"]] : [["exit", "出口"]]), ["ember", "星之殘火"], ["vein", "礦脈"], ["fossil", "化石核"], ["safe", "寶箱"], ["stele", "碑文"], ["crack", "裂牆"], ["seal", "封印"], ["shroom", "黏液菇"], ["wind", "氣流"]];
   const legend = root.querySelector(".map-legend");
   for (const [icon, label] of LEG) {
     const c = document.createElement("canvas"); c.width = 9; c.height = 9;

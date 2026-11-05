@@ -319,6 +319,7 @@ export function installUiArt() {
   set("--ic-heart", pixels(16, 16, 2, (px) => stampIcon(px, "heart", 0, 0)));
   set("--ic-coin", pixels(16, 16, 2, (px) => stampIcon(px, "coin", 0, 0)));
   set("--ic-scrap", pixels(16, 16, 2, (px) => stampIcon(px, "scrap", 0, 0)));
+  set("--ic-mana", pixels(16, 16, 2, (px) => stampIcon(px, "mana", 0, 0)));   // 10 批（G1）：魔力
   set("--ic-close", pixels(16, 16, 2, (px) => stampIcon(px, "close", 0, 0)));
   set("--ic-sort", pixels(16, 16, 2, (px) => stampIcon(px, "sort", 0, 0)));
 }

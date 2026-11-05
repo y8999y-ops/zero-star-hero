@@ -18,7 +18,7 @@
     <div id="medal"><canvas id="medalCv"></canvas><b class="lv" id="lvText">Lv 1</b></div>
     <div class="bars">
       <div class="hp"><div class="hp-lag" id="hpLag"></div><div class="hp-fill" id="hpFill"></div><span id="hpText">100</span></div>
-      <div class="mp" id="mpBar"><div class="mp-fill" id="mpFill"></div><i id="mpMark"></i><span id="mpText"></span></div>
+      <div class="mp" id="mpBar"><i class="mpIc"></i><div class="mp-fill" id="mpFill"></div><i id="mpMark"></i><span id="mpText"></span></div>
       <div class="ub" id="ubBar"><div class="ub-fill" id="ubFill"></div><span>大招</span></div>
       <div class="xp" id="xpBar"><div class="xp-fill" id="xpFill"></div><span id="xpText"></span></div>
     </div>
@@ -65,12 +65,12 @@
   <div id="hint"></div>
   <div id="fps"></div>
 
-  <div id="pcKeys"><div id="pcSkill" class="pk"><i class="cdw"></i><span id="pcSkillT"></span><b>E</b></div><div id="ultHud" class="pk"><canvas id="ultHudCv" width="29" height="29"></canvas><b>Q</b></div></div>
+  <div id="pcKeys"><div id="pcSkill" class="pk"><i class="cdw"></i><span id="pcSkillT"></span><b>E</b><em class="cost">25</em></div><div id="ultHud" class="pk"><canvas id="ultHudCv" width="29" height="29"></canvas><b>Q</b><em class="cost">60</em></div></div>
   <div id="touch">
     <div id="leftZone"><div id="stickBase"><div id="stickKnob"></div></div></div>
     <div id="rightPad">
-      <button id="btnUlt" class="btn ult" data-key="ult" aria-label="大招"><canvas id="ultCv" width="29" height="29"></canvas></button>
-      <button id="btnSkill" class="btn small" data-key="skill" aria-label="技能"><i id="skillCd"></i></button>
+      <button id="btnUlt" class="btn ult" data-key="ult" aria-label="大招"><canvas id="ultCv" width="29" height="29"></canvas><em class="cost">60</em></button>
+      <button id="btnSkill" class="btn small" data-key="skill" aria-label="技能"><i id="skillCd"></i><em class="cost">25</em></button>
       <button id="btnDash" class="btn mid" data-key="dash" aria-label="閃避"></button>
       <button id="btnAtk" class="btn big" data-key="attack" aria-label="攻擊"></button>
     </div>

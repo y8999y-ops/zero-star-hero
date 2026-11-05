@@ -84,6 +84,32 @@ export const ICON_DEFS = {
   map: { ox: 2, oy: 3, rows: [
     "AAAACCCCAAAA", "ABBBCDDDABBB", "ABgBCDDDAhBh", "ABBgCDDDABhB", "ABBBgDDDAhBh", "ABBBCggDABBB", "ABBBCDDgABBB", "ABBBCDDDgBBB", "ABBBCDDDABBB", "BBBBDDDDBBBB",
   ] },
+  // ---- 10 批：一次性資源（美術需求 E6，撿到的提示、地圖標記）與魔力（G1）
+  res_ember: { ox: 3, oy: 1, rows: [
+    "....g.....", "....gh....", "...ghI.g..", "...gIIh...", "..gIHIhg..", "..gIHHIh..", ".gIHGHIhh.",
+    ".gIHGGHIh.", "gIHGGGGHIh", "gIHGGGGHIh", ".gIHGGHIh.", "..hIIIIhh.", "...hhhhh..",
+  ] },
+  res_vein: { ox: 1, oy: 1, rows: [
+    ".......p......", "......pq...p..", "......pqr.pqr.", "...p..qqr.pqr.", "..pqr.qrr.qrr.", ".cpqrcqrrcqrd.",
+    "ccqrrccrccrddd", "cbqrdccddcrdde", "cbcdccdcdddddee", "cdcccdddddddde", ".dddddddddeee.", "..eeeeeeeeee..",
+  ] },
+  res_fossil: { ox: 1, oy: 2, rows: [   // 跟遊戲裡的一樣：石板上凸出一顆發紫光的圓核，旁邊刻一圈螺紋
+    ".....OOOO.....", "....OMMMNO....", "...OMLAMMNO...", "..COMLMMMNOC..", ".CBOMMMMNNOBC.", "CBBDONNNNOODBC",
+    "CBDBBOOOOBBDBC", "CBDBBBBBBBDBBC", "CBBDDBBBDDBBCD", "DCBBBDDDBBCCDD", ".DDCCCCCCCDDD.",
+  ] },
+  res_safe: { ox: 2, oy: 2, rows: [
+    ".aaaaaaaaaa.", "abbbbbbbbbcd", "abcccccccccd", "abccbbbbccHd", "abcbbaabbcId", "abcbacccbcId",
+    "abcbacdcbccd", "abcbbddbbccd", "abccbbbbcccd", "abcccccccccd", "bcddddddddde", ".ee......ee.",
+  ] },
+  res_stele: { ox: 3, oy: 1, rows: [
+    "...bbbbb..", "..baaabbc.", ".babbbbbcc", ".babbHbbcd", ".babHGHbcd", ".babbHbbcd", ".babbbbbcd",
+    ".baIIIIbcd", ".babbbbbcd", ".baIIIbbcd", ".babbbbbcd", "ccccccccdd", "dddddddddd",
+  ] },
+  mana: { ox: 3, oy: 1, rows: [
+    ".....r....", ".....r....", "....qrs...", "....qrs...", "...qqrrs..", "...pqrrs..", "..pqqrrrs.",
+    ".qpqqqrrs.", ".qpqqqrrrs", ".qqqqqrrrs", ".qqqqrrrss", "..rrrrrss.", "...ssss...",
+  ] },
+
   // ---- 屬性圖示（2026-11-05 裝備改版第 1 批）：背包數值列、裝備說明用
   st_atk: { ox: 2, oy: 2, rows: [
     "..........ab", ".........abc", "........abc.", ".......abc..", "......abc...", ".....abc....",

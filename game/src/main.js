@@ -471,7 +471,7 @@ if (!TOWN && !ENDLESS) features = createFeatures({
   stageId: STAGE_ID, list: STAGE.features ?? [], profile, player,
   api: {
     say: (m, sec) => sayQueue.push([m, sec]),
-    toast: (m, sec) => toast(m, sec),
+    toast: (m, sec, icon) => toast(m, sec, null, icon),
     save: () => save(profile),
     refresh: () => refreshStats(),
     burst: (x, y, kind) => { spawn(collectBurst, { x: Math.round(x), y: Math.round(y), palette: FX_PAL[kind], light: 0.6 }); flash(x, y, 90, 3, 0.6, FX_PAL[kind][5]); sfx(kind === "crack" ? "hitH" : "levelup"); if (kind === "crack") shake(0.3, 4); },
@@ -489,6 +489,7 @@ const mapView = TOWN || ENDLESS ? null : createMapView({
     { icon: "player", x: player.x, y: player.y, always: true },
     ...altars.map((a) => ({ icon: a.lit ? "altarOn" : "altarOff", x: a.x, y: a.y })),
     ...(STAGE.exitX ? [{ icon: "exit", x: STAGE.exitX + 26, y: STAGE.exitY || FLOOR }] : []),
+    ...(STAGE.arena && !profile.cleared?.[STAGE_ID] ? [{ icon: "boss", x: (STAGE.arena.l + STAGE.arena.r) / 2, y: STAGE.arena.floor }] : []),   // 10 批：王房
     ...(features?.items ?? []).filter((f) => !((f.t === "crack" || f.t === "seal") && f.done)).map((f) => ({ icon: f.t, x: f.x, y: f.y, dim: f.done && !["shroom", "wind"].includes(f.t) })),
   ],
   onOpen: (box) => { sfx("open"); playOpen(box, "sys"); },
@@ -1498,7 +1499,7 @@ let sysT = 0, sysTyping = null;
 // focus：系統講到某個按鈕時，那顆按鈕跟著閃（教學）
 const FOCUS = { atk: "btnAtk", dash: "btnDash", skill: "btnSkill", ult: "btnUlt", bag: "btnBag", forms: "forms" };
 let focusEl = null;
-function toast(msg, sec = 3, focus = null) {
+function toast(msg, sec = 3, focus = null, icon = null) {
   if (msg.startsWith("系統：")) {
     const text = msg.slice(3), shown = text.replace(/[【】]/g, "");
     sysTyping?.skip();
@@ -1518,6 +1519,7 @@ function toast(msg, sec = 3, focus = null) {
     return;
   }
   toastEl.textContent = msg;
+  if (icon) { const i = document.createElement("i"); i.className = "ticon"; i.style.backgroundImage = `url(${iconURL(icon, 2)})`; toastEl.prepend(i); }   // 10 批（E6）：撿到資源的提示帶圖示
   toastEl.classList.add("on");
   toastT = sec;
 }
@@ -1623,6 +1625,7 @@ function hud(dt) {
   $("mpMark").style.left = (ULT_MP / player.maxMp) * 100 + "%";   // 魔力條上的刻度：到這裡就能放大招
   const noMp = player.mp < MP_COST;
   $("btnSkill").classList.toggle("nomp", noMp); pcSkill.classList.toggle("nomp", noMp);
+  const noUlt = player.mp < ULT_MP; btnUlt.classList.toggle("nomp", noUlt); ultHud.classList.toggle("nomp", noUlt);   // 大招鍵角落的耗量變紅
   // 電腦版右下角的技能圖示：冷卻用一圈變暗的扇形倒數，中間顯示剩幾秒；好了閃一下
   const cdk = Math.max(0, player.skillCd / player.skillMax);
   pcSkill.style.setProperty("--cd", cdk.toFixed(3));
