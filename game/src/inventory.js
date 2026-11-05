@@ -14,6 +14,7 @@ import { BAG_SIZE } from "./save.js";
 import { iconURL } from "./ui-art.js";
 import { paintStar, POSES } from "./star.js";
 import { sfx } from "./audio.js";
+import { drawOrbit, blit2x } from "./heroorbit.js";
 
 const $ = (id) => document.getElementById(id);
 const AUTO = ["關", "垃圾", "普通以下"];
@@ -43,6 +44,11 @@ export function createInventory(profile, { onChange, onClose }) {
   detailX.id = "invDetailX"; detailX.setAttribute("aria-label", "回背包"); detailX.textContent = "◀ 背包";
   detailX.addEventListener("click", (e) => { e.stopPropagation(); sfx("ui"); sel = null; setPane("invBag"); render(); });
   box.appendChild(detailX);
+  // 使用者 2026-11-05：替換對比——選背包裡的東西時，身上同部位那件的資料用半透明視窗蓋在左邊，讓玩家自己對照（不寫各項差距）
+  const cmpEl = document.createElement("div");
+  cmpEl.id = "invCmp";
+  box.appendChild(cmpEl);
+  cmpEl.addEventListener("click", (e) => { e.stopPropagation(); sel = null; render(); });   // 點對比視窗＝收起來
   function fit() {
     const bw = 760, bh = 360;   // 方案 A：手機電腦一樣三欄（使用者 2026-11-05）
     const k = Math.min((innerWidth * 0.98) / bw, (innerHeight * 0.98) / bh, 2.2);
@@ -58,7 +64,7 @@ export function createInventory(profile, { onChange, onClose }) {
     el.className = "slot";
     el.dataset.slot = s.id;
     el.title = s.name;
-    (["head", "body", "hands", "feet"].includes(s.id) ? dollL : dollR).append(el);
+    $("doll").append(el);   // 使用者 2026-11-05：裝備格在星星外圈的軌道上（位置每幀由 drawHero 算）
     el.addEventListener("click", () => !dragged && pick({ where: "equip", key: s.id }));
     el.addEventListener("pointerdown", (e) => startDrag(e, { where: "equip", key: s.id }));
     slotEls[s.id] = el;
@@ -320,7 +326,27 @@ export function createInventory(profile, { onChange, onClose }) {
     drawPortrait(st);
   }
 
+  /** 一件裝備的資料（名稱、主屬性、副屬性、獨特／套裝說明）：右邊詳細和左邊對比視窗共用 */
+  function itemCard(it) {
+    const junk = it.kind === "junk";
+    const lines = describe(it).map(([t, id, txt, tag]) => t === "main"
+      ? `<div class="ln main">${stIco(id)}${txt}${tag ? `<em>${tag}</em>` : ""}</div>`
+      : t === "core" ? `<div class="ln core">${txt}<em>${tag}</em></div>`
+      : `<div class="ln ${t}">${stIco(id)}${txt}</div>`).join("");
+    return `<div class="dhead"><div class="slot r${it.rarity}"><img src="${iconURL(it.icon, 2)}"></div>
+      <div class="dname" style="color:${colorOf(it)}">${it.name}${junk ? "" : `<span class="dlv" title="物品等級">${it.ilvl}</span>`}</div></div>
+      <div class="dlines">${lines || '<div class="ln">（什麼都沒有）</div>'}</div>`;
+  }
+  function renderCmp() {
+    const it = itemAt(sel);
+    const show = !batch && it && sel.where === "bag" && it.kind !== "junk";
+    const slot = show ? compare(it, profile.equip, profile.lv).slot : null, old = slot ? profile.equip[slot] : null;
+    cmpEl.classList.toggle("on", !!show);
+    if (!show) return;
+    cmpEl.innerHTML = `<div class="cttl">身上的</div>` + (old ? itemCard(old) + (old.unique ? `<div class="lore">${UNIQUES[old.unique].name}</div>` : "") : `<div class="cempty">這個部位沒有裝備</div>`);
+  }
   function renderDetail(st) {
+    renderCmp();
     const el = $("invDetail"), it = itemAt(sel);
     if (batch) {
       let sc = 0, co = 0; for (const p of picked) { sc += RARITY[p.rarity].scrap; co += RARITY[p.rarity].coin; }
@@ -346,7 +372,9 @@ export function createInventory(profile, { onChange, onClose }) {
       });
       const old = profile.equip[c.slot];
       if (old?.unique) rows.push(`<div class="b">失去：${UNIQUES[old.unique].name} 的效果</div>`);
-      cmp = `<div class="cmp"><div class="ch">換掉 ${old ? `<b style="color:${colorOf(old)}">${old.name}</b>` : "（空）"}${c.better ? ' <em class="up">▲ 變強</em>' : c.worse ? ' <em class="down">▼ 變弱</em>' : ""}</div>${rows.join("") || "<div>數值沒有變化</div>"}</div>`;
+      // 使用者 2026-11-05：不寫各項差距，左邊半透明視窗放身上那件讓玩家自己看；這裡只留一句整體變強／變弱
+      void rows;
+      cmp = `<div class="cmp"><div class="ch">${old ? "◀ 左邊是身上的" : "這個部位是空的"}${c.better ? ' <em class="up">▲ 變強</em>' : c.worse ? ' <em class="down">▼ 變弱</em>' : ""}</div></div>`;
       btns = `<button class="pbtn" data-act="equip">裝備</button>`;
     } else if (sel.where === "equip") {
       cmp = `<div class="cmp"><div class="ch">已裝備</div></div>`;
@@ -380,15 +408,25 @@ export function createInventory(profile, { onChange, onClose }) {
     }));
   }
 
-  // 中間的主角小圖：拿著目前的武器
-  const pc = $("portrait"), pctx = pc.getContext("2d"), pf = createFrame(48, 64), pimg = new ImageData(48, 64);
-  function drawPortrait(st) {
-    pf.color.fill(0);
-    pf.light.fill(0);
-    paintStar(pf, 24, 50, POSES.stand, false, { glow: 0 });
-    composite(pf, pimg.data, null, 0.6);
-    pctx.putImageData(pimg, 0, 0);
+  // ---- 左欄：星星站在中間（2 倍大），7 件裝備在外圈的軌道上慢慢繞（90 秒一圈；拖東西的時候停下來）
+  const OW = 113, OH = 104, ORB = { cx: 56, cy: 50, rx: 47, ry: 41, feet: 70, slots: [] };
+  const oc = $("orbitCv"), octx = oc.getContext("2d"), of = createFrame(OW, OH), oimg = new ImageData(OW, OH), sf = createFrame(48, 64);
+  let spin = 0, lastT = 0;
+  function drawHero(now) {
+    const t = now / 1000, dt = Math.min(0.1, lastT ? t - lastT : 0); lastT = t;
+    if (!drag?.ghost) spin += dt * 0.07;
+    ORB.slots = SLOTS.map((s, i) => ({ a: -Math.PI / 2 + (i / SLOTS.length) * Math.PI * 2 + spin, col: profile.equip[s.id] ? RARITY[profile.equip[s.id].rarity].color : null, id: s.id }));
+    for (const o of ORB.slots) { const el = slotEls[o.id]; el.style.left = (ORB.cx + Math.cos(o.a) * ORB.rx) * 2 + "px"; el.style.top = (ORB.cy + Math.sin(o.a) * ORB.ry) * 2 + "px"; el.style.zIndex = Math.sin(o.a) >= 0 ? 3 : 1; }
+    of.color.fill(0); of.light.fill(0); sf.color.fill(0); sf.light.fill(0);
+    drawOrbit(of, t, ORB, "back");
+    paintStar(sf, 24, 50, POSES.stand, false, { glow: 0 });
+    blit2x(of, sf, ORB.cx, ORB.feet + 28 + Math.round(Math.sin(t * 2.5)));
+    drawOrbit(of, t, ORB, "front");
+    composite(of, oimg.data, null, 0.6);
+    octx.putImageData(oimg, 0, 0);
   }
+  const loop = (now) => { if (!open) return; drawHero(now); requestAnimationFrame(loop); };
+  function drawPortrait() { drawHero(performance.now()); }
 
   function show(want) {
     if (want) setPane(want);
@@ -398,6 +436,7 @@ export function createInventory(profile, { onChange, onClose }) {
     root.classList.remove("hidden");
     fit();
     render();
+    requestAnimationFrame(loop);
     playOpen(box, "bag");   // 第 7 批：背包從下面彈上來
   }
   function close() {

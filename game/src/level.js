@@ -168,7 +168,7 @@ const LAYER_DIM = { 1: 0.78, 2: 0.66, 3: 0.6, 4: 1 };
 //   1. 暗處更暗：近景、遊玩層沒被光照到的地方壓到 AMB，光源附近才回到原本亮度（對比拉開）
 //   2. 前後層次：遠景、中景再暗一點、偏冷藍（空氣感），近景和遊玩層清楚
 //   3. 地面立體：遊玩層上緣（上面是空氣）亮一條、下緣（底下是空氣）暗一條
-export const lightStyle = { v2: true, amb: 0.55, far1: 0.5, far2: 0.45, cool1: 0.38, cool2: 0.25, rim: 1.4, under: 0.6 };   // 第 2 輪：第 1 輪（amb 0.7）對比看起來幾乎沒差 → 再拉開
+export const lightStyle = { v2: true, amb: 0.42, far1: 0.4, far2: 0.36, cool1: 0.42, cool2: 0.3, rim: 1.5, under: 0.55, litMax: 1.7 };   // 第 3 輪（使用者 2026-11-05「明暗要更明顯」）：暗處再暗、被照到的地方可以比原本更亮   // 第 2 輪：第 1 輪（amb 0.7）對比看起來幾乎沒差 → 再拉開
 const COOL = [26, 36, 72];
 const shade = (c, k) => 0xff000000 | (Math.min(255, ((c >>> 16) & 255) * k) << 16) | (Math.min(255, ((c >>> 8) & 255) * k) << 8) | Math.min(255, (c & 255) * k);
 const cool = (c, t) => 0xff000000 | ((((c >>> 16) & 255) * (1 - t) + COOL[2] * t) << 16) | ((((c >>> 8) & 255) * (1 - t) + COOL[1] * t) << 8) | (((c & 255) * (1 - t) + COOL[0] * t) | 0);
@@ -199,7 +199,7 @@ export function drawLevel(frame, lv) {
         const S = lightStyle, AMB = S.amb;
         if (layer <= 2) { k = (layer === 1 ? S.far1 : S.far2) * (1 - V[i] * 0.2) * (1 + 0.25 * Math.min(1, l)); v = cool(v, layer === 1 ? S.cool1 : S.cool2); }
         else {
-          k = LAYER_DIM[layer] * (1 - V[i] * 0.35) * (AMB + (1 - AMB) * Math.min(1.3, l / 1.1));
+          k = LAYER_DIM[layer] * (1 - V[i] * 0.35) * (AMB + (1 - AMB) * Math.min(S.litMax, l / 1.1));
           if (layer === 4) {
             const up = wy > 0 && !PF[(wy - 1) * LEVEL_W + gx], up2 = wy > 1 && !PF[(wy - 2) * LEVEL_W + gx], dn = wy < MAP_H - 1 && !PF[(wy + 1) * LEVEL_W + gx];
             if (up) k *= S.rim; else if (up2) k *= 1 + (S.rim - 1) * 0.4; else if (dn) k *= S.under;

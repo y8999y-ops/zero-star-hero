@@ -322,20 +322,23 @@ export function openTree(form) {
   let sel = null;
   const page = (id) => (body) => {
     if (!TREES[id]) { body.appendChild(say("系統", `${FORMS[id].name}的技能樹下一批開放。點數先幫你存著：${freePts(id)} 點。`)); return; }
+    // 使用者 2026-11-05「技能點要往下翻才能點」：左邊技能樹、右邊說明＋投入鍵，同一個畫面不用捲；點已選的節點再點一下＝直接投入
+    const wrap = h("div", "tree-wrap"), left = h("div", "tree-left");
     const head = h("div", "tree-head", `<span class="tpts">${ico("star")}<b>${freePts(id)}</b> 點</span>`);
     if (ctx.inTown) head.appendChild(ibtn("dice", "洗點", () => { refund(id); sel = null; ctx.sfx("ui"); msg("點數全部拿回來了"); ctx.onTree?.(); render(); }, "plain"));
-    body.appendChild(head);
+    left.appendChild(head);
     const grid = h("div", "tree-grid");
     for (let p = 0; p < 3; p++) {
       const col = h("div", "tree-col", `<div class="tree-path">${PATHS[p]}<em>${pathSpent(id, p)}</em></div>`);
       for (const n of TREES[id].filter((x) => x.path === p)) col.appendChild(nodeEl(id, n));
       grid.appendChild(col);
     }
-    body.appendChild(grid);
+    left.appendChild(grid);
     const cap = TREES[id].find((x) => x.path === 3), capRow = h("div", "tree-cap");
     capRow.appendChild(nodeEl(id, cap));
     capRow.appendChild(h("small", "", `三條路線各 ${CAP_NEED} 點解鎖`));
-    body.appendChild(capRow);
+    left.appendChild(capRow);
+    wrap.appendChild(left);
     // 選中的節點：說明＋投入
     const n = sel && TREES[id].find((x) => x.id === sel);
     const info = h("div", "tree-info");
@@ -343,27 +346,30 @@ export function openTree(form) {
       const r = treeRank(id, n.id);
       info.innerHTML = `<div class="tn">${ico(n.icon, "big")}<b>${n.name}</b><span>${r}/${n.max}</span></div><div class="td">${n.desc(Math.max(1, r))}</div>`;
       if (r < n.max) {
-        const b = ibtn("check", `投入 ${n.cost} 點`, () => {
-          const el = body.querySelector(`[data-node="${n.id}"]`)?.getBoundingClientRect();
-          if (!buy(id, n.id)) { ctx.sfx("close"); return msg(n.path === 3 ? `三條路線各要 ${CAP_NEED} 點` : "點數不夠", false); }
-          ctx.sfx("levelup");
-          if (el) uiFx(burstFx, { palette: ["#1a1430", FORMS[id].color, FORMS[id].color, "#ffffff"], light: 0.6 }, el.left + el.width / 2, el.top + el.height / 2);
-          msg(`${n.name} ${treeRank(id, n.id)}/${n.max}`);
-          ctx.onTree?.();
-          render();
-        });
+        const b = ibtn("check", `投入 ${n.cost} 點`, () => invest(id, n));
         if (!canBuy(id, n.id)) b.classList.add("off");
         info.appendChild(b);
       } else info.appendChild(h("span", "maxed", "MAX"));
     } else info.innerHTML = '<div class="td dim">點一個節點看說明</div>';
-    body.appendChild(info);
+    wrap.appendChild(info);
+    body.appendChild(wrap);
   };
+  function invest(id, n) {
+    const el = document.querySelector(`[data-node="${n.id}"]`)?.getBoundingClientRect();
+    if (treeRank(id, n.id) >= n.max) return;
+    if (!buy(id, n.id)) { ctx.sfx("close"); return msg(n.path === 3 ? `三條路線各要 ${CAP_NEED} 點` : "點數不夠", false); }
+    ctx.sfx("levelup");
+    if (el) uiFx(burstFx, { palette: ["#1a1430", FORMS[id].color, FORMS[id].color, "#ffffff"], light: 0.6 }, el.left + el.width / 2, el.top + el.height / 2);
+    msg(`${n.name} ${treeRank(id, n.id)}/${n.max}`);
+    ctx.onTree?.();
+    render();
+  }
   function nodeEl(id, n) {
     const r = treeRank(id, n.id), el = h("button", "tnode" + (r ? " on" : "") + (r >= n.max ? " full" : "") + (canBuy(id, n.id) ? " can" : "") + (sel === n.id ? " sel" : ""));
     el.dataset.node = n.id;
     el.innerHTML = `${ico(n.icon, "big")}<span class="tpip">${n.max > 1 ? `${r}/${n.max}` : r ? "✓" : n.cost}</span>`;
     el.title = n.name;
-    el.addEventListener("click", (e) => { e.stopPropagation(); sel = n.id; ctx.sfx("ui"); render(); });
+    el.addEventListener("click", (e) => { e.stopPropagation(); if (sel === n.id && canBuy(id, n.id)) return invest(id, n); sel = n.id; ctx.sfx("ui"); render(); });
     return el;
   }
   const tabs = owned.map((id) => ({ id, label: FORMS[id].name, icon: id === "star" ? "star" : "core_" + id, render: page(id) }));
