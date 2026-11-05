@@ -434,7 +434,7 @@ const GOLD_P = ["#8a5a0c", "#d8a020", "#ffd84a", "#fff6c0", "#ffffff"];
 
 function overlap(a, b) { return a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0; }
 // 垃圾小圖：輪胎（轉的時候輻條跟著轉）、鐵罐（翻滾）、木板（旋轉的一條）
-function drawJunk(put, type, x, y, rot) {
+export function drawJunk(put, type, x, y, rot) {
   x = Math.round(x); y = Math.round(y);
   if (type === "tire") {
     for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) { const d = Math.hypot(dx, dy); if (d > 4.3) continue; put(x + dx, y + dy, d > 3.4 ? OUTC : d > 2.2 ? RUB[dx + dy < 0 ? 3 : 2] : d > 1.2 ? RUB[1] : RUB[0]); }

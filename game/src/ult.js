@@ -14,7 +14,16 @@ import { spawn, hitStop, shake } from "./fx.js";
 import { flash, global as globalLight } from "./light.js";
 import { paintStar, POSES } from "./star.js";
 import { FLOOR, LEVEL_W, WALL } from "./level.js";
-import { floorAt } from "./map.js";
+import { floorAt, solidAt } from "./map.js";
+import { FORM_ULTS } from "./ult-forms.js";
+import { drawJunk } from "./boss.js";
+import { sfx } from "./audio.js";
+import * as poisonCloud from "../../pixelfx/src/fx/nature/poison-cloud.js";
+// 使用者 2026-11-05：每個形態不同的大招——星星是這個檔案的「零星墜落」，黏液星、鐵罐星、蝠翼星在 ult-forms.js
+let HK = null, BOUNDS = null;
+/** main.js 開場呼叫一次：大招要用的操作（列出敵人、打怪、鏡頭範圍、黏液灘、回血、灰塵） */
+export function bindUltHooks(h) { HK = h; }
+const KIT = { POSES, floorAt, solidAt, spawn, flash, hitStop, shake, sfx, drawJunk, fx: { poison: poisonCloud }, bounds: () => BOUNDS };
 
 export const ULT_MAX = 70;   // （舊）大招能量上限：2026-11-05 使用者改成「大招不需要能量，只消耗魔力」，現在沒用到
 // 大招消耗的魔力（使用者 2026-11-05）：60，按下去扣；放完 1 秒內不能再放
@@ -47,6 +56,15 @@ export function startUlt(player, lock) {
   Object.assign(ult, { on: true, t: 0, charge: 0, post: 0, x0: player.x, y0: player.y, face: player.face, impacted: false, landed: false });
   ult.hitSet.clear();
   const l = lock ? lock.l + 24 : WALL + 24, r = lock ? lock.r - 24 : LEVEL_W - WALL - 24;
+  BOUNDS = [l, r];
+  ult.form = player.form;
+  ult.mod = FORM_ULTS[player.form] ?? null;
+  if (ult.mod) {   // 黏液星／鐵罐星／蝠翼星
+    for (const k of ["back", "pop", "crashed", "drum", "burst"]) delete ult[k];
+    ult.mod.start(ult, player, KIT, HK);
+    showName(true);
+    return;
+  }
   ult.tx = Math.max(l, Math.min(r, player.x + player.face * 72));
   ult.fy = floorAt(ult.tx, player.y - 8);   // 8b：落點是那裡的地面（大地圖不再是固定高度）
   ult.circle = spawn(runeCircle, { x: Math.round(player.x), y: Math.round(player.y), palette: PAL.gold, light: 0.6, seed: 4 }, { layer: "back", speed: 1.4 });
@@ -59,6 +77,14 @@ export function startUlt(player, lock) {
 /** 每一步更新。hooks.wave(x0, x1, tx)：衝擊波目前掃到的範圍；hooks.dust(x, y)。 */
 export function updateUlt(dt, player, hooks) {
   if (!ult.on) return;
+  if (ult.mod) {
+    ult.t += dt;
+    player.invuln = Math.max(player.invuln, 0.6);
+    ult.mod.update(ult, dt, player, KIT, HK);
+    ult.mod.tick?.(ult, dt);
+    if (ult.t >= ult.mod.dur) { ult.on = false; ult.mod = null; globalLight.lv = 0; player.endUlt(); showName(false); }
+    return;
+  }
   const t = (ult.t += dt), side = ult.face, c = ult.core;
   player.invuln = Math.max(player.invuln, 0.6);
 
@@ -140,6 +166,7 @@ export function updateUlt(dt, player, hooks) {
 function dimK() {
   const t = ult.t;
   if (!ult.on) return 0;
+  if (ult.mod) return Math.max(0, ult.mod.dim(ult));
   if (t < 0.25) return t / 0.25;
   if (t < T.hit) return 1;
   return 1 - clamp01((t - T.hit) / 0.6);
@@ -148,6 +175,7 @@ function dimK() {
 /** 大招的光源（星核、墜落的星星、主角） */
 export function ultLights(list) {
   if (!ult.on) return;
+  if (ult.mod) { ult.mod.lights(ult, list, HK); return; }
   const c = ult.core;
   if (c.r > 0) list.push({ x: c.x, y: c.y, r: 30 + c.r * 6, lv: 1.2 + c.r * 0.18, col: "#ffd27a" });
   if (ult.star) list.push({ x: ult.star.x, y: ult.star.y, r: 110, lv: 3.5, col: "#fff0b0" });
@@ -157,10 +185,12 @@ export function ultLights(list) {
 export function dimScene(frame) {
   const d = dimK();
   if (d <= 0) return;
-  const kc = 1 - 0.62 * d, kl = 1 - 0.75 * d, C = frame.color, L = frame.light, n = frame.w * frame.h;
+  const kc = Math.max(0.2, 1 - 0.62 * d), kl = Math.max(0, 1 - 0.75 * d), C = frame.color, L = frame.light, n = frame.w * frame.h;
+  const tint = ult.mod?.tint, tk = (1 - kc) * 0.9;   // 蝠翼星：往深藍紫壓（夜晚）
   for (let i = 0; i < n; i++) {
     const c = C[i];
-    C[i] = (c & 0xff000000) | ((((c >>> 16) & 255) * kc) << 16) | ((((c >>> 8) & 255) * kc) << 8) | ((c & 255) * kc);
+    if (tint) { C[i] = (c & 0xff000000) | ((((c >>> 16) & 255) * kc + tint[2] * tk) << 16) | ((((c >>> 8) & 255) * kc + tint[1] * tk) << 8) | ((c & 255) * kc + tint[0] * tk); }
+    else C[i] = (c & 0xff000000) | ((((c >>> 16) & 255) * kc) << 16) | ((((c >>> 8) & 255) * kc) << 8) | ((c & 255) * kc);
     const l = L[i];
     if (l & 0xffffff) L[i] = (l & 0xff000000) | ((((l >>> 16) & 255) * kl) << 16) | ((((l >>> 8) & 255) * kl) << 8) | ((l & 255) * kl);
   }
@@ -208,6 +238,7 @@ function drawStar(P, cx, cy, R, rot, glow = 1) {
 /** 主角之後畫：集光粒子、星核、墜落的星星和尾巴、地面衝擊波 */
 export function drawUlt(frame) {
   if (!ult.on) return;
+  if (ult.mod) { ult.mod.draw(painter(frame), ult, KIT, HK); return; }
   const P = painter(frame), t = ult.t, c = ult.core;
   // 集光粒子：從四周轉著被吸進星核，越靠近越亮
   if (t < T.throw) for (const m of MOTES) {
@@ -271,12 +302,12 @@ const NAVY = rgb("#140c26"), EDGE_HI = rgb("#fff09a"), EDGE_LO = rgb("#c48412"),
 /** 最上層：特寫帶（承的時候橫過畫面中間） */
 export function drawCutIn(frame) {
   if (!ult.on) return;
-  const t = ult.t;
-  if (t < T.cut0 || t > T.cut1) return;
+  const t = ult.t, [cut0, cut1] = ult.mod?.cut ?? [T.cut0, T.cut1];
+  if (t < cut0 || t > cut1) return;
   const W = frame.w, C = frame.color, L = frame.light;
-  const open = Math.min(clamp01((t - T.cut0) / 0.07), clamp01((T.cut1 - t) / 0.07)), half = Math.round(24 * outCubic(open));
+  const open = Math.min(clamp01((t - cut0) / 0.07), clamp01((cut1 - t) / 0.07)), half = Math.round(24 * outCubic(open));
   if (half <= 0) return;
-  const cy = frame.h - 46, local = t - T.cut0;   // 放在下方，上面的主角和星核才看得到
+  const cy = frame.h - 46, local = t - cut0;   // 放在下方，上面的主角和星核才看得到
   const put = (x, y, [r, g, b], a = 1) => {
     if (x < 0 || y < 0 || x >= W || y >= frame.h) return;
     const i = y * W + x, c = C[i], q = 1 - a;
@@ -297,7 +328,7 @@ export function drawCutIn(frame) {
   // 主角的臉：畫到小畫布再放大 4 倍（最近鄰，不做模糊）
   portrait.color.fill(0);
   portrait.light.fill(0);
-  paintStar(portrait, 24, 50, PORTRAIT, ult.face < 0, { glow: 0 });
+  paintStar(portrait, 24, 50, PORTRAIT, ult.face < 0, { glow: 0, form: ult.form });   // 特寫：目前形態的臉
   let top = 52;
   for (let i = 0; i < portrait.color.length; i++) if (portrait.color[i] >>> 24) { top = Math.floor(i / 48); break; }
   const S = 4, rows = Math.ceil((half * 2) / S) + 1, px0 = Math.round(W * 0.56 + 40 * (1 - outCubic(clamp01(local / 0.12))) - local * 14);
@@ -332,5 +363,6 @@ function showName(on) {
   const el = document.getElementById("ultName");
   if (!el) return;
   el.classList.remove("on");
-  if (on) setTimeout(() => { if (ult.on) { void el.offsetWidth; el.classList.add("on"); } }, T.cut0 * 1000);
+  if (on) el.textContent = ult.mod?.name ?? "零星墜落";
+  if (on) setTimeout(() => { if (ult.on) { void el.offsetWidth; el.classList.add("on"); } }, (ult.mod?.cut[0] ?? T.cut0) * 1000);
 }

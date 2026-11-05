@@ -71,7 +71,7 @@ let comet = null;     // 星核「彗尾」：這次衝刺打過誰
 const trail = [];     // 彗尾留下的星光點 { x, y, t }
 let hudFadeT = 0, inCombat = false;   // 戰鬥中 HUD 變淡
 import { ultPixels, ULT_S } from "./ult-icon.js";
-import { ult, ULT_MAX, ULT_MP, ULT_MULT, startUlt, updateUlt, ultLights, dimScene, drawUlt, drawCutIn, postUlt } from "./ult.js";
+import { ult, ULT_MAX, ULT_MP, ULT_MULT, startUlt, updateUlt, ultLights, dimScene, drawUlt, drawCutIn, postUlt, bindUltHooks } from "./ult.js";
 
 installUiArt();
 // 場景：城鎮（碎星鎮）或關卡。換場景＝存檔後重新載入頁面（下一個場景記在 sessionStorage）。
@@ -1114,7 +1114,14 @@ const ultHooks = {
     if (n) addCombo(n);
   },
   dust: (x, y) => { world.dust(x, y, 6); sfx("ultHit"); },
+  // 形態大招（ult-forms.js）用的
+  enemies: () => enemies.filter((e) => !e.dead),
+  hit(e, mult, dir, opts) { if (e.dead) return; e.hit(player.roll(mult * (1 + player.stats.ult / 100)), dir, opts, world); addCombo(1); },
+  view: () => ({ l: camX, r: camX + W, top: camY }),
+  puddle: (x, y) => hazards.addTemp({ type: "goo", x: Math.round(x), y, w: 44, ttl: 6 }),
+  heal: (k) => { player.hp = Math.min(player.maxHp, player.hp + player.maxHp * k); },
 };
+bindUltHooks(ultHooks);
 window.__game.ultFull = () => (player.mp = player.maxMp);
 window.__game.giveCore = (id) => absorb(makeCore(id));
 function addCombo(n) {
