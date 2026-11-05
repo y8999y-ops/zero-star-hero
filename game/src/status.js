@@ -31,7 +31,7 @@ export const REACTION = {
 };
 
 // 主程式給的東西：敵人清單、目前攻擊力、第一次觸發反應時的提示
-let C = { enemies: [], atk: () => 10, onReaction: () => {}, burnMul: () => 1, wildR: () => 1 };
+let C = { enemies: [], atk: () => 10, onReaction: () => {}, burnMul: () => 1, wildR: () => 1, poisonMul: () => 1, poisonDur: () => 1, shockBonus: () => false, chainExtra: () => false };
 export const setStatusContext = (c) => (C = { ...C, ...c });
 
 const FIRE = ["#4a1712", "#c9281f", "#f2561d", "#ff8a2a", "#ffc23d", "#ffe26b", "#fff3a6", "#ffffff"];
@@ -63,10 +63,10 @@ export function applyStatus(e, id, depth = 0) {
   if (id === "wet" && has(e, "shock")) return react(e, "chain", depth);
   if (id === "poison" && has(e, "burn")) return react(e, "toxic", depth);
   // ---- 普通沾上
-  S[id] = Math.max(S[id] ?? 0, STATUS[id].dur);
+  S[id] = Math.max(S[id] ?? 0, STATUS[id].dur * (id === "poison" ? C.poisonDur() : 1));
   if (id === "burn") S.burnDps = C.atk() * 0.3 * C.burnMul();
-  if (id === "poison") S.poisonDps = C.atk() * 0.2;
-  if (id === "shock") e.stun = Math.max(e.stun, 0.45);
+  if (id === "poison") S.poisonDps = C.atk() * 0.2 * C.poisonMul();
+  if (id === "shock") { e.stun = Math.max(e.stun, 0.45); if (C.shockBonus()) { S.shock += 1; e.stun = Math.max(e.stun, 1); } }
 }
 
 function react(e, kind, depth) {
@@ -89,6 +89,7 @@ function react(e, kind, depth) {
       // 感電連鎖：電流跳到附近所有潮濕的敵人（和牠自己），一起被電
       S.wet = 0;
       const list = [e, ...near(e, 90).filter((o) => has(o, "wet"))];
+      if (C.chainExtra()) { const extra = near(e, 90).find((o) => !list.includes(o)); if (extra) list.push(extra); }   // 導電體：多跳一隻
       let prev = e;
       list.forEach((o, i) => {
         setTimeout(() => {

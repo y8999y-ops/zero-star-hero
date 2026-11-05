@@ -49,6 +49,9 @@ import { createHazards } from "./hazards.js";
 import * as starFallFx from "../../pixelfx/src/fx/arcane/star-fall.js";
 import { drawWave, WAVE_T, WAVE_V } from "./starwave.js";
 const waves = [];   // 技能樹「星光斬」
+const minis = [];   // 技能樹「蝙蝠群」的小蝙蝠
+import * as slamFx from "../../pixelfx/src/fx/impacts/ground-slam.js";
+import { drawMiniBat } from "./minibat.js";
 let hudFadeT = 0, inCombat = false;   // 戰鬥中 HUD 變淡
 import { ultPixels, ULT_S } from "./ult-icon.js";
 import { ult, ULT_MAX, ULT_MULT, startUlt, updateUlt, ultLights, dimScene, drawUlt, drawCutIn, postUlt } from "./ult.js";
@@ -230,6 +233,8 @@ function switchForm(id) {
   if (id === "star" && rank("star", "s_origin") && sceneClock - (switchForm.originT ?? -9) > 3) { switchForm.originT = sceneClock; chargeUlt(5 / (1 + (player.stats.charge ?? 0) / 100)); }
   if (id === "star" && rank("star", "s_return")) player.skillCd *= 0.5;
   if (id === "slime" && rank("slime", "g_film")) player.filmT = 3;
+  if (id === "can" && rank("can", "c_dent")) player.dentT = 3;
+  if (id === "bat" && rank("bat", "b_night")) player.nightT = 3;
   player.invuln = Math.max(player.invuln, 0.15);
   spawn(collectBurst, { x: Math.round(player.x), y: Math.round(player.y) - 12, palette: FORM_BURST[id], light: 0.4 });
   flash(player.x, player.y - 12, 60, 2, 0.3, FORMS[id].color);
@@ -470,7 +475,12 @@ const world = {
     props.hit(box, dir);
     scenery.hit(box, dir);
     hazards.hit(box);
-    for (const e of enemies) if (!e.dead && overlaps(box, e.box())) { e.hit(typeof dmg === "function" ? dmg() : dmg, dir, opts, world, box); n++; }
+    for (const e of enemies) if (!e.dead && overlaps(box, e.box())) {
+      const r = typeof dmg === "function" ? dmg() : dmg, poisoned = e.st?.poison > 0;
+      e.hit(r, dir, opts, world, box); n++;
+      // 技能樹「嗜血爪」（蝠翼星）：打中毒的敵人回復傷害的 3%
+      if (poisoned && player.form === "bat" && rank("bat", "b_blood")) player.hp = Math.min(player.maxHp, player.hp + (r.dmg ?? r) * 0.03);
+    }
     if (n) { addCombo(n); chargeUlt(n * 0.8); }
     return n;
   },
@@ -488,6 +498,21 @@ const world = {
     sfx("shot", form);
     const pal = SHOT_PAL[form] ?? SHOT_PAL.star;
     shots.push({ x, y, dir, form, life: 1.1, mult: 1, gen: 0, fx: spawn(fireball, { x, y, flip: dir < 0, palette: pal.fx, light: GLOW.skill, seed: (Math.random() * 99) | 0 }) });
+  },
+  /** 範圍裡活著的敵人 */
+  enemiesIn(box) { return enemies.filter((e) => !e.dead && overlaps(box, e.box())); },
+  /** 技能樹「急停震地」「震波」（鐵罐星）：地上一圈震波（pixelfx impacts/ground-slam），範圍內的地面敵人受傷、彈起 */
+  groundSlam(x, y, r, mult) {
+    spawn(slamFx, { x: Math.round(x), y: Math.round(FLOOR), palette: ["#14161c", "#2a2e38", "#4a5468", "#6e7a90", "#9aa6ba", "#d0d8e6", "#ffffff"], light: 0.4, seed: (Math.random() * 99) | 0 }, { speed: 1.8 });
+    shake(0.25, 3); sfx("land", true);
+    world.hitArea({ x0: x - r, x1: x + r, y0: FLOOR - 30, y1: FLOOR + 2 }, () => player.roll(mult * (1 + player.stats.skill / 100)), player.face, { launch: true, push: 3 });
+  },
+  /** 技能樹「蝙蝠群」（蝠翼星）：滑翔時每 0.5 秒放一隻小蝙蝠，最多 3 隻 */
+  onGlide(dt) {
+    if (!rank("bat", "b_swarm")) return;
+    if ((world.swarmT = (world.swarmT ?? 0) - dt) > 0 || minis.length >= 3) return;
+    world.swarmT = 0.5;
+    minis.push({ x: player.x, y: player.y - 16, vx: 0, vy: -40, t: 0, life: 4, cd: 0, seed: Math.random() * 9 });
   },
   /** 技能樹「星光斬」：連段最後一下往前射一道月牙，穿過敵人、每隻打一次 */
   spawnWave(x, y, dir) { waves.push({ x, y, dir, t: 0, hit: new Set(), seed: Math.random() }); sfx("swing", "star"); },
@@ -554,6 +579,10 @@ setStatusContext({
   enemies,
   atk: () => player.stats.atk,
   burnMul: () => 1 + 0.6 * rank("star", "s_fire"),     // 技能樹：星火
+  poisonMul: () => 1 + 0.6 * rank("bat", "b_fang"),     // 技能樹：毒牙
+  poisonDur: () => 1 + 0.4 * rank("bat", "b_toxic"),    // 技能樹：劇毒
+  shockBonus: () => player.form === "can" && rank("can", "c_volt") > 0,   // 技能樹：帶電衝撞
+  chainExtra: () => rank("can", "c_conduct") > 0,        // 技能樹：導電體
   wildR: () => 1 + 0.3 * rank("slime", "g_fuel"),      // 技能樹：易燃體質
   onReaction(kind, e) {
     profile.react ??= {};
@@ -1043,6 +1072,17 @@ function tick(dt) {
     world.hitOnce({ x0: w.x - 8, x1: w.x + 8, y0: w.y - 14, y1: w.y + 14 }, w.hit, () => player.roll(1.0), w.dir, { push: 2 });
   }
   for (let i = waves.length - 1; i >= 0; i--) if (waves[i].t >= WAVE_T) waves.splice(i, 1);
+  // 小蝙蝠：飛向最近的敵人咬一口（沾毒），0.6 秒一口，4 秒後飛走
+  for (const m of minis) {
+    m.t += dt; m.life -= dt; m.cd -= dt;
+    const tgt = world.nearestEnemy(m.x, m.y, 160);
+    const tx = tgt ? tgt.x : player.x + Math.sin(m.t * 3 + m.seed) * 20, ty = tgt ? (tgt.box().y0 + tgt.box().y1) / 2 : player.y - 30;
+    m.vx += Math.sign(tx - m.x) * 600 * dt; m.vy += Math.sign(ty - m.y) * 600 * dt;
+    m.vx *= 1 - 3 * dt; m.vy *= 1 - 3 * dt;
+    m.x += m.vx * dt; m.y += m.vy * dt;
+    if (tgt && m.cd <= 0 && Math.abs(tgt.x - m.x) < 10 && Math.abs(ty - m.y) < 12) { m.cd = 0.6; tgt.hit(player.roll(0.4), m.vx >= 0 ? 1 : -1, { push: 1, elem: "poison" }, world); }
+  }
+  for (let i = minis.length - 1; i >= 0; i--) if (minis[i].life <= 0) minis.splice(i, 1);
 
   // 金幣：先噴出去，再被吸過來
   for (const c of coins) {
@@ -1114,6 +1154,7 @@ function render() {
   for (const e of enemies) e.draw(frame);
   drawBolts(frame);
   for (const w of waves) drawWave(frame, w);
+  for (const m of minis) drawMiniBat(frame, m);
   drawCoins();
   drawGems();
   if (ult.on) { dimScene(frame); drawFx(frame, "back"); }
@@ -1478,4 +1519,4 @@ if (sessionStorage.getItem(AUTO_KEY)) {
 for (const ev of ["pointerdown", "keydown", "touchstart"]) addEventListener(ev, unlockAudio, { capture: true, passive: true });
 addEventListener("keydown", (e) => { if (!started && (e.code === "Enter" || e.code === "Space")) startOrIntro(); });
 // 開發用：主控台直接掉寶、加經驗
-Object.assign(window.__game, { dropItem, gainXp, R, toast, gems, coins, get chest() { return chest; } });
+Object.assign(window.__game, { dropItem, gainXp, R, toast, gems, coins, minis, get chest() { return chest; } });

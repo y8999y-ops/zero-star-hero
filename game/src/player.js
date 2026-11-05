@@ -124,6 +124,9 @@ export class Player {
     this.clock += dt;
     if (this.lightT > 0) this.lightT -= dt;
     if (this.filmT > 0) this.filmT -= dt;
+    if (this.dentT > 0) this.dentT -= dt;
+    if (this.nightT > 0) this.nightT -= dt;
+    if (this.doubleT > 0) this.doubleT -= dt;
     this.leechBudget = Math.min(this.maxHp * 0.05, (this.leechBudget ?? 0) + this.maxHp * 0.05 * dt);
     this.t += dt;
     this.lastAtk += dt;
@@ -154,9 +157,9 @@ export class Player {
       this.vy = 0;
       if (!this.grounded) this.airDash = false;
       this.invuln = Math.max(this.invuln, DASH_T + 0.06);
-      this.dashCd = DASH_CD;
+      this.dashCd = DASH_CD * (this.nightT > 0 ? 0.7 : 1);   // 夜行：衝刺冷卻 -30%
     }
-    if (input.skill && this.skillCd <= 0 && this.state !== "hurt" && this.state !== "dash") {
+    if (input.skill && (this.skillCd <= 0 || this.doubleT > 0) && this.state !== "hurt" && this.state !== "dash") {
       consume("skill");
       this.aim(world);
       this.state = "cast";
@@ -180,8 +183,14 @@ export class Player {
     } else if (this.state === "cast") {
       if (!this.cast && this.t >= 0.1) {
         this.cast = true;
-        if (FORMS[this.form].skill === "charge") { this.state = "charge"; this.t = 0; this.chargeHit = new Set(); this.invuln = Math.max(this.invuln, CHARGE_T + 0.05); }
-        else if (FORMS[this.form].skill === "flight") { this.state = "fly"; this.t = 0; this.chargeHit = new Set(); this.grounded = false; this.invuln = Math.max(this.invuln, FLY_T + 0.05); sfx("dash"); }
+        // 技能樹：加長（鐵罐星衝撞 +12%／級）、遠飛（蝠翼星飛行 +12%／級）、二段飛
+        this.chargeDur = CHARGE_T * (1 + 0.12 * rank("can", "c_long"));
+        this.flyDur = FLY_T * (1 + 0.12 * rank("bat", "b_far"));
+        if (FORMS[this.form].skill === "charge") { this.state = "charge"; this.t = 0; this.chargeHit = new Set(); this.truck = new Set(); this.invuln = Math.max(this.invuln, this.chargeDur + 0.05); }
+        else if (FORMS[this.form].skill === "flight") {
+          this.state = "fly"; this.t = 0; this.chargeHit = new Set(); this.grounded = false; this.invuln = Math.max(this.invuln, this.flyDur + 0.05); sfx("dash");
+          if (this.doubleT > 0) this.doubleT = 0; else this.doubleReady = !!rank("bat", "b_double");
+        }
         else world.spawnFireball(this.x + this.face * 18, this.y - 14, this.face, this.form);
       }
       if (this.state === "cast" && this.t >= 0.28) this.state = "move";
@@ -191,7 +200,16 @@ export class Player {
       this.ghostAcc += dt;
       if (this.ghostAcc > 1 / 30) { this.ghostAcc = 0; this.ghosts.push({ x: this.x, y: this.y, q: this.pose, flip: this.drawFlip(), age: 0 }); }
       world.hitOnce({ x0: this.x - 12, x1: this.x + 12, y0: this.y - 26, y1: this.y + 2 }, this.chargeHit, () => this.roll(2.2 * (1 + this.stats.skill / 100)), this.face, { launch: true, push: 4, elem: "shock" });
-      if (this.t >= CHARGE_T) { this.state = "move"; this.vx *= 0.3; }
+      // 技能樹「回收車」：路上的小怪被推著走
+      if (rank("can", "c_truck")) for (const e of world.enemiesIn({ x0: this.x - 4, x1: this.x + this.face * 26, y0: this.y - 30, y1: this.y + 4 })) {
+        if (e.isBoss) continue;
+        this.truck.add(e); e.x = this.x + this.face * (16 + this.truck.size * 3); e.vx = this.vx; e.stun = Math.max(e.stun, 0.3);
+      }
+      if (this.t >= (this.chargeDur ?? CHARGE_T)) {
+        this.state = "move"; this.vx *= 0.3;
+        if (this.truck?.size) { for (const e of this.truck) if (!e.dead) e.hit(this.roll(1.2 * (1 + this.stats.skill / 100)), this.face, { launch: true, push: 6, elem: "shock" }, world); this.truck.clear(); }
+        if (rank("can", "c_brake")) world.groundSlam?.(this.x, this.y, 46, 1.2);   // 急停震地
+      }
     } else if (this.state === "fly") {
       // 蝠翼星：往前上方飛，越飛越平；路上的怪每隻打一次。飛完可以再跳一次。
       this.vx = this.face * FLY_VX;
@@ -199,14 +217,17 @@ export class Player {
       this.ghostAcc += dt;
       if (this.ghostAcc > 1 / 30) { this.ghostAcc = 0; this.ghosts.push({ x: this.x, y: this.y, q: this.pose, flip: this.drawFlip(), age: 0 }); }
       world.hitOnce({ x0: this.x - 14, x1: this.x + 14, y0: this.y - 28, y1: this.y + 2 }, this.chargeHit, () => this.roll(1.8 * (1 + this.stats.skill / 100)), this.face, { push: 3, elem: "poison" });
-      if (this.t >= FLY_T) { this.state = "move"; this.vx *= 0.5; this.jumps = Math.min(this.jumps, 1); }
+      if (this.t >= (this.flyDur ?? FLY_T)) {
+        this.state = "move"; this.vx *= 0.5; this.jumps = Math.min(this.jumps, 1);
+        if (this.doubleReady) { this.doubleReady = false; this.doubleT = 1.2; }   // 二段飛：1.2 秒內可以再飛一次
+      }
     } else if (this.state === "hurt") {
       if (this.t >= 0.32) this.state = "move";
     }
 
     // ---- 水平移動
     if (this.state !== "dash" && this.state !== "hurt" && this.state !== "charge" && this.state !== "fly") {
-      const target = input.move * RUN * (1 + this.stats.move / 100 + this.buff.move + (this.lightT > 0 ? 0.2 : 0)) * ctl;
+      const target = input.move * RUN * (1 + this.stats.move / 100 + this.buff.move + (this.lightT > 0 ? 0.2 : 0) + (this.nightT > 0 ? 0.3 : 0)) * ctl;
       const acc = (this.grounded ? ACC_GROUND : ACC_AIR) * dt;
       this.vx += Math.max(-acc, Math.min(acc, target - this.vx));
       if (this.state === "move" && input.move) this.face = Math.sign(input.move);
@@ -237,9 +258,11 @@ export class Player {
     if (this.state !== "dash" && this.state !== "fly") {
       // 空中攻擊時懸停一下，比較好打空中的敵人（蝠翼星停得更久）
       const bat = this.form === "bat";
-      const g = this.state === "attack" && !this.grounded && this.vy > -40 ? GRAV * (bat ? 0.08 : 0.25) : GRAV;
+      const g = this.state === "attack" && !this.grounded && this.vy > -40 ? GRAV * (bat ? (rank("bat", "b_hover") ? 0.03 : 0.08) : 0.25) : GRAV;   // 懸停：停更久
       // 蝠翼星按住跳往下掉時：滑翔
-      const cap = bat && input.jumpHeld && this.state === "move" && !this.grounded && this.vy > 0 ? GLIDE_FALL : MAX_FALL;
+      const gliding = bat && input.jumpHeld && this.state === "move" && !this.grounded && this.vy > 0;
+      const cap = gliding ? GLIDE_FALL : MAX_FALL;
+      if (gliding) world.onGlide?.(dt);   // 技能樹「蝙蝠群」
       this.vy = Math.min(cap, this.vy + g * dt);
     }
     const prevY = this.y;
@@ -309,11 +332,13 @@ export class Player {
       const reach = s.reach * (this.form === "slime" ? 1 + 0.08 * rank("slime", "g_horn") : 1);
       const box = { x0: this.x - d * s.back, x1: this.x + d * reach, y0: this.y - 44, y1: this.y + 4 };
       if (box.x0 > box.x1) [box.x0, box.x1] = [box.x1, box.x0];
-      const mult = (s.dmg[a.nh] ?? s.dmg[0]) * (this.form === "star" ? 1 + 0.05 * rank("star", "s_edge") : 1), force = a.crit && a.nh === 0;
+      const mult = (s.dmg[a.nh] ?? s.dmg[0]) * (this.form === "star" ? 1 + 0.05 * rank("star", "s_edge") : this.form === "bat" ? 1 + 0.04 * rank("bat", "b_claw") : 1), force = a.crit && a.nh === 0;
       // 連段最後一下會沾上形態的元素（星星燃燒、黏液星黏液、鐵罐星帶電、蝠翼星毒）；黏液角：黏液星每一下都沾
       const fin = s.launch && a.nh === s.hits.length - 1;
       const coat = fin || (this.form === "slime" && rank("slime", "g_coat"));
-      const n = world.hitArea(box, () => this.roll(mult, force), d, { launch: fin, push: h.push ?? 2, elem: coat ? ELEM[this.form] : null });
+      const push = (h.push ?? 2) * (this.form === "can" ? 1 + 0.1 * rank("can", "c_weight") : 1);   // 重量
+      const n = world.hitArea(box, () => this.roll(mult, force), d, { launch: fin, push, elem: coat ? ELEM[this.form] : null });
+      if (fin && this.form === "can" && rank("can", "c_quake")) world.groundSlam?.(this.x + d * 18, this.y, 54, 0.6);   // 震波
       if (fin && this.form === "star") {
         if (rank("star", "s_wave")) world.spawnWave?.(this.x + d * 10, this.y - 16, d);   // 星光斬
         if (rank("star", "s_light")) this.lightT = 2;                                     // 收招輕盈
@@ -328,7 +353,13 @@ export class Player {
 
   hurt(dmg, fromX, world) {
     if (this.invuln > 0 || this.state === "dash") return false;
-    dmg = Math.max(1, Math.round(dmg * (1 - reduction(this.stats.def)) * (this.filmT > 0 ? 0.75 : 1)));   // 黏液護膜：-25%
+    const def = this.stats.def * (this.dentT > 0 ? 1.5 : 1);   // 凹痕記憶：防禦 +50%
+    dmg = Math.max(1, Math.round(dmg * (1 - reduction(def)) * (this.filmT > 0 ? 0.75 : 1)));   // 黏液護膜：-25%
+    // 鐵皮（鐵罐星）：攻擊中被打不會中斷，只扣血
+    if (this.form === "can" && this.state === "attack" && rank("can", "c_iron")) {
+      this.hp = Math.max(0, this.hp - dmg); this.invuln = 0.4; this.flash = 0.08; sfx("hurt"); world.onPlayerHurt?.(dmg);
+      return true;
+    }
     this.hp = Math.max(0, this.hp - dmg);
     this.invuln = 0.9;
     this.flash = 0.08;

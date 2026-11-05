@@ -188,6 +188,79 @@ export const ICON_DEFS = {
     "..........lm..", ".........lam..", "..........mn..", "...lll........", "..lkalm...lm..", "..llllmn.lamn.",
     "..lllmmn..mn..", "...mmnn.......", "..........lm..", ".........lam..", "..........mn..",
   ] },
+  // ---- 形態技能樹節點（第 4b 批）：鐵罐星 n_c_*、蝠翼星 n_b_*
+  n_c_long: { ox: 1, oy: 2, rows: [
+    "........aaa...", ".......abbbc..", "ccc...abbbbcd.", "......abbbbcd.", "cccc..abbbbcd.", "......abbbbcd.",
+    "ccc...abbbbcd.", ".......bbbcd..", "........cdd...",
+  ] },
+  n_c_volt: { ox: 1, oy: 1, rows: [
+    "....aaaaaa....", "..abbbbbGHbc..", ".abbbbbGaIbcd.", ".abbbbGaIbbcd.", ".abbbGaHHHIcd.", ".abbbHHHaIbcd.",
+    ".abbbbbGaIbcd.", ".abbbbGaIbbcd.", "..bccHIccccd..", "....dddddd....",
+  ] },
+  n_c_brake: { ox: 1, oy: 1, rows: [
+    "....abbbc.....", "....abbbc.....", "....abbbc.....", "...abbbbbc....", "..abbbbbbbc...", "..ccccccccd...",
+    "G............G", ".H..........H.", "uuuuuu.uuuuuuu", "vvvvv.v.vvvvvv", "wwww.www.wwwww",
+  ] },
+  n_c_weight: { ox: 2, oy: 1, rows: [
+    "...bbbbb...", "..b.....b..", "..b.....b..", "...b...b...", ".abbbbbbbc.", "abbbbbbbbcd", "abbbbbbbbcd",
+    "abbbbbbbbcd", "abbbbbbbccd", ".bccccccdd.", "..dddddd...",
+  ] },
+  n_c_quake: { ox: 1, oy: 1, rows: [
+    "..aabbbc......", "..abbbbcc.....", "..bbbbccd.....", "....uv........", "....uv........", "....uv........",
+    "G...uv....G...", ".H..uw...H....", "uuuuuuuuuuuuuu", "vvv.vvvvvv.vvv", "ww.wwwwwwww.ww",
+  ] },
+  n_c_iron: { ox: 2, oy: 1, rows: [
+    "abbbbbbbbbc", "aGbbbbbbbGd", "abbbbbbbbcd", "abbbbbbbbcd", "abbbbbbbbcd", "aGbbbbbbbGd", "abbbbbbbbcd",
+    ".abbbbbbcd.", "..abbbbcd..", "...abbcd...", "....acd....",
+  ] },
+  n_c_conduct: { ox: 1, oy: 2, rows: [
+    ".p............", "pqr...........", "qaq.G.........", "rqrGaH....p...", ".r...GaH.pqr..", "......HIGqaq..",
+    "........rqrG..", ".........r.GaH", "............Hp", "...........pqr", "...........qaq", "............r.",
+  ] },
+  n_c_dent: { ox: 3, oy: 1, rows: [
+    "..aabbcc..", ".abbbbbccd", ".cccccccdd", ".abbbbbbcd", ".abdbbbbcd", ".ab.ddbbcd", ".abd..dbcd", ".abbddbbcd",
+    ".cccccccdd", ".abbbbbbcd", ".abbbbbbcd", "..cccccdd.",
+  ] },
+  n_c_truck: { ox: 1, oy: 2, rows: [
+    "lllllllll.....", "lkkkkkkkm.....", "lkkkkkkkmppq..", "lkkkkkkkmpaqr.", "lllllllllpqqr.", "mmmmmmmmmmmmmn",
+    "mmbbmmmmmmbbmn", "..bab.....bab.", "...b.......b..",
+  ] },
+  n_b_far: { ox: 1, oy: 2, rows: [
+    "L.............", "LM...........", "LMM..........", "LMMMN....OOO..", ".LMMNN.....OOP", "..LMNNN..OOO..",
+    "...LMNN.......", "....LMN.......", ".....LN.......",
+  ] },
+  n_b_fang: { ox: 2, oy: 1, rows: [
+    "LLLLLLLLLLL", "LMMMMMMMMMN", ".NNNNNNNNN.", "..A.....A..", "..AB...AB..", "..AB...AB..", "...B....B..",
+    "...k....k..", "...l....l..", "...m.....m.", "..........m",
+  ] },
+  n_b_double: { ox: 1, oy: 1, rows: [
+    "L...........L.", "LM..L.L....ML.", ".LMMMfMfMMML..", "..NNMMMMMNN...", "....NNNNN.....", "..............",
+    "L...........L.", "LM..L.L....ML.", ".LMMMfMfMMML..", "..NNMMMMMNN...", "....NNNNN.....",
+  ] },
+  n_b_claw: { ox: 2, oy: 1, rows: [
+    "A....A....A", ".A....A....A", ".BA...BA...BA", "..BA...BA...B", "...BA...BA...", "....BA...BA..",
+    ".....BA...BA.", "......BA...B.", ".......B.....",
+  ] },
+  n_b_hover: { ox: 1, oy: 1, rows: [
+    "L...........L.", "LM...L.L...ML.", ".LMMMMfMfMMML.", "..NNMMMMMMNN..", "....NNNNNN....", "..............",
+    "....p.p.p.p...", "..............", ".....p.p.p....", "..............", "......p.p.....",
+  ] },
+  n_b_blood: { ox: 3, oy: 1, rows: [
+    "LLLLLLLLL.", "LMMMMMMMN.", ".A.....A..", ".AB...AB..", "..B...B...", "....h.....", "...hgh....", "...ggh....",
+    "..hgfghh..", "..hggghh..", "...hhhh...",
+  ] },
+  n_b_toxic: { ox: 3, oy: 1, rows: [
+    "...bbb....", "...aac....", "...bbc....", "..LMMMN...", ".LkllmNN..", "LkallmmNO.", "LllllmmNO.", "LllmmmmNO.",
+    ".NmmmmNO..", "..NNNNO...",
+  ] },
+  n_b_night: { ox: 1, oy: 1, rows: [
+    "......LLLL....", "....LMM.......", "...LMM........", "..LMN.....p...", "..LMN.........", "..LMN....pp...",
+    "..LMMN........", "...LMNN...p...", "....LMMNNN....", "......NNNN....",
+  ] },
+  n_b_swarm: { ox: 1, oy: 1, rows: [
+    "L.L.L.........", "LMMfML........", ".NNMN.........", "........L.L.L.", "........LMMfML", ".........NNMN.",
+    "..L.L.L.......", "..LMMfML......", "...NNMN.......",
+  ] },
   // ---- 元素狀態圖示（第 4 批，技能樹說明用）
   el_burn: { ox: 3, oy: 1, rows: [
     "....f.....", "...fg.....", "...fgh....", "..fggh..f.", "..fgGgh.gh", ".fgGHGghgh", ".fgHaHGggh", "fgGHHHGghi",
