@@ -72,7 +72,7 @@ function build() {
   // 8c：新的大地圖（有 solids）用 terrain-art.js 畫（地表、牆、天花板、轉角、水晶礦脈）；舊關卡維持原本的地面圖
   if (LAYOUT.solids) {
     const gl = [];
-    paintTerrain((x, y) => solidAt(x, y + 0.5), LEVEL_W, MAP_H, (x, y, c) => put(x, y, C(c)), (x, y, c) => { PFE[y * LEVEL_W + x] = 1; gl.push([x, y, C(c)]); });
+    paintTerrain((x, y) => solidAt(x, y + 0.5), LEVEL_W, MAP_H, (x, y, c) => put(x, y, C(c)), (x, y, c) => { PFE[y * LEVEL_W + x] = 1; gl.push([x, y, C(c)]); }, THEME === "lair" ? "junk" : THEME);
     for (const g of glowClusters(gl, 24)) PROP_LIGHTS.push({ x: g.x, y: g.y, r: 26, lv: 1.3, col: g.col });
   } else {
   const STONE = (x, y) => gt.px[(16 + (y % 30)) * gt.w + 86 + (x % 30)];
@@ -123,7 +123,8 @@ build();
 // 8c：高地圖的上層遠景、中景（upper-art.js）。原本的圖層只有一個畫面高，鏡頭往上時接到這兩張
 const TALL = MAP_H > H, UH = TALL ? Math.ceil((MAP_H - H) * 0.75) + 16 : 0;
 const toPx = (a) => { const out = new Uint32Array(a.w * a.h); a.px.forEach((c, i) => { if (c) out[i] = C(c); }); return { w: a.w, h: a.h, px: out }; };
-const UP_FAR = TALL ? toPx(genUpper("far", 640, UH)) : null, UP_MID = TALL ? toPx(genUpper("mid", 768, UH)) : null;
+const UTH = THEME === "lair" ? "junk" : THEME;
+const UP_FAR = TALL ? toPx(genUpper("far", 640, UH, UTH)) : null, UP_MID = TALL ? toPx(genUpper("mid", 768, UH, UTH)) : null;
 const VPAR = { 1: 0.5, 2: 0.7, 3: 0.85 };   // 垂直視差
 /** 某一層在螢幕第 y 列要取原圖的哪一列：>=0 原圖、<0 上層圖（從上層圖底部往上數）、null＝這層在這裡是空的 */
 function layerRow(y, cy, k) { return TALL ? y + Math.round((cy - (MAP_H - H)) * VPAR[k]) : y; }
