@@ -4,12 +4,19 @@ import { rand } from "../../pixelfx/src/core/index.js";
 import { hitFx, damageFx } from "./combatfx.js";
 import { sfx } from "./audio.js";
 import { spawn } from "./fx.js";
+import * as hitSpark from "../../pixelfx/src/fx/impacts/hit-spark.js";
+// 特效補強 7：一次打死一群時，死亡煙霧疊成一大片、把主角和怪都蓋住 → 煙播快一點（1.5 倍）；0.35 秒內、70px 內已經冒過兩團，後面的改成往上噴的小火花
+//   （草稿 game/tools/drafts/poofcrowd.mjs：6 隻同時死，被蓋住的像素最高 4022 → 1988、1.3 秒 → 0.9 秒散完；試過收集光爆，4 個白圓環疊在一起像泡泡，不用）
+let recentPoofs = [];
+const POOF_SPARK = { slime: ["#0b2f2b", "#12594a", "#1f8f4f", "#47c752", "#a6f06a", "#f0ffd2", "#ffffff"], gold: ["#4a2e06", "#8c5a0c", "#d49a14", "#ffd23a", "#fff09a", "#ffffff", "#ffffff"], bat: ["#1f1629", "#382645", "#5b3f66", "#866089", "#b88fb0", "#e8cfe0", "#ffffff"], trash: ["#1f272c", "#313d42", "#485a5c", "#667a78", "#8ea29c", "#c4d4cc", "#ffffff"] };
 import { flash } from "./light.js";
 import { blit } from "./bake.js";
 import { A } from "./assets.js";
 import { FLOOR, LEVEL_W, WALL } from "./level.js";
 import { groundAt, floorAt, moveX, geo } from "./map.js";
 import { applyStatus, drawStatus, slowOf } from "./status.js";
+import { drawAlert, ALERT_T } from "./alertfx.js";
+let alertSfxT = 0;   // 一次醒很多隻：提示音 0.3 秒內只響一次
 
 const GRAV = 900;
 // 史萊姆動畫裡「跳起來」到「落地」的時間（見 pixelfx/src/fx/critters/slime.js）
@@ -57,14 +64,18 @@ export class Enemy {
     this.world = world;
     // 8b：怪物擺在地圖上，主角靠近（左右 200、上下 90 以內）或被打到才醒來追；還沒醒的在原地待著（史萊姆原地輕跳、蝙蝠在原地飛）
     if (!this.awake) {
-      if (Math.abs(player.x - this.x) < 200 && Math.abs(player.y - this.y) < 90 || this.hp < this.k.hp) this.awake = true;
+      if (Math.abs(player.x - this.x) < 200 && Math.abs(player.y - this.y) < 90 || this.hp < this.k.hp) {
+        this.awake = true; this.alertT = 0;   // 特效補強 2：發現主角，頭上冒「!」
+        const now = performance.now(); if (now - alertSfxT > 300) { alertSfxT = now; sfx("chime"); }
+      }
       else {
         if (!this.k.fly) { this.vx *= 1 - 8 * dt; this.vy += GRAV * dt; this.land(dt); }
         else { this.homeY ??= this.y; this.y = this.homeY + Math.sin(this.clock * 2.2) * 4; }
         return;
       }
     }
-    this.awakeT = (this.awakeT ?? 0) + dt;   // 狀態傷害打死的時候要用（掉錢、經驗）
+    this.awakeT = (this.awakeT ?? 0) + dt;
+    if (this.alertT !== undefined && this.alertT < ALERT_T) this.alertT += dt;   // 狀態傷害打死的時候要用（掉錢、經驗）
     if (this.k.fly) {
       if (stunned) {
         this.vx *= 1 - 5 * dt;
@@ -177,7 +188,12 @@ export class Enemy {
     this.dead = true;
     sfx("kill");
     const b = this.box();
-    spawn(this.k.poof, { x: Math.round(this.x), y: Math.round(b.y1) });
+    const now = performance.now();
+    recentPoofs = recentPoofs.filter((q) => now - q.t < 350);
+    const crowded = recentPoofs.filter((q) => Math.abs(q.x - this.x) < 70 && Math.abs(q.y - this.y) < 60).length >= 2;
+    recentPoofs.push({ x: this.x, y: this.y, t: now });
+    if (crowded) spawn(hitSpark, { x: Math.round(this.x), y: Math.round((b.y0 + b.y1) / 2), palette: POOF_SPARK[this.kind] ?? POOF_SPARK.slime, angle: -Math.PI / 2, light: 0.35 }, { speed: 1.2 });
+    else spawn(this.k.poof, { x: Math.round(this.x), y: Math.round(b.y1) }, { speed: 1.5 });
     const [a, z] = this.k.coins;
     world.dropCoins(this.x, (b.y0 + b.y1) / 2, a + Math.floor(Math.random() * (z - a + 1)));
     world.onKill(this);
@@ -188,5 +204,6 @@ export class Enemy {
     if (this.biting) blit(frame, this.flash > 0 ? this.k.whiteBite : this.k.bite, this.biteT, this.x, this.y, this.face < 0);
     else blit(frame, this.flash > 0 ? this.k.white : this.k.anim, this.t, this.x, this.y, this.face < 0);
     drawStatus(frame, this);
+    if (this.alertT !== undefined && this.alertT < ALERT_T && !this.dead) drawAlert(frame, this.x, this.box().y0 - 3, this.alertT, this.elite);
   }
 }

@@ -13,6 +13,10 @@ import { talk, ask, dialog, typewriter } from "./dialog.js";
 import * as frogFx from "../../pixelfx/src/fx/critters/frog.js";
 import { computeLight, flash, updateLight } from "./light.js";
 import { spawn, updateFx, drawFx, juice, hitStop, shake, shakeOffset, fxCount } from "./fx.js";
+import { createDeathFx } from "./deathfx.js";
+const deathFx = createDeathFx();   // 特效補強 1：死亡碎掉、祭壇重生
+import { drawLowHp, beat } from "./lowhpfx.js";
+const lowHp = { phase: 0.99, k: 1, pulse: 0 };   // 特效補強 3：低血量（< 30%）四角泛紅＋心跳
 import { Player, MP_COST } from "./player.js";
 import { Enemy } from "./enemies.js";
 import { Director, STAGES } from "./stage.js";
@@ -674,14 +678,20 @@ const world = {
         bossBar.classList.remove("on");
         music(null);
       }
-      const fade = $("fade");
-      fade.classList.add("on");
-      player.invuln = 2;
+      // 特效補強 1：先碎掉（停頓、震動、碎片噴出）→ 0.55 秒後黑幕 → 0.9 秒送回祭壇，碎片飛回來聚成一點、光柱打下來，主角在光裡出現
+      const fade = $("fade"), col = FORMS[player.form]?.color ?? "#ffd84a";
+      deathFx.shatter(player.x, player.y, col);
+      hitStop(0.12); shake(0.35, 3); sfx("crit");
+      player.hideT = 9; player.invuln = 10; player.state = "move";
+      setTimeout(() => fade.classList.add("on"), 550);
       setTimeout(() => {
         if (to) { player.x = to.x; player.y = to.y; player.vx = player.vy = 0; player.state = "move"; camX = Math.max(0, Math.min(LEVEL_W - W, to.x - W / 2)); camY = Math.max(0, Math.min(MAP_H - H, to.y - H * 0.62)); }
-        player.hp = player.maxHp; player.mp = player.maxMp; player.invuln = 1.5;
+        player.hp = player.maxHp; player.mp = player.maxMp;
         fade.classList.remove("on");
-      }, 420);
+        deathFx.regather(player.x, player.y, col);
+        player.hideT = 0.52; player.invuln = 2;   // 光柱打下來的那一刻出現
+        setTimeout(() => sfx("levelup"), 480);
+      }, 900);
       toast(checkpoint ? "系統：你死了。……從祭壇重來吧，打倒的怪不會回來。" : "系統：你死了。……算了，當我沒看到，再給你一次機會。");
     }
   },
@@ -1166,6 +1176,9 @@ function tick(dt) {
   updateLight(dt);
   updateStatus(dt, enemies);   // 元素狀態：持續傷害、倒數、蒸氣霧
   hazards.update(dt, enemies);
+  deathFx.update(dt);
+  lowHp.k = player.hp > 0 && !(player.hideT > 0) ? player.hp / player.maxHp : 1;
+  if (lowHp.k < 0.3) { lowHp.phase += dt * (1.2 + 1.2 * (1 - lowHp.k / 0.3)); if (lowHp.phase >= 1) { lowHp.phase -= 1; sfx("heart"); } lowHp.pulse = beat(lowHp.phase); } else { lowHp.phase = 0.99; lowHp.pulse = 0; }
   // 戰鬥中（附近 240px 有活的敵人），次要的 HUD 變淡；離開戰鬥 2 秒後恢復
   if (enemies.some((e) => !e.dead && Math.abs(e.x - player.x) < 240)) hudFadeT = 2; else hudFadeT -= dt;
   if ((hudFadeT > 0) !== inCombat) { inCombat = hudFadeT > 0; document.body.classList.toggle("combat", inCombat); }
@@ -1403,11 +1416,13 @@ function render() {
   if (ult.on) { dimScene(frame); drawFx(frame, "back"); }
   if (player.kingT > 0) drawKingBack(frame, player.x, player.y - 12, sceneClock);   // 星王化：光芒在主角後面
   player.draw(frame);
+  deathFx.draw(frame);
   if (player.kingT > 0) drawKingFront(frame, player.x, player.y - 12, sceneClock);   // 王冠
   drawFx(frame, "front");
   fxState.form = player.form;
   drawCombatFx(frame);
   drawUlt(frame);
+  if (!TOWN) drawLowHp(frame, lowHp.k, lowHp.pulse);
   if (TOWN) drawTownFg(frame);
   if (director?.lock) drawBarrier(director.lock);
   if (!TOWN) drawForeground(frame);

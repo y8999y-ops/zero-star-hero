@@ -6,6 +6,7 @@
 // 每個環境像素存「色票編號＋明暗階」，畫的時候依光源（light.js）把明暗階往上加，所以場景會被火把、
 // 水晶、火球、爆炸照亮，而且顏色永遠是色票裡的顏色（規則v2：不漸層、不柔邊）。
 import { genPlatform } from "./platform-art.js";
+import { genLayer, THEME_LAYERS } from "./bg-art.js";
 import { hex, rand } from "../../pixelfx/src/core/index.js";
 import { tintOf } from "./light.js";
 import { loadArt, cell, baseRow, blit, glows, glowClusters } from "./art.js";
@@ -38,6 +39,9 @@ export const TORCH_POS = LAYOUT.torches.map((t) => ({ x: t.x ?? t, y: t.y ?? FLO
 const ART = await loadArt(["valley/back", "valley/far", "valley/mid", "valley/near", "valley/fg", "valley/ground", "valley/platform",
   "props/rocks", "props/junk", "props/crystals", "props/grass", "props/flowers", "props/moss"]);
 const C = (s) => hex(s) >>> 0;
+// 特效補強 4（美術需求 B2）：垃圾山、巢穴換掉遠景＋近景，洞窟換掉中景＋近景（bg-art.js）；深淵照舊用山谷那套
+const THEME_BG = Object.fromEntries((THEME_LAYERS[THEME] ?? []).map((k) => [k, genLayer(k, THEME === "lair" ? "junk" : THEME)]));
+const layerArt = (k) => THEME_BG[k] ?? ART["valley/" + k];
 const dim = (c, k) => 0xff000000 | ((((c >>> 16) & 255) * k) << 16) | ((((c >>> 8) & 255) * k) << 8) | ((c & 255) * k);
 const PAR = { 0: 0.05, 1: 0.12, 2: 0.3, 3: 0.6, F: 1.35 };
 const BACK_COLOR = C("#07070f");
@@ -115,7 +119,7 @@ function build() {
     }
   }
   // 近景的水晶：找亮青色的像素群，當光源
-  const nr = ART["valley/near"], pts = [];
+  const nr = layerArt("near"), pts = [];
   for (let y = 0; y < nr.h; y++) for (let x = 0; x < nr.w; x++) { const c = nr.px[y * nr.w + x]; if (c && glows(c)) pts.push([x, y, c]); }
   for (const g of glowClusters(pts, 28)) CRYSTAL_LIGHTS.push({ x: g.x, y: g.y, r: 34, lv: 2 });
 }
@@ -148,7 +152,7 @@ const LAYER_DIM = { 1: 0.78, 2: 0.66, 3: 0.6, 4: 1 };
 /** 畫背景＋遊玩層。lv 是 light.js 算出來的亮度（螢幕座標，小數）：照到的地方加上光源的顏色。 */
 export function drawLevel(frame, lv) {
   const W = frame.w, cx = frame.ox | 0, cy = frame.oy | 0, out = frame.color, V = vignette(W), [TR, TG, TB] = tintOf(), LB = frame.light;
-  const B = ART["valley/back"], F1 = ART["valley/far"], M2 = ART["valley/mid"], N3 = ART["valley/near"];
+  const B = ART["valley/back"], F1 = layerArt("far"), M2 = layerArt("mid"), N3 = layerArt("near");
   const o0 = Math.floor(cx * PAR[0]), o1 = Math.floor(cx * PAR[1]), o2 = Math.floor(cx * PAR[2]), o3 = Math.floor(cx * PAR[3]);
   for (let y = 0; y < H; y++) {
     const wy = y + cy, row = y * W;

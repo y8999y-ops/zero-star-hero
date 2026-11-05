@@ -116,6 +116,7 @@ const S = {
   grass: () => hiss({ dur: 0.06, vol: 0.08, type: "highpass", f0: 4000 }),
   splash: () => hiss({ dur: 0.16, vol: 0.14, type: "highpass", f0: 1600, f1: 900 }),
   chime: (f = 1976) => tone({ wave: "sine", f0: f, dur: 0.5, vol: 0.12 }),
+  heart: () => { const t = ctx.currentTime; tone({ wave: "sine", f0: 78, f1: 46, dur: 0.11, vol: 0.34 }, sfxBus, t); tone({ wave: "sine", f0: 66, f1: 40, dur: 0.11, vol: 0.22 }, sfxBus, t + 0.16); },   // 低血量的心跳（咚、咚）
   // ---- 王
   bossLand: () => { hiss({ dur: 0.4, vol: 0.5, f0: 500, f1: 90 }); tone({ wave: "sine", f0: 75, f1: 32, dur: 0.35, vol: 0.55 }); },
   roar: () => { tone({ wave: "saw", f0: 150, f1: 70, dur: 1.1, vol: 0.3, at: 0.08, vib: [9, 14], lp: 1200 }); tone({ wave: "sq25", f0: 75, f1: 50, dur: 1.1, vol: 0.18, at: 0.08 }); hiss({ dur: 1.1, vol: 0.2, f0: 900, f1: 300, at: 0.1 }); },

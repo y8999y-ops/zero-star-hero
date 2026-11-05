@@ -140,6 +140,8 @@ export class Player {
 
   update(dt, world) {
     this.clock += dt;
+    // 特效補強 1：死掉碎成碎片到重生之間，主角藏起來、不能動
+    if (this.hideT > 0) { this.hideT -= dt; this.vx = this.vy = 0; this.ghosts.length = 0; return; }
     if (this.resonT > 0) this.resonT -= dt;
     if (this.kingT > 0) this.kingT -= dt;   // 星王化（神話「星王之冠」）
     if (this.lightT > 0) this.lightT -= dt;
@@ -478,6 +480,7 @@ export class Player {
   }
 
   draw(frame) {
+    if (this.hideT > 0) return;
     // 殘影
     // 閃避殘影：用實色剪影，越舊顏色越暗（不用半透明）
     for (const g of this.ghosts) paintStar(frame, g.x, g.y, g.q, g.flip, { form: this.form, tint: GHOST[Math.min(GHOST.length - 1, Math.floor((g.age / 0.22) * GHOST.length))] });
