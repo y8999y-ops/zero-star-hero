@@ -21,9 +21,12 @@
       <div class="ub" id="ubBar"><div class="ub-fill" id="ubFill"></div><span>大招</span></div>
       <div class="xp" id="xpBar"><div class="xp-fill" id="xpFill"></div><span id="xpText"></span></div>
     </div>
-    <button id="btnBag" title="背包（I）"><i class="dot" id="bagDot"></i></button>
-    <button id="btnQuest" title="任務"></button>
-    <button id="btnTree" title="技能樹（T）"><i class="dot" id="treeDot"></i></button>
+    <button id="btnMenu" title="選單"><i class="dot" id="menuDot"></i></button>
+    <div id="hudMenu">
+      <button id="btnBag" title="背包（I）" data-label="背包"><i class="dot" id="bagDot"></i></button>
+      <button id="btnQuest" title="任務" data-label="任務"></button>
+      <button id="btnTree" title="技能樹（T）" data-label="技能樹"><i class="dot" id="treeDot"></i></button>
+    </div>
   </div>
   <div id="qtrack" class="empty">
   </div>
@@ -74,6 +77,7 @@
 
   <div id="inv" class="hidden">
     <div id="invBox">
+      <div id="invTabs"><button data-pane="invHero">裝備</button><button data-pane="invBag" class="on">背包</button><button data-pane="invDetail">詳細</button></div>
       <div class="pn" id="invHero">
         <div class="ttl"><b>勇者</b><span id="invLv">Lv 1</span></div>
         <div class="xpbar"><i id="invXp"></i><span id="invXpText"></span></div>

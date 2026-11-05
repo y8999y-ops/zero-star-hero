@@ -25,8 +25,14 @@ export function createInventory(profile, { onChange, onClose }) {
   let open = false;
 
   // ---- 版面：固定 760×360，等比縮放塞進螢幕
+  // 手機：三欄改成分頁（裝備／背包／詳細），一次只看一頁，字才不會被縮得太小
+  let pane = "invBag", moreStats = false;
+  const setPane = (id) => { pane = id; box.dataset.pane = id; box.querySelectorAll("#invTabs button").forEach((b) => b.classList.toggle("on", b.dataset.pane === id)); };
+  box.querySelectorAll("#invTabs button").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); sfx("ui"); setPane(b.dataset.pane); }));
+  setPane(pane);
   function fit() {
-    const k = Math.min((innerWidth * 0.98) / 760, (innerHeight * 0.98) / 360, 2.2);
+    const touch = document.body.classList.contains("touch"), bw = touch ? 480 : 760, bh = touch ? 300 : 360;
+    const k = Math.min((innerWidth * 0.98) / bw, (innerHeight * 0.98) / bh, 2.2);
     box.style.transform = `translate(-50%, -50%) scale(${k})`;
   }
   addEventListener("resize", fit);
@@ -68,6 +74,7 @@ export function createInventory(profile, { onChange, onClose }) {
     }
     sel = it ? s : null;
     if (it) it.new = false;
+    if (it && document.body.classList.contains("touch")) setPane("invDetail");   // 手機：點了東西直接看詳細
     render();
   }
 
@@ -217,8 +224,12 @@ export function createInventory(profile, { onChange, onClose }) {
     $("btnAuto").textContent = "自動拆解：" + AUTO[profile.auto];
     // 數值
     // 左邊數值：圖示＋數字（三欄，滑過去看名稱），沒有的屬性不顯示（前 5 個一定顯示）
-    $("invStats").innerHTML = STAT_ROWS.filter(([k], i) => i < 5 || st[k]).map(([k, n, f]) => `<div title="${n}">${stIco(k)}<b>${f(st[k])}</b></div>`).join("")
+    // 只顯示 5 個主要數值，按「更多」才展開其他（有數值的）
+    const extra = STAT_ROWS.filter(([k], i) => i >= 5 && st[k]);
+    $("invStats").innerHTML = STAT_ROWS.filter(([k], i) => i < 5 || (moreStats && st[k])).map(([k, n, f]) => `<div title="${n}">${stIco(k)}<b>${f(st[k])}</b></div>`).join("")
+      + (extra.length ? `<button class="more" id="statMore">${moreStats ? "收起" : `更多 ＋${extra.length}`}</button>` : "")
       + `<div class="pw"><span>戰力</span><b>${Math.round(power(st) * 10)}</b></div>`;
+    $("statMore")?.addEventListener("click", (e) => { e.stopPropagation(); moreStats = !moreStats; render(); });
     renderDetail(st);
     drawPortrait(st);
   }

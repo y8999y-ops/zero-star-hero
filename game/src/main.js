@@ -49,12 +49,15 @@ import { createHazards } from "./hazards.js";
 import * as starFallFx from "../../pixelfx/src/fx/arcane/star-fall.js";
 import { drawWave, WAVE_T, WAVE_V } from "./starwave.js";
 const waves = [];   // 技能樹「星光斬」
+let hudFadeT = 0, inCombat = false;   // 戰鬥中 HUD 變淡
 import { ultPixels, ULT_S } from "./ult-icon.js";
 import { ult, ULT_MAX, ULT_MULT, startUlt, updateUlt, ultLights, dimScene, drawUlt, drawCutIn, postUlt } from "./ult.js";
 
 installUiArt();
 // 場景：城鎮（碎星鎮）或關卡。換場景＝存檔後重新載入頁面（下一個場景記在 sessionStorage）。
 // ?endless 直接進無限模式、?stage 直接進 1-1（開發用）。第一次玩（還沒通關、還沒登記）先從 1-1 開始。
+const DEBUG = new URLSearchParams(location.search).has("debug");   // 網址加 ?debug 才顯示 fps 那行
+if (DEBUG) document.body.classList.add("debug");
 const NEXT_KEY = "zero-hero-next", QS = new URLSearchParams(location.search);
 const nextScene = sessionStorage.getItem(NEXT_KEY);
 sessionStorage.removeItem(NEXT_KEY);
@@ -253,6 +256,7 @@ function buildFormHud() {
     if (freePts(id) > 0) { const dot = document.createElement("i"); dot.className = "ptdot"; dot.textContent = freePts(id); b.appendChild(dot); }
     const any = Object.keys(profile.forms.owned).reduce((s, f) => s + Math.max(0, freePts(f)), 0);
     $("treeDot").textContent = any; $("treeDot").classList.toggle("on", any > 0);
+    if (typeof updateMenuDot === "function") updateMenuDot();
     b.addEventListener("pointerdown", (e) => { e.stopPropagation(); switchForm(id); });
     formHud.appendChild(b);
   });
@@ -655,7 +659,14 @@ function renderTracker() {
   if (sys) lines.push(`<div class="sys">${I("xp")}${sys.title}</div>`);
   const m = MEALS[profile.meal];
   if (m) lines.push(`<div class="meal">${I(m.icon)}${m.buff[1]}</div>`);
-  trackEl.innerHTML = lines.join("");
+  // 2026-11-05 介面減量：最多顯示 2 行（其餘用「＋N」），有變化時亮 3 秒，之後變淡
+  const html = lines.slice(0, 2).join("") + (lines.length > 2 ? `<div class="more">＋${lines.length - 2}</div>` : "");
+  if (html !== trackEl.innerHTML) {
+    trackEl.innerHTML = html;
+    trackEl.classList.remove("dim");
+    clearTimeout(renderTracker.t);
+    renderTracker.t = setTimeout(() => trackEl.classList.add("dim"), 3000);
+  }
   trackEl.classList.toggle("empty", !lines.length);
 }
 initTownUI({
@@ -928,6 +939,9 @@ function tick(dt) {
   updateLight(dt);
   updateStatus(dt, enemies);   // 元素狀態：持續傷害、倒數、蒸氣霧
   hazards.update(dt, enemies);
+  // 戰鬥中（附近 240px 有活的敵人），次要的 HUD 變淡；離開戰鬥 2 秒後恢復
+  if (enemies.some((e) => !e.dead && Math.abs(e.x - player.x) < 240)) hudFadeT = 2; else hudFadeT -= dt;
+  if ((hudFadeT > 0) !== inCombat) { inCombat = hudFadeT > 0; document.body.classList.toggle("combat", inCombat); }
   if (cleared) { updateFx(dt); return; }
   // 通關後踩到傳送門：回碎星鎮
   if (stageDone && !leaving && portalX !== null && player.grounded && Math.abs(player.x - portalX) < 12) {
@@ -1180,7 +1194,18 @@ function updateBagDot() {
   const up = profile.inv.some((it) => compare(it, profile.equip, profile.lv)?.better), nw = profile.inv.some((it) => it.new);
   bagDot.className = "dot" + (up ? " on" : nw ? " on new" : "");
   bagDot.textContent = up ? "▲" : nw ? "!" : "";
+  updateMenuDot();
 }
+// 左上「選單」：背包、任務、技能樹收在裡面（2026-11-05 介面減量）；裡面有東西要看時選單本身也亮一顆點
+function updateMenuDot() {
+  const on = $("bagDot").classList.contains("on") || $("treeDot").classList.contains("on");
+  $("menuDot").className = "dot" + (on ? " on" : "");
+  $("menuDot").textContent = on ? "!" : "";
+}
+$("btnMenu").style.backgroundImage = `url(${iconURL("menu", 2)})`;
+$("btnMenu").addEventListener("click", (e) => { e.stopPropagation(); sfx("ui"); $("hudMenu").style.left = $("btnMenu").offsetLeft + "px"; document.body.classList.toggle("menuOpen"); });
+for (const id of ["btnBag", "btnQuest", "btnTree"]) $(id).addEventListener("click", () => document.body.classList.remove("menuOpen"));
+addEventListener("pointerdown", (e) => { if (!e.target.closest?.("#hud")) document.body.classList.remove("menuOpen"); });
 const comboEl = $("combo"), comboArt = createComboArt(comboEl), hpFill = $("hpFill"), hpText = $("hpText"), coinsEl = $("coins"), killsEl = $("kills"), fpsEl = $("fps"), cdEl = $("skillCd"), toastEl = $("toast");
 const ubFill = $("ubFill"), ubBar = $("ubBar"), ultG = $("ultCv").getContext("2d"), ultG2 = $("ultHudCv").getContext("2d"), ultHud = $("ultHud"), pcSkill = $("pcSkill"), pcSkillT = $("pcSkillT"), ultImg = new ImageData(ULT_S, ULT_S), btnUlt = $("btnUlt");
 let toastT = 0;
@@ -1338,7 +1363,7 @@ function loop(now) {
   hud(dt);
   fpsN++;
   if ((fpsT += dt) >= 0.5) {
-    fpsEl.textContent = `${Math.round(fpsN / fpsT)} fps · 每幀 ${(costMs / fpsN).toFixed(1)}ms · 敵人 ${enemies.length} · 特效 ${fxCount()}`;
+    if (DEBUG) fpsEl.textContent = `${Math.round(fpsN / fpsT)} fps · 每幀 ${(costMs / fpsN).toFixed(1)}ms · 敵人 ${enemies.length} · 特效 ${fxCount()}`;
     costMs = 0;
     fpsN = 0;
     fpsT = 0;

@@ -120,7 +120,7 @@ export function feed(item, note = "", better = false) {
   row.className = "feed-row";
   row.innerHTML = `<img src="${iconURL(item.icon, 2)}"><b style="color:${item.kind === "formcore" ? RARITY[item.rarity].color : colorOf(item)}">${item.name}</b>${better ? '<em class="up">▲</em>' : ""}${note ? `<span>${note}</span>` : ""}`;
   feedEl.prepend(row);
-  while (feedEl.children.length > 5) feedEl.lastChild.remove();
-  setTimeout(() => row.classList.add("out"), 3200);
-  setTimeout(() => row.remove(), 3800);
+  while (feedEl.children.length > 3) feedEl.lastChild.remove();   // 2026-11-05 介面減量：最多 3 行、2 秒淡出
+  setTimeout(() => row.classList.add("out"), 2000);
+  setTimeout(() => row.remove(), 2600);
 }
