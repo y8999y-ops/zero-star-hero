@@ -8,7 +8,7 @@ import { freshQuests } from "./quests.js";
 const KEY = "zero-hero-save-v1";
 const BACKUP = "zero-hero-save-v1-backup-ver2";
 const VER = 3;
-export const BAG_SIZE = 40;
+export const BAG_SIZE = 100;   // 使用者 2026-11-05：40 → 100 格
 
 export const freshGuild = () => ({ registered: false, done: 0, quest: null });
 function fresh() {

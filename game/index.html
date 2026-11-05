@@ -89,11 +89,18 @@
       </div>
       <div class="pn" id="invBag">
         <div class="ttl"><b>背包</b><span id="bagN"></span><span class="cur"><i class="ic coin"></i><span id="invCoins"></span><i class="ic scrap"></i><span id="invScrap"></span></span></div>
+        <div id="invFilter"><div class="frow2" id="fPart"></div><div class="frow2" id="fRar"></div></div>
         <div id="grid"></div>
-        <div class="row">
+        <div class="row" id="bagBtns">
           <button class="pbtn plain" id="btnSort">整理</button>
-          <button class="pbtn red" id="btnSalvageAll">拆解垃圾</button>
-          <button class="pbtn plain" id="btnAuto">自動拆解：關</button>
+          <button class="pbtn plain" id="btnBatch">批量分解</button>
+          <button class="pbtn red" id="btnSalvageAll">拆垃圾</button>
+          <button class="pbtn plain" id="btnAuto">自動：關</button>
+        </div>
+        <div class="row" id="batchBtns">
+          <button class="pbtn plain" id="btnPickAll">全選</button>
+          <button class="pbtn plain" id="btnBatchX">取消</button>
+          <button class="pbtn red" id="btnBatchGo">分解 0 件</button>
         </div>
         <div id="invSay"></div>
       </div>

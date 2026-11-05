@@ -1,5 +1,7 @@
 // 背包畫面：左邊身上裝備＋數值，中間背包格子，右邊選中物品的詳細資料和比較。
 // 手機：點一下選取，再點一次同一格就直接穿上。電腦：I / B / Tab 開關，Esc 關閉。
+// 使用者 2026-11-05（方案 A）：手機電腦一樣三欄同時顯示（左邊只剩 7 個裝備格＋數值，不跳頁）；背包格放大、一排 5 個、100 格；
+//   篩選（部位、稀有度）、鎖定（鎖住的任何拆解都會跳過）、批量分解（選取模式打勾，確認才拆）。
 import { playOpen } from "./ui-trans.js";
 import { setNum, bump } from "./bump.js";
 import { uiFx } from "./ui-fx.js";
@@ -27,6 +29,8 @@ const SLOT_ICON = { weapon: "core_dawn", head: "crown", body: "star", hands: "gl
 export function createInventory(profile, { onChange, onClose }) {
   const root = $("inv"), box = $("invBox");
   let sel = null;   // { where: "bag" | "equip", key }
+  let fPart = "all", fRar = -1, batch = false, warned = false;
+  const picked = new Set();   // 批量分解選到的物品（物品本身，不是格子編號：篩選、整理之後還是同一件）
   let open = false;
 
   // ---- 版面：固定 760×360，等比縮放塞進螢幕
@@ -40,7 +44,7 @@ export function createInventory(profile, { onChange, onClose }) {
   detailX.addEventListener("click", (e) => { e.stopPropagation(); sfx("ui"); sel = null; setPane("invBag"); render(); });
   box.appendChild(detailX);
   function fit() {
-    const touch = document.body.classList.contains("touch"), bw = touch ? 600 : 760, bh = touch ? 320 : 360;   // 手機：裝備＋背包同一個畫面（使用者 2026-11-05）
+    const bw = 760, bh = 360;   // 方案 A：手機電腦一樣三欄（使用者 2026-11-05）
     const k = Math.min((innerWidth * 0.98) / bw, (innerHeight * 0.98) / bh, 2.2);
     box.style.transform = `translate(-50%, -50%) scale(${k})`;
   }
@@ -61,11 +65,12 @@ export function createInventory(profile, { onChange, onClose }) {
   }
   // ---- 背包格
   const grid = $("grid"), cells = [];
+  // 每一格顯示 view[格子] 那一件（篩選後的清單），所以點擊時查 dataset.i（背包裡的編號）
   for (let i = 0; i < BAG_SIZE; i++) {
     const el = document.createElement("div");
     el.className = "slot";
-    el.addEventListener("click", () => !dragged && pick({ where: "bag", key: i }));
-    el.addEventListener("pointerdown", (e) => startDrag(e, { where: "bag", key: i }));
+    el.addEventListener("click", () => { if (dragged) return; const k = el.dataset.i ? +el.dataset.i : -1; pick({ where: "bag", key: k }); });
+    el.addEventListener("pointerdown", (e) => { if (!batch && el.dataset.i) startDrag(e, { where: "bag", key: +el.dataset.i }); });
     grid.append(el);
     cells.push(el);
   }
@@ -73,6 +78,13 @@ export function createInventory(profile, { onChange, onClose }) {
   const itemAt = (s) => (!s ? null : s.where === "bag" ? profile.inv[s.key] : profile.equip[s.key]);
 
   function pick(s) {
+    if (batch && s.where === "bag") {   // 批量分解：點一下打勾／取消
+      const it = profile.inv[s.key];
+      if (!it) return;
+      if (it.locked) { sfx("close"); return say("鎖定的不能分解。"); }
+      if (picked.has(it)) picked.delete(it); else picked.add(it);
+      warned = false; sfx("ui"); render(); return;
+    }
     const same = sel && sel.where === s.where && sel.key === s.key;
     const it = itemAt(s);
     if (same && it) {
@@ -83,9 +95,7 @@ export function createInventory(profile, { onChange, onClose }) {
     }
     sel = it ? s : null;
     if (it) it.new = false;
-    // 手機：裝備和背包在同一個畫面；點了東西，詳細資料蓋在背包上面（右上 ✕ 或點空格回去）
-    if (document.body.classList.contains("touch")) setPane(it ? "invDetail" : "invBag");
-    render();
+    render();   // 方案 A：詳細資料一直在右邊的側邊欄，不跳頁
   }
 
   function equip(i, slot) {
@@ -158,6 +168,7 @@ export function createInventory(profile, { onChange, onClose }) {
   function salvageAt(s) {
     const it = itemAt(s);
     if (!it || s.where !== "bag") return;
+    if (it.locked) return say("鎖定中，先解鎖才能拆。");
     const r = RARITY[it.rarity];
     profile.scrap += r.scrap;
     profile.coins += r.coin;
@@ -175,7 +186,7 @@ export function createInventory(profile, { onChange, onClose }) {
   $("btnSalvageAll").addEventListener("click", () => {
     let n = 0, scrap = 0, coin = 0;
     profile.inv = profile.inv.filter((it) => {
-      const bad = it.rarity <= R.common && !compare(it, profile.equip, profile.lv)?.better;
+      const bad = !it.locked && it.rarity <= R.common && !compare(it, profile.equip, profile.lv)?.better;
       if (bad) { n++; scrap += RARITY[it.rarity].scrap; coin += RARITY[it.rarity].coin; }
       return !bad;
     });
@@ -184,6 +195,38 @@ export function createInventory(profile, { onChange, onClose }) {
     sel = null;
     say(n ? `拆解了 ${n} 件垃圾和普通裝備：星塵 +${scrap}，金幣 +${coin}` : "沒有可以拆的東西（比身上好的不會拆）。");
     changed();
+  });
+  // ---- 篩選：部位、稀有度（兩排小按鈕）
+  const PARTS = [["all", null, "全部"], ["weapon", "core_dawn", "星核"], ["head", "crown", "頭"], ["body", "star", "身體"], ["hands", "glove", "手"], ["feet", "boot", "腳"], ["acc", "shard", "碎片"]];
+  $("fPart").innerHTML = PARTS.map(([k, ic, n]) => `<button data-p="${k}" title="${n}">${ic ? `<img src="${iconURL(ic, 1)}">` : "全"}</button>`).join("");
+  $("fRar").innerHTML = `<button data-r="-1" title="全部">全</button>` + RARITY.map((r, i) => `<button data-r="${i}" title="${r.name}" style="--rc:${r.color}"><i></i></button>`).join("");
+  $("fPart").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; e.stopPropagation(); sfx("ui"); fPart = b.dataset.p; render(); });
+  $("fRar").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; e.stopPropagation(); sfx("ui"); fRar = +b.dataset.r; render(); });
+  const matchF = (it) => (fPart === "all" || it.kind === fPart) && (fRar < 0 || (it.kind !== "junk" && it.rarity === fRar));
+  // ---- 批量分解
+  const setBatch = (on) => { batch = on; picked.clear(); warned = false; sel = null; box.classList.toggle("batch", on); render(); };
+  $("btnBatch").addEventListener("click", (e) => { e.stopPropagation(); sfx("ui"); setBatch(true); say("點要分解的物品打勾，再按「分解」。鎖定的不會被選到。"); });
+  $("btnBatchX").addEventListener("click", (e) => { e.stopPropagation(); sfx("ui"); setBatch(false); });
+  $("btnPickAll").addEventListener("click", (e) => {
+    e.stopPropagation(); sfx("ui");
+    const all = profile.inv.filter((it) => matchF(it) && !it.locked);
+    if (all.every((it) => picked.has(it))) all.forEach((it) => picked.delete(it)); else all.forEach((it) => picked.add(it));
+    warned = false; render();
+  });
+  $("btnBatchGo").addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (!picked.size) return say("還沒選東西。");
+    const better = [...picked].filter((it) => it.kind !== "junk" && compare(it, profile.equip, profile.lv)?.better).length;
+    if (better && !warned) { warned = true; sfx("close"); return say(`選到 ${better} 件比身上好的（▲），確定要拆就再按一次。`); }
+    let n = 0, scrap = 0, coin = 0;
+    profile.inv = profile.inv.filter((it) => { if (!picked.has(it) || it.locked) return true; n++; scrap += RARITY[it.rarity].scrap; coin += RARITY[it.rarity].coin; return false; });
+    profile.scrap += scrap; profile.coins += coin;
+    sfx("chime");
+    const r = $("btnBatchGo").getBoundingClientRect();
+    uiFx(burstFx, { palette: ["#0c2a60", "#3ab8f0", "#9af0ff", "#ffffff"], light: 0.5, seed: n }, r.left + r.width / 2, r.top);
+    setBatch(false);
+    say(`分解了 ${n} 件：星塵 +${scrap}，金幣 +${coin}`);
+    onChange();
   });
   $("btnAuto").addEventListener("click", () => {
     profile.auto = (profile.auto + 1) % AUTO.length;
@@ -207,9 +250,9 @@ export function createInventory(profile, { onChange, onClose }) {
   }
 
   // ---- 繪製
-  function slotHTML(el, it, extra = "") {
+  function slotHTML(el, it, extra = "", k = 2) {
     el.className = "slot" + (it ? " r" + it.rarity : "") + extra;
-    el.innerHTML = it ? `<img src="${iconURL(it.icon, 2)}">` : "";
+    el.innerHTML = it ? `<img src="${iconURL(it.icon, k)}">` : "";
   }
 
   function render() {
@@ -222,16 +265,30 @@ export function createInventory(profile, { onChange, onClose }) {
       slotHTML(el, it, sel?.where === "equip" && sel.key === s.id ? " sel" : "");
       if (!it) el.innerHTML = `<img class="ghost" src="${iconURL(SLOT_ICON[s.id], 2, "#2a2340")}">`;
     }
-    cells.forEach((el, i) => {
-      const it = profile.inv[i];
-      slotHTML(el, it, sel?.where === "bag" && sel.key === i ? " sel" : "");
-      if (it?.new) el.insertAdjacentHTML("beforeend", "<i class='badge new'>!</i>");
-      if (it && compare(it, eq, lv)?.better) el.insertAdjacentHTML("beforeend", "<i class='badge up'>▲</i>");
+    // 篩選後的清單；沒篩選時把空格也畫出來（看得出還剩幾格），有篩選時只補滿最後一排
+    const view = profile.inv.map((it, i) => i).filter((i) => matchF(profile.inv[i]));
+    const filtering = fPart !== "all" || fRar >= 0, shown = filtering ? Math.max(5, Math.ceil(view.length / 5) * 5) : BAG_SIZE;
+    cells.forEach((el, c) => {
+      const i = view[c], it = i == null ? null : profile.inv[i];
+      el.style.display = c < shown ? "" : "none";
+      el.dataset.i = i == null ? "" : i;
+      slotHTML(el, it, (sel?.where === "bag" && sel.key === i && it ? " sel" : "") + (it && picked.has(it) ? " picked" : ""), 3);   // 大格子用 3 倍圖（48px，像素整齊）
+      if (!it) return;
+      if (it.new) el.insertAdjacentHTML("beforeend", "<i class='badge new'>!</i>");
+      if (compare(it, eq, lv)?.better) el.insertAdjacentHTML("beforeend", "<i class='badge up'>▲</i>");
+      if (it.locked) el.insertAdjacentHTML("beforeend", "<i class='badge lock'></i>");
+      if (picked.has(it)) el.insertAdjacentHTML("beforeend", "<i class='badge pick'>✓</i>");
     });
     $("bagN").textContent = `${profile.inv.length} / ${BAG_SIZE}`;
+    $("fPart").querySelectorAll("button").forEach((b) => b.classList.toggle("on", b.dataset.p === fPart));
+    $("fRar").querySelectorAll("button").forEach((b) => b.classList.toggle("on", +b.dataset.r === fRar));
+    if (batch) {
+      let sc = 0; for (const it of picked) sc += RARITY[it.rarity].scrap;
+      $("btnBatchGo").innerHTML = `分解 ${picked.size} 件 <small>+${sc}星塵</small>`;
+    }
     setNum($("invCoins"), profile.coins);
     setNum($("invScrap"), profile.scrap);
-    $("btnAuto").textContent = "自動拆解：" + AUTO[profile.auto];
+    $("btnAuto").textContent = "自動：" + AUTO[profile.auto];
     // 數值
     // 左邊數值：圖示＋數字（三欄，滑過去看名稱），沒有的屬性不顯示（前 5 個一定顯示）
     // 只顯示 5 個主要數值，按「更多」才展開其他（有數值的）
@@ -252,7 +309,7 @@ export function createInventory(profile, { onChange, onClose }) {
     if (prevSets) for (const [id, n] of Object.entries(sc)) {
       const was = prevSets[id] ?? 0, hit = [4, 2].find((k) => was < k && n >= k);
       if (!hit) continue;
-      const S = SETS[id], r = $("portrait").getBoundingClientRect();
+      const S = SETS[id], r = $("doll").getBoundingClientRect();
       uiFx(burstFx, { palette: ["#1a1430", S.color, S.color, "#ffffff"], light: 0.7, seed: n }, r.left + r.width / 2, r.top + r.height / 2);
       if (hit === 4) setTimeout(() => uiFx(burstFx, { palette: ["#1a1430", S.color, "#fff0a0", "#ffffff"], light: 0.8, seed: 9 }, r.left + r.width / 2, r.top + r.height / 2), 200);
       say(`套裝「${S.name}」${hit} 件效果啟動！`);
@@ -265,8 +322,13 @@ export function createInventory(profile, { onChange, onClose }) {
 
   function renderDetail(st) {
     const el = $("invDetail"), it = itemAt(sel);
+    if (batch) {
+      let sc = 0, co = 0; for (const p of picked) { sc += RARITY[p.rarity].scrap; co += RARITY[p.rarity].coin; }
+      el.innerHTML = `<div class="empty">批量分解<br><br>已選 <b>${picked.size}</b> 件<br>星塵 +${sc}　金幣 +${co}<br><br><small>點格子打勾／取消<br>「全選」＝選目前篩選的全部<br>鎖定的不會被選到</small></div>`;
+      return;
+    }
     if (!it) {
-      el.innerHTML = `<div class="empty">點一下物品看詳細資料<br>再點一次就穿上<br><br><small>▲ 比身上的好　! 新撿到的</small></div>`;
+      el.innerHTML = `<div class="empty">點一下物品看詳細資料<br>再點一次就穿上<br><br><small>▲ 比身上的好　! 新撿到的<br>鎖頭＝鎖定（不會被拆）</small></div>`;
       return;
     }
     const r = RARITY[it.rarity], junk = it.kind === "junk";
@@ -290,7 +352,8 @@ export function createInventory(profile, { onChange, onClose }) {
       cmp = `<div class="cmp"><div class="ch">已裝備</div></div>`;
       if (sel.key !== "weapon") btns = `<button class="pbtn plain" data-act="unequip">卸下</button>`;
     }
-    if (sel.where === "bag") btns += `<button class="pbtn red" data-act="salvage">拆解 <small>+${r.scrap}星塵</small></button>`;
+    if (!junk) btns += `<button class="pbtn plain lockb${it.locked ? " on" : ""}" data-act="lock" title="鎖定的不會被任何拆解拆掉"><i class="lk"></i>${it.locked ? "解鎖" : "鎖定"}</button>`;
+    if (sel.where === "bag" && !it.locked) btns += `<button class="pbtn red" data-act="salvage">拆解 <small>+${r.scrap}星塵</small></button>`;
     let lore = it.unique ? `<div class="lore">${UNIQUES[it.unique].lore}</div>` : "";
     // 神話：四種形態各自的效果（目前的形態亮）、覺醒階段與進度、解鎖的故事
     if (it.myth) {
@@ -312,6 +375,7 @@ export function createInventory(profile, { onChange, onClose }) {
       const a = b.dataset.act;
       if (a === "equip") equip(sel.key);
       else if (a === "unequip") unequip(sel.key);
+      else if (a === "lock") { it.locked = !it.locked; sfx(it.locked ? "clank" : "ui"); say(it.locked ? `${it.name} 鎖定了：不會被拆掉。` : `${it.name} 解鎖了。`); changed(); }
       else salvageAt(sel);
     }));
   }
@@ -341,6 +405,7 @@ export function createInventory(profile, { onChange, onClose }) {
     open = false;
     sfx("close");
     sel = null;
+    if (batch) setBatch(false);
     root.classList.add("hidden");
     onClose?.();
   }
