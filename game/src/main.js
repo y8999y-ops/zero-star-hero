@@ -58,6 +58,7 @@ import { drawMiniBat } from "./minibat.js";
 import { drawMark, drawStrike, drawShield, drawReson, drawKingBack, drawKingFront, STRIKE_T } from "./setfx.js";
 import { drawTrail, drawDizzy, TRAIL_T } from "./corefx.js";
 import { drawAltar } from "./altar-art.js";
+import { createFeatures } from "./features.js";
 import * as sparkFx from "../../pixelfx/src/fx/impacts/hit-spark.js";
 const strikes = [];   // 流星獵手 4 件的小流星（星核「隕鐵」的小隕石也用這個）
 let comet = null;     // 星核「彗尾」：這次衝刺打過誰
@@ -82,6 +83,7 @@ const STAGE = STAGES[STAGE_ID];
 // ---- 8b：星之祭壇（存檔點）。碰到會點亮、回滿血和魔力；死掉從最後點亮的祭壇重來（還沒點過＝關卡起點）
 const altars = TOWN || ENDLESS ? [] : (STAGE.altars ?? (LAYOUTS[STAGE_ID].w > 1200 ? [{ x: Math.round(LAYOUTS[STAGE_ID].w * 0.5) }] : [])).map((a) => ({ x: a.x, y: a.y ?? floorAt(a.x, LAYOUTS[STAGE_ID].solids ? 0 : FLOOR - 4), lit: false, near: false }));
 let checkpoint = null;
+let features = null;   // 8d：形態機關＋一次性資源（features.js），玩家和世界建好之後才建立
 // 關卡進度：哪幾關打過（舊存檔：通關過＝1-1 打過）
 profile.cleared ??= profile.clears > 0 ? { "1-1": true } : {};
 const unlocked = () => STAGE_ORDER.filter((id, i) => i === 0 || profile.cleared[STAGE_ORDER[i - 1]]);
@@ -452,6 +454,25 @@ const props = createProps({
   floor: FLOOR, w: BARE ? 0 : geo.w, platforms: TOWN || BARE ? [] : PLATFORMS, town: TOWN,
   avoid: TOWN ? [...NPCS.map((n) => n.x), 924] : [...TORCHES, ...hazards.list.flatMap((h) => [h.x - 14, h.x, h.x + 14]), STAGE.exitX - 120, STAGE.exitX + 26, STAGE.start.x, ...scenery.puddles.flatMap((p) => [p.x - p.w / 4, p.x, p.x + p.w / 4])],
 });
+// 8d：形態機關＋一次性資源
+const FX_PAL = { crack: ["#140a18", "#5a2a20", "#8a3e24", "#b05a2a", "#d27c3c", "#e4b072", "#fff6c4", "#ffffff"], ember: ["#1e1206", "#4a2c08", "#86520c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"],
+  seal: ["#1e1206", "#4a2c08", "#86520c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"], vein: ["#0c2a40", "#1a7aa8", "#28aed0", "#4cd8ec", "#a0f2fa", "#e4ffff", "#ffffff", "#ffffff"],
+  fossil: ["#1a1030", "#3a2468", "#5a3c94", "#7a5cb8", "#9a80d0", "#c8b8f0", "#ffffff", "#ffffff"], safe: ["#1e1206", "#4a2c08", "#86520c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"],
+  stele: ["#1e1206", "#4a2c08", "#86520c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"] };
+if (!TOWN && !ENDLESS) features = createFeatures({
+  stageId: STAGE_ID, list: STAGE.features ?? [], profile, player,
+  api: {
+    say: (m, sec) => sayQueue.push([m, sec]),
+    toast: (m, sec) => toast(m, sec),
+    save: () => save(profile),
+    refresh: () => refreshStats(),
+    burst: (x, y, kind) => { spawn(collectBurst, { x: Math.round(x), y: Math.round(y), palette: FX_PAL[kind], light: 0.6 }); flash(x, y, 90, 3, 0.6, FX_PAL[kind][5]); sfx(kind === "crack" ? "hitH" : "levelup"); if (kind === "crack") shake(0.3, 4); },
+    boing: (x, y) => { sfx("jump2"); world.dust(x, y, 6); },
+    clink: (x, y) => { sfx("clank"); flash(x, y, 30, 1.5, 0.2, "#4cd8ec"); shake(0.08, 1); },
+    loot: (x, y) => { world.dropCoins(x, y, 14); dropItem(x, y, R.rare, { rarity: R.rare, ilvl: ilvlNow(1), dir: -1 }); dropItem(x, y, R.epic, { rarity: R.epic, ilvl: ilvlNow(1), dir: 1 }); },
+  },
+});
+window.__game.features = features;
 props.onBreak = (o) => {
   world.dropCoins(o.x, o.y - 10, o.type ? 2 + Math.floor(Math.random() * 3) : 1 + Math.floor(Math.random() * 3));
   if (o.type === "crate" && Math.random() < 0.12) dropItem(o.x, o.y - 10, R.common, { ilvl: ilvlNow(0) });
@@ -505,6 +526,7 @@ const world = {
   hitArea(box, dmg, dir, opts) {
     let n = 0;
     props.hit(box, dir);
+    features?.hit(box);
     scenery.hit(box, dir);
     hazards.hit(box);
     for (const e of enemies) if (!e.dead && overlaps(box, e.box())) {
@@ -521,6 +543,7 @@ const world = {
   hitOnce(box, hit, dmg, dir, opts) {
     let n = 0;
     props.hit(box, dir);
+    features?.hit(box);
     scenery.hit(box, dir);
     for (const e of enemies) if (!e.dead && !hit.has(e) && overlaps(box, e.box())) { hit.add(e); const r = dmg(); e.hit(r, dir, opts, world, box); onCritHit(e, r); n++; }
     if (n) { addCombo(n); chargeUlt(n * 0.8); hitStop(0.05); shake(0.15, 2); }
@@ -1164,6 +1187,7 @@ function tick(dt) {
   separate(dt);
   updateCoreFx(dt);
   updateAltars();
+  features?.update(dt);
   for (const e of enemies) {
     if (e.dead) continue;
     // 戰鬥區封鎖時，敵人也出不去
@@ -1188,7 +1212,7 @@ function tick(dt) {
     s.life -= dt;
     s.fx.options.x = Math.round(s.x);
     s.fx.options.y = Math.round(s.y);
-    let hit = s.life <= 0 || solidAt(s.x, s.y);   // 8b：技能彈撞到地形就爆
+    let hit = s.life <= 0 || features?.shotAt(s.x, s.y, s.form) || solidAt(s.x, s.y);   // 8b：技能彈撞到地形就爆；8d：先問封印門
     if (!hit) for (const e of enemies) if (!e.dead && e !== s.skip && overlaps(e.box(), { x0: s.x - 8, x1: s.x + 8, y0: s.y - 8, y1: s.y + 8 })) {
       // 技能樹「貫穿」（星星）：穿過第一隻，打到第二隻才爆
       if (s.form === "star" && !s.small && rank("star", "s_pierce") && !s.skip) { s.skip = e; e.hit(player.roll(1.2 * player.skillMul()), s.dir, { push: 2 }, world); continue; }
@@ -1304,11 +1328,13 @@ function render() {
   ultLights(lights);
   props.lights(lights);
   scenery.lights(lights);
+  features?.lights(lights);
   for (const a of altars) lights.push(a.lit ? { x: a.x, y: a.y - 18, r: 70, lv: 2.4, col: "#ffd060" } : { x: a.x, y: a.y - 14, r: 26, lv: 0.8, col: "#7488aa" });
   const lv = computeLight(frame, lights);
   if (TOWN) drawTown(frame, lv, sceneClock);
   else { drawLevel(frame, lv); drawAtmosphere(frame, sceneClock); }
   for (const a of altars) if (Math.abs(a.x - camX - W / 2) < W) drawAltar(frame, a.x, a.y, a.lit, sceneClock);
+  features?.draw(frame, sceneClock);
   props.draw(frame, lv);
   scenery.draw(frame, lv, sceneClock);
   hazards.draw(frame);

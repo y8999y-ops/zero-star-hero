@@ -125,7 +125,9 @@ const TALL = MAP_H > H, UH = TALL ? Math.ceil((MAP_H - H) * 0.75) + 16 : 0;
 const toPx = (a) => { const out = new Uint32Array(a.w * a.h); a.px.forEach((c, i) => { if (c) out[i] = C(c); }); return { w: a.w, h: a.h, px: out }; };
 const UTH = THEME === "lair" ? "junk" : THEME;
 const UP_FAR = TALL ? toPx(genUpper("far", 640, UH, UTH)) : null, UP_MID = TALL ? toPx(genUpper("mid", 768, UH, UTH)) : null;
-const VPAR = { 1: 0.5, 2: 0.7, 3: 0.85 };   // 垂直視差
+// 垂直視差（使用者回報：越跳越高，頭頂的尖刺會變低）——原本 0.5／0.7／0.85，爬高 432 時洞頂的鐘乳石往下移 200 多格，
+// 跑到主角腳下像天花板掉下來。改小：遠景、中景幾乎跟著鏡頭走（只動一點點，還是有深度感）
+const VPAR = { 1: 0.08, 2: 0.14, 3: 0.22 };
 /** 某一層在螢幕第 y 列要取原圖的哪一列：>=0 原圖、<0 上層圖（從上層圖底部往上數）、null＝這層在這裡是空的 */
 function layerRow(y, cy, k) { return TALL ? y + Math.round((cy - (MAP_H - H)) * VPAR[k]) : y; }
 let vig = new Float32Array(0), vigW = 0;
@@ -179,7 +181,8 @@ export function drawForeground(frame) {
   if (!FGI) return;
   const W = frame.w, cy = frame.oy | 0, out = frame.color, of = Math.floor((frame.ox | 0) * PAR.F);
   for (let y = 0; y < H; y++) {
-    const wy = y + cy - (MAP_H - H), sy = wy < 110 ? wy + FG_DROP : wy;   // 8b：前景只在地圖最底下那一個畫面   // 上半（垂掛的岩塊）往上收，下半（地上剪影）不動
+    // 高地圖：前景的垂掛岩塊固定在畫面上緣（跟著鏡頭，不會往下掉到主角腳下），地上的剪影只在最底層才畫
+    const wy = TALL ? (y < 110 ? y : y + cy - (MAP_H - H)) : y + cy - (MAP_H - H), sy = wy < 110 ? wy + FG_DROP : wy;   // 8b：前景只在地圖最底下那一個畫面   // 上半（垂掛的岩塊）往上收，下半（地上剪影）不動
     if (wy < 0 || sy >= H) continue;
     const r = sy * FGI.w, row = y * W;
     for (let x = 0; x < W; x++) {

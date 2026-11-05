@@ -288,7 +288,8 @@ export class Player {
         sfx(first ? "jump" : "jump2");
       }
     }
-    if (!input.jumpHeld && this.vy < -150 && this.state === "move") this.vy = -150; // 短按跳得低
+    if (this.boostT > 0) this.boostT -= dt;   // 8d：黏液菇彈起來的時候，不套用「短按跳得低」
+    else if (!input.jumpHeld && this.vy < -150 && this.state === "move") this.vy = -150; // 短按跳得低
 
     // ---- 重力
     if (this.state !== "dash" && this.state !== "fly") {

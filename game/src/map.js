@@ -75,3 +75,9 @@ export function moveX(x, nx, y, h, r) {
   return nx;
 }
 export { tileTop };
+/** 8d：機關（裂牆、封印門）在地形上開關一塊實心（只改碰撞，不改畫好的地形圖；機關自己畫自己） */
+export function setSolid(r, on) {
+  const x0 = Math.max(0, Math.floor(r.x / TILE)), x1 = Math.min(gw, Math.ceil((r.x + r.w) / TILE));
+  const y0 = Math.max(0, Math.floor(r.y / TILE)), y1 = Math.min(gh, Math.ceil((r.y + r.h) / TILE));
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) grid[y * gw + x] = on ? 1 : 0;
+}
