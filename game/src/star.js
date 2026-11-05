@@ -21,7 +21,7 @@ const GLASS = ["#d08a1c", "#f5c040", "#ffe27a", "#fff4b8", "#ffffff"].map(C);
 // 形態的身體顏色（暗帶 → 亮邊 → 核心）。鐵罐星的上半身還是金色，下半身另外套鐵罐（見 build 的「形態的外觀」）。
 // 造型：黏液星＝草稿 S3（果凍＋滴落＋氣泡），鐵罐星＝草稿 C1（下半身鐵罐＋罐蓋），使用者 2026-11-04 選定。
 const FORM_RAMPS = {
-  slime: ["#1f6a3a", "#36a04a", "#6cd45a", "#b8f4a0", "#ffffff"].map(C),
+  slime: ["#16602e", "#2fa040", "#62d84e", "#b4f890", "#ffffff"].map(C),   // 第 3 輪：照 pixelfx 史萊姆調亮、對比拉開
   bat: ["#4a2a6e", "#6e44a0", "#9a72d0", "#d4bcf4", "#ffffff"].map(C),
 };
 // 蝠翼星：兩個側角換成蝙蝠翅膀（翼膜＋指骨＋下緣扇形缺口），頭頂兩隻小耳朵
@@ -163,7 +163,7 @@ function build(q) {
     }
   };
   // 蝠翼星的翅膀：肩膀（底邊）＋三個指尖圍成一片翼膜，再挖兩個圓形缺口做出扇形下緣。指尖跟著角的位移移動。
-  const wings = [];
+  const wings = [], tipPx = [];
   // o：指尖「往外」的位移（左翼往外是 -x、右翼往外是 +x），先用左翼的座標算，最後 mx 鏡像成右翼
   const wing = (side, [ox, oy]) => {
     const mx = (x) => (side < 0 ? x : BW - 1 - x), conv = ([x, y]) => [PAD + mx(x) + lean, top + y];
@@ -184,6 +184,7 @@ function build(q) {
       if (nb < 2) mat[y][x] = 0;
     }
     wings.push({ sh: conv([5, 8]), tips: T.map(conv) });
+    for (const [tx, ty] of T.map(conv)) { const X = Math.round(tx), Y = Math.round(ty); if (mat[Y]?.[X] === 6) tipPx.push([X, Y]); }
   };
   if (q.form === "bat") {
     // 翅膀的指尖位移：角的 dx 是「往臉朝的方向」，左翼（後）往外是 -x，右翼（前）往外是 +x。把位移換成「往外」的量。
@@ -236,11 +237,14 @@ function build(q) {
     if (q.form === "slime") {
       // 果凍：大塊中間色，右下一整片暗、左上外緣亮、肚子裡亮的核心透出來；不用交錯的格子（避免變成棋盤格）
       const t = (x - cx) / 14 + (y - cy) / 11;
+      const inner = Math.hypot((x - cx) * 0.8, (y - cy - 2) * 1.1);   // 光聚在肚子偏下（照 pixelfx 史萊姆）
       if (plus) c = back ? G[3] : G[4];
       else if (r < 1.6 + core * 0.6) c = G[3];
       else if (d === 1 && br && t > 0.15) c = G[0];
+      else if (d === 2 && tl && t < -0.42 && t > -1.1 && y < cy) c = G[4];   // 左上沿著輪廓的濕亮弧（第 2 輪拉長）
       else if (d === 1 && tl && t < 0.2) c = G[3];
       else if (t > 0.55 || (d <= 2 && t > 0.2 && br)) c = G[1];
+      else if (inner < 5.2 && !back) c = G[3];
       else c = G[2];
       px[y][x] = c;
       continue;
@@ -308,6 +312,30 @@ function build(q) {
     // 氣泡：暗的那一側兩顆小亮點（一顆 2 格、一顆 1 格），頭頂一道濕亮的高光
     for (const [x, y] of [[19, 16], [19, 17], [8, 16]]) if (onBody(x, y)) put(x, y, G[3]);
     if (!back) for (const [x, y] of [[12, 2], [5, 8]]) put(x, y, G[4]);
+    // 腳下一灘黏液（兩腳都踩在地上時）：中間亮、兩邊暗，跟鞋子同一列
+    if ((q.ff?.[1] ?? 0) >= 0 && (q.fb?.[1] ?? 0) >= 0 && (q.body ?? 0) <= 0) {
+      // 第 2 輪：兩列高、比身體寬一點（第 1 輪只有一條細線看不出來），上面一列亮、邊緣暗
+      for (const [dy, wmax] of [[0, 0.98], [-1, 0.7]]) {
+        const Y = top + BH + 1 + dy;
+        for (let i = -3; i <= BW + 2; i++) {
+          const X = PAD + i, e = Math.abs(i - MID) / MID;
+          if (e > wmax || X < 0 || X >= W || mat[Y]?.[X]) continue;
+          mat[Y][X] = 4;
+          px[Y][X] = dy < 0 ? (e < 0.4 ? G[3] : G[2]) : e > wmax - 0.18 ? G[0] : e > 0.55 ? G[1] : G[2];
+        }
+      }
+      // 黏液把兩腿中間的小縫黏起來（不然縫會被外框填成一塊黑）
+      for (let dy = -2; dy >= -4; dy--) {
+        const Y = top + BH + 1 + dy;
+        for (let i = MID - 5; i <= MID + 5; i++) {
+          const X = PAD + i;
+          if (mat[Y]?.[X]) continue;
+          let l = false, r = false;
+          for (let k = 1; k <= 6; k++) { if (mat[Y]?.[X - k]) l = true; if (mat[Y]?.[X + k]) r = true; }
+          if (l && r && mat[Y + 1]?.[X]) { mat[Y][X] = 4; px[Y][X] = G[1]; }
+        }
+      }
+    }
   }
   if (q.form === "bat") {
     // 指骨：肩膀到三個指尖的骨頭線（只畫在翼膜上，最後一格留給外框收尾）
@@ -315,9 +343,10 @@ function build(q) {
       const [x0, y0] = w.sh, n = Math.max(Math.abs(tx - x0), Math.abs(ty - y0));
       for (let k = 1; k < n - 0.5; k++) {
         const X = Math.round(x0 + ((tx - x0) * k) / n), Y = Math.round(y0 + ((ty - y0) * k) / n);
-        if (mat[Y]?.[X] === 6) px[Y][X] = G[1];
+        if (mat[Y]?.[X] === 6) px[Y][X] = k < n * 0.5 ? G[3] : G[2];   // 翼骨：靠身體那半段被照亮
       }
     }
+    for (const [X, Y] of tipPx) px[Y][X] = G[3];   // 指尖的爪：亮一階（第 2 輪：第 1 輪用白色像雜點）
     // 頭頂兩隻小耳朵（尖的，外側暗、內側亮）
     for (const [x, y, k] of [[11, 0, 1], [11, -1, 1], [12, 0, 2], [17, 0, 1], [17, -1, 1], [16, 0, 2]]) putX(x, y, G[k], true);
   }
@@ -335,7 +364,7 @@ function build(q) {
         const X = PAD + i;
         if (mat[Y][X] === 3) continue;
         const u = (i - a) / (b - a);
-        let k = u < 0.1 ? 2 : u < 0.3 ? 4 : u < 0.62 ? 3 : u < 0.86 ? 2 : 1;
+        let k = u < 0.1 ? 2 : u < 0.17 ? 4 : u < 0.22 ? 5 : u < 0.32 ? 4 : u < 0.62 ? 3 : u < 0.86 ? 2 : 1;   // 0.17～0.22：窄的白色高光
         const row = Y === Yt ? "rim" : Y === Yt + 1 ? "under" : Y === Yb ? "bot" : Y === top + rowOf(16) ? "ridge" : Y === top + rowOf(17) ? "ridgeS" : "";
         if (row === "rim" || row === "ridge") k = k + 1;
         else if (row === "under" || row === "ridgeS" || row === "bot") k = k - 1;

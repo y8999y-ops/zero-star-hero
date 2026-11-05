@@ -606,3 +606,8 @@ body.talking #qtrack { opacity: .2; }
 /* 寶箱旁邊（不是戰鬥狀態）：攻擊鍵變成開箱鍵，發金光 */
 body.chestnear .btn.big { background-image: var(--tb-chest); animation: talkReady 1s ease-in-out infinite; }
 body.chestnear .btn.big.on { background-image: var(--tb-chest-on); }
+
+/* 主畫面按鈕第三版：用 frame-art 的公會外框（主按鈕切 8＝16px，四角有金座紅寶石）與卡片（切 6＝12px） */
+#startBtn.tbig { border: 16px solid transparent; border-image: var(--plate-main) 16 fill / 16px; padding: 0 22px 0 40px; }
+.tsmall { border: 12px solid transparent; border-image: var(--plate) 12 fill / 12px; }
+.tsmall:hover, .tsmall:focus-visible { border-image-source: var(--plate); filter: drop-shadow(0 0 8px rgba(255, 200, 90, .55)) brightness(1.15); }

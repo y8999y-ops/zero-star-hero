@@ -162,17 +162,23 @@ const GLYPH = {
   ],
 };
 function glassButton(size, k, glyph, on = false, tint = "#ffffff") {
-  const layer = discLayers(size), G = GLYPH[glyph], o = Math.round((size - 13) / 2);
+  // 第二版（照 pixelfx skill：有光有層次，不是平的）：外圈 2 層（亮的外環＋暗的內環，有厚度）、圈內上半淡淡的反光、
+  // 圖示 2 階（左上白、右下淡藍灰）＋選擇性的深色外框，左上角一顆反光點
+  const layer = discLayers(size), G = GLYPH[glyph], o = Math.round((size - 13) / 2), c = (size - 1) / 2;
+  const hi = on ? tint : "#ffffff", lo = on ? tint : "#c8d4e8";
   return pixels(size, size, k, (px) => {
     for (const [i, n] of layer) {
-      const x = i % size, y = (i / size) | 0;
-      px(x, y, n === 1 ? (on ? "rgba(255,255,255,.95)" : "rgba(255,255,255,.55)") : on ? "rgba(255,255,255,.24)" : "rgba(12,8,24,.30)");
+      const x = i % size, y = (i / size) | 0, tl = x + y < size - 1;
+      if (n === 1) px(x, y, on ? "rgba(255,255,255,.95)" : tl ? "rgba(255,255,255,.7)" : "rgba(220,230,255,.45)");
+      else if (n === 2) px(x, y, on ? "rgba(255,240,200,.45)" : "rgba(8,6,20,.45)");
+      else px(x, y, on ? "rgba(255,255,255,.22)" : y < c - 2 && Math.hypot(x - c, y - c) < c - 3 ? "rgba(190,210,255,.13)" : "rgba(12,8,24,.30)");
     }
     const at = (x, y) => G[y]?.[x] === "#";
     for (let y = -1; y <= 13; y++) for (let x = -1; x <= 13; x++) {
-      if (at(x, y)) px(o + x, o + y, on ? tint : "#ffffff");
-      else if (at(x + 1, y) || at(x - 1, y) || at(x, y + 1) || at(x, y - 1)) px(o + x, o + y, "rgba(10,8,20,.7)");
+      if (at(x, y)) px(o + x, o + y, x + y < 12 ? hi : lo);
+      else if (at(x + 1, y) || at(x - 1, y) || at(x, y + 1) || at(x, y - 1)) px(o + x, o + y, "rgba(10,8,20,.75)");
     }
+    px(Math.round(size * 0.27), Math.round(size * 0.22), "rgba(255,255,255,.85)");   // 圈上的反光點
   });
 }
 
@@ -257,7 +263,8 @@ export function installUiArt() {
   set("--bubble", bubble(2));
   set("--bubble-tail", bubbleTail(2));
   set("--inset", inset(2));
-  set("--plate", menuPlate(2));
+  // 主畫面按鈕：改用 frame-art 的公會主題卡片／外框（照 pixelfx skill 重畫過的那套），不再用 menuPlate
+  { const f = frameArt("guild", true); set("--plate", pixels(f.w, f.h, 2, (px) => f.px.forEach((c, i) => c && px(i % f.w, (i / f.w) | 0, c)))); }
   // 功能視窗的主題外框（frame-art.js，照 pixelfx skill 重畫）：公會金、鍛造鐵、旅館木、系統青，四角各有主題角飾
   for (const k of Object.keys(FRAME_THEMES)) {
     for (const [name, card] of [["win", false], ["card", true]]) {
@@ -276,7 +283,7 @@ export function installUiArt() {
       }
     });
   })());
-  set("--plate-main", menuPlate(2, true));
+  { const f = frameArt("guild"); set("--plate-main", pixels(f.w, f.h, 2, (px) => f.px.forEach((c, i) => c && px(i % f.w, (i / f.w) | 0, c)))); }
   set("--ic-star", pixels(16, 16, 2, (px) => stampIcon(px, "star", 0, 0)));
   set("--btn", button(3, false));
   set("--btn-down", button(3, true));

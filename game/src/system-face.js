@@ -1,4 +1,4 @@
-// 系統的形象（使用者 2026-11-05 選定草稿 B「星盤水晶」）：一顆漂浮的青色菱形水晶，中間一塊暗的螢幕臉，
+// 系統的形象（使用者 2026-11-05 選定草稿 B「星盤水晶」；同日第二版照 pixelfx ice/ice-crystal 改成六角柱水晶）：一顆漂浮的青色菱形水晶，中間一塊暗的螢幕臉，
 // 外面繞一圈軌道環。環上有一段亮光在繞（前半圈蓋在水晶前面、後半圈在後面），水晶輕輕上下飄。
 // 表情：normal 平常、smug 得意（臉頰泛紅、瞇眼）、wow 吃驚、blink 眨眼。草稿：game/tools/drafts/system-persona.mjs
 const S = 40;
@@ -28,14 +28,32 @@ function drawCrystal(expr, f) {
     }
   };
   ring(false);
-  for (let y = -13; y <= 13; y++) for (let x = -10; x <= 10; x++) {
-    if (Math.abs(x) / 10 + Math.abs(y) / 13 > 1) continue;
-    set(cx + x, cy + y, x < 0 ? (y < 0 ? "L" : "M") : y < 0 ? "M" : "D");
+  // 第二版（照 pixelfx ice/ice-crystal）：六角柱水晶，上下兩端尖；正面看到三個面——左面亮、中面中、右面暗，
+  // 頭尾的斜面比柱身亮一階（左上光），面和面之間有一條亮的稜線；1/4 的時候光掃過中面（跟著 f 轉）
+  // 第 2 輪：瘦高一點（第 1 輪像一個六角盒子），下端拉長；面的明暗拉開
+  const halfW = (y) => (y < -6 ? Math.round(7 * (14 + y) / 8) : y > 5 ? Math.round(7 * (15 - y) / 10) : 7);
+  const sweep = ((f + 2) % 8) / 8;   // 掃過去的光（每 8 格一次）
+  for (let y = -14; y <= 15; y++) {
+    const hw = halfW(y);
+    if (hw < 0) continue;
+    for (let x = -hw; x <= hw; x++) {
+      const u = (x + hw + 0.5) / (2 * hw + 1);   // 0 左～1 右
+      const face = u < 0.3 ? 0 : u < 0.7 ? 1 : 2, cap = y < -6 ? -1 : y > 5 ? 1 : 0;
+      let c = ["L", "M", "D"][face];
+      if (cap < 0) c = face === 2 ? "M" : "G";          // 上面的斜面朝光，亮
+      if (cap > 0) c = face === 0 ? "M" : "D";          // 下面的斜面背光，暗
+      if (face === 0 && cap === 0) c = "G";                // 左面最亮（第 2 輪：拉開明暗）
+      if (face === 1 && Math.abs(u - 0.3) < 0.08) c = "W";  // 左稜線：一條白線
+      if (face === 1 && cap === 0 && Math.abs((y + 13) / 26 - sweep) < 0.06) c = "G";   // 光掃過中面
+      set(cx + x, cy + y, c);
+    }
   }
-  for (let y = -4; y <= 4; y++) for (let x = -6; x <= 6; x++) if ((x / 6.5) ** 2 + (y / 4.5) ** 2 <= 1) set(cx + x, cy + y, "S");
+  for (let y = -4; y <= 4; y++) for (let x = -5; x <= 5; x++) if (Math.abs(x) + Math.max(0, Math.abs(y) - 2) * 1.5 <= 5.5) set(cx + x, cy + y, "S");
   FACES[expr].forEach((r, j) => [...r].forEach((ch, i) => ch === "#" && set(cx - 3 + i, cy - 1 + j, "W")));
   if (expr === "smug") { set(cx - 6, cy + 3, "P"); set(cx + 6, cy + 3, "P"); }
-  set(cx - 4, cy - 8, "W"); set(cx - 3, cy - 9, "W");      // 左上反光
+  set(cx - 5, cy - 8, "W"); set(cx - 4, cy - 9, "W"); set(cx - 5, cy - 9, "W");   // 左上反光（一小塊）
+  // 身邊繞著三顆霜屑（pixelfx 冰晶的做法），照 f 轉位置
+  for (let k = 0; k < 3; k++) { const a = phase * 1.5 + k * 2.1, x = Math.round(cx + Math.cos(a) * 13), y = Math.round(cy - 4 + Math.sin(a) * 9); if (!get(x, y)) set(x, y, k === 0 ? "W" : "G"); }
   ring(true);
   // 1px 外框
   const add = [];

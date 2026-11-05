@@ -337,7 +337,8 @@ const GEM_TYPES = [
   { name: "紫水晶", val: 50, G: ["#1a0a2a", "#3e1466", "#6a28a8", "#a050e0", "#d09cff", "#f0e0ff"] },
 ].map((g) => ({ ...g, C: g.G.map((c) => hex(c) >>> 0) }));
 // 寶石的樣子（5×5，左上亮右下暗、一顆高光；外框用最暗那階＝pixelfx 的選擇性外框，色階沿用 pixelfx chest-open 的寶石）
-const GEM_ART = [".54..", "54432", "44321", ".321.", "..1.."];
+// 第二版（照 pixelfx pickups 的 gemlet：上面是亮的檯面、中間腰線、下面收尖，一顆白色高光）
+const GEM_ART = [".4554.", "5w5432", "443321", ".3221.", "..21.."];
 const gems = [];
 function spawnLoot(x, y, nCoins, nGems, tier) {
   const sp = 1 + tier * 0.25;
@@ -377,12 +378,12 @@ function updateGems(dt) {
 function drawGems() {
   const Cc = frame.color, L = frame.light, Wf = frame.w;
   for (const g of gems) {
-    const T = GEM_TYPES[g.type], x = Math.round(g.x) - frame.ox - 2, y = Math.round(g.y) - frame.oy - 3;
+    const T = GEM_TYPES[g.type], x = Math.round(g.x) - frame.ox - 3, y = Math.round(g.y) - frame.oy - 3;
     const at = (i, j) => (GEM_ART[j]?.[i] ?? ".") !== ".";
-    for (let j = -1; j <= 5; j++) for (let i = -1; i <= 5; i++) {
+    for (let j = -1; j <= 5; j++) for (let i = -1; i <= 6; i++) {
       const px = x + i, py = y + j;
       if (px < 0 || py < 0 || px >= Wf || py >= frame.h) continue;
-      if (at(i, j)) Cc[py * Wf + px] = T.C[+GEM_ART[j][i]];
+      if (at(i, j)) Cc[py * Wf + px] = GEM_ART[j][i] === "w" ? 0xffffffff : T.C[+GEM_ART[j][i]];
       else if (at(i + 1, j) || at(i - 1, j) || at(i, j + 1) || at(i, j - 1)) Cc[py * Wf + px] = T.C[0];
     }
     const tw = Math.sin(stats.time * 5 + g.x * 0.7);   // 偶爾閃一下（十字小光）

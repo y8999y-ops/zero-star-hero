@@ -3,10 +3,12 @@
 // 咬人：蹲低蓄力 → 蓋子往後翻開露出牙齒和舌頭 → 停住 → 啪一聲闔上 → 回原位。
 // 參考：Recycle Items 的鐵罐、Spidrbot 與 Space Merc 圓桶的金屬明暗、Animated Slime 的眼睛（docs/素材參考.md）。
 // 規則：整數格、1px 外框、圓柱用縱向亮帶表現、鏽斑固定位置（不用隨機雜訊）、不抖色。
+// 第四版（2026-11-05，照 pixelfx skill 重畫）：選擇性外框（外框＝旁邊那塊顏色壓暗）、罐身一道窄的白色高光（pixelfx 金屬）、
+// 腳下一塊地面陰影（pixelfx pickups 的 blobShadow 做法）、眼睛的光更亮並照到蓋子內側、一個凹痕。
 // 第三版（2026-11-05）：在新場景裡太像背景的廢鐵 → 換成綠色烤漆、蓋子一直留一條縫露出大眼睛、蓋子上掛香蕉皮（剪影多一個辨識點）、
 // 蓋子抬高時舌頭從縫裡垂出來。參考：Penusbmic Monster Pack 的 Trash Monster、各家寶箱怪（Mimic）的咬人動作、敵人與背景的對比原則。
 const PEEL = ["#5a3a10", "#c08a1c", "#f0d048"], TONGUE = ["#a03050", "#e05a7a", "#ff9ab0"];
-import { hex } from "../../../pixelfx/src/core/index.js";
+import { hex, scale } from "../../../pixelfx/src/core/index.js";
 
 export const meta = {
   name: "Trash can mimic",
@@ -121,7 +123,12 @@ export function draw(p, t, o) {
       if (RIBS.includes(r)) k = Math.min(6, k + 1);
       if (RIBS.includes(r - 1)) k = Math.max(1, k - 2);
       if (r === BODY_H - 1) k = Math.max(1, k - 1);
-      set(x0 + c, top + r, P[k]);
+      let col = P[k];
+      if (c === 2 && !RIBS.includes(r) && !RIBS.includes(r - 1) && r < BODY_H - 1) col = scale(P[6], 1.18);   // 窄的白色高光
+      // 凹痕（右下，被撞過）：上緣暗、下緣亮
+      if (c >= 11 && c <= 13 && r === 17) col = P[Math.max(1, k - 2)];
+      if (c >= 11 && c <= 13 && r === 18) col = P[Math.min(6, k + 1)];
+      set(x0 + c, top + r, col);
     }
   }
   for (const [c, r, k] of RUST) set(x0 + c, top + r, Rr[k]);
@@ -147,7 +154,8 @@ export function draw(p, t, o) {
     LID_UP.forEach((row, j) => [...row].forEach((ch, i) => ch !== "." && set(x0 - 2 + i, lidTop + j, P[+ch])));
     // 香蕉皮還掛在翻起來的蓋子頂端
     for (const [dx, dy, k] of [[0, -3, 0], [-1, -2, 2], [0, -2, 2], [1, -2, 1], [-2, -1, 2], [-1, -1, 2], [1, -1, 1], [2, -1, 1], [-3, 0, 1], [2, 0, 1], [-3, 1, 0]]) set(x0 + dx, lidTop + dy, pk[k]);
-    p.light(mx + 11, ey, o.eyes[2], 0.5);
+    p.light(mx + 11, ey, o.eyes[2], 0.7);
+    p.glow(mx + 11, ey, 14, o.eyes[1], 0.3);
   } else {
     // 蓋子蓋著：前半段依 st.lid 抬起，縫裡露出眼睛
     const lift = st.lid + 1;   // 蓋子一直留一條縫
@@ -176,13 +184,24 @@ export function draw(p, t, o) {
       [-2, -2, 2], [-1, -2, 1], [-2, -1, 1], [-2, 0, 1], [-2, 1, 0],  // 垂到桶外
     ]) set(x0 + dx, py + dy, pk[k]);
     if (st.snap) { set(x0 + 19, top - 7, P[6]); set(x0 + 20, top - 8, P[6]); set(x0 + 19, top - 9, P[6]); }  // 闔上的「喀」
-    p.light(x0 + 13, ey, o.eyes[1], 0.25);
+    p.light(x0 + 13, ey, o.eyes[2], 0.55);
+    p.glow(x0 + 13, ey, 10, o.eyes[1], 0.22);   // 眼睛的光照到蓋子和桶口
   }
 
   // 外框：所有空格只要旁邊有東西，就描成最暗的一階
   const key = (x, y) => x + "," + y;
-  for (const [x, y] of [...grid.values()]) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-    if (!grid.has(key(x + dx, y + dy))) p.px(x + dx, y + dy, P[0]);
+  // 腳下的地面陰影（先畫，外框和身體蓋在上面）
+  // 第 2 輪：第 1 輪一列淡淡的點看起來像雜點，改成兩列、中間深兩邊淡的橢圓
+  for (const [y, w, k] of [[0, 10, 0.5], [1, 7, 0.3]]) for (let x = x0 - 2; x <= x0 + 19; x++) { const e = Math.abs(x + 0.5 - (x0 + 8.5)) / w; if (e < 1) p.dot(x, y, hex("#05060a"), k * (1 - e * e * 0.6)); }
+  // 選擇性外框：用旁邊那塊顏色壓暗到兩成五（金屬邊是深綠、香蕉皮邊是深棕），不是一律黑色
+  const outl = new Map();
+  for (const [x, y, c] of grid.values()) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const k = key(x + dx, y + dy);
+    if (grid.has(k)) continue;
+    const dark = scale(c, 0.25), cur = outl.get(k);
+    const lum = (v) => (v & 255) + ((v >>> 8) & 255) + ((v >>> 16) & 255);
+    if (!cur || lum(dark) < lum(cur[2])) outl.set(k, [x + dx, y + dy, dark]);
   }
+  for (const [x, y, c] of outl.values()) p.px(x, y, c);
   for (const [x, y, c] of grid.values()) p.px(x, y, c);
 }

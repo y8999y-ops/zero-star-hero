@@ -93,7 +93,23 @@ def ring(color):
             if canvas[y][x] is None and any(0 <= y + b < CH and 0 <= x + a < CW and canvas[y + b][x + a] not in (None, color) for a, b in ((1, 0), (-1, 0), (0, 1), (0, -1))):
                 add.append((x, y))
     for x, y in add: canvas[y][x] = color
-ring("#1a0a20")
+# 第二版（照 pixelfx skill，參考 ui/level-up 的字）：內圈改成選擇性外框——旁邊是金字就用深棕、紅字用深紅、白字用深紫，
+# 不是一律黑色；外圈維持紫色描邊，跟夜空分開
+def ring_sel():
+    add = []
+    for y in range(CH):
+        for x in range(CW):
+            if canvas[y][x] is not None: continue
+            best = None
+            for a, b in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                if 0 <= y + b < CH and 0 <= x + a < CW and canvas[y + b][x + a]:
+                    c = canvas[y + b][x + a]
+                    r, g, bb = (int(c[i:i + 2], 16) for i in (1, 3, 5))
+                    d = "#%02x%02x%02x" % (int(r * 0.22), int(g * 0.16), int(bb * 0.2) + 8)
+                    if best is None or sum(int(d[i:i + 2], 16) for i in (1, 3, 5)) < sum(int(best[i:i + 2], 16) for i in (1, 3, 5)): best = d
+            if best: add.append((x, y, best))
+    for x, y, c in add: canvas[y][x] = c
+ring_sel()
 ring("#4a2a7a")
 xs = [x for y in range(CH) for x in range(CW) if canvas[y][x]]; ys = [y for y in range(CH) for x in range(CW) if canvas[y][x]]
 X0, X1, Y0, Y1 = min(xs), max(xs), min(ys), max(ys)

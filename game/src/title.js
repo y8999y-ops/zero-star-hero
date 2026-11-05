@@ -5,7 +5,7 @@
 // 每隔幾秒一道斜光掃過字，字的邊上有十字星光一閃一閃。選單是 HTML（字要清楚），在標題下面置中。
 // 參考：大標題＋簡短選單置中、背景動作要慢（標題畫面要安靜不要吵）、標題字深色底配亮字＋反光（見 docs/素材參考.md）。
 import { starPixels, POSES } from "./star.js";
-import { skyCanvas } from "./starsky.js";
+import { createSky } from "./starsky.js";
 
 const H = 216;
 const IMG = {};
@@ -34,7 +34,9 @@ export async function startTitle(canvas, { form = "star" } = {}) {
     load("far", ART + "approved/town/far.png"), load("mid", ART + "approved/town/mid.png"),
     load("ground", ART + "approved/town/ground.png"), load("fg", ART + "approved/town/fg.png"), load("logo", ART + "ui/logo.png"),
   ]);
-  IMG.sky = skyCanvas(H);   // 自己畫的星空底色（starsky.js），星星和流星在下面另外畫
+  const SKY = createSky();   // pixelfx 的流星夜空（weather/shooting-stars）
+  IMG.sky = SKY.canvas();
+  let lastT = 0;
   const g = canvas.getContext("2d");
   let W = 384, run = true, t0 = performance.now(), last = 0;
   const resize = () => {
@@ -69,25 +71,10 @@ export async function startTitle(canvas, { form = "star" } = {}) {
     last = now;
     const t = (now - t0) / 1000;
     g.clearRect(0, 0, W, H);
-    // 1. 天空（慢慢飄）
+    // 1. 天空（pixelfx 流星夜空，慢慢飄）
+    SKY.update(Math.min(0.1, t - lastT)); lastT = t;
+    g.fillStyle = "#2c1a48"; g.fillRect(0, 0, W, H);
     tile(IMG.sky, -t * 2, 0);
-    // 2. 星星
-    for (const s of stars) {
-      const x = Math.round(((s.x - t * 3) % 520 + 520) % 520), y = Math.round(s.y), b = 0.5 + 0.5 * Math.sin(t * s.s + s.p);
-      if (x >= W) continue;
-      g.fillStyle = b > 0.8 ? "#ffffff" : b > 0.4 ? "#bfc8ff" : "#6a6aa8";
-      g.fillRect(x, y, 1, 1);
-      if (s.big && b > 0.75) { g.fillStyle = "rgba(220,230,255,.7)"; g.fillRect(x - 1, y, 1, 1); g.fillRect(x + 1, y, 1, 1); g.fillRect(x, y - 1, 1, 1); g.fillRect(x, y + 1, 1, 1); }
-    }
-    // 3. 流星
-    if ((nextShoot -= 1 / 30) <= 0 && !shoot) { shoot = { x: 60 + rnd() * (W - 60), y: 6 + rnd() * 40, a: 0 }; nextShoot = 3 + rnd() * 4; }
-    if (shoot) {
-      shoot.a += 1 / 30;
-      const L = 22, k = shoot.a / 0.7, hx = Math.round(shoot.x - k * 90), hy = Math.round(shoot.y + k * 45);
-      for (let i = 0; i < L; i++) { g.fillStyle = `rgba(255,${240 - i * 4},${200 - i * 6},${(1 - i / L) * (1 - k)})`; g.fillRect(hx + i * 2, hy - i, 2, 1); }
-      g.fillStyle = "#ffffff"; g.fillRect(hx, hy, 1, 1);
-      if (k >= 1) shoot = null;
-    }
     // 4. 遠景＋墜落的巨星（星光柔和地呼吸）
     // 遠景不動：墜落的巨星固定在左邊三分之一（far.png 裡巨星在 x≈100），中間留給選單
     const farX = Math.round(W * 0.2) - 100, farY = H - (IMG.far?.height ?? 216) + 30;
@@ -128,6 +115,15 @@ export async function startTitle(canvas, { form = "star" } = {}) {
       const lx = Math.round((W - L.width) / 2), ly = 16 + Math.round(Math.sin(t * 1.4) * 1.5);
       g.globalCompositeOperation = "lighter";
       glow(W / 2, ly + L.height / 2, 110, "rgba(120,90,255,A)", 0.12);
+      // 第二版（照 pixelfx ui/level-up）：字後面一圈慢慢轉的金色光芒＋金色柔光
+      glow(W / 2, ly + L.height * 0.55, 80, "rgba(255,200,90,A)", 0.16 + 0.04 * Math.sin(t * 2));
+      for (let i = 0; i < 14; i++) {
+        const a = t * 0.15 + (i / 14) * Math.PI * 2, len = 70 + 20 * Math.sin(t * 1.3 + i * 1.7), cx = W / 2, cy = ly + L.height * 0.55;
+        const gr = g.createLinearGradient(cx, cy, cx + Math.cos(a) * len, cy + Math.sin(a) * len * 0.6);
+        gr.addColorStop(0, "rgba(255,220,140,0.16)"); gr.addColorStop(1, "rgba(255,220,140,0)");
+        g.strokeStyle = gr; g.lineWidth = i % 2 ? 1 : 2;
+        g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * len, cy + Math.sin(a) * len * 0.6); g.stroke();
+      }
       g.globalCompositeOperation = "source-over";
       g.drawImage(L, lx, ly);
       // 斜光：每 4 秒掃一次，只亮在字上（硬邊兩條斜線）

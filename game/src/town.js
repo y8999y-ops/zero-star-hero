@@ -17,7 +17,9 @@ import { paintNpc } from "./npcs.js";
 import { loadArt, cell, baseRow, blit, glows, glowClusters } from "./art.js";
 
 // 美術素材（game/art/approved，Aseprite 重繪稿）：天空、遠景、中景、地面、前景、三棟店、城鎮裝飾、花草
-import { skyPixels, SKY_W as STARSKY_W, STARS as SKYSTARS, starLook, meteorAt } from "./starsky.js";
+import { createSky, SKY_W as STARSKY_W, SKY_H as STARSKY_H } from "./starsky.js";
+const NIGHT = createSky();   // pixelfx 的流星夜空
+let skyT = null;
 const ART = await loadArt(["town/far", "town/mid", "town/ground", "town/fg", "town/guild", "town/workshop", "town/inn", "props/town-deco", "props/flowers", "props/grass"]);
 
 const C = (s) => hex(s) >>> 0;
@@ -157,13 +159,16 @@ const STARS = Array.from({ length: 120 }, (_, i) => [Math.floor(rnd(i, 31) * 520
 /** 畫鎮的背景＋街道。lv：光的亮度（街道和店被照到時加上光的顏色）。 */
 export function drawTown(frame, lv, time) {
   const W = frame.w, cx = frame.ox | 0, cy = frame.oy | 0, out = frame.color, LB = frame.light, [TR, TG, TB] = tintOf();
-  const of = Math.floor(cx * 0.12), om = Math.floor(cx * 0.35), os = Math.floor(cx * 0.04), SKYP = skyPixels(H);
+  const of = Math.floor(cx * 0.12), om = Math.floor(cx * 0.35), os = Math.floor(cx * 0.04), SKYP = NIGHT.px;
+  NIGHT.update(skyT === null ? 0 : Math.max(0, Math.min(0.1, time - skyT)));
+  skyT = time;
   if (skyMask.length !== W * frame.h) skyMask = new Uint8Array(W * frame.h);
   skyMask.fill(0);
   for (let y = 0; y < H; y++) {
     const wy = y + cy, row = y * W;
     const sky = SKY[Math.max(0, Math.min(SKY.length - 1, Math.floor(wy / 13)))];
     if (wy < 0 || wy >= H) { out.fill(wy < 0 ? SKYP[0] : sky, row, row + W); continue; }
+    const sy = Math.min(STARSKY_H - 1, wy);
     for (let x = 0; x < W; x++) {
       const i = row + x, gx = x + cx;
       let v = gx >= 0 && gx < TOWN_W ? MAIN[wy * TOWN_W + gx] : 0;
@@ -174,32 +179,10 @@ export function drawTown(frame, lv, time) {
       }
       const bg = MID[wy * MID_W + wrap(x + om, MID_W)] || FAR[wy * FAR_W + wrap(x + of, FAR_W)];
       if (bg) out[i] = bg;
-      else { out[i] = SKYP[wy * STARSKY_W + wrap(x + os, STARSKY_W)]; skyMask[i] = 1; }
+      else { out[i] = SKYP[sy * STARSKY_W + wrap(x + os, STARSKY_W)]; skyMask[i] = 1; }
     }
   }
   const add = (x, y, r, g, b, k) => { if (x < 0 || y < 0 || x >= W || y >= frame.h) return; const i = y * W + x, d = LB[i]; LB[i] = 0xff000000 | (Math.min(255, ((d >>> 16) & 255) + b * k) << 16) | (Math.min(255, ((d >>> 8) & 255) + g * k) << 8) | Math.min(255, (d & 255) + r * k); };
-  // 星空（starsky.js）：只畫在天空露出來的地方；亮星有十字光芒，偶爾一顆流星
-  const blend = (i, r, g, b2, al) => { const d = out[i]; out[i] = 0xff000000 | (Math.round(((d >>> 16) & 255) * (1 - al) + b2 * al) << 16) | (Math.round(((d >>> 8) & 255) * (1 - al) + g * al) << 8) | Math.round((d & 255) * (1 - al) + r * al); };
-  for (const st of SKYSTARS) {
-    const x = wrap(st.x - os, STARSKY_W), y = st.y - cy;
-    if (x >= W || y < 0 || y >= frame.h) continue;
-    const i = y * W + x;
-    if (!skyMask[i]) continue;
-    const [r, g, b2, al] = starLook(st, time);
-    blend(i, r, g, b2, al);
-    if (st.kind === 2) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const j = (y + dy) * W + x + dx; if (x + dx >= 0 && x + dx < W && y + dy >= 0 && y + dy < frame.h && skyMask[j]) blend(j, r, g, b2, al * 0.45); add(x + dx, y + dy, r, g, b2, 0.25 * al); }
-  }
-  const met = meteorAt(time);
-  if (met) {
-    const fade = met.k < 0.15 ? met.k / 0.15 : 1 - Math.max(0, met.k - 0.6) / 0.4;
-    for (let n = 0; n < met.len; n++) {
-      const x = Math.round(wrap(met.x - os + n * 2, STARSKY_W)), y = Math.round(met.y - n) - cy;
-      if (x >= W || y < 0 || y >= frame.h) continue;
-      const i = y * W + x, al = (1 - n / met.len) * fade;
-      if (skyMask[i]) blend(i, 255, 245 - n * 3, 220 - n * 6, al);
-      if (n < 3) add(x, y, 255, 230, 180, 0.5 * fade);
-    }
-  }
   // 坑底大星星的光柱（往上，柔和）
   const bx = 106 - of;
   for (let y = 0; y < 66 - cy; y++) for (let x = -16; x <= 16; x++) {

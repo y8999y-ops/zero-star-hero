@@ -9,7 +9,14 @@ import { starPixels, POSES } from "./star.js";
 import { systemFace, moodOf } from "./system-face.js";
 import { typewriter } from "./dialog.js";
 import { sfx } from "./audio.js";
-import { skyCanvas } from "./starsky.js";
+import { createSky } from "./starsky.js";
+import { createFrame, clearFrame, createFx, composite } from "../../pixelfx/src/core/index.js";
+import * as starFall from "../../pixelfx/src/fx/arcane/star-fall.js";
+import * as meteorFx from "../../pixelfx/src/fx/fire/meteor.js";
+import * as starMeteor from "../fx/fire/star-meteor.js";   // 同一顆流星的「不冒煙」版（B 幕遠景）
+// 第二版（照 pixelfx skill：用庫裡現成的特效）：星落＝arcane/star-fall（金色）、主角那顆＝fire/meteor（換成金色），
+// 洞窟裡砸下來也是 fire/meteor（白頭金尾、撞地閃光、火球、碎石、煙、發光的坑）。第一版自己畫的流星雨和光束不用了。
+const GOLD = ["#3a1a06", "#6e3a0c", "#a8601a", "#d8902a", "#f4c040", "#ffe27a", "#fff2b0", "#fffbe8", "#ffffff"];
 
 const H = 216;
 const ART = new URL("../art/approved/", import.meta.url).href;
@@ -46,7 +53,9 @@ export async function playIntro(root, canvas) {
     load("far", "town/far.png"),
     load("vback", "valley/back.png"), load("vfar", "valley/far.png"), load("vmid", "valley/mid.png"), load("vground", "valley/ground.png"),
   ]);
-  IMG.sky = skyCanvas(H);
+  const SKY = createSky();
+  IMG.sky = SKY.canvas();
+  let skyLast = 0;
   const g = canvas.getContext("2d");
   let W = 384;
   const resize = () => {
@@ -83,6 +92,16 @@ export async function playIntro(root, canvas) {
   };
   const tile = (im, x, y) => { if (!im) return; const w = im.width; let sx = Math.floor(x % w); if (sx > 0) sx -= w; for (let xx = sx; xx < W; xx += w) g.drawImage(im, xx, Math.round(y)); };
   const fadeTo = (a) => { if (a > 0) { g.fillStyle = `rgba(4,3,10,${Math.min(1, a)})`; g.fillRect(0, 0, W, H); } };
+  let fxF = null, fxImg = null, fxCv = null;
+  const drawFx = (list) => {
+    if (!fxF || fxF.w !== W) { fxF = createFrame(W, H); fxImg = new Uint8ClampedArray(W * H * 4); fxCv = document.createElement("canvas"); fxCv.width = W; fxCv.height = H; }
+    clearFrame(fxF);
+    for (const f of list) f && f.draw(fxF);
+    composite(fxF, fxImg, null);
+    fxCv.getContext("2d").putImageData(new ImageData(fxImg, W, H), 0, 0);
+    g.drawImage(fxCv, 0, 0);
+  };
+  let fallFx = null, heroFx = null, crashFx = null, fxLast = 0;
   const played = new Set();
   const once = (k, fn) => { if (!played.has(k)) { played.add(k); fn(); } };
 
@@ -132,59 +151,37 @@ export async function playIntro(root, canvas) {
       // ---- B：夜空、星落（5.2 ～ 10.6）
       if (t < 10.6) {
         const tb = t - 5.2, pan = Math.min(1, tb / 5) ** 2;
+        SKY.update(Math.min(0.1, tb - skyLast)); skyLast = tb;
+        g.fillStyle = "#2c1a48"; g.fillRect(0, 0, W, H);
         tile(IMG.sky, -tb * 3, -pan * 10);
-        for (const s of stars) {
-          const x = Math.round(((s.x - tb * 4) % 520 + 520) % 520), b = 0.5 + 0.5 * Math.sin(t * s.s + s.p);
-          if (x < W) { g.fillStyle = b > 0.7 ? "#ffffff" : "#8a8ac8"; g.fillRect(x, Math.round(s.y - pan * 10), 1, 1); }
-        }
-        // 流星雨
-        for (const m of meteors) {
-          const a = t - m.t0;
-          if (a < 0 || a > 0.9) continue;
-          const hx = m.x - a * m.sp, hy = m.y + a * m.sp * 0.55;
-          for (let i = 0; i < 12; i++) { g.fillStyle = `rgba(200,220,255,${(1 - i / 12) * (1 - a / 0.9) * 0.9})`; g.fillRect(Math.round(hx + i * 2), Math.round(hy - i * 1.1), 1, 1); }
-        }
-        // 主角那顆：金色、拖著長尾巴往左下的山谷掉
-        if (tb > 1.8) {
-          const k = Math.min(1, (tb - 1.8) / 3.2), e = k * k;
-          const hx = W * 0.85 - e * W * 0.55, hy = 10 + e * 150;
-          for (let i = 0; i < 34; i++) { g.fillStyle = `rgba(255,${220 - i * 3},${120 - i * 3},${(1 - i / 34) * 0.9})`; g.fillRect(Math.round(hx + i * 1.6), Math.round(hy - i * 2.6), 2, 1); }
-          g.globalCompositeOperation = "lighter";
-          glow(hx, hy, 14 + 6 * Math.sin(t * 20), "255,210,110", 0.7);
-          g.globalCompositeOperation = "source-over";
-          g.fillStyle = "#ffffff"; g.fillRect(Math.round(hx) - 1, Math.round(hy) - 1, 3, 3);
-          if (k > 0.2) once("whoosh", () => sfx("dash"));
-        }
+        // 星落（pixelfx arcane/star-fall，金色）落在遠方的地平線；主角那顆（fire/meteor 金色、從右上往左下）
+        const dtf = Math.min(0.1, t - fxLast); fxLast = t;
+        if (tb > 0.5 && !fallFx) fallFx = createFx(starFall, { x: Math.round(W * 0.55), y: H - 52, palette: GOLD.slice(1, 9), seed: 13, light: 0.6 });
+        if (tb > 2.2 && !heroFx) { heroFx = createFx(starMeteor, { x: Math.round(W * 0.32), y: H - 46, palette: GOLD, flip: true, light: 0.5, clean: true }); sfx("dash"); }
+        fallFx?.update(dtf); heroFx?.update(dtf);
+        drawFx([fallFx, heroFx]);
         tile(IMG.far, -tb * 2 - 260, H - (IMG.far?.height ?? 216) + 40 - pan * 12);
         // 落進山後面：地平線閃一下
-        if (tb > 5.0) { g.globalCompositeOperation = "lighter"; glow(W * 0.3, H - 40, 70, "255,220,140", 0.6 * Math.max(0, 1 - (tb - 5.0) * 2)); g.globalCompositeOperation = "source-over"; }
         fadeTo(tb < 0.5 ? 1 - tb * 2 : tb > 4.9 ? (tb - 4.9) * 2 : 0);
         return;
       }
       // ---- C：洞窟，砸下來（10.6 ～ 16.2）、D：爬起來聽系統說話（16.2 ～）
-      const tc = t - 10.6, impact = 1.0, shake = tc > impact && tc < impact + 0.5 ? Math.round((Math.random() - 0.5) * 6 * (1 - (tc - impact) / 0.5)) : 0;
+      const tc = t - 10.6, impact = 0.67, shake = tc > impact && tc < impact + 0.5 ? Math.round((Math.random() - 0.5) * 6 * (1 - (tc - impact) / 0.5)) : 0;
       g.save();
       g.translate(shake, shake ? Math.round((Math.random() - 0.5) * 4) : 0);
       tile(IMG.vback, -40, 0); tile(IMG.vfar, -80, 0); tile(IMG.vmid, -140, 0);
       const gy = H - 40;
       tile(IMG.vground, -60, gy - 9);
       const cx = Math.round(W / 2);
-      // 掉下來的光
+      // 砸下來（pixelfx fire/meteor 金色）：從左上斜斜砸進洞窟中間
+      if (!crashFx) crashFx = createFx(meteorFx, { x: cx, y: gy, palette: GOLD, light: 0.6, seed: 5 });
+      crashFx.update(Math.min(0.1, t - fxLast)); fxLast = t;
       if (tc < impact) {
-        const k = tc / impact, y = -20 + k * k * (gy + 20);
-        for (let i = 0; i < 40; i++) { g.fillStyle = `rgba(255,${230 - i * 3},${140 - i * 3},${(1 - i / 40) * 0.9})`; g.fillRect(cx - 1, Math.round(y - i * 3), 3, 3); }
-        g.globalCompositeOperation = "lighter"; glow(cx, y, 22, "255,210,110", 0.8); g.globalCompositeOperation = "source-over";
+        // 撞地前：特效自己會畫流星
       } else {
         once("boom", () => { sfx("bossLand"); sfx("boom"); });
         const a = tc - impact;
         // 坑裡的光、煙塵
-        g.globalCompositeOperation = "lighter"; glow(cx, gy - 4, 46, "255,200,100", 0.5 * Math.max(0.25, 1 - a / 2.5)); g.globalCompositeOperation = "source-over";
-        for (const d of dust) {
-          const r = d.v * Math.min(a, 1.4) * (1 - Math.min(a, 1.4) / 2.8), x = cx + Math.cos(d.a) * r * 1.6, y = gy - Math.sin(d.a) * r * 0.7 - a * 4;
-          const alpha = Math.max(0, 0.75 - a / 3.2);
-          if (alpha <= 0) continue;
-          g.fillStyle = `rgba(190,170,200,${alpha})`; g.fillRect(Math.round(x), Math.round(y), d.s * 2, d.s * 2);
-        }
         // 主角：趴著 → 爬起來 → 眨眼、左看、右看、面向前
         let q = POSES.hurt, flip = false;
         if (a > 2.1) q = POSES.land;
@@ -196,9 +193,9 @@ export async function playIntro(root, canvas) {
         if (a > 2.1) once("up", () => sfx("land"));
         const h = hero(q, flip), hy = a < 2.1 ? gy + 3 : gy;
         g.drawImage(h.c, cx - h.ax, hy - h.ay);
-        // 閃白
-        if (a < 0.35) { g.fillStyle = `rgba(255,250,235,${1 - a / 0.35})`; g.fillRect(-10, -10, W + 20, H + 20); }
       }
+      drawFx([crashFx]);   // 流星、撞擊、火球、煙、坑（蓋在主角前面一點，煙散開才看得清楚主角）
+      if (tc > impact && tc - impact < 0.12) { g.fillStyle = `rgba(255,250,235,${1 - (tc - impact) / 0.12})`; g.fillRect(-10, -10, W + 20, H + 20); }
       g.restore();
       // 四周壓暗＋淡入淡出
       const v = g.createRadialGradient(W / 2, H * 0.6, H * 0.2, W / 2, H * 0.6, W * 0.65);
