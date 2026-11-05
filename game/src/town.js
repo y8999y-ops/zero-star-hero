@@ -206,8 +206,9 @@ export function drawTown(frame, lv, time) {
 /** 前景（在主角和居民之後畫） */
 export function drawTownFg(frame) {
   const W = frame.w, cx = frame.ox | 0, cy = frame.oy | 0, out = frame.color, ofg = Math.floor(cx * 1.3);
+  const LIFT = 7;   // 使用者 2026-11-05：前景稍微往上（鏡頭拉近後下緣被裁掉，草叢剪影看不太到）
   for (let y = 0; y < frame.h; y++) {
-    const wy = y + cy;
+    const wy = y + cy + LIFT;
     if (wy < 0 || wy >= H) continue;
     for (let x = 0; x < W; x++) { const v = FG[wy * FG_W + wrap(x + ofg, FG_W)]; if (v) out[y * W + x] = v; }
   }

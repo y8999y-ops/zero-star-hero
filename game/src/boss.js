@@ -144,14 +144,14 @@ export class Boss {
     if (this.t < 0.8) { this.pose = "land"; this.pk = this.t / 1.2; return; }
     if (this.t < 2.2) {
       this.pose = "roar";
-      if (!this.roared) { this.roared = true; shake(0.9, 3); sfx("roar"); music("boss"); this.api.line("大胃王：一顆小星星也想挑戰本大爺？……正好，飯後甜點。", 3.2); }
+      if (!this.roared) { this.roared = true; shake(0.9, 3, true); sfx("roar"); music("boss"); this.api.line("大胃王：一顆小星星也想挑戰本大爺？……正好，飯後甜點。", 3.2); }
       return;
     }
     this.api.say("系統：牠說的沒錯。但你可以讓牠閉嘴。", 2.8);
     this.go("idle", { wait: 0.8 });
   }
   // 換階段時的大吼
-  s_roar() { this.pose = "roar"; if (!this.o.shook) { this.o.shook = true; shake(0.9, 3); sfx("roar"); } if (this.t > 1.2) this.go("idle", { wait: 0.4 }); }
+  s_roar() { this.pose = "roar"; if (!this.o.shook) { this.o.shook = true; shake(0.9, 3, true); sfx("roar"); } if (this.t > 1.2) this.go("idle", { wait: 0.4 }); }
   // 待機：等一下再出招
   s_idle(dt, P) {
     this.pose = "idle";
@@ -263,7 +263,7 @@ export class Boss {
   }
   s_ultRoar() {
     this.pose = "roar";
-    if (!this.o.shown) { this.o.shown = true; this.api.ult("星屑暴食"); shake(1.2, 3); sfx("roar"); sfx("ultCharge"); flash(this.x, this.y - 20, 120, 3, 0.8, "#ffd84a"); }
+    if (!this.o.shown) { this.o.shown = true; this.api.ult("星屑暴食"); shake(1.2, 3, true); sfx("roar"); sfx("ultCharge"); flash(this.x, this.y - 20, 120, 3, 0.8, "#ffd84a"); }
     if (this.t > 1.3) this.go("vacuum");
   }
   s_vacuum(dt, P) {

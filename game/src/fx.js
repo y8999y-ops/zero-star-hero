@@ -40,7 +40,8 @@ export const juice = { freeze: 0, shakeT: 0, shake0: 0, amp: 0 };
 export function hitStop(sec) {
   juice.freeze = Math.max(juice.freeze, sec);
 }
-export function shake(sec, amp) {
+export function shake(sec, amp, keep = false) {   // keep：王的吼叫、大招這類大震動不減半
+  if (amp < 4 && !keep) amp *= 0.5;   // 使用者 2026-11-05「鏡頭太晃」：一般打擊的震動減半，只留大招、王戰的大震動
   if (amp >= juice.amp * (juice.shakeT / (juice.shake0 || 1))) {
     juice.shakeT = juice.shake0 = sec;
     juice.amp = amp;

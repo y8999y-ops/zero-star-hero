@@ -15,6 +15,7 @@
 import { setSolid, geo } from "./map.js";
 import { input } from "./input.js";
 import { FORMS } from "./forms.js";
+import { drawObjGlow } from "./objglow.js";
 import { crackDebris, updateDebris, drawDebris, drawCrack, drawWind, drawShroom, drawSeal, drawEmber, drawVein, drawFossil, drawSafe, drawStele } from "./feature-art.js";
 
 // 碑文的故事（接神話「星王之冠」）：每關一段一段讀
@@ -24,6 +25,7 @@ export const STELE_LORE = [
   "碑文：「每一片碎片都記得自己曾經是星王的一部分。……總有一天，它們會再聚在一起。」",
   "碑文：「如果你讀得懂這些字，那你也是那些碎片之一。歡迎回來。」",
 ];
+const GLOW_OF = { ember: "ember", fossil: "fossil", safe: "chest", stele: "stele" };
 const HINT = {
   crack: "系統：這面牆裂開了……需要很硬、很重的東西撞過去。鐵罐星的衝撞應該可以。",
   wind: "系統：底下有風往上吹。用蝠翼星滑翔（在空中按住跳）的話，應該會被吹上去。",
@@ -134,6 +136,8 @@ export function createFeatures({ stageId, list = [], profile, player, api }) {
       else if (f.t === "fossil" && !f.done) drawFossil(frame, f.x, f.y, tt, FORMS[f.form]?.color);
       else if (f.t === "safe") drawSafe(frame, f.x, f.y, f.done, tt);
       else if (f.t === "stele") drawStele(frame, f.x, f.y, f.done, tt);
+      // 使用者 2026-11-05：還沒拿的重要東西身上有發光粒子（拿過就停掉，一看就知道還剩什麼）
+      if (!f.done && GLOW_OF[f.t]) drawObjGlow(frame, GLOW_OF[f.t], f.x, f.y, tt, f.t === "fossil" ? FORMS[f.form]?.color : undefined);
     }
   }
   function lights(list) {

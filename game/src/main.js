@@ -6,7 +6,7 @@ import * as fireball from "../../pixelfx/src/fx/fire/fireball.js";
 import * as explosion from "../../pixelfx/src/fx/explosions/plasma-explosion.js";
 import { A, GLOW } from "./assets.js";
 import { input, tickInput, initTouch, consume } from "./input.js";
-import { drawLevel, drawForeground, drawAtmosphere, sceneLights, LEVEL_W, FLOOR, H, TORCHES, TORCH_POS, WALL, geo, MAP_H } from "./level.js";
+import { drawLevel, drawForeground, drawAtmosphere, sceneLights, lightStyle, LEVEL_W, FLOOR, H, TORCHES, TORCH_POS, WALL, geo, MAP_H } from "./level.js";
 import { initMap, flatMap, groundAt, floorAt, solidAt, moveX, surfaceRuns, setSolid } from "./map.js";
 import { drawPlug } from "./feature-art.js";
 import { TOWN_W, NPCS, townLights, drawTown, drawTownNpcs, drawTownFg, nearby } from "./town.js";
@@ -63,6 +63,7 @@ import { drawMiniBat } from "./minibat.js";
 import { drawMark, drawStrike, drawShield, drawReson, drawKingBack, drawKingFront, STRIKE_T } from "./setfx.js";
 import { drawTrail, drawDizzy, TRAIL_T } from "./corefx.js";
 import { drawAltar } from "./altar-art.js";
+import { drawObjGlow } from "./objglow.js";
 import { createFeatures } from "./features.js";
 import { createMapView } from "./mapview.js";
 import * as sparkFx from "../../pixelfx/src/fx/impacts/hit-spark.js";
@@ -102,7 +103,7 @@ const ctx = canvas.getContext("2d");
 let W = 384, frame, img;
 const ZOOM = 1.38;   // 鏡頭拉近（看到的世界是原本的 1/1.38）；使用者 2026-11-05：1.2 → 再放大 15%
 // 使用者 2026-11-05：鏡頭往下 15%，再往上 10%（淨往下 5%）——看得到的範圍在畫布裡往下移（看得到腳下多一點），單位：畫布像素
-const VIEW_DY = Math.round(0.05 * H / ZOOM);
+const VIEW_DY = Math.round((TOWN ? 0.10 : 0.05) * H / ZOOM);   // 使用者 2026-11-05：城鎮比關卡再往下 5%
 // 王戰時鏡頭稍微拉遠（使用者 2026-11-05 照建議）：王房比一個畫面寬，拉遠一點才看得到王從另一邊衝過來
 const ZOOM_BOSS = 1.2;
 let zoom = ZOOM, zoomShown = 0;
@@ -169,7 +170,7 @@ bindForms(profile.forms);
 player.setForm(profile.forms.cur);
 player.hp = player.maxHp;
 const inv = createInventory(profile, { onChange: refreshStats });
-window.__game = { player, enemies, stats, profile, drops, inv, get director() { return director; }, get camX() { return camX; }, get camY() { return camY; }, get view() { return viewRect(); }, get zoom() { return zoom; } };   // 開發用：在主控台檢查狀態
+window.__game = { player, enemies, stats, profile, drops, inv, get director() { return director; }, get camX() { return camX; }, get camY() { return camY; }, get view() { return viewRect(); }, get zoom() { return zoom; }, lightStyle };   // 開發用：在主控台檢查狀態
 
 // 每種敵人的經驗值、掉寶率
 const KILL_XP = { slime: 5, bat: 5, trash: 12, gold: 20 };
@@ -751,7 +752,7 @@ const world = {
       player.hideT = 9; player.invuln = 10; player.state = "move";
       setTimeout(() => fade.classList.add("on"), 550);
       setTimeout(() => {
-        if (to) { player.x = to.x; player.y = to.y; player.vx = player.vy = 0; player.state = "move"; { const v = viewRect(); camX = Math.max(-v.x0, Math.min(LEVEL_W - v.x0 - v.w, to.x - W / 2)); if (MAP_H > H) camY = Math.max(-v.y0, Math.min(MAP_H - v.y0 - v.h, to.y - H * 0.62)); } }
+        if (to) { player.x = to.x; player.y = to.y; player.vx = player.vy = 0; player.state = "move"; { const v = viewRect(); camRefY = null; lookX = player.face * 36; camX = Math.max(-v.x0, Math.min(LEVEL_W - v.x0 - v.w, to.x - W / 2)); if (MAP_H > H) camY = Math.max(-v.y0, Math.min(MAP_H - v.y0 - v.h, to.y - H * 0.62)); } }
         player.hp = player.maxHp; player.mp = player.maxMp;
         fade.classList.remove("on");
         deathFx.regather(player.x, player.y, col);
@@ -946,8 +947,8 @@ function townTick(dt) {
   } else { player.vx = 0; prevAtk = true; }
   drops.update(dt, player, 16, pickUp);
   updateFx(dt);
-  const want = player.x - W / 2 + player.face * 30, v = viewRect();
-  camX += (want - camX) * Math.min(1, 5 * dt);
+  const v = viewRect();
+  camX = deadFollow(camX + W / 2, player.x + lookAhead(dt, 30), 14, 5, dt) - W / 2;   // 使用者 2026-11-05：鏡頭太晃 → 死區＋轉身慢慢滑
   camX = Math.max(-v.x0, Math.min(TOWN_W - v.x0 - v.w, camX));   // 照看得到的範圍停（放大後畫布邊緣是裁掉的）
   updateSay(dt);
   updateBubble(dt);
@@ -1441,21 +1442,35 @@ function tick(dt) {
   updateSay(dt);
 }
 // 攝影機：跟著主角，稍微往面對的方向看
+let lookX = 0, camRefY = null;
+/** 往面對的方向多看 dist 格：轉身時慢慢滑過去（約 0.6 秒） */
+function lookAhead(dt, dist) { lookX += (player.face * dist - lookX) * Math.min(1, 2.2 * dt); return lookX; }
+/** 死區跟隨：目標離鏡頭中心超過 dz 才跟，跟到剛好在死區邊上 */
+function deadFollow(c, target, dz, rate, dt) {
+  const d = target - c;
+  if (Math.abs(d) <= dz) return c;
+  return c + (d - Math.sign(d) * dz) * Math.min(1, rate * dt);
+}
 function followCam(dt) {
   // 王戰時慢慢拉遠、打完慢慢拉回來
   const zt = director?.lock && STAGE.arena ? ZOOM_BOSS : ZOOM;
   if (zoom !== zt) { zoom += Math.sign(zt - zoom) * Math.min(Math.abs(zt - zoom), 0.5 * dt); if (Math.abs(zoom - zoomShown) > 0.004 || zoom === zt) applyZoom(); }
   const v = viewRect();
-  // 使用者 2026-11-05 照建議：往面對的方向多看 36 → 50（拉近後怪衝進畫面才有時間反應）
-  const want = player.x - W / 2 + player.face * 50;
-  camX += (want - camX) * Math.min(1, 5 * dt);
+  // 使用者 2026-11-05「鏡頭太晃」：
+  //   往面對的方向多看 36（不再 50），轉身時慢慢滑過去，不是一下甩 70 格；
+  //   主角在畫面中間 ±14 格內走動鏡頭不動（死區），走出去才跟
+  camX = deadFollow(camX + W / 2, player.x + lookAhead(dt, 36), 14, 5, dt) - W / 2;
   // 照「看得到的範圍」停：走到地圖兩端主角還在畫面裡、王房光牆也看得到
   camX = Math.max(-v.x0, Math.min(LEVEL_W - v.x0 - v.w, camX));
   if (director?.lock) camX = Math.max(director.lock.l - v.x0, Math.min(director.lock.r - v.x0 - v.w, camX));
-  // 8b：上下跟。主角站在畫面約 6 成高的地方；往下掉的時候跟快一點，才看得到底下
+  // 上下：落地才跟（跳躍時鏡頭不上下晃）。掉到比上次站的地方低、或被風吹得很高時才跟著空中的主角；
+  // 往下掉越快跟得越快（平順加速，不再一頓一頓）
   if (MAP_H > H) {
-    const wy = player.y - H * 0.62 + (player.vy > 120 ? 30 : 0);
-    camY += (wy - camY) * Math.min(1, (player.vy > 120 ? 7 : 4) * dt);
+    if (player.grounded || camRefY === null) camRefY = player.y;
+    else if (player.y > camRefY) camRefY = player.y;
+    else if (player.y < camRefY - 72) camRefY = player.y + 72;
+    const wy = camRefY - H * 0.62, rate = 3 + Math.min(4, Math.max(0, player.vy) / 100);
+    camY += (wy - camY) * Math.min(1, rate * dt);
     camY = Math.max(-v.y0, Math.min(MAP_H - v.y0 - v.h, camY));   // 爬到最上面看得到地圖頂端的尖刺、天花板上的蝙蝠
   }
 }
@@ -1470,7 +1485,7 @@ function render() {
   // 場景光影：火把、水晶、主角、飛行中的火球、稀有以上的掉寶光柱都是光源
   sceneClock += 1 / 60;
   const lights = TOWN ? townLights(sceneClock) : sceneLights(camX, W, sceneClock);
-  lights.push({ x: player.x, y: player.y - 10, r: 46, lv: 1.3, col: "#ffcf6a" });   // 星星主角自己會發光
+  lights.push(lightStyle.v2 ? { x: player.x, y: player.y - 10, r: 64, lv: 1.6, col: "#ffcf6a" } : { x: player.x, y: player.y - 10, r: 46, lv: 1.3, col: "#ffcf6a" });   // 星星主角自己會發光（光影 v2：照亮一圈大一點）
   for (const e of enemies) e.lights?.(lights);
   for (const e of enemies) if (e.elite && !e.dead) lights.push({ x: e.x, y: e.y - 10, r: 36, lv: 1.2, col: "#ff4a3a" });
   for (const s of shots) lights.push({ x: s.x, y: s.y, r: 64, lv: 3, col: (SHOT_PAL[s.form] ?? SHOT_PAL.star).light });
@@ -1483,7 +1498,7 @@ function render() {
   const lv = computeLight(frame, lights);
   if (TOWN) drawTown(frame, lv, sceneClock);
   else { drawLevel(frame, lv); drawAtmosphere(frame, sceneClock); }
-  for (const a of altars) if (Math.abs(a.x - camX - W / 2) < W) drawAltar(frame, a.x, a.y, a.lit, sceneClock, a.pulse ?? 0);
+  for (const a of altars) if (Math.abs(a.x - camX - W / 2) < W) { drawAltar(frame, a.x, a.y, a.lit, sceneClock, a.pulse ?? 0); drawObjGlow(frame, a.lit ? "altarOn" : "altarOff", a.x, a.y, sceneClock + a.x * 0.01); }
   if (plug.on) { const h = STAGE.arena.hole; drawPlug(frame, h.x, h.y, h.w, h.h, plug.t); }
   features?.draw(frame, sceneClock);
   props.draw(frame, lv);
@@ -1491,7 +1506,7 @@ function render() {
   hazards.draw(frame);
   if (TOWN) { drawTownNpcs(frame, sceneClock); folk.draw(frame); drawPrompt(); }
   else if (useT) drawBang(useT.x, useT.top);
-  if (chest && !chest.opened && Math.abs(chest.x - camX - W / 2) < W) chest.fx.draw(frame);
+  if (chest && !chest.opened && Math.abs(chest.x - camX - W / 2) < W) { chest.fx.draw(frame); drawObjGlow(frame, "chest", chest.x, chest.y, sceneClock); }
   // 大招時：先畫怪再暗場，法陣這些背景特效畫在暗場之後才會亮
   if (!ult.on) drawFx(frame, "back");
   drops.draw(frame);

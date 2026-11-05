@@ -915,13 +915,9 @@ body.touch #invBox[data-pane="invDetail"] #invDetailX { display: block; position
 /* 手機背包：右上關閉鈕不要蓋到金幣星塵數字 */
 body.touch #invBag > .ttl { padding-right: 30px; }
 
-/* 10 批（G1）：魔力圖示——魔力條左端、技能鍵／大招鍵角落的耗量（圖示＋數字） */
+/* 10 批（G1）：魔力圖示——魔力條左端（技能鍵／大招鍵角落的耗量：使用者 2026-11-05 拿掉了） */
 .mp .mpIc { position: absolute; left: -12px; top: -9px; width: 24px; height: 24px; background: var(--ic-mana) center / 100% no-repeat; image-rendering: pixelated; z-index: 2; pointer-events: none; }
-.cost { position: absolute; right: -2px; bottom: -4px; display: flex; align-items: center; gap: 0; padding: 0 3px 0 1px; font: 700 10px/14px inherit; font-style: normal; color: #cfeeff; background: #0c1a3a; border: 1px solid #1e64b0; text-shadow: 0 1px 0 #000; pointer-events: none; z-index: 2; }
-.cost::before { content: ""; width: 12px; height: 12px; background: var(--ic-mana) center / 100% no-repeat; image-rendering: pixelated; }
-.nomp .cost { color: #ff8a7a; border-color: #8a1a2a; }
 #toast .ticon { display: inline-block; width: 32px; height: 32px; margin: -8px 6px -10px -4px; vertical-align: middle; background: center / 100% no-repeat; image-rendering: pixelated; }
-body.touch #btnSkill .cost { right: auto; left: -4px; }   /* 手機：右下角會蓋到攻擊鍵，改放左下 */
 
 /* 特效補強 10：魔力不足 */
 .shakeNo { animation: shakeNo .32s steps(6); }
