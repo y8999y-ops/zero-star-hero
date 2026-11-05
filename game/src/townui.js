@@ -4,7 +4,10 @@
 //   文字盡量換成圖：任務種類用圖示、獎勵用「圖示＋數字」小籌碼、強化等級用 10 格亮點、成功率用量條、按鈕是「圖示＋兩個字」。
 // 對話當入口，正事在這些面板裡做。視窗打開時遊戲暫停（isWinOpen）。
 import { GUILD_MAX, SYSTEM, sysActive, accept, abandon, turnIn, isReady, refreshBoard } from "./quests.js";
-import { SLOTS, RARITY, AFFIXES, rerollAffix } from "./items.js";
+import { SLOTS, RARITY, AFFIXES, rerollAffix, maxPlus, enhanceRate, enhanceCost, enhanceUp, fmtStat, mainValue } from "./items.js";
+import { uiFx } from "./ui-fx.js";
+import * as parryFx from "../../pixelfx/src/fx/impacts/parry.js";
+import * as burstFx from "../../pixelfx/src/fx/pickups/collect-burst.js";
 import { LAYOUTS } from "./stages.js";
 import { iconURL } from "./ui-art.js";
 
@@ -16,9 +19,7 @@ export const MEALS = {
 };
 // 舊程式用的說明文字
 for (const m of Object.values(MEALS)) m.desc = m.buff[1];
-// ---- 強化：成功率隨等級下降，失敗只扣材料、不會降級
-export const enhanceRate = (p) => [100, 100, 90, 80, 70, 60, 50, 40, 30, 25][p] ?? 0;
-export const enhanceCost = (p) => ({ scrap: 3 + p * 3, coins: 20 + p * 25 });
+// ---- 強化：規則在 items.js（上限看稀有度、每 +5 開副屬性、+11 以後可能失敗）
 export const rerollCost = (it) => ({ scrap: 6 + it.rarity * 3, coins: 40 + it.rarity * 40 });
 
 // ---- 任務的短標題＋圖示（從任務資料算，不用長句子）
@@ -170,28 +171,44 @@ function itemsForForge(P) {
   return [...eq, ...bag];
 }
 const itemHead = (it, eq) => `<span class="fimg">${ico(it.icon, "big")}${eq ? '<i class="eqmark">E</i>' : ""}</span><span class="fn" style="color:${RARITY[it.rarity].color}">${it.name}</span>`;
-const pips = (p) => `<span class="pips">${Array.from({ length: 10 }, (_, i) => `<i class="${i < p ? "on" : ""}"></i>`).join("")}</span>`;
+/** 強化進度：+p／上限，下面每 +5 一顆菱形（亮＝已經開過副屬性） */
+const pips = (p, max) => `<span class="plv"><b>+${p}</b>/${max}</span><span class="pips">${Array.from({ length: max / 5 }, (_, i) => `<i class="${p >= (i + 1) * 5 ? "on" : ""}"></i>`).join("")}</span>`;
+// 特效顏色：打鐵火花（金）、失敗（灰）、開副屬性（看稀有度）
+const SPARK = ["#3a1a06", "#8a4a10", "#e0901c", "#ffc83a", "#ffe98a", "#fff8d8", "#ffffff"];
+const DULL = ["#141018", "#2a2430", "#463e4c", "#6a6070", "#8a8090", "#a8a0ae", "#c0bac4"];
 const gauge = (rate) => `<span class="gauge" title="成功率"><i style="width:${rate}%;background:${rate >= 80 ? "#6ad06a" : rate >= 50 ? "#e8c040" : "#e0603a"}"></i><b>${rate}%</b></span>`;
 export function openForge() {
   const P = ctx.profile;
   const enhanceTab = (body) => {
-    body.appendChild(say("岩叔", "……越後面越容易失敗。失敗只會少材料。"));
+    body.appendChild(say("岩叔", "……每 +5 會多一條能力。+10 以後會失敗，失敗只會少材料。"));
     for (const { it, eq } of itemsForForge(P)) {
-      const p = it.plus ?? 0, c = enhanceCost(p), rate = enhanceRate(p);
+      const p = it.plus ?? 0, max = maxPlus(it), c = enhanceCost(p, it), rate = enhanceRate(p), top = p >= max;
       const row = h("div", "frow");
-      row.innerHTML = `<div class="fhead">${itemHead(it, eq)}</div><div class="fmid">${pips(p)}${p < 10 ? gauge(rate) : '<span class="maxed">MAX</span>'}</div><div class="fcost">${p < 10 ? costChips(c, P) : ""}</div>`;
-      if (p < 10) row.appendChild(ibtn("hammer", "強化", () => {
+      row.innerHTML = `<div class="fhead">${itemHead(it, eq)}</div><div class="fmid">${pips(p, max)}${top ? '<span class="maxed">MAX</span>' : gauge(rate)}</div><div class="fcost">${top ? "" : costChips(c, P)}</div>`;
+      if (!top) row.appendChild(ibtn("hammer", "強化", () => {
         if (P.scrap < c.scrap || P.coins < c.coins) { ctx.sfx("close"); return msg("材料不夠", false); }
         P.scrap -= c.scrap; P.coins -= c.coins;
+        const r = row.querySelector(".fimg").getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
         ctx.shake(0.2, 2);
         if (Math.random() * 100 < rate) {
-          it.plus = p + 1;
+          const before = mainValue(it), up = enhanceUp(it);
           P.quests.stats.enhanceMax = Math.max(P.quests.stats.enhanceMax, it.plus);
           ctx.sfx("chime"); ctx.flash("#ff9a40");
-          msg(`成功！+${it.plus}`);
-        } else { ctx.sfx("clank"); msg("失敗……材料沒了", false); }
+          uiFx(parryFx, { palette: SPARK, light: 0.5, seed: it.plus }, x, y);
+          if (up) {
+            // 每 +5：開副屬性（新增一條，或提升一條）
+            const col = RARITY[it.rarity].color;
+            setTimeout(() => { uiFx(burstFx, { palette: ["#1a1430", col, col, "#ffffff"], light: 0.6, seed: it.plus }, x, y); ctx.sfx("levelup"); }, 180);
+            msg(up.kind === "add" ? `+${it.plus}！新增 ${fmtStat(up.id, up.after)}` : `+${it.plus}！${AFFIXES[up.id].name} ${fmtStat(up.id, up.before).split(" ")[1]} → ${fmtStat(up.id, up.after).split(" ")[1]}`);
+          } else msg(before === mainValue(it) ? `成功！+${it.plus}` : `成功！+${it.plus}　${AFFIXES[it.main.id].name} ${before} → ${mainValue(it)}`);
+        } else {
+          ctx.sfx("clank");
+          uiFx(parryFx, { palette: DULL, light: 0.1, seed: p }, x, y);
+          row.classList.add("fail");
+          msg("失敗……材料沒了", false);
+        }
         ctx.onQuest();
-        render();
+        if (row.classList.contains("fail")) setTimeout(render, 380); else render();
       }));
       body.appendChild(row);
     }
@@ -205,14 +222,14 @@ export function openForge() {
       card.innerHTML = `<div class="frow top"><div class="fhead">${itemHead(it, eq)}</div><div class="fcost">${costChips(c, P)}</div></div>`;
       it.affixes.forEach((a, i) => {
         const row = h("div", "faff");
-        row.innerHTML = `<span class="tier t${a.tier}">T${a.tier}</span><span class="atext">${AFFIXES[a.id].fmt(a.v)}</span>`;
+        row.innerHTML = `<span class="atext">${AFFIXES[a.id].fmt(a.v)}</span>`;
         row.appendChild(ibtn("dice", "重鑄", () => {
           if (P.scrap < c.scrap || P.coins < c.coins) { ctx.sfx("close"); return msg("材料不夠", false); }
           P.scrap -= c.scrap; P.coins -= c.coins;
           const na = rerollAffix(it, i);
           P.quests.stats.rerolls++;
           ctx.sfx("chime"); ctx.flash("#a8f0ff");
-          msg(`→ T${na.tier} ${AFFIXES[na.id].fmt(na.v)}`);
+          msg(`→ ${AFFIXES[na.id].fmt(na.v)}`);
           ctx.onQuest();
           render();
         }, "plain"));
@@ -222,9 +239,9 @@ export function openForge() {
     }
   };
   const salvageTab = (body) => {
-    body.appendChild(say("岩叔", "……不要的拆一拆，變碎屑。"));
+    body.appendChild(say("岩叔", "……不要的拆一拆，變星塵。"));
     const big = h("div", "bigcard");
-    big.innerHTML = `${ico("scrap", "huge")}<div class="bign">${P.scrap}</div><small>碎屑＝強化、重鑄的材料</small>`;
+    big.innerHTML = `${ico("scrap", "huge")}<div class="bign">${P.scrap}</div><small>星塵＝強化、重鑄的材料</small>`;
     big.appendChild(ibtn("bag", "去背包拆", () => { close(); ctx.openBag(); }));
     body.appendChild(big);
   };

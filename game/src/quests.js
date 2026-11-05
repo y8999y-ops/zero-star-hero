@@ -93,4 +93,4 @@ export function questEvent(p, ev, d = {}) {
   return { guild: doneG, sys: doneS };
 }
 /** 獎勵寫成一行字 */
-export const rewardText = (r) => [r.coins && `${r.coins} 金幣`, r.scrap && `${r.scrap} 碎屑`, r.xp && `${r.xp} 經驗`].filter(Boolean).join("、");
+export const rewardText = (r) => [r.coins && `${r.coins} 金幣`, r.scrap && `${r.scrap} 星塵`, r.xp && `${r.xp} 經驗`].filter(Boolean).join("、");

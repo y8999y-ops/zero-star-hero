@@ -164,7 +164,7 @@ function pickUp(d) {
     const r = RARITY[it.rarity];
     profile.scrap += r.scrap;
     profile.coins += r.coin;
-    feed(it, `自動拆解 +${r.scrap} 碎屑`);
+    feed(it, `自動拆解 +${r.scrap} 星塵`);
     save(profile);
     return true;
   }
@@ -652,7 +652,7 @@ function townTick(dt) {
 // 路人泡泡：畫面裡的居民偶爾自言自語（不能是正在旁邊可以對話的那個，頭上已經有「！」）
 const AMBIENT = {
   clerk: ["（推眼鏡）今天的委託也很多呢。", "請排隊……啊，只有你一個。", "公會的茶，是我泡的。……喝嗎？"],
-  golem: ["……（鏘）", "……碎屑。越多越好。", "……爐子，今天很旺。"],
+  golem: ["……（鏘）", "……星塵。越多越好。", "……爐子，今天很旺。"],
   mushroom: ["今天的湯是蘑菇湯～不是親戚喔。", "累了就來休息吧～", "頭上的孩子們又長高了呢～"],
 };
 const bubbleEl = $("bubble"), bubbleText = $("bubbleText");

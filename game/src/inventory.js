@@ -40,7 +40,8 @@ export function createInventory(profile, { onChange, onClose }) {
     el.dataset.slot = s.id;
     el.title = s.name;
     (["head", "body", "hands", "feet"].includes(s.id) ? dollL : dollR).append(el);
-    el.addEventListener("click", () => pick({ where: "equip", key: s.id }));
+    el.addEventListener("click", () => !dragged && pick({ where: "equip", key: s.id }));
+    el.addEventListener("pointerdown", (e) => startDrag(e, { where: "equip", key: s.id }));
     slotEls[s.id] = el;
   }
   // ---- 背包格
@@ -48,7 +49,8 @@ export function createInventory(profile, { onChange, onClose }) {
   for (let i = 0; i < BAG_SIZE; i++) {
     const el = document.createElement("div");
     el.className = "slot";
-    el.addEventListener("click", () => pick({ where: "bag", key: i }));
+    el.addEventListener("click", () => !dragged && pick({ where: "bag", key: i }));
+    el.addEventListener("pointerdown", (e) => startDrag(e, { where: "bag", key: i }));
     grid.append(el);
     cells.push(el);
   }
@@ -69,17 +71,65 @@ export function createInventory(profile, { onChange, onClose }) {
     render();
   }
 
-  function equip(i) {
+  function equip(i, slot) {
     const it = profile.inv[i];
     if (!it || it.kind === "junk") return;
-    const c = compare(it, profile.equip, profile.lv);
-    const old = profile.equip[c.slot];
-    profile.equip[c.slot] = it;
+    slot ??= compare(it, profile.equip, profile.lv).slot;
+    const old = profile.equip[slot];
+    profile.equip[slot] = it;
     if (old) profile.inv[i] = old;
     else profile.inv.splice(i, 1);
-    sel = { where: "equip", key: c.slot };
+    sel = { where: "equip", key: slot };
+    sfx("pickup");
     changed();
   }
+  /** 這件可以放進哪幾格（碎片兩格都可以） */
+  const slotsFor = (it) => (!it || it.kind === "junk" ? [] : it.kind === "acc" ? ["acc1", "acc2"] : [it.kind]);
+
+  // ---- 拖動：從背包拖到身上的格子（對應的格子會亮），或從身上拖回背包＝卸下。滑鼠和手指都可以。
+  let drag = null, dragged = false;
+  function startDrag(e, from) {
+    const it = itemAt(from);
+    if (!it || e.button > 0) return;
+    drag = { from, it, x0: e.clientX, y0: e.clientY, ghost: null, id: e.pointerId };
+  }
+  addEventListener("pointermove", (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    if (!drag.ghost) {
+      if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 6) return;
+      const k = box.getBoundingClientRect().width / 760;
+      drag.ghost = document.createElement("img");
+      drag.ghost.className = "drag-ghost";
+      drag.ghost.src = iconURL(drag.it.icon, 2);
+      drag.ghost.style.width = drag.ghost.style.height = 32 * k + "px";
+      document.body.append(drag.ghost);
+      // 對應的格子亮起來
+      const ok = drag.from.where === "bag" ? slotsFor(drag.it) : [];
+      for (const id of ok) slotEls[id].classList.add("drop-ok");
+      if (drag.from.where === "equip" && drag.from.key !== "weapon") grid.classList.add("drop-ok");
+      root.classList.add("dragging");
+    }
+    drag.ghost.style.left = e.clientX + "px";
+    drag.ghost.style.top = e.clientY + "px";
+    const over = document.elementFromPoint(e.clientX, e.clientY)?.closest(".slot, #grid");
+    document.querySelectorAll("#inv .drop-hover").forEach((el) => el.classList.remove("drop-hover"));
+    if (over && (over.classList.contains("drop-ok") || over.closest("#grid.drop-ok"))) (over.closest("#grid.drop-ok") ?? over).classList.add("drop-hover");
+  });
+  addEventListener("pointerup", (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const d = drag;
+    drag = null;
+    if (!d.ghost) return;
+    dragged = true;
+    setTimeout(() => (dragged = false), 0);
+    d.ghost.remove();
+    root.classList.remove("dragging");
+    document.querySelectorAll("#inv .drop-ok, #inv .drop-hover").forEach((el) => el.classList.remove("drop-ok", "drop-hover"));
+    const over = document.elementFromPoint(e.clientX, e.clientY);
+    const slotEl = over?.closest(".slot[data-slot]");
+    if (d.from.where === "bag" && slotEl && slotsFor(d.it).includes(slotEl.dataset.slot)) equip(d.from.key, slotEl.dataset.slot);
+    else if (d.from.where === "equip" && over?.closest("#grid") && d.from.key !== "weapon") unequip(d.from.key);
+  });
   function unequip(slot) {
     if (slot === "weapon") return say("星核不能拿出來。那是你的心臟欸。");
     if (profile.inv.length >= BAG_SIZE) return say("背包滿了，卸不下來。");
@@ -96,7 +146,7 @@ export function createInventory(profile, { onChange, onClose }) {
     profile.coins += r.coin;
     profile.inv.splice(s.key, 1);
     sel = null;
-    say(`拆解 ${it.name}：碎屑 +${r.scrap}，金幣 +${r.coin}`);
+    say(`拆解 ${it.name}：星塵 +${r.scrap}，金幣 +${r.coin}`);
     changed();
   }
 
@@ -115,7 +165,7 @@ export function createInventory(profile, { onChange, onClose }) {
     profile.scrap += scrap;
     profile.coins += coin;
     sel = null;
-    say(n ? `拆解了 ${n} 件垃圾和普通裝備：碎屑 +${scrap}，金幣 +${coin}` : "沒有可以拆的東西（比身上好的不會拆）。");
+    say(n ? `拆解了 ${n} 件垃圾和普通裝備：星塵 +${scrap}，金幣 +${coin}` : "沒有可以拆的東西（比身上好的不會拆）。");
     changed();
   });
   $("btnAuto").addEventListener("click", () => {
@@ -183,7 +233,7 @@ export function createInventory(profile, { onChange, onClose }) {
     // 主屬性一行大字（強化等級標在右邊）；副屬性每行前面是層級 T1～T5
     const lines = describe(it).map(([t, id, txt, tag]) => t === "main"
       ? `<div class="ln main">${stIco(id)}${txt}${tag ? `<em>${tag}</em>` : ""}</div>`
-      : `<div class="ln ${t}">${tag ? `<i>${tag}</i>` : ""}${stIco(id)}${txt}</div>`).join("");
+      : `<div class="ln ${t}">${stIco(id)}${txt}</div>`).join("");
     let cmp = "", btns = "";
     if (sel.where === "bag" && it.kind !== "junk") {
       const c = compare(it, profile.equip, profile.lv);
@@ -199,10 +249,10 @@ export function createInventory(profile, { onChange, onClose }) {
       cmp = `<div class="cmp"><div class="ch">已裝備</div></div>`;
       if (sel.key !== "weapon") btns = `<button class="pbtn" data-act="unequip">卸下</button>`;
     }
-    if (sel.where === "bag") btns += `<button class="pbtn red" data-act="salvage">拆解 <small>+${r.scrap}碎屑</small></button>`;
+    if (sel.where === "bag") btns += `<button class="pbtn red" data-act="salvage">拆解 <small>+${r.scrap}星塵</small></button>`;
     const lore = it.unique ? `<div class="lore">${UNIQUES[it.unique].lore}</div>` : "";
     el.innerHTML = `<div class="dhead"><div class="slot r${it.rarity}"><img src="${iconURL(it.icon, 2)}"></div>
-      <div><div class="dname" style="color:${colorOf(it)}">${it.name}${it.plus ? " +" + it.plus : ""}</div><div class="dsub">${junk ? "垃圾" : r.name + "・" + kindLabel(it) + "・物品等級 " + it.ilvl}</div></div></div>
+      <div class="dname" style="color:${colorOf(it)}">${it.name}${junk ? "" : `<span class="dlv" title="物品等級">${it.ilvl}</span>`}</div></div>
       <div class="dlines">${lines || '<div class="ln">（什麼都沒有）</div>'}${lore}</div>${cmp}<div class="dbtns">${btns}</div>`;
     el.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", () => {
       const a = b.dataset.act;

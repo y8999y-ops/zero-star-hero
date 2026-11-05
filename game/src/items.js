@@ -127,8 +127,35 @@ const weighted = (w) => { const ks = Object.keys(w); let x = Math.random() * ks.
 export const tiersFor = (ilvl) => (ilvl >= 80 ? 5 : ilvl >= 60 ? 4 : ilvl >= 40 ? 3 : ilvl >= 20 ? 2 : 1);
 /** 主屬性隨物品等級成長（緩和版：每級 +2%，物品等級 100 約 3 倍） */
 export const growth = (ilvl) => 1 + 0.02 * (ilvl - 1);
-/** 強化：每 +1 主屬性 +5%（第 2 批改成 +25 制） */
+/** 強化：每 +1 主屬性 +5% */
 export const plusMul = (p) => 1 + 0.05 * (p ?? 0);
+
+// ---- 強化（第 2 批，2026-11-05）：上限看稀有度（普通 +5 … 傳說、神話 +25）；每 +5 提升一條副屬性，
+// 副屬性還沒滿 4 條時改成新增一條（原神聖遺物式）。+10 以前不會失敗，+11 以後可能失敗（失敗只扣材料）。
+export const MAX_PLUS = [5, 10, 15, 20, 25, 25];
+export const maxPlus = (item) => MAX_PLUS[item.rarity] ?? 5;
+/** 從 +p 強化到 +p+1 的成功率（%） */
+export function enhanceRate(p) {
+  const t = p + 1;
+  if (t <= 10) return 100;
+  return [90, 80, 70, 60, 50, 40, 30, 25][Math.min(7, Math.floor((t - 11) / 2))];
+}
+/** 強化的花費：星塵（存檔欄位沿用 scrap）＋金幣 */
+export const enhanceCost = (p, item) => ({ scrap: 2 + p * 2 + item.rarity * 2, coins: 15 + p * 12 });
+/** 強化成功：+1。到 +5 的倍數時開副屬性，回傳 { add|up, id, before, after }，沒有就回傳 null。 */
+export function enhanceUp(item) {
+  item.plus = (item.plus ?? 0) + 1;
+  if (item.plus % 5 || item.kind === "junk") return null;
+  if (item.affixes.length < 4) {
+    const have = new Set([item.main?.id, ...item.affixes.map((x) => x.id)]);
+    const n = rollSub(pick(Object.keys(STATS).filter((id) => !have.has(id))), item.ilvl);
+    item.affixes.push(n);
+    return { kind: "add", id: n.id, before: 0, after: n.v };
+  }
+  const a = pick(item.affixes), S = STATS[a.id], add = rollSub(a.id, item.ilvl).v, before = a.v;
+  a.v = Number((a.v + add).toFixed(S.dec ?? 0));
+  return { kind: "up", id: a.id, before, after: a.v };
+}
 
 /** 抽稀有度。mf 是掉寶率加成（%），會加重精良以上。minR 是保底。 */
 export function rollRarity(mf = 0, minR = 0) {

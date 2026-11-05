@@ -650,3 +650,20 @@ body.touch #pcKeys, body.town #pcKeys, body:not(.playing) #pcKeys { display: non
 #invStats div:not(.pw) { justify-content: flex-start; align-items: center; }
 #invStats div:not(.pw) b { font-weight: 700; color: var(--ink); }
 #invStats .pw { grid-column: 1 / -1; }
+/* 物品名稱旁的等級數字；拖動裝備 */
+.dname { display: flex; align-items: center; gap: 6px; }
+.dlv { font-size: 11px; line-height: 14px; padding: 0 4px; color: #fff6c0; background: #2a2040; border: 1px solid #5a4a80; text-shadow: none; }
+.drag-ghost { position: fixed; z-index: 99; pointer-events: none; transform: translate(-50%, -50%) scale(1.15); image-rendering: pixelated; filter: drop-shadow(0 3px 0 rgba(0,0,0,.5)); }
+#inv.dragging, #inv.dragging * { cursor: grabbing; }
+#inv .slot { touch-action: none; }
+#inv .slot.drop-ok { animation: dropOk .7s ease-in-out infinite; }
+@keyframes dropOk { 50% { filter: brightness(1.5) drop-shadow(0 0 5px #ffd84a); } }
+#inv .slot.drop-hover { filter: brightness(1.8) drop-shadow(0 0 7px #fff0a0); animation: none; }
+#grid.drop-ok { outline: 2px dashed rgba(255, 216, 74, .6); outline-offset: 2px; }
+#grid.drop-hover { outline-color: #fff0a0; }
+/* 強化 +25（第 2 批）：+p/上限、每 +5 一顆菱形、失敗時圖示抖一下 */
+.plv { font-size: 11px; color: var(--dim); white-space: nowrap; }
+.plv b { font-size: 14px; color: #ffe98a; }
+.pips i { width: 7px; height: 7px; transform: rotate(45deg); border-radius: 1px; }
+.frow.fail .fimg { animation: failShake .35s steps(6); filter: grayscale(.8) brightness(.8); }
+@keyframes failShake { 25% { transform: translateX(-3px); } 50% { transform: translateX(3px); } 75% { transform: translateX(-2px); } }
