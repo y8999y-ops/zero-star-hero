@@ -324,7 +324,8 @@ function updateUniques(dt) {
     Object.assign(player.buff, { atk: 0, spd: 0, move: 0, ...buff, t: player.core("noisy") || 5 });   // 星核：等級越高增益越久
     sayQueue.unshift([line, 2.4]);
   }
-  const fighting = stageApi.alive() > 0;
+  // 大檢查：大地圖上一直有怪活著 → 改成「附近有醒著的怪」才算戰鬥中（加班證明才會在離開戰鬥 3 秒後歸零）
+  const fighting = enemies.some((e) => !e.dead && e.kind !== "gold" && Math.abs(e.x - player.x) < 220 && Math.abs(e.y - player.y) < 140);
   idleT = fighting ? 0 : idleT + dt;
   combatT = fighting ? combatT + dt : idleT > 3 ? 0 : combatT;
   player.dmgMul = player.has("overtime") ? 1 + Math.min(1, Math.floor(combatT / 10) * 0.05) : 1;
@@ -661,7 +662,9 @@ const world = {
     if (player.hp <= 0) {
       stats.deaths++;
       // 8b：從最後點亮的祭壇重來（還沒點過＝關卡起點）；打死的怪不會回來
-      const to = checkpoint ?? (TOWN || ENDLESS ? null : { x: STAGE.start.x, y: floorAt(STAGE.start.x, 0) });
+      let to = checkpoint ?? (TOWN || ENDLESS ? null : { x: STAGE.start.x, y: floorAt(STAGE.start.x, 0) });
+      // 大檢查：王已經倒下（融化中）時死掉 → 在王房裡原地復活（王房還封著，送出去會被夾回來）
+      if (director?.lock && STAGE.arena && enemies.some((e) => e.isBoss && e.dying)) to = { x: player.x, y: STAGE.arena.floor };
       // 10 批：王戰中死掉（王房封住的時候）→ 王和房裡的小怪收掉、解除封鎖，回祭壇；再跳進王房，王滿血重新登場
       const bossFight = director?.lock && STAGE.arena && enemies.some((e) => e.isBoss && !e.dying);
       if (bossFight) {
@@ -1232,7 +1235,7 @@ function tick(dt) {
     // 戰鬥區封鎖時，敵人也出不去
     const lock = director?.lock;
     // 10 批：有王房（真的牆圍起來）的關卡，只夾住王房裡的怪；地圖上其他地方的怪不動
-    const inLock = lock && (!STAGE.arena || (e.x > lock.l - 24 && e.x < lock.r + 24 && e.y > STAGE.arena.floor - 220));
+    const inLock = lock && (!STAGE.arena || (e.x > lock.l && e.x < lock.r && e.y > STAGE.arena.floor - 220));   // 大檢查：只算真的在王房裡的（牆外靠牆的蝙蝠不要被拉進來）
     if (inLock && (e.x < lock.l + 12 || e.x > lock.r - 12)) {
       e.x = Math.max(lock.l + 12, Math.min(lock.r - 12, e.x));
       if (e.kind === "gold") e.hopDir = -e.hopDir;
@@ -1429,7 +1432,7 @@ function drawBarrier(lock) {
   for (const [wx, side] of [[lock.l, 1], [lock.r - 1, -1]]) {
     const x0 = wx - frame.ox;
     if (x0 < -8 || x0 >= Wf + 8) continue;
-    const bottom = FLOOR - frame.oy;
+    const bottom = (STAGE.arena?.floor ?? FLOOR) - frame.oy;   // 大檢查：高地圖上用王房的地面
     for (let y = 0; y < bottom; y++) {
       const wy = y + frame.oy + scroll;
       for (let i = 0; i < 6; i++) {
@@ -1555,6 +1558,13 @@ function showClear() {
   if (portalX === null && !ENDLESS) {
     portalX = Math.round(Math.max(60, Math.min(geo.w - 60, player.x + player.face * 70)));
     portalY = floorAt(portalX, player.y - 8);
+    // 大檢查：有王房的關卡，傳送門一定開在王房的地上（原本靠牆時會開到牆後面去）
+    if (STAGE.arena) {
+      const { l, r } = STAGE.arena, clampA = (v) => Math.round(Math.max(l + 40, Math.min(r - 40, v)));
+      portalX = clampA(player.x + player.face * 70);
+      if (Math.abs(portalX - player.x) < 40) portalX = clampA(player.x - player.face * 70);   // 前面就是牆：開在背後
+      portalY = STAGE.arena.floor;
+    }
     spawn(A.portal, { x: portalX, y: portalY }, { layer: "back", keep: true });
     flash(portalX, portalY - 16, 110, 3, 0.6, "#a8f0ff");
   }

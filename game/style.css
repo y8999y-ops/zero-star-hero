@@ -916,3 +916,4 @@ body.touch #invBag > .ttl { padding-right: 30px; }
 .cost::before { content: ""; width: 12px; height: 12px; background: var(--ic-mana) center / 100% no-repeat; image-rendering: pixelated; }
 .nomp .cost { color: #ff8a7a; border-color: #8a1a2a; }
 #toast .ticon { display: inline-block; width: 32px; height: 32px; margin: -8px 6px -10px -4px; vertical-align: middle; background: center / 100% no-repeat; image-rendering: pixelated; }
+body.touch #btnSkill .cost { right: auto; left: -4px; }   /* 手機：右下角會蓋到攻擊鍵，改放左下 */

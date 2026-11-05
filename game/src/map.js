@@ -21,11 +21,12 @@ export function flatMap(w, h, floor, wall, platforms = []) {
   return { w, h, platforms, solids: [{ x: 0, y: floor, w, h: h - floor }, { x: 0, y: 0, w: wall, h }, { x: w - wall, y: 0, w: wall, h }] };
 }
 
-/** 這一點是不是實心（地圖左右外面＝實心、底下外面＝實心、上面外面＝空） */
+/** 這一點是不是實心（地圖左右外面＝實心、底下外面＝實心、上面外面＝跟第 0 列一樣）
+ *  大檢查：原本上面外面一律是空的，有天花板的大地圖，天花板頂面就被當成地面（死掉重生、蝙蝠會跑到地圖外面的屋頂上） */
 export function solidAt(x, y) {
   const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
   if (tx < 0 || tx >= gw || ty >= gh) return true;
-  if (ty < 0) return false;
+  if (ty < 0) return grid[tx] === 1;   // 第 0 列是天花板＝上面也是岩壁；第 0 列是空的（城鎮、天花板的缺口）＝上面是天空
   return grid[ty * gw + tx] === 1;
 }
 const tileTop = (y) => Math.floor(y / TILE) * TILE;

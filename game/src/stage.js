@@ -94,7 +94,7 @@ export const STAGE_1_2 = {
   ],
 
   intro: ["系統：這裡是垃圾山。上面的世界把不要的東西，全部丟到這裡。", "系統：……包括你。開玩笑的。大概。"],
-  caches: [{ x: 272, y: 440, n: 7 }, { x: 1400, y: 152, n: 9 }, { x: 1620, y: 456, n: 10 }, { x: 2400, y: 344, n: 8 }],
+  caches: [{ x: 272, y: 440, n: 7 }, { x: 1400, y: 152, n: 9 }, { x: 1620, y: 512, n: 10 }, { x: 2400, y: 344, n: 8 }],
   events: [
     { x: 260, tip: { touch: "撿到的東西都在右上角的【背包】。穿裝備、比較、拆垃圾……垃圾的部分你應該很熟。", key: "撿到的東西按【I】打開背包看。穿裝備、比較、拆垃圾……垃圾的部分你應該很熟。", focus: "bag" } },
     { x: 620, say: "系統：歡迎委員會來了。", waves: [[["slime", 1], ["slime", -1], ["trash", 1]], [["slime", 1], ["slime", 1], ["slime", -1], ["bat", 0]]] },
@@ -120,10 +120,10 @@ export const STAGE_1_3 = {
   hazards: [["goo", 500, 600], ["pipe", 1000, 600], ["goo", 1680, 600], ["drum", 2280, 600], ["goo", 1000, 400]],
   altars: [{ x: 600, y: 600 }, { x: 1300, y: 600 }, { x: 2060, y: 600 }],
   spawns: [
-    { k: "bat", x: 200, y: 260 }, { k: "bat", x: 400, y: 320 }, { k: "bat", x: 560, y: 420 }, { k: "bat", x: 300, y: 500 }, { k: "slime", x: 400, y: 600 }, { k: "slime", x: 520, y: 600 }, { k: "slime", x: 640, y: 600 }, { k: "bat", x: 600, y: 280 }, { k: "slime", x: 420, y: 224 }, { k: "slime", x: 560, y: 224 }, { k: "slime", x: 840, y: 136 }, { k: "bat", x: 860, y: 80 }, { k: "bat", x: 900, y: 500 }, { k: "bat", x: 1000, y: 460 }, { k: "bat", x: 1200, y: 300 }, { k: "batE", x: 1300, y: 350 }, { k: "slime", x: 960, y: 400 }, { k: "slime", x: 1100, y: 400 }, { k: "trash", x: 1000, y: 600 }, { k: "slime", x: 1200, y: 600 }, { k: "slime", x: 1400, y: 600 }, { k: "bat", x: 1400, y: 380 }, { k: "bat", x: 1050, y: 250 }, { k: "bat", x: 1650, y: 260 }, { k: "bat", x: 1700, y: 400 }, { k: "slime", x: 1680, y: 320 }, { k: "slime", x: 1780, y: 320 }, { k: "bat", x: 1950, y: 180 }, { k: "trash", x: 1960, y: 240 }, { k: "slime", x: 2050, y: 240 }, { k: "batE", x: 2000, y: 330 }, { k: "slime", x: 1620, y: 600 }, { k: "trash", x: 1760, y: 600 }, { k: "slime", x: 1880, y: 600 }, { k: "trashE", x: 2000, y: 600 }, { k: "gold", x: 2220, y: 600 }, { k: "slime", x: 2300, y: 600 }, { k: "trash", x: 2400, y: 600 }, { k: "bat", x: 2250, y: 300 }, { k: "bat", x: 2350, y: 420 }, { k: "slime", x: 2260, y: 360 }, { k: "slime", x: 2340, y: 360 }, { k: "bat", x: 2450, y: 460 }, { k: "bat", x: 2500, y: 350 },
+    { k: "bat", x: 200, y: 260 }, { k: "bat", x: 400, y: 320 }, { k: "bat", x: 560, y: 420 }, { k: "bat", x: 300, y: 500 }, { k: "slime", x: 400, y: 600 }, { k: "slime", x: 520, y: 600 }, { k: "slime", x: 640, y: 600 }, { k: "bat", x: 600, y: 280 }, { k: "slime", x: 420, y: 224 }, { k: "slime", x: 560, y: 224 }, { k: "slime", x: 840, y: 136 }, { k: "bat", x: 860, y: 80 }, { k: "bat", x: 900, y: 500 }, { k: "bat", x: 1000, y: 460 }, { k: "bat", x: 1200, y: 300 }, { k: "batE", x: 1300, y: 350 }, { k: "slime", x: 960, y: 400 }, { k: "slime", x: 1100, y: 400 }, { k: "trash", x: 1000, y: 600 }, { k: "slime", x: 1200, y: 600 }, { k: "slime", x: 1400, y: 600 }, { k: "bat", x: 1400, y: 380 }, { k: "bat", x: 1050, y: 250 }, { k: "bat", x: 1650, y: 260 }, { k: "bat", x: 1700, y: 400 }, { k: "slime", x: 1680, y: 320 }, { k: "slime", x: 1780, y: 320 }, { k: "bat", x: 1950, y: 180 }, { k: "trash", x: 1960, y: 240 }, { k: "slime", x: 2050, y: 240 }, { k: "batE", x: 2000, y: 330 }, { k: "slime", x: 1620, y: 600 }, { k: "trash", x: 1760, y: 600 }, { k: "slime", x: 1880, y: 600 }, { k: "trashE", x: 2000, y: 600 }, { k: "gold", x: 2220, y: 600 }, { k: "slime", x: 2300, y: 600 }, { k: "trash", x: 2400, y: 600 }, { k: "bat", x: 2250, y: 300 }, { k: "bat", x: 2350, y: 420 }, { k: "slime", x: 2260, y: 392 }, { k: "slime", x: 2340, y: 392 }, { k: "bat", x: 2450, y: 460 }, { k: "bat", x: 2500, y: 350 },
   ],
   intro: ["系統：好暗。……你會發光這件事，第一次派上用場了。", "系統：聽到翅膀的聲音了嗎？我聽到了。很多。"],
-  caches: [{ x: 856, y: 120, n: 10 }, { x: 1036, y: 296, n: 8 }, { x: 2000, y: 224, n: 9 }, { x: 2300, y: 344, n: 8 }],
+  caches: [{ x: 856, y: 120, n: 10 }, { x: 1036, y: 296, n: 8 }, { x: 2000, y: 224, n: 9 }, { x: 2300, y: 376, n: 8 }],
   events: [
     { x: 420, say: "系統：來了。", waves: [[["bat", 0], ["bat", 0], ["bat", 0]], [["bat", 0], ["bat", 0], ["slime", 1], ["slime", -1]]] },
     { x: 900, say: "系統：蝙蝠會俯衝。閃避有無敵時間，看準了再按。", waves: [[["bat", 0], ["bat", 0], ["trash", 1]], [["bat", 0], ["bat", 0], ["bat", 0], ["slime", -1]]] },
@@ -184,7 +184,7 @@ const SAY_TIME = 3.2, HINT_TIME = 5;
 export class Director {
   /** api: { spawnEnemy(kind, x, y), say(msg, sec), hint(msg, sec), alive(), dropCache(x, y, n), clear() } */
   constructor(stage, api, isTouch) {
-    Object.assign(this, { stage, api, isTouch, next: 0, lock: null, waves: null, wave: 0, waveDelay: 0, done: false, time: 0 });
+    Object.assign(this, { stage, api, isTouch, next: 0, lock: null, waves: null, wave: 0, waveDelay: 0, done: false, time: 0, holdT: 0 });
     for (const m of stage.intro) api.say(m, SAY_TIME);
     for (const c of stage.caches) api.dropCache(c.x, c.y, c.n);
     // 8b（使用者 2026-11-05：不要隱形牆和遭遇戰，參考 Ori）：怪物一開始就擺在地圖上。
@@ -204,6 +204,7 @@ export class Director {
   update(dt, player, camX, W) {
     if (this.done) return;
     this.time += dt;
+    if ((this.holdT -= dt) > 0) return;   // 大檢查：王戰中死掉，淡出、送回祭壇的這段時間不要又觸發王房
     // 戰鬥中：等這一波清完，再出下一波
     if (this.lock) {
       if (this.api.alive(this.lock) === 0 && (this.waveDelay -= dt) <= 0) {
@@ -240,6 +241,7 @@ export class Director {
     if (!this.lock) return;
     this.lock = null; this.waves = null;
     this.next = this.stage.events.findIndex((e) => e.lock);
+    this.holdT = 1;
   }
 
   spawnWave(list) {
