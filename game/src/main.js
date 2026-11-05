@@ -158,8 +158,9 @@ function dropItem(x, y, minR = 0, opts = {}) {
 function pickUp(d) {
   if (d.item.kind === "formcore") return absorb(d.item);
   const it = d.item, better = compare(it, profile.equip, profile.lv)?.better;
-  const autoMax = [-1, R.junk, R.common][profile.auto];
-  if (it.rarity <= autoMax && !better) {
+  // 自動拆解：關／只拆純垃圾／純垃圾和普通
+  const auto = profile.auto === 1 ? it.kind === "junk" : profile.auto === 2 ? it.kind === "junk" || it.rarity <= R.common : false;
+  if (auto && !better) {
     const r = RARITY[it.rarity];
     profile.scrap += r.scrap;
     profile.coins += r.coin;
@@ -317,7 +318,7 @@ function updateChest(dt) {
     spawnLoot(chest.x, FLOOR - 14, T.coins, T.gems, chest.tier);
     let k = 0;
     for (const [rar, n] of T.items) for (let i = 0; i < n; i++, k++) {
-      const legend = k === 0 && !profile.clears && !profile.cleared[STAGE_ID];   // 第一次通關的第一個寶箱：保底傳說
+      const legend = false;   // 目前進度只掉普通、精良、稀有（傳說第 6 批再開放）
       dropItem(chest.x, FLOOR - 12, legend ? R.legend : R[rar], { rarity: legend ? R.legend : R[rar], ilvl: ilvlNow(1 + chest.tier), dir: k % 2 ? 1 : -1 });
     }
   }
@@ -352,7 +353,7 @@ function spawnLoot(x, y, nCoins, nGems, tier) {
 /** 落地彈跳；還躺在地上（lay）時，主角靠近才開始吸 */
 function lootPhysics(c, dt, onGet) {
   c.t += dt;
-  const m = 30 * (1 + player.stats.magnet / 100);
+  const m = 30;
   if (c.lay) {
     c.vy += 700 * dt;
     c.x += c.vx * dt;
@@ -471,7 +472,6 @@ const world = {
     shots.push({ x, y, dir, form, life: 1.1, fx: spawn(fireball, { x, y, flip: dir < 0, palette: pal.fx, light: GLOW.skill, seed: (Math.random() * 99) | 0 }) });
   },
   dropCoins(x, y, n) {
-    n = Math.round(n * (1 + player.stats.gold / 100));
     for (let i = 0; i < n; i++) coins.push({ x, y, vx: (Math.random() - 0.5) * 160, vy: -120 - Math.random() * 140, t: 0 });
   },
   land(x, y, hard) { sfx("land", hard); dustFx("land", x, y, hard); props.landing(x, y, hard); scenery.landing(x, y, hard); },
@@ -490,11 +490,10 @@ const world = {
     chargeUlt(2);
     const [coreId, coreP] = coreChance(e.kind, profile.forms);
     if (coreId && Math.random() < (e.elite ? Math.min(1, coreP * 4) : coreP)) { const b = e.box(); drops.add(makeCore(coreId), e.x, (b.y0 + b.y1) / 2); }
-    if (s.life) player.hp = Math.min(player.maxHp, player.hp + s.life);
     const b = e.box(), cy = (b.y0 + b.y1) / 2;
-    if (e.elite || Math.random() < (DROP_RATE[e.kind] ?? 0.1) * (1 + s.mf / 200)) dropItem(e.x, cy, e.kind === "gold" || e.elite ? R.magic : 0, { ilvl: ilvlNow(e.kind === "trash" || e.elite ? 1 : 0) });
-    // 擊殺爆炸（詞綴／爆炸頭安全帽）：會連鎖，最多連 6 次
-    if (s.boom && boomDepth < 6 && Math.random() * 100 < s.boom) {
+    if (e.elite || Math.random() < (DROP_RATE[e.kind] ?? 0.1) * (1 + s.mf / 200)) dropItem(e.x, cy, e.kind === "gold" || e.elite ? R.fine : 0, { ilvl: ilvlNow(e.kind === "trash" || e.elite ? 1 : 0) });
+    // 擊殺爆炸（只剩傳說「爆炸頭安全帽」有；詞綴已取消）：會連鎖，最多連 6 次
+    if (player.has("hardhat") && boomDepth < 6 && Math.random() * 100 < 25) {
       const big = player.has("hardhat") ? 1.5 : 1, rx = 34 * big;
       boomDepth++;
       spawn(explosion, { x: Math.round(e.x), y: Math.round(cy), palette: PAL.ember, accent: PAL.lava, light: GLOW.skill * 0.7, seed: (Math.random() * 99) | 0 }, { speed: 1.6 });
@@ -772,7 +771,7 @@ const SHOT_PAL = {
 function chargeUlt(n) {
   if (ult.on || cleared) return;
   const was = ult.charge;
-  ult.charge = Math.min(ULT_MAX, ult.charge + n);
+  ult.charge = Math.min(ULT_MAX, ult.charge + n * (1 + (player.stats.charge ?? 0) / 100));   // 充能效率
   if (was < ULT_MAX && ult.charge >= ULT_MAX) toast("系統：" + tipFor("大招集滿了！按【大招】，讓牠們見識一下零星的厲害。", "大招集滿了！按【Q】，讓牠們見識一下零星的厲害。"), 2.6, "ult");
 }
 const ultHooks = {
@@ -782,7 +781,7 @@ const ultHooks = {
     for (const e of enemies) {
       if (e.dead || ult.hitSet.has(e) || e.x < x0 || e.x > x1) continue;
       ult.hitSet.add(e);
-      e.hit(player.roll(ULT_MULT * (1 + player.stats.skill / 100)), e.x < tx ? -1 : 1, { launch: true, push: 4 }, world);
+      e.hit(player.roll(ULT_MULT * (1 + player.stats.ult / 100)), e.x < tx ? -1 : 1, { launch: true, push: 4 }, world);
       n++;
     }
     if (n) addCombo(n);
@@ -879,7 +878,7 @@ function tick(dt) {
   updateUniques(dt);
   updateChest(dt);
   updateGems(dt);
-  drops.update(dt, player, 16 * (1 + player.stats.magnet / 100), pickUp);
+  drops.update(dt, player, 16, pickUp);
   if (ENDLESS) spawnEnemies(dt);
   else {
     stats.time += dt;
@@ -941,7 +940,7 @@ function tick(dt) {
     c.t += dt;
     if (c.still) {
       // 高處的金幣：主角靠近才吸過去
-      const m = 34 * (1 + player.stats.magnet / 100);
+      const m = 34;
       if (Math.abs(player.x - c.x) < m && Math.abs(player.y - 12 - c.y) < m) { c.still = false; c.t = 0.45; }
       continue;
     }

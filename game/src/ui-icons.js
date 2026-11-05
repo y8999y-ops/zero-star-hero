@@ -66,6 +66,44 @@ export const ICON_DEFS = {
     "fg........gh", "gfg......ggh", ".gfg....ggh.", "..gfg..ggh..", "...gfgggh...", "....gggh....",
     "....gghh....", "...gghhhh...", "..gghh.hhh..", ".gghh...hhi.", "gghh.....hhi", "ghh.......hi",
   ] },
+  // ---- 屬性圖示（2026-11-05 裝備改版第 1 批）：背包數值列、裝備說明用
+  st_atk: { ox: 2, oy: 2, rows: [
+    "..........ab", ".........abc", "........abc.", ".......abc..", "......abc...", ".....abc....",
+    ".G..abc.....", "..HIbc......", "..wHIJ......", ".wx..J......", "wx..........", "I...........",
+  ] },
+  st_hp: { ox: 2, oy: 3, rows: [
+    ".ggg...ggh.", "gafgg.ggghh", "gffgggggghh", "gggggggghhh", ".ggggggghh.", "..ggggghh..", "...ggghh...", "....ghh....", ".....h.....",
+  ] },
+  st_def: { ox: 3, oy: 2, rows: [
+    "bbbbbbbbbc", "baabbbbbcd", "babbqbbbcd", "babqpqbbcd", "baqpppqbcd", "babqpqbbcd", ".babqbbcd.", ".bbbbbccd.", "..bbbccd..", "...bccd...", "....cd....",
+  ] },
+  st_crit: { ox: 2, oy: 2, rows: [
+    ".....g.....", "...hhghh...", "..h..g..h..", ".h.......h.", ".h.......h.", "ggg..f..ggg", ".h.......h.", ".h.......h.", "..h..g..h..", "...hhghh...", ".....g.....",
+  ] },
+  st_critDmg: { ox: 2, oy: 2, rows: [
+    ".....G.....", ".G..GHG..G.", "..GGHHHII..", "..GHgfgHI..", ".GHgffggIJ.", "GHHgfgggIJJ", ".GIgggghIJ.", "..IIhhhIJ..", "..IIJJIJJ..", ".I..JIJ..J.", ".....J.....",
+  ] },
+  st_skill: { ox: 2, oy: 1, rows: [
+    "..........a.", "....MMMM.aaa", "..MLLMMMNNa.", "..LaLMMMNN..", ".MLLMaMMNNO.", ".MMMaaaMNNO.", ".MMMMaMNNOO.", ".NMMMNNNOOO.", "..NNNNNOOO..", "..ONNOOOOO..", "....OOOO....",
+  ] },
+  st_ult: { ox: 2, oy: 2, rows: [
+    ".....G.....", ".....G.....", "....GHH....", "....GHI....", "GGGGGHIIIIJ", ".GHHHHIIIJ.", "..HHHHIIJ..", "..HHHJIIJ..", ".HHJ...IIJ.", ".HJ.....IJ.",
+  ] },
+  st_charge: { ox: 4, oy: 2, rows: [
+    "......pq", ".....pqr", "....pqr.", "...pqr..", "..pqqqqr", ".pqqqqr.", "....qr..", "...qr...", "..qr....", ".qr.....", "qr......",
+  ] },
+  st_cdr: { ox: 3, oy: 2, rows: [
+    "uuuuuuuuuu", ".A......D.", ".Apppppq D".replace(" ", ""), "..Apppq D.".replace(" ", ""), "...ApqD...", "....AD....", "...A.pD...", "..A..q.D..", ".A.pppq.D.", ".AppppqqD.", "wwwwwwwwww",
+  ] },
+  st_leech: { ox: 4, oy: 2, rows: [
+    "...h....", "...h....", "..hhi...", "..ghi...", ".gahhi..", ".ghhhii.", "ghhhhiij", "hghhhiij", "hhhhiiij", ".hhiiij.", "..ijjj..",
+  ] },
+  st_move: { ox: 1, oy: 3, rows: [
+    ".......uuuv...", ".......xxxx...", "aab....uvw....", ".abb...uvw....", "aaabb..uvw....", ".aabbbuuvwwv..", "...bbbuvvvwwwx", "......uvvvvwwx", "......yyyyyyyy",
+  ] },
+  st_mf: { ox: 2, oy: 2, rows: [
+    "..kkl..kll..", ".kkllm.klmm.", ".klllmklmmm.", "..lllmmmmm..", "...llmmmn...", ".kkllm.mmmn.", "klllmm.mmnnn", ".llmm...mnn.", "..m.....n...", ".....m......", "....m.......",
+  ] },
 };
 
 const N = 16;

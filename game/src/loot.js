@@ -2,7 +2,7 @@
 // 另外有左側的「撿到了什麼」訊息列。
 import { hex } from "../../pixelfx/src/core/index.js";
 import { ICONS, ICON_SIZE as S } from "./icons.js";
-import { RARITY, R } from "./items.js";
+import { RARITY, R, colorOf } from "./items.js";
 import { groundAt, LEVEL_W, WALL } from "./level.js";
 import { iconURL } from "./ui-art.js";
 
@@ -13,9 +13,12 @@ for (const [name, cells] of Object.entries(ICONS)) iconPx[name] = Uint32Array.fr
 
 // 光柱：顏色（暗、中、亮）和高度
 const BEAM = {
-  [R.magic]: { c: ["#1c3a80", "#3a78e0", "#b8dcff"], h: 42, w: 1 },
-  [R.rare]: { c: ["#6a4a08", "#d0a020", "#fff0a0"], h: 70, w: 1 },
+  // 2026-11-05：6 階稀有度。精良綠、稀有藍、史詩紫、傳說橘、神話白金
+  [R.fine]: { c: ["#0e4018", "#2fa040", "#b4f8a0"], h: 34, w: 1 },
+  [R.rare]: { c: ["#1c3a80", "#3a78e0", "#b8dcff"], h: 56, w: 1 },
+  [R.epic]: { c: ["#3a1466", "#8a48e0", "#e8c8ff"], h: 80, w: 1 },
   [R.legend]: { c: ["#6a2008", "#e06010", "#ffe0b0"], h: 130, w: 2 },
+  [R.myth]: { c: ["#6a5010", "#f0d060", "#ffffff"], h: 160, w: 2 },
 };
 for (const b of Object.values(BEAM)) { b.px = b.c.map((c) => hex(c) >>> 0); b.light = hex(b.c[0]) >>> 0; }
 const RING = RARITY.map((r) => hex(r.color) >>> 0);
@@ -52,7 +55,7 @@ export class Drops {
       const r = d.item.rarity, bob = d.landed ? Math.round(Math.sin(this.clock * 3 + d.x) * 1.5) : 0;
       const x = Math.round(d.x), y = Math.round(d.y);
       if (BEAM[r] && d.landed) beam(frame, x, y - 4, BEAM[r], this.clock + d.x * 0.1);
-      icon(frame, d.item.icon, x - S / 2, y - S - 2 + bob, r >= R.magic ? RING[r] : 0);
+      icon(frame, d.item.icon, x - S / 2, y - S - 2 + bob, r >= R.fine && d.item.kind !== "junk" ? RING[r] : 0);
     }
   }
 }
@@ -115,8 +118,7 @@ const feedEl = document.getElementById("feed");
 export function feed(item, note = "", better = false) {
   const row = document.createElement("div");
   row.className = "feed-row";
-  const r = RARITY[item.rarity];
-  row.innerHTML = `<img src="${iconURL(item.icon, 2)}"><b style="color:${r.color}">${item.name}</b>${better ? '<em class="up">▲</em>' : ""}${note ? `<span>${note}</span>` : ""}`;
+  row.innerHTML = `<img src="${iconURL(item.icon, 2)}"><b style="color:${item.kind === "formcore" ? RARITY[item.rarity].color : colorOf(item)}">${item.name}</b>${better ? '<em class="up">▲</em>' : ""}${note ? `<span>${note}</span>` : ""}`;
   feedEl.prepend(row);
   while (feedEl.children.length > 5) feedEl.lastChild.remove();
   setTimeout(() => row.classList.add("out"), 3200);

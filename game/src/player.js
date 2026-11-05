@@ -80,7 +80,8 @@ export class Player {
       critNext: false, buff: { atk: 0, spd: 0, move: 0, t: 0 }, dmgMul: 1, form: "star", formLv: 1,
     });
     this.combo = comboFor("sword", "star");
-    this.setStats({ uniques: new Set(), atk: 12, maxHp: 100, def: 0, spd: 0, move: 0, crit: 8, critDmg: 60, fire: 0, skill: 0, cdr: 0 });
+    this.setStats({ uniques: new Set(), atk: 12, maxHp: 100, def: 0, move: 0, crit: 0, critDmg: 10, skill: 0, ult: 0, charge: 0, cdr: 0, leech: 0, mf: 0 });
+    this.leechBudget = 0;
   }
 
   /** 套用裝備算出來的數值（stats.js 的 computeStats）。 */
@@ -105,15 +106,22 @@ export class Player {
     if (this.state === "attack") { this.state = "move"; this.atk = null; }
   }
 
-  /** 一下攻擊的傷害：攻擊力 × 倍率 ＋ 火焰，再算暴擊。force 是必定暴擊。 */
+  /** 一下攻擊的傷害：攻擊力 × 倍率，再算暴擊（暴擊時 ×（1＋暴擊傷害%））。force 是必定暴擊。
+   *  吸血：傷害的 leech% 回復生命，每秒最多回最大生命的 5%（leechBudget）。 */
   roll(mult, force = false) {
     const s = this.stats, crit = force || Math.random() * 100 < s.crit;
-    const dmg = (s.atk * mult * (1 + this.buff.atk) + s.fire) * this.dmgMul * formMul(this.formLv) * (crit ? 1 + s.critDmg / 100 : 1);
+    const dmg = s.atk * mult * (1 + this.buff.atk) * this.dmgMul * formMul(this.formLv) * (crit ? 1 + s.critDmg / 100 : 1);
+    if (s.leech > 0 && this.hp > 0) {
+      const h = Math.min(this.leechBudget, (dmg * s.leech) / 100);
+      this.leechBudget -= h;
+      this.hp = Math.min(this.maxHp, this.hp + h);
+    }
     return { dmg, crit };
   }
 
   update(dt, world) {
     this.clock += dt;
+    this.leechBudget = Math.min(this.maxHp * 0.05, (this.leechBudget ?? 0) + this.maxHp * 0.05 * dt);
     this.t += dt;
     this.lastAtk += dt;
     this.dashCd -= dt;
@@ -282,7 +290,7 @@ export class Player {
   }
 
   updateAttack(dt, world) {
-    const a = this.atk, s = a.s, spd = 1 + this.stats.spd / 100 + this.buff.spd;
+    const a = this.atk, s = a.s, spd = 1 + this.buff.spd;
     a.time += dt * spd;
     this.lastAtk = 0;
     if (!a.spawned && a.time >= 0) {

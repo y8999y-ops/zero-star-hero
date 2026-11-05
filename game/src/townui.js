@@ -12,7 +12,7 @@ import { iconURL } from "./ui-art.js";
 export const MEALS = {
   stew: { name: "星光燉肉", icon: "stew", buff: ["q_kill", "攻擊 +10%"], cost: 80, apply: (s) => { s.atk = Math.round(s.atk * 1.1); } },
   soup: { name: "菇菇濃湯", icon: "soup", buff: ["heart", "生命 +20%"], cost: 60, apply: (s) => { s.maxHp = Math.round(s.maxHp * 1.2); } },
-  pie: { name: "幸運蘋果派", icon: "pie", buff: ["coin", "掉寶、金幣 +25%"], cost: 100, apply: (s) => { s.mf += 25; s.gold += 25; } },
+  pie: { name: "幸運蘋果派", icon: "pie", buff: ["coin", "掉寶 +25%"], cost: 100, apply: (s) => { s.mf += 25; } },
 };
 // 舊程式用的說明文字
 for (const m of Object.values(MEALS)) m.desc = m.buff[1];

@@ -154,7 +154,7 @@ body.touch #touch { display: block; }
 .slot { position: relative; width: 40px; height: 40px; background: var(--slot-empty) center / 100% no-repeat; image-rendering: pixelated; display: grid; place-items: center; cursor: pointer; flex: none; }
 .slot img { width: 32px; height: 32px; image-rendering: pixelated; pointer-events: none; }
 .slot.r0 { background-image: var(--slot-0); } .slot.r1 { background-image: var(--slot-1); } .slot.r2 { background-image: var(--slot-2); }
-.slot.r3 { background-image: var(--slot-3); } .slot.r4 { background-image: var(--slot-4); }
+.slot.r3 { background-image: var(--slot-3); } .slot.r4 { background-image: var(--slot-4); } .slot.r5 { background-image: var(--slot-5); }
 .slot.sel { background-image: var(--slot-sel); }
 .badge { position: absolute; font: 700 10px/11px monospace; font-style: normal; text-shadow: 0 1px 0 #000, 1px 0 0 #000, -1px 0 0 #000; pointer-events: none; }
 .badge.new { left: 4px; top: 3px; color: var(--gold); }
@@ -632,3 +632,21 @@ body.chestnear .btn.big.on { background-image: var(--tb-chest-on); }
 #pcSkill.pop { animation: skillPop .35s ease-out; }
 @keyframes skillPop { 0% { transform: scale(1.25); filter: brightness(1.8) drop-shadow(0 0 8px #ffd8a0); } 100% { transform: scale(1); } }
 body.touch #pcKeys, body.town #pcKeys, body:not(.playing) #pcKeys { display: none; }
+
+/* 裝備改版第 1 批：屬性圖示、主屬性大字、6 階稀有度 */
+.sti { width: 12px; height: 12px; image-rendering: pixelated; vertical-align: -2px; margin-right: 3px; }
+#invStats span { display: inline-flex; align-items: center; }
+.ln.main { font-size: 14px; font-weight: 700; color: #fff6d8; padding: 2px 0 4px; border-bottom: 1px solid #3a2f52; margin-bottom: 2px; display: flex; align-items: center; }
+.ln.main .sti { width: 16px; height: 16px; }
+.ln.main em { margin-left: auto; font-style: normal; font-size: 11px; color: var(--gold); }
+.ln.affix { color: #c8d8ff; }
+#invStats { gap: 0 6px; }
+#invStats div { min-width: 0; }
+#invStats b { white-space: nowrap; }
+#invStats small, .cmp small { font-size: 9px; color: var(--dim); }
+.cmp > div:not(.ch) { display: grid; grid-template-columns: 62px 1fr; white-space: nowrap; }
+.cmp > div:not(.ch) span { display: inline-flex; align-items: center; overflow: hidden; }
+#invStats { grid-template-columns: 1fr 1fr 1fr; overflow: hidden; }
+#invStats div:not(.pw) { justify-content: flex-start; align-items: center; }
+#invStats div:not(.pw) b { font-weight: 700; color: var(--ink); }
+#invStats .pw { grid-column: 1 / -1; }

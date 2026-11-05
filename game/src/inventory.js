@@ -1,7 +1,7 @@
 // 背包畫面：左邊身上裝備＋數值，中間背包格子，右邊選中物品的詳細資料和比較。
 // 手機：點一下選取，再點一次同一格就直接穿上。電腦：I / B / Tab 開關，Esc 關閉。
 import { createFrame, composite } from "../../pixelfx/src/core/index.js";
-import { SLOTS, RARITY, R, UNIQUES, describe, kindLabel } from "./items.js";
+import { SLOTS, RARITY, R, UNIQUES, describe, kindLabel, colorOf } from "./items.js";
 import { computeStats, compare, power, STAT_ROWS, xpNeed, MAX_LV } from "./stats.js";
 import { BAG_SIZE } from "./save.js";
 import { iconURL } from "./ui-art.js";
@@ -11,6 +11,9 @@ import { sfx } from "./audio.js";
 const $ = (id) => document.getElementById(id);
 const AUTO = ["關", "垃圾", "普通以下"];
 const KIND_ORDER = { weapon: 0, head: 1, body: 2, hands: 3, feet: 4, acc: 5, junk: 6 };
+// 屬性 id → 圖示（ui-icons.js 的 st_*）；攻擊%／生命% 共用攻擊、生命的圖示
+const STAT_ICON = { atk: "st_atk", atkPct: "st_atk", hp: "st_hp", hpPct: "st_hp", maxHp: "st_hp", def: "st_def", crit: "st_crit", critDmg: "st_critDmg", skill: "st_skill", ult: "st_ult", charge: "st_charge", cdr: "st_cdr", leech: "st_leech", move: "st_move", mf: "st_mf" };
+const stIco = (id) => (STAT_ICON[id] ? `<img class="sti" src="${iconURL(STAT_ICON[id], 1)}">` : "");
 const SLOT_ICON = { weapon: "core_dawn", head: "crown", body: "star", hands: "glove", feet: "boot", acc1: "shard", acc2: "shard" };
 
 /**
@@ -163,7 +166,8 @@ export function createInventory(profile, { onChange, onClose }) {
     $("invScrap").textContent = profile.scrap;
     $("btnAuto").textContent = "自動拆解：" + AUTO[profile.auto];
     // 數值
-    $("invStats").innerHTML = STAT_ROWS.filter(([k], i) => i < 5 || st[k]).map(([k, n, f]) => `<div><span>${n}</span><b>${f(st[k])}</b></div>`).join("")
+    // 左邊數值：圖示＋數字（三欄，滑過去看名稱），沒有的屬性不顯示（前 5 個一定顯示）
+    $("invStats").innerHTML = STAT_ROWS.filter(([k], i) => i < 5 || st[k]).map(([k, n, f]) => `<div title="${n}">${stIco(k)}<b>${f(st[k])}</b></div>`).join("")
       + `<div class="pw"><span>戰力</span><b>${Math.round(power(st) * 10)}</b></div>`;
     renderDetail(st);
     drawPortrait(st);
@@ -175,18 +179,21 @@ export function createInventory(profile, { onChange, onClose }) {
       el.innerHTML = `<div class="empty">點一下物品看詳細資料<br>再點一次就穿上<br><br><small>▲ 比身上的好　! 新撿到的</small></div>`;
       return;
     }
-    const r = RARITY[it.rarity];
-    const lines = describe(it).map(([t, txt, tag]) => `<div class="ln ${t}">${tag ? `<i>${tag}</i>` : ""}${txt}</div>`).join("");
+    const r = RARITY[it.rarity], junk = it.kind === "junk";
+    // 主屬性一行大字（強化等級標在右邊）；副屬性每行前面是層級 T1～T5
+    const lines = describe(it).map(([t, id, txt, tag]) => t === "main"
+      ? `<div class="ln main">${stIco(id)}${txt}${tag ? `<em>${tag}</em>` : ""}</div>`
+      : `<div class="ln ${t}">${tag ? `<i>${tag}</i>` : ""}${stIco(id)}${txt}</div>`).join("");
     let cmp = "", btns = "";
     if (sel.where === "bag" && it.kind !== "junk") {
       const c = compare(it, profile.equip, profile.lv);
       const rows = STAT_ROWS.filter(([k]) => c.before[k] !== c.after[k]).map(([k, n, f]) => {
         const d = c.after[k] - c.before[k], good = d > 0;
-        return `<div class="${good ? "g" : "b"}"><span>${n}</span>${f(c.before[k])} → ${f(c.after[k])}</div>`;
+        return `<div class="${good ? "g" : "b"}"><span>${stIco(k)}${n}</span>${f(c.before[k])} → ${f(c.after[k])}</div>`;
       });
       const old = profile.equip[c.slot];
       if (old?.unique) rows.push(`<div class="b">失去：${UNIQUES[old.unique].name} 的效果</div>`);
-      cmp = `<div class="cmp"><div class="ch">換掉 ${old ? `<b style="color:${RARITY[old.rarity].color}">${old.name}</b>` : "（空）"}${c.better ? ' <em class="up">▲ 變強</em>' : c.worse ? ' <em class="down">▼ 變弱</em>' : ""}</div>${rows.join("") || "<div>數值沒有變化</div>"}</div>`;
+      cmp = `<div class="cmp"><div class="ch">換掉 ${old ? `<b style="color:${colorOf(old)}">${old.name}</b>` : "（空）"}${c.better ? ' <em class="up">▲ 變強</em>' : c.worse ? ' <em class="down">▼ 變弱</em>' : ""}</div>${rows.join("") || "<div>數值沒有變化</div>"}</div>`;
       btns = `<button class="pbtn" data-act="equip">裝備</button>`;
     } else if (sel.where === "equip") {
       cmp = `<div class="cmp"><div class="ch">已裝備</div></div>`;
@@ -195,7 +202,7 @@ export function createInventory(profile, { onChange, onClose }) {
     if (sel.where === "bag") btns += `<button class="pbtn red" data-act="salvage">拆解 <small>+${r.scrap}碎屑</small></button>`;
     const lore = it.unique ? `<div class="lore">${UNIQUES[it.unique].lore}</div>` : "";
     el.innerHTML = `<div class="dhead"><div class="slot r${it.rarity}"><img src="${iconURL(it.icon, 2)}"></div>
-      <div><div class="dname" style="color:${r.color}">${it.name}${it.plus ? " +" + it.plus : ""}</div><div class="dsub">${r.name}・${kindLabel(it)}・物品等級 ${it.ilvl}</div></div></div>
+      <div><div class="dname" style="color:${colorOf(it)}">${it.name}${it.plus ? " +" + it.plus : ""}</div><div class="dsub">${junk ? "垃圾" : r.name + "・" + kindLabel(it) + "・物品等級 " + it.ilvl}</div></div></div>
       <div class="dlines">${lines || '<div class="ln">（什麼都沒有）</div>'}${lore}</div>${cmp}<div class="dbtns">${btns}</div>`;
     el.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", () => {
       const a = b.dataset.act;

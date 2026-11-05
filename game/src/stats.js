@@ -1,75 +1,69 @@
 // 主角數值：等級＋身上裝備 → 戰鬥用的數值。背包比較裝備也用這裡算。
+// 2026-11-05 裝備改版第 1 批：滿級 100、成長緩和、暴擊率基礎 0%／暴擊傷害基礎 +10%、14 種屬性（docs/裝備系統企劃.md）。
+import { mainValue } from "./items.js";
 
-export const MAX_LV = 50;
+export const MAX_LV = 100;
 /** 升到下一級需要的經驗。 */
 export const xpNeed = (lv) => Math.round(24 + lv * 16 + lv * lv * 1.2);
 
 export function computeStats(equip, lv) {
   const sum = {};
   const uniques = new Set();
-  let wAtk = 4, def = 0, hpBase = 0, critBase = 0;
+  const add = (id, v) => (sum[id] = (sum[id] ?? 0) + v);
   for (const it of Object.values(equip)) {
     if (!it) continue;
-    const up = 1 + 0.08 * (it.plus ?? 0);   // 工坊強化，每 +1 基礎數值 +8%
-    if (it.kind === "weapon") wAtk = Math.round((it.stats.atk ?? wAtk) * up);
-    def += Math.round((it.stats.def ?? 0) * up);
-    hpBase += it.stats.hp ?? 0;
-    critBase += it.stats.crit ?? 0;
-    for (const a of it.affixes) sum[a.id] = (sum[a.id] ?? 0) + a.v;
+    if (it.main) add(it.main.id, mainValue(it));
+    for (const a of it.affixes) add(a.id, a.v);
     if (it.unique) uniques.add(it.unique);
   }
   const g = (k) => sum[k] ?? 0;
   return {
     uniques,
-    atk: Math.round((wAtk + (lv - 1) * 1.2) * (1 + g("atk") / 100)),
-    maxHp: Math.round(100 + (lv - 1) * 8 + hpBase + g("hp")),
-    def: def + g("def"),
-    spd: g("spd"),
-    move: g("move"),
-    crit: 8 + critBase + g("crit"),
-    critDmg: 60 + g("critDmg"),
-    fire: g("fire"),
+    // 攻擊 ＝（角色每級 +0.3 ＋ 星核、星爪等固定攻擊）×（1＋攻擊%）
+    atk: Math.round((0.3 * (lv - 1) + g("atk")) * (1 + g("atkPct") / 100)),
+    maxHp: Math.round((100 + 3 * (lv - 1) + g("hp")) * (1 + g("hpPct") / 100)),
+    def: g("def"),
+    crit: g("crit"),
+    critDmg: 10 + g("critDmg"),
     skill: g("skill"),
-    cdr: Math.min(60, g("cdr")),
-    life: g("life"),
-    boom: g("boom") + (uniques.has("hardhat") ? 25 : 0),
-    gold: g("gold"),
+    ult: g("ult"),
+    charge: g("charge"),
+    cdr: Math.min(40, g("cdr")),
+    leech: Number(g("leech").toFixed(1)),
+    move: g("move"),
     mf: g("mf"),
-    magnet: g("magnet"),
   };
 }
 
 /** 防禦換算成減傷比例。 */
 export const reduction = (def) => def / (def + 60);
 
-// 背包裡顯示的數值列：[key, 名稱, 格式]
+// 背包裡顯示的數值列：[key, 名稱, 格式, 圖示]
 export const STAT_ROWS = [
-  ["atk", "攻擊力", (v) => v],
-  ["maxHp", "生命", (v) => v],
-  ["def", "防禦", (v) => `${v}（減傷 ${Math.round(reduction(v) * 100)}%）`],
-  ["crit", "暴擊率", (v) => v + "%"],
-  ["critDmg", "暴擊傷害", (v) => "+" + v + "%"],
-  ["spd", "攻速", (v) => "+" + v + "%"],
-  ["move", "移速", (v) => "+" + v + "%"],
-  ["fire", "火焰傷害", (v) => "+" + v],
-  ["skill", "技能傷害", (v) => "+" + v + "%"],
-  ["cdr", "技能冷卻", (v) => "-" + v + "%"],
-  ["life", "擊殺回復", (v) => v],
-  ["boom", "擊殺爆炸", (v) => v + "%"],
-  ["gold", "金幣", (v) => "+" + v + "%"],
-  ["mf", "掉寶率", (v) => "+" + v + "%"],
-  ["magnet", "吸物範圍", (v) => "+" + v + "%"],
+  ["atk", "攻擊力", (v) => v, "st_atk"],
+  ["maxHp", "生命", (v) => v, "st_hp"],
+  ["def", "防禦", (v) => `${v}<small> -${Math.round(reduction(v) * 100)}%</small>`, "st_def"],
+  ["crit", "暴擊率", (v) => v + "%", "st_crit"],
+  ["critDmg", "暴擊傷害", (v) => "+" + v + "%", "st_critDmg"],
+  ["skill", "技能傷害", (v) => "+" + v + "%", "st_skill"],
+  ["ult", "大招傷害", (v) => "+" + v + "%", "st_ult"],
+  ["charge", "充能效率", (v) => "+" + v + "%", "st_charge"],
+  ["cdr", "技能冷卻", (v) => "-" + v + "%", "st_cdr"],
+  ["leech", "吸血", (v) => v + "%", "st_leech"],
+  ["move", "移速", (v) => "+" + v + "%", "st_move"],
+  ["mf", "掉寶率", (v) => "+" + v + "%", "st_mf"],
 ];
 
 /** 綜合戰力：用來判斷「這件比身上的好嗎」（綠色箭頭）。 */
 export function power(s) {
-  const off = (s.atk + s.fire * 0.8) * (1 + s.spd / 100) * (1 + (Math.min(100, s.crit) / 100) * (s.critDmg / 100)) * (1 + s.boom / 250) * (1 + s.skill / 400);
-  const surv = s.maxHp / (1 - reduction(s.def)) + s.life * 12;
-  const util = 1 + (s.move + s.gold / 4 + s.mf / 3 + s.magnet / 8 + s.cdr / 2) / 400;
+  const crit = 1 + (Math.min(100, s.crit) / 100) * (s.critDmg / 100);
+  const off = s.atk * crit * (1 + s.skill / 300 + s.ult / 500 + s.charge / 400 + s.cdr / 150);
+  const surv = s.maxHp / (1 - reduction(s.def)) * (1 + s.leech / 25);
+  const util = 1 + (s.move + s.mf / 3) / 400;
   return Math.sqrt(off) * Math.pow(surv, 0.35) * util * (1 + 0.12 * s.uniques.size);
 }
 
-/** 把 item 穿上後會換掉哪一格（飾品挑空的，或比較弱的那個）。 */
+/** 把 item 穿上後會換掉哪一格（碎片挑空的，或比較弱的那個）。 */
 export function targetSlot(item, equip, lv) {
   if (item.kind === "junk") return null;
   if (item.kind !== "acc") return item.kind;
