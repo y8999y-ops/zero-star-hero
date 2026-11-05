@@ -286,3 +286,180 @@ body.touch #bossBar { width: min(330px, 44%); }
 /* 換場景過來的：一載入就不顯示標題畫面，全黑等程式接手淡入 */
 html.auto #start { display: none; }
 html.auto #fade { opacity: 1; transition: none; }
+
+/* ==== 手機版面（2026-11-05 改版，參考原神手機版） ====
+   觸控按鈕：半透明圓＋白色像素圖示（圖在 ui-art.js 的 glassButton），大小跟著螢幕高度。
+   以攻擊鍵為中心：閃避在左、技能在左上、大招在正上。
+   形態：右側直排（像原神的隊伍列），目前的形態亮框。上方 HUD 縮小、半透明。 */
+body.touch #rightPad { --A: clamp(58px, 19vh, 86px); --B: calc(var(--A) * 0.7); right: max(14px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); width: calc(var(--A) * 1.95); height: calc(var(--A) * 1.95); }
+body.touch .btn { filter: none; }
+body.touch .btn.big { width: var(--A); height: var(--A); right: 0; bottom: 0; }
+body.touch .btn.mid { width: var(--B); height: var(--B); right: calc(var(--A) + 8px); bottom: 2px; }
+body.touch .btn.small { width: var(--B); height: var(--B); right: calc(var(--A) * 0.78); bottom: calc(var(--A) * 0.78); }
+body.touch .btn.ult { width: var(--B); height: var(--B); right: 2px; bottom: calc(var(--A) + 8px); }
+body.touch .btn.ult.ready { animation: ultReadyGlass .8s ease-in-out infinite; }
+@keyframes ultReadyGlass { 50% { filter: drop-shadow(0 0 6px #ffd84a); } }
+body.touch .btn i { background: rgba(8, 4, 16, .45); }
+body.touch #hintLeft { opacity: .7; }
+
+/* 形態：右側直排 */
+body.touch #forms { flex-direction: column; top: 50%; right: max(8px, env(safe-area-inset-right)); transform: translateY(-82%); gap: 6px; }
+body.touch .fslot { width: 44px; height: 40px; border: 0; border-image: none; border-radius: 8px; background: rgba(12, 8, 24, .32); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .35); opacity: .8; }
+body.touch .fslot canvas { left: 2px; top: 3px; }
+body.touch .fslot.on { opacity: 1; background: rgba(255, 255, 255, .18); box-shadow: inset 0 0 0 2px #ffe27a; filter: drop-shadow(0 0 4px rgba(255, 216, 74, .6)); }
+body.touch .fslot i { right: 3px; bottom: 2px; }
+
+/* 上方 HUD：縮小、半透明 */
+body.touch #hud { transform: scale(.8); transform-origin: 0 0; opacity: .85; }
+body.touch #topR { transform: scale(.85); transform-origin: 100% 0; opacity: .85; }
+body.touch #sys.on { opacity: .82; }
+body.touch #combo { top: auto; bottom: 34%; right: auto; left: max(10px, env(safe-area-inset-left)); transform: scale(.8); transform-origin: 0 50%; }
+body.touch #killBox { display: none; }
+
+/* ==== 對話（2026-11-05 改版）：半透明對話框＋左右立繪 ==== */
+#dlg { border-image: none; }
+#dlg::before { content: ""; position: absolute; inset: -12px; border: 12px solid transparent; border-image: var(--panel) 12 fill / 12px; image-rendering: pixelated; opacity: .84; z-index: -1; pointer-events: none; }
+#dlg.sys { border-image: none; }
+#dlg.sys::before { border-image-source: var(--panel-sys); }
+#dlg.right #dlgName { left: auto; right: -4px; }
+.por { position: absolute; bottom: 120px; z-index: 3; pointer-events: none; transition: filter .2s, transform .2s; filter: brightness(.42) saturate(.6); transform: translateY(6px); }
+.por canvas { display: block; image-rendering: pixelated; }
+#dlgL { left: max(4%, env(safe-area-inset-left)); }
+#dlgR { right: max(4%, env(safe-area-inset-right)); transform: translateY(6px) scaleX(-1); }   /* 居民面向左邊（看著主角） */
+.por.on { filter: none; transform: none; }
+#dlgR.on { transform: scaleX(-1); }
+.por.hop canvas { animation: porHop .28s steps(4); }
+@keyframes porHop { 40% { transform: translateY(-10px); } }
+.por.talk.on canvas { animation: porTalk .36s steps(2) infinite; }
+@keyframes porTalk { 50% { transform: translateY(-2px); } }
+#dlgL.enter { animation: porInL .25s ease-out; }
+#dlgR.enter { animation: porInR .25s ease-out; }
+@keyframes porInL { from { translate: -60px 0; opacity: 0; } }
+@keyframes porInR { from { translate: 60px 0; opacity: 0; } }
+/* 對話時上方 HUD、形態、觸控按鈕淡掉 */
+body.talking #hud, body.talking #topR, body.talking #forms, body.talking #combo, body.talking #sys { opacity: .2 !important; transition: opacity .2s; }
+
+/* 城鎮：不能戰鬥，只留「對話」（攻擊鍵換圖示）和「閃避」；旁邊沒人可以說話時，對話鍵變淡 */
+body.town #btnSkill, body.town #btnUlt { display: none; }
+body.town .btn.big { background-image: var(--tb-talk); transition: opacity .2s; }
+body.town .btn.big.on { background-image: var(--tb-talk-on); }
+body.town:not(.near) .btn.big { opacity: .45; }
+body.town.near .btn.big { animation: talkReady 1.2s ease-in-out infinite; }
+@keyframes talkReady { 50% { filter: drop-shadow(0 0 5px rgba(255, 226, 122, .8)); } }
+
+/* ==== 系統（2026-11-05）：全像投影的特效 ====
+   掃描線慢慢往下捲、偶爾閃一下（訊號不穩）、打字時有方塊游標、【按鍵】顯示成小鍵帽；
+   系統講到某個按鈕時，那顆按鈕發青光（教學） */
+#sys::after, #dlg.sys::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  background: repeating-linear-gradient(to bottom, rgba(140, 240, 255, .07) 0 1px, transparent 1px 3px);
+  animation: sysScan 1.6s linear infinite; }
+@keyframes sysScan { to { background-position: 0 12px; } }
+#sys.on { animation: sysFlicker 4.3s steps(1) infinite; }
+#sys.on.glitch { animation: sysGlitch .3s steps(4), sysFlicker 4.3s steps(1) .3s infinite; }
+@keyframes sysFlicker { 0%, 61%, 63%, 100% { filter: none; } 62% { filter: brightness(1.5) hue-rotate(-12deg); } 88% { filter: none; } 89% { filter: brightness(.7); } 90% { filter: none; } }
+#sys .sysHead::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 4px; background: #6ad8ff; box-shadow: 0 0 4px #6ad8ff; animation: sysDot 1s steps(2) infinite; }
+@keyframes sysDot { 50% { opacity: .2; } }
+#sys.typing #sysTyped::after, #dlg.sys.typing #dlgText::after { content: "▮"; color: #8af0ff; margin-left: 1px; animation: sysDot .5s steps(2) infinite; }
+#sysText .key, #dlg.sys .key { display: inline-block; padding: 0 4px; margin: 0 1px; line-height: 1.25; color: #04141e; background: #8af0ff; border-radius: 2px; box-shadow: 0 2px 0 #2a7a9a; font-weight: 900; }
+#dlg.sys { animation: dlgSysIn .28s steps(4); }
+@keyframes dlgSysIn { 0% { transform: translate(calc(-50% - 6px), 0); filter: hue-rotate(70deg) brightness(1.6); clip-path: inset(0 0 60% 0); } 50% { transform: translate(calc(-50% + 4px), 0); clip-path: inset(40% 0 0 0); } 100% { transform: translate(-50%, 0); filter: none; clip-path: none; } }
+#dlg.sys #dlgText { text-shadow: 1px 0 rgba(255, 60, 200, .35), -1px 0 rgba(60, 220, 255, .45); }
+.teach { animation: teach .7s ease-in-out infinite !important; opacity: 1 !important; }
+@keyframes teach { 50% { filter: drop-shadow(0 0 6px #6ad8ff) drop-shadow(0 0 2px #ffffff); transform: scale(1.08); } }
+#forms.teach { animation: teachGlow .7s ease-in-out infinite !important; }
+@keyframes teachGlow { 50% { filter: drop-shadow(0 0 6px #6ad8ff) drop-shadow(0 0 2px #ffffff); } }
+
+/* ==== 系統視窗與系統對話框：科技感＋光效（2026-11-05） ====
+   .hfx 這一層：四個角的青色括號、淡淡的格點底紋、每隔幾秒一道光從左掃到右、上緣一條會呼吸的光線。
+   整個框外面有青色光暈；系統的水晶形象放在左邊（關卡）或主角右上方（城鎮對話）。 */
+.hfx { display: none; position: absolute; inset: -4px; pointer-events: none; z-index: 2; overflow: hidden;
+  background:
+    linear-gradient(#8af0ff, #8af0ff) left top / 10px 2px no-repeat, linear-gradient(#8af0ff, #8af0ff) left top / 2px 10px no-repeat,
+    linear-gradient(#8af0ff, #8af0ff) right top / 10px 2px no-repeat, linear-gradient(#8af0ff, #8af0ff) right top / 2px 10px no-repeat,
+    linear-gradient(#8af0ff, #8af0ff) left bottom / 10px 2px no-repeat, linear-gradient(#8af0ff, #8af0ff) left bottom / 2px 10px no-repeat,
+    linear-gradient(#8af0ff, #8af0ff) right bottom / 10px 2px no-repeat, linear-gradient(#8af0ff, #8af0ff) right bottom / 2px 10px no-repeat,
+    radial-gradient(rgba(122, 232, 255, .16) 1px, transparent 1.5px) 0 0 / 8px 8px; }
+.hfx::before { content: ""; position: absolute; top: 0; bottom: 0; width: 40%; left: -60%; background: linear-gradient(100deg, transparent, rgba(160, 245, 255, .22) 45%, rgba(255, 255, 255, .35) 50%, rgba(160, 245, 255, .22) 55%, transparent); animation: hfxSweep 3.6s ease-in-out infinite; }
+@keyframes hfxSweep { 0%, 55% { left: -60%; } 100% { left: 130%; } }
+.hfx::after { content: ""; position: absolute; left: 14px; right: 14px; top: 0; height: 2px; background: linear-gradient(90deg, transparent, #8af0ff 20%, #ffffff 50%, #8af0ff 80%, transparent); box-shadow: 0 0 6px #6ad8ff; animation: hfxBreath 2s ease-in-out infinite; }
+@keyframes hfxBreath { 50% { opacity: .35; } }
+#sys .hfx, #dlg.sys .hfx { display: block; }
+#sys.on, #dlg.sys { box-shadow: 0 0 14px rgba(70, 200, 255, .35), inset 0 0 12px rgba(70, 200, 255, .18); }
+#sys { padding-left: 50px; min-height: 44px; }
+#sysFace { position: absolute; left: 2px; top: 50%; width: 40px; height: 40px; margin-top: -20px; image-rendering: pixelated; z-index: 3; filter: drop-shadow(0 0 4px rgba(106, 216, 255, .8)); }
+.sysHead { letter-spacing: 2px; }
+#dlg.sys #dlgName { letter-spacing: 3px; }
+#dlg.sys #dlgName::before { content: "SYSTEM // "; color: #6ad8ff; font-size: 11px; }
+/* 城鎮對話：系統水晶飄在主角旁邊，外面一圈光，出現時像投影一樣由細變寬 */
+#dlgSys { position: absolute; z-index: 4; image-rendering: pixelated; pointer-events: none; filter: drop-shadow(0 0 6px rgba(106, 216, 255, .9)) drop-shadow(0 0 14px rgba(70, 200, 255, .45)); }
+#dlgSys.in { animation: sysPorIn .3s steps(5); }
+@keyframes sysPorIn { 0% { transform: scale(.1, 1.6); opacity: 0; } 40% { transform: scale(1.3, .3); opacity: 1; } 70% { transform: scale(.9, 1.1); } 100% { transform: none; } }
+#dlgSys::after { content: none; }
+
+/* ==== 主畫面（2026-11-05 重做）：像素場景（src/title.js）＋置中選單 ==== */
+#start { position: absolute; inset: 0; z-index: 3; overflow: hidden; background: #08060e; }
+#titleCv { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); image-rendering: pixelated; image-rendering: crisp-edges; }
+.tmenu { position: absolute; left: 50%; top: 47%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 10px; animation: tmenuIn .6s .2s both ease-out; }
+@keyframes tmenuIn { from { opacity: 0; transform: translate(-50%, 12px); } }
+#startBtn.tbig { height: auto; min-width: 210px; padding: 2px 26px 4px; line-height: 1.2; font-size: 21px; letter-spacing: 4px; display: flex; flex-direction: column; align-items: center; animation: tbigGlow 2.2s ease-in-out infinite; }
+#startBtn.tbig small { font-size: 11px; letter-spacing: 1px; font-weight: 700; color: #6a3a10; text-shadow: none; }
+@keyframes tbigGlow { 50% { filter: drop-shadow(0 0 8px rgba(255, 210, 90, .75)); } }
+.tsmall { position: relative; min-width: 150px; padding: 5px 18px; font: inherit; font-size: 14px; font-weight: 700; letter-spacing: 3px; color: #efe4c4; background: rgba(10, 8, 26, .55); border: 2px solid rgba(255, 226, 122, .28); border-radius: 3px; cursor: pointer; text-shadow: 0 2px 0 #000; transition: border-color .15s, color .15s, background .15s; }
+.tsmall::before, .tsmall::after { content: "◆"; position: absolute; top: 50%; transform: translateY(-50%); font-size: 9px; color: #ffd84a; opacity: 0; transition: opacity .15s, left .15s, right .15s; }
+.tsmall::before { left: 2px; } .tsmall::after { right: 2px; }
+.tsmall:hover, .tsmall:focus-visible { color: #ffe27a; border-color: rgba(255, 226, 122, .8); background: rgba(40, 26, 60, .7); outline: none; }
+.tsmall:hover::before, .tsmall:focus-visible::before { opacity: 1; left: 6px; }
+.tsmall:hover::after, .tsmall:focus-visible::after { opacity: 1; right: 6px; }
+.tfoot { position: absolute; left: max(14px, env(safe-area-inset-left)); right: max(14px, env(safe-area-inset-right)); bottom: max(8px, env(safe-area-inset-bottom)); display: flex; justify-content: space-between; font-size: 11px; letter-spacing: 2px; color: rgba(220, 210, 255, .55); text-shadow: 0 1px 0 #000; pointer-events: none; }
+#helpPanel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, 92%); padding: 10px 16px 12px; border: 12px solid transparent; border-image: var(--panel) 12 fill / 12px; image-rendering: pixelated; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 18px; z-index: 2; animation: dlgIn .18s ease-out; }
+#helpPanel .hp-ttl { grid-column: 1 / -1; text-align: center; color: var(--gold); font-weight: 900; letter-spacing: 6px; margin-bottom: 4px; }
+#helpPanel .hp-col b { display: block; color: #a8f0ff; margin-bottom: 2px; }
+#helpPanel p { margin: 2px 0; font-size: 13px; color: var(--ink); line-height: 1.5; }
+#helpPanel #helpClose { grid-column: 1 / -1; justify-self: center; margin-top: 6px; }
+#helpPanel.hidden ~ * { }
+@media (max-height: 420px) {
+  .tmenu { top: 44%; gap: 6px; }
+  #startBtn.tbig { font-size: 18px; min-width: 180px; }
+  .tsmall { font-size: 13px; padding: 3px 14px; min-width: 130px; }
+  #helpPanel p { font-size: 12px; margin: 1px 0; }
+}
+
+/* 主畫面按鈕第二版：像素牌子（ui-art.js menuPlate：四角斜切、金色細框、深色半透明底），
+   主按鈕左邊一顆會轉的像素星星、金色漸層字、每隔幾秒一道光掃過；次按鈕平常低調，移上去才亮。 */
+.tmenu { gap: 8px; }
+#startBtn.tbig, .tsmall { border: 12px solid transparent; border-radius: 0; background: none; image-rendering: pixelated; overflow: hidden; position: relative; }
+#startBtn.tbig { border-image: var(--plate-main) 6 fill / 12px; min-width: 232px; padding: 0 26px 1px 44px; color: transparent; animation: none; filter: drop-shadow(0 0 10px rgba(255, 190, 80, .28)); }
+#startBtn.tbig #startLabel { background: linear-gradient(#fff6c8 0 40%, #ffd04a 40% 70%, #e88a24 70%); -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 900; text-shadow: none; filter: drop-shadow(0 2px 0 #2a0e10); }
+#startBtn.tbig small { color: #c8b6e8; margin-top: 1px; }
+#startBtn.tbig::before { content: ""; position: absolute; left: 6px; top: 50%; width: 32px; height: 32px; margin-top: -16px; background: var(--ic-star) center / 100% no-repeat; image-rendering: pixelated; animation: tStar 3s ease-in-out infinite; }
+@keyframes tStar { 0%, 100% { transform: rotate(-8deg) scale(1); } 50% { transform: rotate(8deg) scale(1.08); filter: drop-shadow(0 0 4px #ffd84a); } }
+#startBtn.tbig::after { content: ""; position: absolute; top: -12px; bottom: -12px; width: 26px; left: -40px; background: linear-gradient(100deg, transparent, rgba(255, 240, 200, .35), transparent); animation: tSweep 3.4s ease-in-out infinite; pointer-events: none; }
+@keyframes tSweep { 0%, 60% { left: -40px; } 100% { left: 110%; } }
+#startBtn.tbig:hover, #startBtn.tbig:focus-visible { filter: drop-shadow(0 0 14px rgba(255, 200, 90, .55)) brightness(1.08); outline: none; }
+#startBtn.tbig:active { transform: translateY(2px); }
+.tsmall { border-image: var(--plate) 6 fill / 12px; min-width: 168px; padding: 0 20px 1px; color: #d8cbe8; letter-spacing: 4px; opacity: .88; transition: opacity .15s, filter .15s, color .15s; }
+.tsmall:hover, .tsmall:focus-visible { border-image-source: var(--plate-main); color: #ffe7a0; opacity: 1; background: none; filter: drop-shadow(0 0 8px rgba(255, 200, 90, .35)); }
+.tsmall:active { transform: translateY(1px); }
+.tsmall::before, .tsmall::after { color: #ffd84a; font-size: 8px; }
+@media (max-height: 420px) {
+  #startBtn.tbig { min-width: 206px; padding: 0 22px 0 40px; }
+  #startBtn.tbig::before { width: 26px; height: 26px; margin-top: -13px; left: 6px; }
+  .tsmall { min-width: 150px; }
+}
+
+/* ==== 開場動畫（src/intro.js）：選單收起來，下方系統台詞框、右下跳過鍵 ==== */
+#start.intro .tmenu, #start.intro .tfoot { display: none; }
+.introSay { position: absolute; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translate(-50%, 8px); min-width: min(360px, 80%); max-width: min(560px, 88%); padding: 4px 14px 8px 56px; border: 8px solid transparent; border-image: var(--panel-sys2) 8 fill / 8px; image-rendering: pixelated; opacity: 0; transition: opacity .3s, transform .3s; pointer-events: none; z-index: 2; box-shadow: 0 0 14px rgba(70, 200, 255, .35); }
+.introSay.on { opacity: .96; transform: translate(-50%, 0); }
+.introSay.on.glitch { animation: sysGlitch .3s steps(4); }
+.introSay .hfx { display: block; }
+.introSay canvas { position: absolute; left: 4px; top: 50%; width: 44px; height: 44px; margin-top: -22px; image-rendering: pixelated; filter: drop-shadow(0 0 4px rgba(106, 216, 255, .8)); }
+.introSay .sysHead { color: #6ad8ff; font-size: 10px; letter-spacing: 3px; line-height: 14px; }
+.introText { color: #e8fbff; font-size: 17px; font-weight: 700; line-height: 1.5; text-shadow: 1px 0 rgba(255, 60, 200, .35), -1px 0 rgba(60, 220, 255, .45); min-height: 1.5em; }
+.introSkip { position: absolute; right: max(14px, env(safe-area-inset-right)); top: max(12px, env(safe-area-inset-top)); z-index: 3; font: inherit; font-size: 13px; font-weight: 700; letter-spacing: 2px; color: #d8cbe8; padding: 4px 12px; background: rgba(10, 8, 26, .55); border: 1px solid rgba(255, 255, 255, .25); border-radius: 3px; cursor: pointer; }
+.introSkip:hover { color: #ffe7a0; border-color: rgba(255, 226, 122, .7); }
+/* 開場：台詞框放上面（下面是主角掉下來的地方），跳過鍵放右下 */
+.introSay { top: max(14px, env(safe-area-inset-top)); bottom: auto; transform: translate(-50%, -8px); }
+.introSkip { top: auto; bottom: max(12px, env(safe-area-inset-bottom)); }
+.tmenu { top: 44%; }
+@media (max-height: 420px) { .tmenu { top: 42%; } }

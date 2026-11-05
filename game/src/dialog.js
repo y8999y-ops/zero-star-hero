@@ -1,11 +1,29 @@
-// 對話框（城鎮用）：畫面下方的面板，左邊大頭像、名字牌掛在框上、一個字一個字打出來、選項在右邊。
+// 對話框（城鎮用）：畫面下方的半透明面板，像日系遊戲一樣左右站著說話者的立繪（2026-11-05 改版）：
+//   左邊是主角（星星，跟著目前形態），右邊是說話的居民；正在說話的那邊亮、另一邊變暗；
+//   換人說話時亮的那邊跳一下，打字時輕輕上下晃，打開對話時兩邊從畫面外滑進來。名字牌掛在說話者那一側。
+//   「系統」說話時：系統是主角腦中的聲音，所以左邊主角亮起來、對話框換成青藍色。
 // 用法：await talk("波波", ["第一句", "第二句"]);  const v = await ask("波波", "要做什麼？", [["接任務", "quest"], ["離開", null]]);
 // 點一下、J、空白鍵、Enter：還在打字＝直接顯示整句，打完了＝下一句；選項可以點，或按 1～9。
 // 「系統」說話時對話框換成青藍色、沒有頭像。
 import { npcFrame } from "./npcs.js";
+import { releaseTouch } from "./input.js";
+import { playFace, moodOf, FACE_SIZE } from "./system-face.js";
+import { starPixels, POSES } from "./star.js";
 
 const box = document.getElementById("dlg"), nameEl = document.getElementById("dlgName"), textEl = document.getElementById("dlgText"), optEl = document.getElementById("dlgOpts");
-const faceCv = document.getElementById("dlgFaceCv");
+const porL = document.getElementById("dlgL"), porR = document.getElementById("dlgR"), sysPor = document.getElementById("dlgSys");
+let stopSys = null;
+// 系統說話時：水晶飄在主角的右上方（主角腦中的聲音），表情照台詞換
+function showSys(text) {
+  stopSys?.();
+  stopSys = playFace(sysPor, moodOf(text));
+  const k = Math.max(2, Math.floor((innerHeight * 0.22) / FACE_SIZE)), r = porL.getBoundingClientRect(), st = box.offsetParent.getBoundingClientRect();
+  sysPor.style.width = sysPor.style.height = FACE_SIZE * k + "px";
+  sysPor.style.left = r.left - st.left + r.width * 0.55 + "px";
+  sysPor.style.bottom = st.bottom - r.top - FACE_SIZE * k * 0.35 + "px";
+  if (sysPor.classList.contains("hidden")) { sysPor.classList.remove("hidden", "in"); void sysPor.offsetWidth; sysPor.classList.add("in"); }
+}
+function hideSys() { stopSys?.(); stopSys = null; sysPor.classList.add("hidden"); }
 export const dialog = { open: false };
 let advance = null, pick = null, values = [];
 
@@ -42,34 +60,52 @@ export function typewriter(el, text, freq, wave) {
   return { done, skip: end };
 }
 
-// ---- 頭像：居民的待機 8 格照順序播（眨眼、反光、晃動都會動），放大後把下半身切掉一點
-let faceTimer = 0;
+// ---- 立繪：居民＝待機 8 格照順序播；主角＝星星的待機 8 格（目前形態）。整數倍放大（像素一樣大），高度約螢幕的 4 成
+let faceTimer = 0, faceId = null, frameN = 0;
+function paintPortrait(el, s) {
+  const cv = el.firstElementChild, g = cv.getContext("2d");
+  if (cv.width !== s.W || cv.height !== s.H) { cv.width = s.W; cv.height = s.H; }
+  const im = g.createImageData(s.W, s.H), px = new Uint32Array(im.data.buffer);
+  for (let y = 0; y < s.H; y++) for (let x = 0; x < s.W; x++) { const c = s.px[y][x]; if (c) px[y * s.W + x] = c; }
+  g.putImageData(im, 0, 0);
+  const k = Math.max(2, Math.floor((innerHeight * 0.4) / s.H));
+  cv.style.width = s.W * k + "px"; cv.style.height = s.H * k + "px";
+}
+function heroPixels(f) {
+  const form = globalThis.__game?.player?.form ?? "star";
+  const q = POSES.idle[f % 8], sp = starPixels(form === "star" ? q : { ...q, form });
+  return { px: sp.px, W: sp.W, H: sp.H };
+}
+function drawPortraits() {
+  paintPortrait(porL, heroPixels(frameN));
+  if (faceId) paintPortrait(porR, npcFrame(faceId, frameN));
+  frameN = (frameN + 1) % 8;
+}
 function setFace(id) {
-  clearInterval(faceTimer);
-  box.classList.toggle("noface", !id);
-  if (!id) return;
-  const g = faceCv.getContext("2d");
-  let f = 0;
-  const draw = () => {
-    const s = npcFrame(id, f);
-    const Hv = Math.round(s.H * 0.8), S = Math.max(s.W, Hv) + 2;   // 只看上面 8 成（臉），正方形畫布置中
-    faceCv.width = S; faceCv.height = S;
-    const im = g.createImageData(S, S), px = new Uint32Array(im.data.buffer);
-    const ox = (S - s.W) >> 1, oy = Math.round((S - Hv) / 2);
-    for (let y = 0; y < s.H; y++) for (let x = 0; x < s.W; x++) {
-      const c = s.px[y][x], py = y + oy;
-      if (c && py >= 0 && py < S) px[py * S + x + ox] = c;
-    }
-    g.putImageData(im, 0, 0);
-    f = (f + 1) % 8;
-  };
-  draw();
-  faceTimer = setInterval(draw, 150);
+  faceId = id;
+  box.classList.add("noface");
+  porR.classList.toggle("hidden", !id);
+  porL.classList.remove("hidden");
+  if (!faceTimer) faceTimer = setInterval(drawPortraits, 150);
+  drawPortraits();
+}
+// 誰在說話：亮的那邊跳一下、另一邊變暗；立繪站在對話框上緣
+function setActive(side) {
+  const on = side === "L" ? porL : porR, off = side === "L" ? porR : porL;
+  const was = on.classList.contains("on");
+  on.classList.add("on"); off.classList.remove("on");
+  if (!was) { on.classList.remove("hop"); void on.offsetWidth; on.classList.add("hop"); }
+  box.classList.toggle("right", side === "R");
+  const top = box.getBoundingClientRect().top, stage = box.offsetParent?.getBoundingClientRect();
+  const b = (stage ? stage.bottom : innerHeight) - top - 6;
+  porL.style.bottom = porR.style.bottom = b + "px";
 }
 
 let typing = null;
 function show(name, text) {
-  const [, face, freq, wave] = speaker(name);
+  clearTimeout(hideTimer);
+  const [, face0, freq, wave] = speaker(name), wasOpen = dialog.open;
+  const face = /系統/.test(name) && wasOpen ? faceId : face0;   // 系統插話時，居民留在原地（變暗）
   if (!dialog.open) { box.classList.remove("pop"); void box.offsetWidth; box.classList.add("pop"); }
   dialog.open = true;
   document.body.classList.add("talking");
@@ -77,17 +113,33 @@ function show(name, text) {
   box.classList.toggle("sys", /系統/.test(name));
   nameEl.textContent = name;
   optEl.innerHTML = "";
+  if (!wasOpen) releaseTouch();
+  if (!wasOpen) { for (const p of [porL, porR]) { p.classList.remove("enter", "on"); void p.offsetWidth; p.classList.add("enter"); } }
   setFace(face);
+  setActive(/系統/.test(name) || !face0 ? "L" : "R");
+  if (/系統/.test(name)) showSys(text); else hideSys();
   box.classList.add("typing");
   typing = typewriter(textEl, text, freq, wave);
-  typing.done.then(() => box.classList.remove("typing"));
+  // 打字時說話的那邊輕輕上下晃，打完停
+  const act = porL.classList.contains("on") ? porL : porR;
+  porL.classList.remove("talk"); porR.classList.remove("talk"); act.classList.add("talk");
+  typing.done.then(() => { box.classList.remove("typing"); act.classList.remove("talk"); });
 }
+// 關掉對話：晚一點點才真的關（接著馬上有下一段對話時，例如居民講完換系統吐槽，就不會閃一下、立繪也不會重新滑進來）
+let hideTimer = 0;
 function hide() {
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(hideNow, 150);
+}
+function hideNow() {
   dialog.open = false;
   document.body.classList.remove("talking");
   box.classList.add("hidden");
   box.classList.remove("more", "typing");
   clearInterval(faceTimer);
+  faceTimer = 0;
+  porL.classList.add("hidden"); porR.classList.add("hidden");
+  hideSys();
 }
 function next() {
   if (box.classList.contains("typing")) { typing?.skip(); return; }

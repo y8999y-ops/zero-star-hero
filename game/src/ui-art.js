@@ -132,6 +132,62 @@ function roundButton(size, k, ringA, ringB, iconName, on) {
   });
 }
 
+// ---- 手機觸控按鈕（2026-11-05 改版，參考原神手機版）：半透明深色圓底＋白色細外圈＋中間一個簡單的白色像素圖示。
+// 平常看得到後面的畫面，按下去才亮起來。圖示 13×13，# 是白色，外面自動描 1 格深色邊（在亮背景上也看得清楚）。
+const GLYPH = {
+  attack: [   // 斜劈的劍
+    "...........##", "..........###", ".........###.", "........###..", ".......###...", "......###....",
+    "..#..###.....", "..##.##......", "...###.......", "....##.......", "...####......", "..##..##.....", ".##..........",
+  ],
+  dash: [     // 兩個往前的箭頭
+    ".............", "#.....#......", "##....##.....", ".##....##....", "..##....##...", "...##....##..", "....##....##.",
+    "...##....##..", "..##....##...", ".##....##....", "##....##.....", "#.....#......", ".............",
+  ],
+  skill: [    // 四芒星
+    "......#......", "......#......", ".....###.....", ".....###.....", "....#####....", ".###########.", "#############",
+    ".###########.", "....#####....", ".....###.....", ".....###.....", "......#......", "......#......",
+  ],
+  talk: [     // 對話泡泡（城鎮的互動鍵）：三個點是挖空的
+    ".............", ".............", "..#########..", ".###########.", "#############", "###.##.##.###", "#############",
+    ".###########.", "..#########..", "...##........", "..##.........", ".#...........", ".............",
+  ],
+  ult: [      // 五角星
+    "......#......", "......#......", ".....###.....", ".....###.....", "#############", ".###########.", "..#########..",
+    "...#######...", "...#######...", "..####.####..", "..###...###..", ".##.......##.", ".#.........#.",
+  ],
+};
+function glassButton(size, k, glyph, on = false, tint = "#ffffff") {
+  const layer = discLayers(size), G = GLYPH[glyph], o = Math.round((size - 13) / 2);
+  return pixels(size, size, k, (px) => {
+    for (const [i, n] of layer) {
+      const x = i % size, y = (i / size) | 0;
+      px(x, y, n === 1 ? (on ? "rgba(255,255,255,.95)" : "rgba(255,255,255,.55)") : on ? "rgba(255,255,255,.24)" : "rgba(12,8,24,.30)");
+    }
+    const at = (x, y) => G[y]?.[x] === "#";
+    for (let y = -1; y <= 13; y++) for (let x = -1; x <= 13; x++) {
+      if (at(x, y)) px(o + x, o + y, on ? tint : "#ffffff");
+      else if (at(x + 1, y) || at(x - 1, y) || at(x, y + 1) || at(x, y - 1)) px(o + x, o + y, "rgba(10,8,20,.7)");
+    }
+  });
+}
+
+// ---- 主畫面選單的牌子（16×16，九宮格切 6）：四角斜切、1px 深色外框、金色細框（左上亮右下暗）、
+// 內側一圈暗線、深色半透明底，上緣一條淡淡的反光。main＝主按鈕（金框比較亮、底偏紫）
+function menuPlate(k, main = false) {
+  const N = 16, G1 = main ? "#ffe7a0" : "#c9a258", G2 = main ? "#c8862a" : "#7a5a2c";
+  const FILL = main ? "rgba(46,22,70,.9)" : "rgba(14,10,32,.78)", LINE = main ? "#2a1238" : "#120c22";
+  return pixels(N, N, k, (px) => {
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const cx = Math.min(x, N - 1 - x), cy = Math.min(y, N - 1 - y), c = cx + cy, d = Math.min(cx, cy), tl = x + y < N;
+      if (c < 3) continue;
+      if (c === 3 || d === 0) px(x, y, OUT);
+      else if (c === 4 || d === 1) px(x, y, tl ? G1 : G2);
+      else if (c === 5 || d === 2) px(x, y, LINE);
+      else px(x, y, y === 3 ? (main ? "rgba(255,220,150,.35)" : "rgba(255,230,170,.16)") : FILL);
+    }
+  });
+}
+
 // 血條外框（9×9，切 3）
 function barFrame(k) {
   return pixels(9, 9, k, (px) => {
@@ -196,6 +252,9 @@ export function installUiArt() {
   set("--bubble", bubble(2));
   set("--bubble-tail", bubbleTail(2));
   set("--inset", inset(2));
+  set("--plate", menuPlate(2));
+  set("--plate-main", menuPlate(2, true));
+  set("--ic-star", pixels(16, 16, 2, (px) => stampIcon(px, "star", 0, 0)));
   set("--btn", button(3, false));
   set("--btn-down", button(3, true));
   set("--bar", barFrame(2));
@@ -210,12 +269,14 @@ export function installUiArt() {
   set("--slot-sel", slot(2, "#ffffff", true));
   // 觸控按鈕：大小都是 3 的倍數，放大後像素一樣大
   setAttackIcon("sword");
-  set("--tb-dash", roundButton(24, 3, "#8ab8ff", "#2c4a8c", "dash"));
-  set("--tb-dash-on", roundButton(24, 3, "#d0e4ff", "#5a8ae0", "dash", true));
-  set("--tb-skill", roundButton(22, 3, "#ffb060", "#b04a14", "fire"));
-  set("--tb-ult", roundButton(22, 3, "#fff09a", "#c48412", "star"));
-  set("--tb-ult-on", roundButton(22, 3, "#ffffff", "#ffd84a", "star", true));
-  set("--tb-skill-on", roundButton(22, 3, "#ffe0a0", "#ff8a2a", "fire", true));
+  set("--tb-dash", glassButton(23, 3, "dash"));
+  set("--tb-dash-on", glassButton(23, 3, "dash", true, "#bfe0ff"));
+  set("--tb-skill", glassButton(23, 3, "skill"));
+  set("--tb-skill-on", glassButton(23, 3, "skill", true, "#ffd8a0"));
+  set("--tb-talk", glassButton(29, 3, "talk"));
+  set("--tb-talk-on", glassButton(29, 3, "talk", true, "#ffe27a"));
+  set("--tb-ult", glassButton(23, 3, "ult"));
+  set("--tb-ult-on", glassButton(23, 3, "ult", true, "#fff09a"));
   set("--tb-bag", roundButton(22, 2, "#d8a878", "#6a4426", "bag"));
   set("--ic-heart", pixels(16, 16, 2, (px) => stampIcon(px, "heart", 0, 0)));
   set("--ic-coin", pixels(16, 16, 2, (px) => stampIcon(px, "coin", 0, 0)));
@@ -227,7 +288,8 @@ export function installUiArt() {
 /** 攻擊按鈕上的圖示跟著目前的武器換。 */
 const atkCache = {};
 export function setAttackIcon(icon) {
-  atkCache[icon] ??= [roundButton(32, 3, "#ffd84a", "#b07c1c", icon), roundButton(32, 3, "#fff2a0", "#ffd84a", icon, true)].map(url);
+  // 改版後攻擊鍵一律用白色劍的圖示（不跟形態換），icon 參數保留給舊呼叫
+  atkCache[icon] ??= [glassButton(29, 3, "attack"), glassButton(29, 3, "attack", true, "#ffe27a")].map(url);
   document.documentElement.style.setProperty("--tb-atk", `url(${atkCache[icon][0]})`);
   document.documentElement.style.setProperty("--tb-atk-on", `url(${atkCache[icon][1]})`);
 }

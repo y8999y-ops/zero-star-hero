@@ -109,6 +109,7 @@ export function initTouch() {
   };
   zone.addEventListener("pointerup", end);
   zone.addEventListener("pointercancel", end);
+  zone.addEventListener("lostpointercapture", end);   // 對話打開時觸控層停用，手指還按著也要放開
 
   for (const btn of document.querySelectorAll(".btn")) {
     const k = btn.dataset.key;
@@ -122,6 +123,14 @@ export function initTouch() {
     const up = () => { btn.classList.remove("on"); if (k === "attack") touch.attack = false; };
     btn.addEventListener("pointerup", up);
     btn.addEventListener("pointercancel", up);
+    btn.addEventListener("lostpointercapture", up);
   }
   addEventListener("contextmenu", (e) => e.preventDefault());
+}
+/** 對話打開時呼叫：放開所有觸控（按著的攻擊鍵、搖桿），不然對話結束後第一次按會沒反應、按鈕一直亮著 */
+export function releaseTouch() {
+  touch.attack = false;
+  touch.move = 0;
+  for (const b of document.querySelectorAll(".btn.on")) b.classList.remove("on");
+  document.getElementById("stickBase")?.classList.remove("on");
 }

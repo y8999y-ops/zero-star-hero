@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0d0b14">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>零星勇者</title>
+<title>轉生成星星碎片的我，靠吸收魔物變成最強</title>
 <link rel="stylesheet" href="style.css">
 <script>try { if (sessionStorage.getItem("zero-hero-auto")) document.documentElement.classList.add("auto"); } catch {}</script>
 </head>
@@ -30,9 +30,12 @@
   </div>
   <div id="killBox">擊倒 <span id="kills">0</span></div>
   <div id="forms"></div>
-  <div id="sys"><div class="sysHead">◆ 系統</div><div id="sysText"><span id="sysGhost"></span><span id="sysTyped"></span></div></div>
+  <div id="sys"><i class="hfx"></i><canvas id="sysFace"></canvas><div class="sysHead">SYSTEM // 系統</div><div id="sysText"><span id="sysGhost"></span><span id="sysTyped"></span></div></div>
   <div id="bubble"><span id="bubbleText"></span></div>
-  <div id="dlg" class="hidden"><div id="dlgFace"><canvas id="dlgFaceCv"></canvas></div><div id="dlgBody"><div id="dlgName"></div><div id="dlgText"></div></div><div id="dlgOpts"></div></div>
+  <div id="dlgL" class="por hidden"><canvas></canvas></div>
+  <div id="dlgR" class="por hidden"><canvas></canvas></div>
+  <canvas id="dlgSys" class="hidden"></canvas>
+  <div id="dlg" class="hidden"><i class="hfx"></i><div id="dlgFace"><canvas id="dlgFaceCv"></canvas></div><div id="dlgBody"><div id="dlgName"></div><div id="dlgText"></div></div><div id="dlgOpts"></div></div>
   <div id="fade"></div>
   <div id="feed"></div>
   <div id="flash"></div>
@@ -85,13 +88,23 @@
     </div>
   </div>
 
-  <div id="start" class="overlay">
-    <h1>零星勇者</h1>
-    <p class="sub" id="startName">第一章　1-1 墜落之底</p>
-    <button id="startBtn">點擊開始</button>
-    <div class="help">
-      <div><b>手機</b>：左半邊拖動移動、往上滑跳（空中點一下或再滑一次＝二段跳）、往下滑穿過平台；右邊按住「攻擊」自動連段</div>
-      <div><b>電腦</b>：A / D 移動　W 或空白鍵 跳　S＋跳 穿過平台　J 攻擊（按住連段）　K 閃避　U 技能　O 換形態　L 大招　I 背包</div>
+  <div id="start">
+    <canvas id="titleCv"></canvas>
+    <div class="tmenu">
+      <button id="startBtn" class="tbig"><span id="startLabel">開始冒險</span><small id="startName">第一章　1-1 墜落之底</small></button>
+      <button id="helpBtn" class="tsmall">操作說明</button>
+      <button id="soundBtn" class="tsmall">聲音設定</button>
+    </div>
+    <div class="tfoot"><span>第一章 試玩版</span><span>v0.8</span></div>
+    <div id="helpPanel" class="hidden">
+      <div class="hp-ttl">操作說明</div>
+      <div class="hp-col"><b>手機</b>
+        <p>左半邊左右拖動＝移動</p><p>往上快滑＝跳（空中點一下＝二段跳）</p><p>往下快滑＝穿過平台</p><p>右下：攻擊（按住連段）、閃避、技能、大招</p><p>右邊直排：切換形態</p>
+      </div>
+      <div class="hp-col"><b>電腦</b>
+        <p>A / D 移動　W、空白鍵 跳</p><p>S＋跳 穿過平台</p><p>J 攻擊（按住連段）　K 閃避</p><p>U 技能　L 大招　O 換形態</p><p>I 背包　H 回城鎮</p>
+      </div>
+      <button id="helpClose" class="pbtn">知道了</button>
     </div>
   </div>
   <div id="clear" class="overlay hidden">
@@ -107,7 +120,7 @@
 <script>
   // 直接雙擊 index.html（file://）時瀏覽器會擋掉遊戲程式，改顯示說明
   if (location.protocol === "file:") document.getElementById("start").innerHTML =
-    '<h1>零星勇者</h1><p class="sub">不能直接打開這個檔案</p><div class="help">請回到「像素小遊戲」資料夾，雙擊 <b>開始遊戲.bat</b>，<br>它會自動用瀏覽器打開遊戲。玩完把黑色視窗關掉就好。</div>';
+    '<h1>轉生成星星碎片的我，靠吸收魔物變成最強</h1><p class="sub">不能直接打開這個檔案</p><div class="help">請回到「像素小遊戲」資料夾，雙擊 <b>開始遊戲.bat</b>，<br>它會自動用瀏覽器打開遊戲。玩完把黑色視窗關掉就好。</div>';
 </script>
 <script type="module" src="src/main.js"></script>
 </body>

@@ -23,6 +23,9 @@ import { computeStats, compare, xpNeed, MAX_LV } from "./stats.js";
 import { makeItem, rollRarity, R, RARITY, JUNK } from "./items.js";
 import { Drops, feed } from "./loot.js";
 import { createInventory } from "./inventory.js";
+import { playFace, moodOf } from "./system-face.js";
+import { startTitle } from "./title.js";
+import { playIntro } from "./intro.js";
 import { installUiArt, iconURL, setAttackIcon, medal, MEDAL_SIZE } from "./ui-art.js";
 import { FORMS, CARRY_MAX, coreChance, absorbCore, makeCore, coresToLevel } from "./forms.js";
 import { createFrame as makeFrame } from "../../pixelfx/src/core/index.js";
@@ -154,7 +157,7 @@ function pickUp(d) {
     return true;
   }
   if (profile.inv.length >= BAG_SIZE) {
-    if (!d.warned) { d.warned = true; toast("系統：背包滿了！按右上角的背包整理一下。", 2.5); }
+    if (!d.warned) { d.warned = true; toast("系統：背包滿了！打開右上角的【背包】整理一下。", 2.5, "bag"); }
     return false;
   }
   it.new = true;
@@ -182,7 +185,7 @@ function absorb(it) {
   spawn(collectBurst, { x: Math.round(player.x), y: Math.round(player.y) - 12, palette: FORM_BURST[it.form], light: 0.5 });
   flash(player.x, player.y - 12, 80, 3, 0.6, F.color);
   if (res.unlocked) {
-    toast(`系統：吸收了${F.name}的核！新形態「${F.name}」${profile.forms.carry.includes(it.form) ? "（按 O 或右上角切換）" : "（已滿 3 個，回城鎮再換）"}`, 3.2);
+    toast(`系統：吸收了${F.name}的核！新形態「${F.name}」。${profile.forms.carry.includes(it.form) ? tipFor("點右邊的【形態】就能變身。", "按【O】或【1】～【3】就能變身。") : "已經帶滿 3 個了，回城鎮再換。"}`, 3.4, "forms");
     sayQueue.unshift([`系統：你把${F.from === "slime" ? "史萊姆" : "垃圾桶"}的核吃掉了？不對，是吸收。好吧，差不多。`, 2.8]);
   } else if (res.leveled) {
     toast(`系統：${F.name}升到 Lv ${res.lv}！`, 2.2);
@@ -316,7 +319,9 @@ window.__game.props = props;
 window.__game.scenery = scenery;
 
 if (!TOWN) for (const x of TORCHES) spawn(A.brazier, { x, y: FLOOR }, { layer: "back", keep: true }).update(Math.random() * 3);
-if (!ENDLESS && !TOWN && STAGE_ID !== "1-4") spawn(A.portal, { x: STAGE.exitX + 26, y: FLOOR }, { layer: "back", keep: true });
+// 出口的傳送門：通關（走到出口、或 1-4 打倒王）之後，踩上去才回碎星鎮（2026-11-05：不再跳結算頁）
+let portalX = !ENDLESS && !TOWN && STAGE_ID !== "1-4" ? STAGE.exitX + 26 : null, stageDone = false, leaving = false;
+if (portalX !== null) spawn(A.portal, { x: portalX, y: FLOOR }, { layer: "back", keep: true });
 
 // 關卡流程需要的操作
 const stageApi = {
@@ -325,7 +330,7 @@ const stageApi = {
     enemies.push(e);
     world.dust(e.x, e.k.fly ? e.y + 8 : e.y, 4);
   },
-  say: (msg, sec) => sayQueue.push([msg, sec]),
+  say: (msg, sec, focus) => sayQueue.push([msg, sec, focus]),
   hint: (msg, sec) => showHint(msg, sec),
   // 金幣史萊姆只會逃跑，不算在「清光這一波」裡
   alive: () => enemies.reduce((n, e) => n + (e.dead || e.kind === "gold" ? 0 : 1), 0),
@@ -496,6 +501,7 @@ function townTick(dt) {
   scenery.update(dt, player, propView());
     folk.update(dt, player.x);
     near = nearby(player.x) ?? folk.nearby(player.x);
+    if (document.body.classList.contains("near") !== !!near) document.body.classList.toggle("near", !!near);   // 互動鍵：旁邊有人才亮
     if (atk && !prevAtk && near && player.grounded) interact(near);
     prevAtk = atk;
   } else { player.vx = 0; prevAtk = true; }
@@ -550,7 +556,7 @@ function drawPrompt() {
   }
   for (let y = 0; y <= 8; y++) if (y !== 6) { const px = x0 + 1, py = y0 + y; if (px >= 0 && py >= 0 && px < frame.w && py < frame.h) frame.color[py * frame.w + px] = C1; }
   void C0;
-  showHint(document.body.classList.contains("touch") ? `點「攻擊」和${near.name}說話` : `J＝和${near.name}說話`, 0.2);
+  showHint(document.body.classList.contains("touch") ? `點「對話」和${near.name}說話` : `J＝和${near.name}說話`, 0.2);
 }
 async function interact(n) {
   busy = true;
@@ -633,7 +639,7 @@ function chargeUlt(n) {
   if (ult.on || cleared) return;
   const was = ult.charge;
   ult.charge = Math.min(ULT_MAX, ult.charge + n);
-  if (was < ULT_MAX && ult.charge >= ULT_MAX) toast("系統：大招集滿了！按 L（手機：星星按鈕）。", 2.2);
+  if (was < ULT_MAX && ult.charge >= ULT_MAX) toast("系統：" + tipFor("大招集滿了！按【大招】，讓牠們見識一下零星的厲害。", "大招集滿了！按【L】，讓牠們見識一下零星的厲害。"), 2.6, "ult");
 }
 const ultHooks = {
   // 衝擊波掃到的怪：每隻只打一次
@@ -708,6 +714,13 @@ function tick(dt) {
 
   updateLight(dt);
   if (cleared) { updateFx(dt); return; }
+  // 通關後踩到傳送門：回碎星鎮
+  if (stageDone && !leaving && portalX !== null && player.grounded && Math.abs(player.x - portalX) < 12) {
+    leaving = true;
+    sfx("form");
+    flash(portalX, FLOOR - 16, 90, 3, 0.5, "#a8f0ff");
+    goScene("town");
+  }
   // 大招進行中：世界停住，只有主角、特效和攝影機在動
   if (ult.on) {
     updateUlt(dt, player, ultHooks);
@@ -935,18 +948,29 @@ function updateBagDot() {
 const comboEl = $("combo"), comboArt = createComboArt(comboEl), hpFill = $("hpFill"), hpText = $("hpText"), coinsEl = $("coins"), killsEl = $("kills"), fpsEl = $("fps"), cdEl = $("skillCd"), toastEl = $("toast");
 const ubFill = $("ubFill"), ubBar = $("ubBar"), ultFill = $("ultFill"), btnUlt = $("btnUlt");
 let toastT = 0;
-const sysEl = $("sys"), sysText = $("sysTyped"), sysGhost = $("sysGhost");
+const sysEl = $("sys"), sysText = $("sysTyped"), sysGhost = $("sysGhost"), sysFaceCv = $("sysFace");
+let stopSysFace = null;
 let sysT = 0, sysTyping = null;
-function toast(msg, sec = 3) {
+// focus：系統講到某個按鈕時，那顆按鈕跟著閃（教學）
+const FOCUS = { atk: "btnAtk", dash: "btnDash", skill: "btnSkill", ult: "btnUlt", bag: "btnBag", forms: "forms" };
+let focusEl = null;
+function toast(msg, sec = 3, focus = null) {
   if (msg.startsWith("系統：")) {
-    const text = msg.slice(3);
+    const text = msg.slice(3), shown = text.replace(/[【】]/g, "");
     sysTyping?.skip();
     sysEl.classList.remove("glitch");
     void sysEl.offsetWidth;
-    sysEl.classList.add("on", "glitch");
-    sysGhost.textContent = text;   // 隱形的整句先撐開大小，打字時框不會一直變寬
-    sysTyping = typewriter(sysText, text, 1320, "sine");
+    sysEl.classList.add("on", "glitch", "typing");
+    sysGhost.innerHTML = keyChips(text);   // 隱形的整句先撐開大小，打字時框不會一直變寬
+    sysTyping = typewriter(sysText, shown, 1320, "sine");
+    stopSysFace?.(); stopSysFace = playFace(sysFaceCv, moodOf(text));
+    const mine = sysTyping;
+    // 打完之後把【】裡的字換成按鍵的樣子
+    sysTyping.done.then(() => { if (sysTyping === mine) { sysText.innerHTML = keyChips(text); sysEl.classList.remove("typing"); } });
     sysT = toastT = sec + text.length * 0.035;   // 打字的時間另外加上去，看得完
+    focusEl?.classList.remove("teach");
+    focusEl = focus ? $(FOCUS[focus]) : null;
+    if (focusEl) { focusEl.classList.add("teach"); setTimeout(() => focusEl?.classList.remove("teach"), sysT * 1000); }
     return;
   }
   toastEl.textContent = msg;
@@ -956,8 +980,13 @@ function toast(msg, sec = 3) {
 // 系統台詞排隊一句一句講，不會互相蓋掉
 const sayQueue = [];
 function updateSay() {
-  if (toastT <= 0.2 && sayQueue.length) { const [m, s] = sayQueue.shift(); toast(m, s); }
+  if (toastT <= 0.2 && sayQueue.length) { const [m, s, f] = sayQueue.shift(); toast(m, s, f); }
 }
+const escHtml = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+/** 【攻擊】→ 按鍵小方塊 */
+function keyChips(text) { return escHtml(text).replace(/【(.+?)】/g, '<b class="key">$1</b>'); }
+/** 依裝置挑教學台詞 */
+const tipFor = (touchText, keyText) => (document.body.classList.contains("touch") ? touchText : keyText);
 const hintEl = $("hint");
 let hintTimer = 0;
 function showHint(msg, sec) {
@@ -966,12 +995,11 @@ function showHint(msg, sec) {
   clearTimeout(hintTimer);
   hintTimer = setTimeout(() => hintEl.classList.remove("on"), sec * 1000);
 }
+// 通關：記錄進度、系統講一句（含這趟的成績），之後踩傳送門才離開；不再跳結算頁
 function showClear() {
-  cleared = true;
+  if (stageDone) return;
+  stageDone = true;
   const t = Math.round(stats.time), mm = Math.floor(t / 60), ss = String(t % 60).padStart(2, "0");
-  $("clearStats").innerHTML = [
-    ["通關時間", `${mm}:${ss}`], ["擊倒", stats.kills], ["金幣", stats.coins], ["最高連擊", stats.best], ["死亡次數", stats.deaths], ["撿到", runLoot.length + " 件"],
-  ].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
   profile.clears++;
   profile.cleared[STAGE_ID] = true;
   // 公會的任務：通關＝完成
@@ -982,16 +1010,16 @@ function showClear() {
     if (rankOf(profile.guild.done) !== before) profile.guild.rankUp = rankOf(profile.guild.done);
   }
   save(profile, true);
-  const got = runLoot.filter((it) => it.rarity >= R.magic).sort((a, b) => b.rarity - a.rarity);
-  $("clearLoot").innerHTML = got.length
-    ? got.map((it) => `<div class="slot r${it.rarity}" title="${it.name}"><img src="${iconURL(it.icon, 2)}"></div>`).join("")
-    : '<span style="color:var(--dim)">這趟沒撿到魔法以上的裝備。再刷一次吧！</span>';
-  if (STAGE_ID === "1-4") { $("clearLine").textContent = "第一章　墜星之谷　完。……走出洞窟，前面就是碎星鎮了。"; $("homeBtn").textContent = "走出洞窟，回碎星鎮"; }
-  else $("clearLine").textContent = stats.deaths === 0 ? "系統：一次都沒死？……我收回「零星」那句話。一半。" : "系統：過是過了。死了幾次這件事，我會幫你保密的。";
-  $("nextBtn").classList.toggle("hidden", ENDLESS || !nextStage());
-  if (nextStage()) $("nextBtn").textContent = `下一關：${nextStage()} ${LAYOUTS[nextStage()].name}`;
   jingle("clear");
-  $("clear").classList.remove("hidden");
+  // 1-4 沒有出口傳送門：打倒王之後，在主角前面打開一個
+  if (portalX === null && !ENDLESS) {
+    portalX = Math.round(Math.max(60, Math.min(geo.w - 60, player.x + player.face * 70)));
+    spawn(A.portal, { x: portalX, y: FLOOR }, { layer: "back", keep: true });
+    flash(portalX, FLOOR - 16, 110, 3, 0.6, "#a8f0ff");
+  }
+  sayQueue.length = 0;
+  toast(`系統：通關！${mm}:${ss}，擊倒 ${stats.kills}、最高連擊 ${stats.best}${stats.deaths ? "、死了 " + stats.deaths + " 次" : "，一次都沒死"}。`, 3.2);
+  sayQueue.push([STAGE_ID === "1-4" ? "系統：第一章　墜星之谷　完。走進傳送門，前面就是碎星鎮了。" : stats.deaths === 0 ? "系統：一次都沒死？……我收回「零星」那句話。一半。走進傳送門回碎星鎮吧。" : "系統：過是過了。走進傳送門回碎星鎮，死了幾次這件事我會幫你保密。", 4]);
 }
 $("againBtn").addEventListener("click", () => goScene(ENDLESS ? "endless" : "stage", STAGE_ID));
 $("nextBtn").addEventListener("click", () => nextStage() && goScene("stage", nextStage()));
@@ -1054,7 +1082,7 @@ function hud(dt) {
   ubBar.classList.toggle("ready", ready);
   btnUlt.classList.toggle("ready", ready);
   if ((toastT -= dt) <= 0) toastEl.classList.remove("on");
-  if ((sysT -= dt) <= 0) sysEl.classList.remove("on");
+  if ((sysT -= dt) <= 0 && sysEl.classList.contains("on")) { sysEl.classList.remove("on"); stopSysFace?.(); stopSysFace = null; }
 }
 
 // ---- 主迴圈
@@ -1090,7 +1118,14 @@ window.__game.bench = (n = 300) => {
 };
 
 // ---- 開始畫面
-$("startName").textContent = ENDLESS ? "無限討伐" : `第一章　${STAGE.name}`;
+$("startName").textContent = ENDLESS ? "無限討伐" : TOWN ? "碎星鎮" : `第一章　${STAGE.name}`;
+$("startLabel").textContent = TOWN || profile.clears > 0 ? "繼續冒險" : "開始冒險";
+// 主畫面的場景動畫（換場景直接開始時不播）
+let stopTitle = null;
+if (!sessionStorage.getItem(AUTO_KEY)) startTitle($("titleCv"), { form: profile.forms.cur }).then((stop) => { if (started) stop(); else stopTitle = stop; });
+$("helpBtn").addEventListener("click", () => { sfx("ui"); $("helpPanel").classList.remove("hidden"); });
+$("helpClose").addEventListener("click", () => { sfx("ui"); $("helpPanel").classList.add("hidden"); });
+$("soundBtn").addEventListener("click", (e) => { e.stopPropagation(); $("btnSet").click(); });
 $("clearName").textContent = ENDLESS ? "無限討伐" : STAGE.name;
 const isTouch = matchMedia("(pointer: coarse)").matches || "ontouchstart" in window;
 if (isTouch) document.body.classList.add("touch");
@@ -1103,6 +1138,7 @@ function start() {
   music(TOWN ? "town" : STAGE_ID === "1-4" ? null : "stage");   // 1-4 王出場大吼時才開始王戰音樂
   if (!TOWN) { $("btnHome").classList.remove("hidden"); $("btnHome").style.backgroundImage = `url(${iconURL("home", 3)})`; }
   $("start").classList.add("hidden");
+  stopTitle?.();
   document.body.classList.add("playing");
   document.body.classList.toggle("town", TOWN);
   updateBagDot();
@@ -1117,7 +1153,28 @@ function start() {
   else if (ENDLESS) toast("系統：無限模式。打到你手痠為止。");
   else director = new Director(STAGE, stageApi, touch);
 }
-$("startBtn").addEventListener("click", start);
+// 開始冒險：新遊戲第一次進 1-1 時先播開場動畫（只播一次，可跳過），播完直接開始
+let introOn = false;
+async function startOrIntro() {
+  if (started || introOn) return;
+  if (TOWN || ENDLESS || STAGE_ID !== "1-1" || profile.seenIntro) return start();
+  introOn = true;
+  unlockAudio();
+  stopTitle?.(); stopTitle = null;
+  $("helpPanel").classList.add("hidden");
+  $("start").classList.add("intro");
+  await playIntro($("start"), $("titleCv"));
+  profile.seenIntro = true;
+  save(profile, true);
+  // 開場已經講過「轉生成功、種族星星」，1-1 一開始改講別的
+  STAGE.intro = ["系統：……好，先站起來走走看吧。這裡是深淵的最底層，墜落之底。"];
+  const fade = $("fade");
+  fade.style.transition = "none"; fade.classList.add("on");
+  start();
+  void fade.offsetWidth;
+  fade.style.transition = ""; fade.classList.remove("on");
+}
+$("startBtn").addEventListener("click", startOrIntro);
 // 換場景過來的：黑幕淡入、直接開始；聲音等第一次操作再解鎖（瀏覽器規定）
 if (sessionStorage.getItem(AUTO_KEY)) {
   sessionStorage.removeItem(AUTO_KEY);
@@ -1129,6 +1186,6 @@ if (sessionStorage.getItem(AUTO_KEY)) {
   fade.style.transition = ""; fade.classList.remove("on");
 }
 for (const ev of ["pointerdown", "keydown", "touchstart"]) addEventListener(ev, unlockAudio, { capture: true, passive: true });
-addEventListener("keydown", (e) => { if (!started && (e.code === "Enter" || e.code === "Space")) start(); });
+addEventListener("keydown", (e) => { if (!started && (e.code === "Enter" || e.code === "Space")) startOrIntro(); });
 // 開發用：主控台直接掉寶、加經驗
-Object.assign(window.__game, { dropItem, gainXp, R });
+Object.assign(window.__game, { dropItem, gainXp, R, toast });

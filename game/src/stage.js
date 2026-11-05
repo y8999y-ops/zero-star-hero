@@ -10,24 +10,25 @@ export const STAGE_1_1 = {
   // 高處的金幣（探索獎勵）
   caches: [{ x: 556, y: 96, n: 6 }, { x: 1212, y: 84, n: 9 }, { x: 2092, y: 100, n: 7 }],
   events: [
-    { x: 120, hint: { touch: "左手在左半邊左右拖動＝移動", key: "A / D 或方向鍵＝移動" } },
-    { x: 280, hint: { touch: "左手往上快滑＝跳，在空中點一下左半邊＝二段跳", key: "W 或空白鍵＝跳，在空中再按一次＝二段跳" } },
+    // 教學寫成系統的台詞（tip），【】裡是按鍵／按鈕，focus＝講到時哪個按鈕會閃
+    { x: 120, tip: { touch: "先活動一下。左手在【螢幕左半邊】左右拖——這樣就能走了。", key: "先活動一下。【A】【D】或方向鍵——走路。星星也是要走路的。" } },
+    { x: 280, tip: { touch: "前面有高台。左手【往上快滑】跳，在空中再點一下左半邊——二段跳。別問我星星為什麼會二段跳。", key: "前面有高台。【W】或【空白鍵】跳，在空中再按一次——二段跳。別問我星星為什麼會二段跳。" } },
     {
       x: 470,
       say: "系統：史萊姆，深淵最弱的魔物。剛好適合零星的你。",
-      hint: { touch: "按住右下角「攻擊」會自動打出三連段", key: "按住 J 會自動打出三連段" },
+      tip: { touch: "按住右下角的【攻擊】，會自己打出三連段。很方便吧？我設計的。", key: "按住【J】，會自己打出三連段。很方便吧？我設計的。", focus: "atk" },
       waves: [[["slime", 1], ["slime", 1], ["slime", -1]]],
     },
     {
       x: 900,
       say: "系統：蝙蝠會俯衝，看準時機閃開。",
-      hint: { touch: "「閃避」有無敵時間；沒推方向時會往遠離敵人的方向閃", key: "K＝閃避，有無敵時間" },
+      tip: { touch: "【閃避】的那一瞬間不會受傷。沒推方向的話，會往遠離敵人的那邊閃。", key: "按【K】閃避，閃的那一瞬間不會受傷。", focus: "dash" },
       waves: [[["slime", 1], ["bat", 0], ["bat", 0]], [["slime", -1], ["slime", 1], ["bat", 0], ["slime", 1]]],
     },
     {
       x: 1290,
       say: "系統：……等等，那個垃圾桶是不是在動？",
-      hint: { touch: "「技能」打中會爆炸，可以炸一整群", key: "U＝技能（星屑彈），打中會爆炸" },
+      tip: { touch: "用【技能】。星屑彈打中會爆炸，一整群一起送走。", key: "按【U】放技能——星屑彈，打中會爆炸，一整群一起送走。", focus: "skill" },
       waves: [[["trash", 1]], [["trash", -1], ["slime", 1], ["bat", 0], ["slime", -1]]],
     },
     {
@@ -47,7 +48,7 @@ export const STAGE_1_2 = {
   intro: ["系統：這裡是垃圾山。上面的世界把不要的東西，全部丟到這裡。", "系統：……包括你。開玩笑的。大概。"],
   caches: [{ x: 560, y: 84, n: 7 }, { x: 1432, y: 86, n: 9 }, { x: 2336, y: 84, n: 10 }],
   events: [
-    { x: 260, hint: { touch: "右上角的背包：穿裝備、比較、拆垃圾", key: "I＝背包：穿裝備、比較、拆垃圾" } },
+    { x: 260, tip: { touch: "撿到的東西都在右上角的【背包】。穿裝備、比較、拆垃圾……垃圾的部分你應該很熟。", key: "撿到的東西按【I】打開背包看。穿裝備、比較、拆垃圾……垃圾的部分你應該很熟。", focus: "bag" } },
     { x: 620, say: "系統：歡迎委員會來了。", waves: [[["slime", 1], ["slime", -1], ["trash", 1]], [["slime", 1], ["slime", 1], ["slime", -1], ["bat", 0]]] },
     { x: 1150, say: "系統：垃圾桶……越來越多了。打倒它們，有機會吸收鐵罐星的核。", waves: [[["trash", 1], ["trash", -1]], [["trash", 1], ["slime", -1], ["slime", -1], ["bat", 0]]] },
     { x: 1680, say: "系統：那隻史萊姆的顏色不太對。是菁英，很硬。打贏的話掉的東西比較好。", waves: [[["slimeE", 1], ["slime", -1], ["slime", -1]], [["slime", 1], ["trash", -1], ["bat", 0], ["bat", 0]]] },
@@ -112,6 +113,7 @@ export class Director {
       this.next++;
       if (ev.say) this.api.say(ev.say, SAY_TIME);
       if (ev.hint) this.api.hint(this.isTouch ? ev.hint.touch : ev.hint.key, HINT_TIME);
+      if (ev.tip) this.api.say("系統：" + (this.isTouch ? ev.tip.touch : ev.tip.key), HINT_TIME, ev.tip.focus);
       if (ev.waves) {
         this.lock = ev.lock ? { l: ev.lock[0], r: ev.lock[1] } : { l: Math.round(camX), r: Math.round(camX) + W };
         this.waves = ev.waves;
