@@ -13,6 +13,8 @@ export const STAGE_1_1 = {
     { t: "seal", x: 2320, y: 264, h: 160 }, { t: "ember", x: 2360, y: 264 },
     { t: "stele", x: 1000, y: 344, i: 0 }, { t: "fossil", x: 1600, y: 248, form: "slime" }, { t: "vein", x: 2300, y: 432 },
   ],
+  // 10 批：元素物件（黏液池、油桶、廚餘堆、漏電管線）擺在各層地面 [種類, x, y]
+  hazards: [["goo", 560, 536], ["goo", 960, 600], ["drum", 1100, 432], ["junk", 1700, 432], ["pipe", 2060, 432]],
   altars: [{ x: 720, y: 488 }, { x: 1500, y: 432 }, { x: 2100, y: 264 }],
   spawns: [
     // 最底層、台階
@@ -85,6 +87,7 @@ export const STAGE_1_2 = {
     { t: "crack", x: 1720, y: 600, h: 112 }, { t: "fossil", x: 1790, y: 600, form: "can" }, { t: "safe", x: 1860, y: 600 },
     { t: "stele", x: 1340, y: 240, i: 1 }, { t: "vein", x: 2600, y: 520 },
   ],
+  hazards: [["junk", 300, 600], ["drum", 1100, 376], ["pipe", 1500, 600], ["junk", 2300, 520], ["drum", 2480, 520]],
   altars: [{ x: 460, y: 600 }, { x: 1424, y: 240 }, { x: 2220, y: 520 }],
   spawns: [
     { k: "slime", x: 300, y: 600 }, { k: "slime", x: 420, y: 600 }, { k: "slime", x: 520, y: 600 }, { k: "trash", x: 620, y: 552 }, { k: "slime", x: 780, y: 504 }, { k: "bat", x: 450, y: "air" }, { k: "trash", x: 900, y: 440 }, { k: "slime", x: 960, y: 440 }, { k: "slime", x: 1060, y: 376 }, { k: "trash", x: 1120, y: 376 }, { k: "slime", x: 1230, y: 312 }, { k: "bat", x: 1100, y: 280 }, { k: "slimeE", x: 1360, y: 240 }, { k: "trash", x: 1450, y: 240 }, { k: "slime", x: 1500, y: 240 }, { k: "bat", x: 1420, y: 150 }, { k: "bat", x: 1300, y: 190 }, { k: "slime", x: 1590, y: 312 }, { k: "trash", x: 1720, y: 392 }, { k: "slime", x: 1780, y: 392 }, { k: "slime", x: 1900, y: 456 }, { k: "bat", x: 1800, y: 330 }, { k: "slime", x: 900, y: 600 }, { k: "trash", x: 1100, y: 600 }, { k: "slime", x: 1250, y: 600 }, { k: "gold", x: 1320, y: 600 }, { k: "trash", x: 1520, y: 600 }, { k: "slime", x: 1650, y: 600 }, { k: "slime", x: 1760, y: 600 }, { k: "trashE", x: 1900, y: 600 }, { k: "trash", x: 2100, y: 520 }, { k: "slime", x: 2180, y: 520 }, { k: "slime", x: 2260, y: 520 }, { k: "trashE", x: 2380, y: 520 }, { k: "slime", x: 2440, y: 520 }, { k: "trash", x: 2560, y: 520 }, { k: "slime", x: 2640, y: 520 }, { k: "bat", x: 2250, y: 420 }, { k: "bat", x: 2500, y: 400 }, { k: "slime", x: 2380, y: 360 }, { k: "bat", x: 2650, y: 440 }, { k: "slime", x: 160, y: 600 }, { k: "bat", x: 700, y: "air" }, { k: "trash", x: 2700, y: 520 },
@@ -114,6 +117,7 @@ export const STAGE_1_3 = {
     { t: "wind", x: 1876, y: 600, w: 40, h: 440 }, { t: "ember", x: 1980, y: 240 },
     { t: "safe", x: 1150, y: 400 }, { t: "vein", x: 1300, y: 600 }, { t: "stele", x: 2420, y: 600, i: 2 },
   ],
+  hazards: [["goo", 500, 600], ["pipe", 1000, 600], ["goo", 1680, 600], ["drum", 2280, 600], ["goo", 1000, 400]],
   altars: [{ x: 600, y: 600 }, { x: 1300, y: 600 }, { x: 2060, y: 600 }],
   spawns: [
     { k: "bat", x: 200, y: 260 }, { k: "bat", x: 400, y: 320 }, { k: "bat", x: 560, y: 420 }, { k: "bat", x: 300, y: 500 }, { k: "slime", x: 400, y: 600 }, { k: "slime", x: 520, y: 600 }, { k: "slime", x: 640, y: 600 }, { k: "bat", x: 600, y: 280 }, { k: "slime", x: 420, y: 224 }, { k: "slime", x: 560, y: 224 }, { k: "slime", x: 840, y: 136 }, { k: "bat", x: 860, y: 80 }, { k: "bat", x: 900, y: 500 }, { k: "bat", x: 1000, y: 460 }, { k: "bat", x: 1200, y: 300 }, { k: "batE", x: 1300, y: 350 }, { k: "slime", x: 960, y: 400 }, { k: "slime", x: 1100, y: 400 }, { k: "trash", x: 1000, y: 600 }, { k: "slime", x: 1200, y: 600 }, { k: "slime", x: 1400, y: 600 }, { k: "bat", x: 1400, y: 380 }, { k: "bat", x: 1050, y: 250 }, { k: "bat", x: 1650, y: 260 }, { k: "bat", x: 1700, y: 400 }, { k: "slime", x: 1680, y: 320 }, { k: "slime", x: 1780, y: 320 }, { k: "bat", x: 1950, y: 180 }, { k: "trash", x: 1960, y: 240 }, { k: "slime", x: 2050, y: 240 }, { k: "batE", x: 2000, y: 330 }, { k: "slime", x: 1620, y: 600 }, { k: "trash", x: 1760, y: 600 }, { k: "slime", x: 1880, y: 600 }, { k: "trashE", x: 2000, y: 600 }, { k: "gold", x: 2220, y: 600 }, { k: "slime", x: 2300, y: 600 }, { k: "trash", x: 2400, y: 600 }, { k: "bat", x: 2250, y: 300 }, { k: "bat", x: 2350, y: 420 }, { k: "slime", x: 2260, y: 360 }, { k: "slime", x: 2340, y: 360 }, { k: "bat", x: 2450, y: 460 }, { k: "bat", x: 2500, y: 350 },

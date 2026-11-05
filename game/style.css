@@ -888,3 +888,24 @@ body.playing:not(.town) #hud #hudMenu #btnMap { display: flex !important; }
 /* 大招改成消耗魔力：原本的大招能量條拿掉，魔力條上一條金色刻度＝夠放大招 */
 .bars .ub { display: none !important; }
 #mpMark { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: #ffe066; box-shadow: 0 0 3px #ffd84a; }
+
+/* ---- 使用者 2026-11-05：選單改成往右展開的小三角箭頭（只有圖示，一排往右） ---- */
+#hud #btnMenu { width: 30px !important; background-size: 16px !important; }
+body.menuOpen #hud #btnMenu { transform: scaleX(-1); }
+#hudMenu { flex-direction: row !important; top: 0; padding: 4px; gap: 4px; }
+#hudMenu button, #hud #hudMenu #btnBag, #hud #hudMenu #btnQuest, #hud #hudMenu #btnTree, #hud #hudMenu #btnMap { width: 40px !important; padding-left: 0 !important; background-position: center !important; justify-content: center; }
+#hudMenu button::after { content: none !important; }
+#hudMenu { animation: menuSlide .14s ease-out; }
+@keyframes menuSlide { from { transform: translateX(-10px); opacity: 0; } }
+
+/* ---- 使用者 2026-11-05：手機的背包，裝備（角色）和背包放在同一個畫面，不用切分頁；詳細資料蓋在背包上面 ---- */
+body.touch #invBox { width: 600px; height: 320px; grid-template-columns: 214px 1fr; grid-template-rows: 1fr; }
+body.touch #invTabs { display: none !important; }
+body.touch #invBox > .pn { display: flex !important; grid-column: auto; }
+body.touch #invBox > #invDetail { position: absolute; left: 218px; right: 0; top: 0; bottom: 0; display: none !important; z-index: 2; }
+body.touch #invBox[data-pane="invDetail"] > #invDetail { display: flex !important; }
+#invDetailX { display: none; }
+body.touch #invBox[data-pane="invDetail"] #invDetailX { display: block; position: absolute; right: 50px; top: 4px; z-index: 3; height: 24px; padding: 0 8px; font: 700 12px/20px inherit; color: #f0e6ff; background: #2a2040; border: 2px solid #8a7ab4; cursor: pointer; }
+
+/* 手機背包：右上關閉鈕不要蓋到金幣星塵數字 */
+body.touch #invBag > .ttl { padding-right: 30px; }

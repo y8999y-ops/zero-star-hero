@@ -26,10 +26,11 @@ const PLAN = {
   "1-3": [["goo", 620], ["pipe", 1060], ["goo", 1640], ["drum", 2100]],
 };
 
-export function createHazards({ stage, floor, torches = [], puddles = [] }) {
-  const list = (PLAN[stage] ?? []).map(([type, x]) => ({ type, x, w: type === "goo" ? 30 : type === "junk" ? 26 : 12, hp: 2, shakeT: 0, fireT: 0, spill: 0 }));
+// 10 批：items＝[[種類, x, y]]（大地圖每個放在自己的地面上）；沒給就用舊的 PLAN（同一條地板）
+export function createHazards({ stage, floor, torches = [], puddles = [], items = null }) {
+  const list = (items ?? PLAN[stage] ?? []).map(([type, x, y]) => ({ type, x, y: y ?? floor, w: type === "goo" ? 30 : type === "junk" ? 26 : 12, hp: 2, shakeT: 0, fireT: 0, spill: 0 }));
   let clock = 0, tickT = 0;
-  const zone = (h, e) => Math.abs(e.x - h.x) < h.w / 2 + 6 && e.y > floor - 8;
+  const zone = (h, e) => Math.abs(e.x - h.x) < h.w / 2 + 6 && e.y > (h.y ?? floor) - 8 && e.y < (h.y ?? floor) + 4;
 
   function update(dt, enemies) {
     clock += dt;
@@ -40,8 +41,8 @@ export function createHazards({ stage, floor, torches = [], puddles = [] }) {
     tickT = 0.25;
     const ground = enemies.filter((e) => !e.dead && !e.k?.fly);
     for (const e of ground) {
-      for (const p of puddles) if (Math.abs(e.x - p.x) < p.w / 2 && !e.st?.wet) applyStatus(e, "wet");
-      for (const t of torches) if (Math.abs(e.x - t) < 9) applyStatus(e, "burn");
+      for (const p of puddles) if (Math.abs(e.x - p.x) < p.w / 2 && Math.abs(e.y - p.y) < 6 && !e.st?.wet) applyStatus(e, "wet");
+      for (const t of torches) if (Math.abs(e.x - (t.x ?? t)) < 9 && Math.abs(e.y - (t.y ?? floor)) < 10) applyStatus(e, "burn");
       for (const h of list) {
         if (!zone(h, e)) continue;
         if (h.type === "goo") applyStatus(e, "slime");
@@ -58,7 +59,7 @@ export function createHazards({ stage, floor, torches = [], puddles = [] }) {
   /** 攻擊打到：油桶會壞，壞了流出一灘油 */
   function hit(box) {
     for (const h of list) {
-      if (h.type !== "drum" || box.x1 < h.x - 6 || box.x0 > h.x + 6 || box.y1 < floor - 16) continue;
+      if (h.type !== "drum" || box.x1 < h.x - 6 || box.x0 > h.x + 6 || box.y1 < (h.y ?? floor) - 16 || box.y0 > (h.y ?? floor)) continue;
       h.shakeT = 0.2;
       if (--h.hp <= 0) Object.assign(h, { type: "oil", w: 44, spill: 0 });
     }
@@ -75,11 +76,11 @@ export function createHazards({ stage, floor, torches = [], puddles = [] }) {
     for (const h of list) {
       if (h.x < frame.ox - 40 || h.x > frame.ox + frame.w + 40) continue;
       if (h.ttl !== undefined && h.ttl < 0.6 && Math.floor(h.ttl * 12) % 2) continue;   // 快消失時閃
-      drawHazard(frame, h, clock, floor, put);
+      drawHazard(frame, h, clock, h.y ?? floor, put);
     }
   }
   /** 放一個暫時的元素地面（ttl 秒後消失） */
-  const addTemp = (h) => list.push({ shakeT: 0, fireT: 0, spill: 1, hp: 2, ...h });
+  const addTemp = (h) => list.push({ shakeT: 0, fireT: 0, spill: 1, hp: 2, y: floor, ...h });
   return { list, update, hit, draw, addTemp };
 }
 

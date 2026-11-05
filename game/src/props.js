@@ -28,7 +28,8 @@ const rnd = (a, b = 0) => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.54
  * 建立一個場景的互動物件。
  * opts: { floor, w, platforms, town, avoid: [x...] }
  */
-export function createProps({ floor, w, platforms = [], town = false, avoid = [] }) {
+// 10 批：runs＝地面段（map.js surfaceRuns，大地圖用）、floorFn(x, y)＝那裡往下的地面（碎屑落地用）
+export function createProps({ floor, w, platforms = [], town = false, avoid = [], runs = null, floorFn = null }) {
   const grassPal = town ? TOWN_GRASS : GRASS;
   const tufts = [], boxes = [], crystals = [], bits = [];
   const clear = (x, r) => avoid.every((a) => Math.abs(a - x) > r);
@@ -39,14 +40,25 @@ export function createProps({ floor, w, platforms = [], town = false, avoid = []
     for (let i = 0; i < n; i++) blades.push({ dx: i * 2 - n + 1 + Math.round(rnd(k, i + 10) - 0.5), h: 4 + Math.floor(rnd(k, i + 20) * (town ? 5 : 7)), lean: rnd(k, i + 30) * 2 - 1, t: 4 + Math.floor(rnd(k, i + 40) * 3) });
     tufts.push({ x, y, blades, bend: 0, vel: 0, cut: false, cutT: 0, near: false });
   };
-  for (let x = 30, k = 0; x < w - 30; k++) {
-    if (clear(x, 14)) addTuft(x, floor, k);
+  for (const R of runs ?? [{ x0: 0, x1: w, y: floor }]) for (let x = R.x0 + 30, k = R.x0 + R.y; x < R.x1 - 30; k++) {
+    if (clear(x, 14)) addTuft(x, R.y, k);
     x += 14 + Math.floor(rnd(k, 2) * 30);
   }
   platforms.forEach((p, j) => { for (let x = p.x + 8; x < p.x + p.w - 8; x += 18 + Math.floor(rnd(j, x) * 14)) addTuft(x, p.y, 900 + j * 31 + x); });
 
   // ---- 可以打破的東西、水晶（城鎮不能打，只放草）
-  if (!town) {
+  if (!town && runs) {
+    // 大地圖：每段地面每 200～330 擺一個木箱或垃圾堆，每 ~450 一叢水晶（段太短的不擺）
+    let n = 0;
+    for (const R of runs) {
+      if (R.x1 - R.x0 < 80) continue;
+      for (let x = R.x0 + 60 + Math.floor(rnd(R.x0, R.y) * 80); x < R.x1 - 40; x += 200 + Math.floor(rnd(x, R.y) * 130), n++) {
+        if (!clear(x, 20)) continue;
+        if (n % 3 === 2) crystals.push({ x, y: R.y, col: n % 2 ? "cyan" : "gold", big: n % 4 === 0 ? 1 : 0, glow: 0, broken: false, cool: 0, hp: 2, chimed: false });
+        else { const type = n % 2 ? "junk" : "crate"; boxes.push({ x, y: R.y, type, hp: type === "crate" ? 2 : 3, cool: 0, shakeT: 0, broken: false, seed: x }); }
+      }
+    }
+  } else if (!town) {
     [[262, "crate"], [404, "junk"], [770, "crate"], [962, "junk"], [1150, "crate"], [1432, "junk"], [1604, "crate"], [1876, "junk"], [2010, "crate"], [2140, "junk"]].forEach(([x, type]) => {
       if (x < w - 40 && clear(x, 20)) boxes.push({ x, y: floor, type, hp: type === "crate" ? 2 : 3, cool: 0, shakeT: 0, broken: false, seed: x });
     });
@@ -101,6 +113,7 @@ export function createProps({ floor, w, platforms = [], town = false, avoid = []
     }
   }
   const groundY = (x, y) => {
+    if (floorFn) return floorFn(x, y - 2);
     let best = floor;
     for (const p of platforms) if (x >= p.x && x <= p.x + p.w && y <= p.y + 2 && p.y < best) best = p.y;
     return best;

@@ -7,7 +7,7 @@ import * as explosion from "../../pixelfx/src/fx/explosions/plasma-explosion.js"
 import { A, GLOW } from "./assets.js";
 import { input, tickInput, initTouch, consume } from "./input.js";
 import { drawLevel, drawForeground, drawAtmosphere, sceneLights, LEVEL_W, FLOOR, H, TORCHES, TORCH_POS, WALL, geo, MAP_H } from "./level.js";
-import { initMap, flatMap, groundAt, floorAt, solidAt, moveX } from "./map.js";
+import { initMap, flatMap, groundAt, floorAt, solidAt, moveX, surfaceRuns } from "./map.js";
 import { TOWN_W, NPCS, townLights, drawTown, drawTownNpcs, drawTownFg, nearby } from "./town.js";
 import { talk, ask, dialog, typewriter } from "./dialog.js";
 import * as frogFx from "../../pixelfx/src/fx/critters/frog.js";
@@ -447,13 +447,20 @@ function drawGems() {
 // 場景互動物件：草叢、木箱、垃圾堆、水晶（props）；小生物、垂掛物、水窪（scenery）
 // 8b：新的大地圖（有 solids）先不放草叢、木箱、水窪這些貼地板的東西（8c、8d 改成照地形擺）
 const BARE = !TOWN && !!LAYOUTS[STAGE_ID].solids;
-const scenery = createScenery({ floor: FLOOR, w: BARE ? 0 : geo.w, platforms: TOWN || BARE ? [] : PLATFORMS, town: TOWN });
+// 10 批：大地圖的草叢、木箱、水晶、水窪、小生物、元素物件改成照地面段擺（原本 8b 先拿掉）
+const RUNS = BARE ? surfaceRuns(32).filter((R) => R.y > 40 && R.x1 - R.x0 >= 24) : null;
+const scenery = createScenery({ floor: FLOOR, w: geo.w, platforms: TOWN ? [] : PLATFORMS, town: TOWN, runs: RUNS });
 // 元素場景物件（第 3 批）：黏液池、油桶、廚餘堆、漏電管線；水窪＝潮濕、火盆＝燃燒
-const hazards = createHazards({ stage: TOWN || ENDLESS || BARE ? "" : STAGE_ID, floor: FLOOR, torches: TOWN ? [] : TORCHES, puddles: TOWN ? [] : scenery.puddles });
+const hazards = createHazards({ stage: TOWN || ENDLESS ? "" : STAGE_ID, floor: FLOOR, torches: TOWN ? [] : TORCH_POS, puddles: TOWN ? [] : scenery.puddles, items: BARE ? (STAGE.hazards ?? []) : null });
 window.__game.hazards = hazards;
+// 10 批：水窪不要疊在元素物件、祭壇、機關上
+{
+  const busy = [...hazards.list.map((h) => [h.x, h.y]), ...altars.map((a) => [a.x, a.y]), ...(STAGE.features ?? []).map((f) => [f.x, f.y])];
+  for (let i = scenery.puddles.length - 1; i >= 0; i--) { const p = scenery.puddles[i]; if (busy.some(([x, y]) => Math.abs(x - p.x) < 40 && Math.abs(y - p.y) < 8)) scenery.puddles.splice(i, 1); }
+}
 const props = createProps({
-  floor: FLOOR, w: BARE ? 0 : geo.w, platforms: TOWN || BARE ? [] : PLATFORMS, town: TOWN,
-  avoid: TOWN ? [...NPCS.map((n) => n.x), 924] : [...TORCHES, ...hazards.list.flatMap((h) => [h.x - 14, h.x, h.x + 14]), STAGE.exitX - 120, STAGE.exitX + 26, STAGE.start.x, ...scenery.puddles.flatMap((p) => [p.x - p.w / 4, p.x, p.x + p.w / 4])],
+  floor: FLOOR, w: geo.w, platforms: TOWN ? [] : PLATFORMS, town: TOWN, runs: RUNS, floorFn: BARE ? floorAt : null,
+  avoid: TOWN ? [...NPCS.map((n) => n.x), 924] : [...TORCHES, ...altars.map((a) => a.x), ...(STAGE.features ?? []).map((f) => f.x), ...hazards.list.flatMap((h) => [h.x - 14, h.x, h.x + 14]), STAGE.exitX - 120, STAGE.exitX + 26, STAGE.start.x, ...scenery.puddles.flatMap((p) => [p.x - p.w / 4, p.x, p.x + p.w / 4])],
 });
 // 8d：形態機關＋一次性資源
 const FX_PAL = { crack: ["#140a18", "#5a2a20", "#8a3e24", "#b05a2a", "#d27c3c", "#e4b072", "#fff6c4", "#ffffff"], ember: ["#1e1206", "#4a2c08", "#86520c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"],
@@ -1061,7 +1068,7 @@ function skillTreeBoom(s) {
   }
   if (s.form === "slime") {
     if (rank("slime", "g_bounce")) world.spawnShotlet(x, y, s.dir, "slime", { mult: 0.6, life: 0.3 });
-    if (rank("slime", "g_ground")) hazards.addTemp({ type: "goo", x: Math.round(x), w: 40, ttl: 3 });
+    if (rank("slime", "g_ground")) hazards.addTemp({ type: "goo", x: Math.round(x), y: floorAt(x, y - 8), w: 40, ttl: 3 });
     if (rank("slime", "g_split")) for (const vy of [-140, 0, 140]) world.spawnShotlet(x, y, vy ? s.dir : -s.dir, "slime", { vy, mult: 0.5, life: 0.28 });
   }
 }
@@ -1465,8 +1472,8 @@ function updateMenuDot() {
   $("menuDot").className = "dot" + (on ? " on" : "");
   $("menuDot").textContent = on ? "!" : "";
 }
-$("btnMenu").style.backgroundImage = `url(${iconURL("menu", 2)})`;
-$("btnMenu").addEventListener("click", (e) => { e.stopPropagation(); sfx("ui"); $("hudMenu").style.left = $("btnMenu").offsetLeft + "px"; document.body.classList.toggle("menuOpen"); });
+$("btnMenu").style.backgroundImage = `url(${iconURL("arrowR", 2)})`;
+$("btnMenu").addEventListener("click", (e) => { e.stopPropagation(); sfx("ui"); $("hudMenu").style.left = $("btnMenu").offsetLeft + $("btnMenu").offsetWidth + 10 + "px"; $("hudMenu").style.top = $("btnMenu").offsetTop + "px"; document.body.classList.toggle("menuOpen"); });
 for (const id of ["btnBag", "btnQuest", "btnTree"]) $(id).addEventListener("click", () => document.body.classList.remove("menuOpen"));
 addEventListener("pointerdown", (e) => { if (!e.target.closest?.("#hud")) document.body.classList.remove("menuOpen"); });
 const comboEl = $("combo"), comboArt = createComboArt(comboEl), hpFill = $("hpFill"), hpText = $("hpText"), coinsEl = $("coins"), killsEl = $("kills"), fpsEl = $("fps"), cdEl = $("skillCd"), toastEl = $("toast");

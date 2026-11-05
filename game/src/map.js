@@ -81,3 +81,19 @@ export function setSolid(r, on) {
   const y0 = Math.max(0, Math.floor(r.y / TILE)), y1 = Math.min(gh, Math.ceil((r.y + r.h) / TILE));
   for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) grid[y * gw + x] = on ? 1 : 0;
 }
+/** 10 批：地圖上所有「可以站的地面」：實心格子、上面至少 minAir 格是空的；相鄰同高的接成一段 { x0, x1, y }。
+ *  草叢、木箱、水窪、小生物、元素物件照這些段擺（大地圖的地面不是同一個高度） */
+export function surfaceRuns(minAir = 32) {
+  const runs = [], need = Math.ceil(minAir / TILE);
+  for (let ty = 1; ty < gh; ty++) {
+    let cur = null;
+    for (let tx = 0; tx < gw; tx++) {
+      let ok = grid[ty * gw + tx] === 1;
+      for (let k = 1; ok && k <= need; k++) if (ty - k >= 0 && grid[(ty - k) * gw + tx] === 1) ok = false;
+      if (ok) { if (cur) cur.x1 = (tx + 1) * TILE; else cur = { x0: tx * TILE, x1: (tx + 1) * TILE, y: ty * TILE }; }
+      else if (cur) { runs.push(cur); cur = null; }
+    }
+    if (cur) runs.push(cur);
+  }
+  return runs;
+}

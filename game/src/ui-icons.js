@@ -76,6 +76,10 @@ export const ICON_DEFS = {
     "..GGGGGGGGGH..", "..HHHHHHHHIJ..", "..............", "..............", "..............", "..GGGGGGGGGH..",
     "..HHHHHHHHIJ..", "..............", "..............", "..............", "..GGGGGGGGGH..", "..HHHHHHHHIJ..",
   ] },
+  // 使用者 2026-11-05：選單改成往右展開的小三角箭頭（金色、左上亮右下暗）
+  arrowR: { ox: 4, oy: 2, rows: [
+    "G.......", "GG......", "GHG.....", "GHHG....", "GHHHG...", "GHHHIJ..", "GHHIJ...", "GHIJ....", "GIJ.....", "IJ......", "J.......",
+  ] },
   // 8e：地圖（摺三折的紙，紅色虛線路線，終點一個 X）
   map: { ox: 2, oy: 3, rows: [
     "AAAACCCCAAAA", "ABBBCDDDABBB", "ABgBCDDDAhBh", "ABBgCDDDABhB", "ABBBgDDDAhBh", "ABBBCggDABBB", "ABBBCDDgABBB", "ABBBCDDDgBBB", "ABBBCDDDABBB", "BBBBDDDDBBBB",

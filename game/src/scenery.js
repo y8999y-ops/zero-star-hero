@@ -59,17 +59,20 @@ const MOTH = {
   shut: sprite(["..d..", ".gdg.", ".gdg.", "..d.."], MOTH_M),
 };
 
-export function createScenery({ floor, w, platforms = [], town = false }) {
+// 10 批：runs＝地面段（大地圖用），水窪、小生物、螢火蟲照地面段擺
+export function createScenery({ floor, w, platforms = [], town = false, runs = null }) {
   const critters = [], swarms = [], hangs = [], puddles = [], drops = [], rings = [];
 
   // ---- 水窪（關卡）：x 是中心
-  if (!town) for (const [x, pw] of [[470, 30], [1010, 34], [1360, 26], [1800, 32], [2075, 28]]) if (x < w - 30) puddles.push({ x, w: pw, y: floor, stepD: 0, dripT: 1 + rnd(x) * 3 });
+  if (!town && runs) runs.forEach((R, i) => { if (R.x1 - R.x0 >= 120 && i % 3 === 1) { const x = Math.round((R.x0 + R.x1) / 2 + (rnd(i, 4) - 0.5) * 40); puddles.push({ x, w: 26 + Math.floor(rnd(i, 5) * 10), y: R.y, stepD: 0, dripT: 1 + rnd(x) * 3 }); } });
+  else if (!town) for (const [x, pw] of [[470, 30], [1010, 34], [1360, 26], [1800, 32], [2075, 28]]) if (x < w - 30) puddles.push({ x, w: pw, y: floor, stepD: 0, dripT: 1 + rnd(x) * 3 });
 
   // ---- 小生物
   const homes = town ? [118, 282, 640, 870, 960] : [350, 905, 1235, 1490, 1955, 2190];
-  homes.forEach((x, i) => { if (x < w - 20) critters.push({ kind: town ? "bird" : "moth", hx: x, x, y: floor, vx: 0, vy: 0, face: i % 2 ? -1 : 1, state: "sit", t: rnd(i, 3) * 3, gone: 0, flap: 0 }); });
+  const homeAt = runs ? runs.filter((R, i) => R.x1 - R.x0 >= 60 && i % 2 === 0).map((R, i) => [Math.round(R.x0 + (R.x1 - R.x0) * (0.3 + rnd(i, 6) * 0.4)), R.y]) : homes.map((x) => [x, floor]);
+  homeAt.forEach(([x, fy], i) => { if (x < w - 20) critters.push({ kind: town ? "bird" : "moth", hx: x, x, y: fy, fy, vx: 0, vy: 0, face: i % 2 ? -1 : 1, state: "sit", t: rnd(i, 3) * 3, gone: 0, flap: 0 }); });
   // 螢火蟲群
-  const swarmAt = town ? [[300, 150], [720, 140], [930, 156]] : [[700, 156], [1180, 150], [1660, 160], [2150, 150]];
+  const swarmAt = town ? [[300, 150], [720, 140], [930, 156]] : runs ? runs.filter((R, i) => R.x1 - R.x0 >= 100 && i % 3 === 0).map((R) => [Math.round((R.x0 + R.x1) / 2), R.y - 30]) : [[700, 156], [1180, 150], [1660, 160], [2150, 150]];
   for (const [x, y] of swarmAt) if (x < w - 20) {
     const flies = [];
     for (let i = 0; i < 7; i++) flies.push({ ox: (rnd(x, i) - 0.5) * 36, oy: (rnd(x, i + 9) - 0.5) * 22, x: x + (rnd(x, i) - 0.5) * 36, y: y + (rnd(x, i + 9) - 0.5) * 22, vx: 0, vy: 0, ph: rnd(x, i + 20) * 6, sp: 0.6 + rnd(x, i + 30) * 0.8 });
@@ -82,11 +85,11 @@ export function createScenery({ floor, w, platforms = [], town = false }) {
       hangs.push({ kind: "vine", x, y: p.y + 9, len: 6 + Math.floor(rnd(j, x + 1) * 11), a: 0, av: 0, bulb: rnd(j, x + 2) < 0.35, ph: rnd(j, x + 3) * 6 });
     }
   });
-  if (!town) for (const x of [820, 1560, 2120]) if (x < w - 30) hangs.push({ kind: "lamp", x, y: -4, len: 92 + (x % 3) * 6, a: 0, av: 0, ph: x });
+  if (!town && !runs) for (const x of [820, 1560, 2120]) if (x < w - 30) hangs.push({ kind: "lamp", x, y: -4, len: 92 + (x % 3) * 6, a: 0, av: 0, ph: x });
 
   // ---- 粒子：水滴
   const splash = (x, y, n, dir = 0, up = 90) => {
-    for (let i = 0; i < n; i++) drops.push({ x: x + (Math.random() - 0.5) * 4, y: y - 1, vx: dir * 30 + (Math.random() - 0.5) * 70, vy: -up * (0.5 + Math.random() * 0.7), life: 0.8, col: DROP[1 + Math.floor(Math.random() * 3)] });
+    for (let i = 0; i < n; i++) drops.push({ fy: y, x: x + (Math.random() - 0.5) * 4, y: y - 1, vx: dir * 30 + (Math.random() - 0.5) * 70, vy: -up * (0.5 + Math.random() * 0.7), life: 0.8, col: DROP[1 + Math.floor(Math.random() * 3)] });
   };
   const ripple = (pd, x, big = false) => rings.push({ pd, x, r: 0, life: big ? 1.4 : 1, max: big ? pd.w / 2 : pd.w / 3 });
   const puddleAt = (x, y) => puddles.find((p) => Math.abs(p.x - x) < p.w / 2 && Math.abs(p.y - y) < 2);
@@ -117,10 +120,10 @@ export function createScenery({ floor, w, platforms = [], town = false }) {
         if (c.y < -20 || c.x < view.x0 - 60 || c.x > view.x1 + 60) { c.state = "gone"; c.gone = 9 + Math.random() * 8; }
       } else if (c.state === "gone") {
         // 主角走遠了才回來，從上面斜斜飛下來停回原位
-        if ((c.gone -= dt) <= 0 && Math.abs(px - c.hx) > 90) { c.state = "back"; c.x = c.hx + (Math.random() < 0.5 ? -60 : 60); c.y = c.hy ?? floor - 90; c.face = c.x < c.hx ? 1 : -1; }
+        if ((c.gone -= dt) <= 0 && Math.abs(px - c.hx) > 90) { c.state = "back"; c.x = c.hx + (Math.random() < 0.5 ? -60 : 60); c.y = c.hy ?? (c.fy ?? floor) - 90; c.face = c.x < c.hx ? 1 : -1; }
       } else if (c.state === "back") {
-        const dx = c.hx - c.x, dy = floor - c.y, d = Math.hypot(dx, dy);
-        if (d < 2) { c.state = "sit"; c.x = c.hx; c.y = floor; c.t = 0; continue; }
+        const dx = c.hx - c.x, dy = (c.fy ?? floor) - c.y, d = Math.hypot(dx, dy);
+        if (d < 2) { c.state = "sit"; c.x = c.hx; c.y = c.fy ?? floor; c.t = 0; continue; }
         const sp = Math.min(70, d * 2.2);
         c.x += (dx / d) * sp * dt; c.y += (dy / d) * sp * dt;
         if (Math.abs(px - c.x) < 40) scare(Object.assign(c, { state: "sit" }), px);
@@ -153,14 +156,14 @@ export function createScenery({ floor, w, platforms = [], town = false }) {
     }
     for (const p of puddles) {
       if (p.x < view.x0 - 40 || p.x > view.x1 + 40) continue;
-      if ((p.dripT -= dt) <= 0) { p.dripT = 2.5 + Math.random() * 3; drops.push({ x: p.x + (Math.random() - 0.5) * p.w * 0.6, y: 30, vx: 0, vy: 0, life: 3, col: DROP[2], drip: p }); }
+      if ((p.dripT -= dt) <= 0) { p.dripT = 2.5 + Math.random() * 3; drops.push({ x: p.x + (Math.random() - 0.5) * p.w * 0.6, y: p.y - 154, vx: 0, vy: 0, life: 3, col: DROP[2], drip: p }); }
     }
     for (let i = drops.length - 1; i >= 0; i--) {
       const q = drops[i];
       q.vy += 520 * dt; q.x += q.vx * dt; q.y += q.vy * dt;
       if ((q.life -= dt) <= 0) { drops.splice(i, 1); continue; }
       if (q.drip && q.y >= q.drip.y) { ripple(q.drip, q.x); splash(q.x, q.drip.y, 2, 0, 50); drops.splice(i, 1); continue; }
-      if (!q.drip && q.vy > 0 && q.y >= floor) drops.splice(i, 1);
+      if (!q.drip && q.vy > 0 && q.y >= (q.fy ?? floor)) drops.splice(i, 1);
     }
     for (let i = rings.length - 1; i >= 0; i--) { const r = rings[i]; r.r += 16 * dt; if ((r.life -= dt) <= 0 || r.r > r.max) rings.splice(i, 1); }
   }

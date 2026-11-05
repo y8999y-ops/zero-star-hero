@@ -35,8 +35,12 @@ export function createInventory(profile, { onChange, onClose }) {
   const setPane = (id) => { pane = id; box.dataset.pane = id; box.querySelectorAll("#invTabs button").forEach((b) => b.classList.toggle("on", b.dataset.pane === id)); };
   box.querySelectorAll("#invTabs button").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); sfx("ui"); setPane(b.dataset.pane); }));
   setPane(pane);
+  const detailX = document.createElement("button");
+  detailX.id = "invDetailX"; detailX.setAttribute("aria-label", "回背包"); detailX.textContent = "◀ 背包";
+  detailX.addEventListener("click", (e) => { e.stopPropagation(); sfx("ui"); sel = null; setPane("invBag"); render(); });
+  box.appendChild(detailX);
   function fit() {
-    const touch = document.body.classList.contains("touch"), bw = touch ? 480 : 760, bh = touch ? 300 : 360;
+    const touch = document.body.classList.contains("touch"), bw = touch ? 600 : 760, bh = touch ? 320 : 360;   // 手機：裝備＋背包同一個畫面（使用者 2026-11-05）
     const k = Math.min((innerWidth * 0.98) / bw, (innerHeight * 0.98) / bh, 2.2);
     box.style.transform = `translate(-50%, -50%) scale(${k})`;
   }
@@ -79,7 +83,8 @@ export function createInventory(profile, { onChange, onClose }) {
     }
     sel = it ? s : null;
     if (it) it.new = false;
-    if (it && document.body.classList.contains("touch")) setPane("invDetail");   // 手機：點了東西直接看詳細
+    // 手機：裝備和背包在同一個畫面；點了東西，詳細資料蓋在背包上面（右上 ✕ 或點空格回去）
+    if (document.body.classList.contains("touch")) setPane(it ? "invDetail" : "invBag");
     render();
   }
 
