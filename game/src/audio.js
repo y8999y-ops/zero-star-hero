@@ -29,7 +29,7 @@ function applyVolume() {
   if (!ctx) return;
   master.gain.value = vol.mute ? 0 : 1;
   sfxBus.gain.value = vol.sfx * 0.9;
-  musicBus.gain.value = vol.music * 0.5;
+  musicBus.gain.value = vol.music * 1.25;   // 使用者 2026-11-05「只聽得到音效」：原本 0.5，音樂比音效小約 10 倍 → 拉到 2.5 倍
 }
 // 方波的佔空比（NES 的 12.5%、25%、50%）：用傅立葉係數做出 PeriodicWave
 function pulse(duty) {
@@ -192,7 +192,11 @@ function schedule() {
     // 低音（三角波）：八分音符；王戰是十六分音符
     if (song.sixteen || s16 % 2 === 0) {
       const tok = song.bass.split(" ")[Math.floor(s16 / 2) % 8];
-      if (tok !== ".") tone({ wave: "tri", f0: midi(song.root - 12 + chordRoot + (tok === "5" ? 7 : tok === "8" ? 12 : 0)), dur: sp * (song.sixteen ? 0.9 : 1.8), vol: 0.22, at: 0.004 }, musicBus, t);
+      if (tok !== ".") {
+        const bn = song.root - 12 + chordRoot + (tok === "5" ? 7 : tok === "8" ? 12 : 0), bd = sp * (song.sixteen ? 0.9 : 1.8);
+        tone({ wave: "tri", f0: midi(bn), dur: bd, vol: 0.22, at: 0.004 }, musicBus, t);
+        tone({ wave: "sq50", f0: midi(bn + 12), dur: bd * 0.8, vol: 0.035, at: 0.004, lp: 1400 }, musicBus, t);   // 高八度的一層：手機喇叭放不出 55～110Hz，這層讓低音線聽得到
+      }
     }
     // 琶音（12.5% 方波）：和弦的 1、3、5 輪流
     if (song.arp) {
@@ -204,7 +208,7 @@ function schedule() {
       const toks = song.lead[bar].split(" "), i = s16 / 2, tok = toks[i];
       if (tok !== "." && tok !== "-") {
         let len = 1; while (toks[i + len] === "-") len++;
-        tone({ wave: song.leadWave, f0: midi(song.root + 12 + degree(tok, song.scale)), dur: sp * 2 * len * 0.92, vol: song.leadVol, at: 0.006, vib: len > 2 ? [5.5, 3] : undefined }, musicBus, t);
+        tone({ wave: song.leadWave, f0: midi(song.root + 12 + degree(tok, song.scale)), dur: sp * 2 * len * 0.92, vol: song.leadVol * 1.4, at: 0.006, vib: len > 2 ? [5.5, 3] : undefined }, musicBus, t);   // 主旋律再大一點，蓋得過音效
       }
     }
     step++;
@@ -242,7 +246,10 @@ export function introMusic() {
   const bus = ctx.createGain(); bus.connect(musicBus); bus.gain.value = 1;
   const ev = [];
   const T = (t, o) => ev.push([t, "t", o]), N = (t, o) => ev.push([t, "n", o]);
-  const nt = (t, m, dur, wave, v, extra = {}) => T(t, { wave, f0: midi(m), dur, vol: v, at: 0.006, ...extra });
+  const nt = (t, m, dur, wave, v, extra = {}) => {
+    T(t, { wave, f0: midi(m), dur, vol: v, at: 0.006, ...extra });
+    if (wave === "tri" && m < 52) T(t, { wave: "sq50", f0: midi(m + 12), dur: dur * 0.8, vol: v * 0.16, at: 0.006, lp: 1400 });   // 低音加高八度一層（手機喇叭聽得到）
+  };
   const kick = (t, v = 0.45) => T(t, { wave: "sine", f0: 150, f1: 42, dur: 0.12, vol: v });
   const snare = (t, v = 0.2) => { N(t, { dur: 0.1, vol: v, type: "bandpass", f0: 1800, q: 0.9 }); T(t, { wave: "tri", f0: 190, f1: 120, dur: 0.06, vol: v * 0.8 }); };
   const hat = (t, v = 0.06) => N(t, { dur: 0.03, vol: v, type: "highpass", f0: 7000 });
