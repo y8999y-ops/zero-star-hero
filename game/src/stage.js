@@ -132,14 +132,38 @@ export const STAGE_1_3 = {
     { x: 2300, say: "系統：前面……我聞到很臭的味道。像是吃了一百年垃圾的那種。" },
   ],
 };
-// 1-4 大胃王的巢穴：一進來就封住整個場地，王從上面掉下來。打倒王（融化演出結束）＝通關。
+// 1-4 大胃王的巢穴（10 批：大地圖）：一路往下走到王房的屋頂，從破洞跳下去，王房封住、王從上面掉下來。
+// 打倒王（融化演出結束）＝通關。arena＝王房（左右界線、地面、王放大招時站的中間平台）。
 export const STAGE_1_4 = {
   name: "1-4 大胃王的巢穴",
-  start: { x: 60, y: 184 },
+  start: { x: 60, y: 160 },
   exitX: 0,
-  intro: ["系統：……這裡就是巢穴。好臭。", "系統：我聞到了。牠就在附近。……不，是在上面。"],
-  caches: [],
-  events: [{ x: 70, lock: [16, 544], waves: [[["boss", 0]]] }],
+  arena: { l: 1256, r: 1784, floor: 600, top: { x: 1466, y: 512, w: 108 } },   // top＝王放大招時跳上去的中間高平台（stages.js 也有同一塊）
+  features: [
+    { t: "crack", x: 1624, y: 352, h: 120 }, { t: "fossil", x: 1690, y: 352, form: "star" }, { t: "ember", x: 1748, y: 352 },
+    { t: "safe", x: 1180, y: 600 }, { t: "vein", x: 140, y: 600 }, { t: "stele", x: 1060, y: 352, i: 3 },
+  ],
+  hazards: [["goo", 450, 232], ["drum", 820, 296], ["pipe", 700, 600], ["junk", 900, 600], ["goo", 1480, 352]],
+  altars: [{ x: 720, y: 296 }, { x: 320, y: 600 }, { x: 1200, y: 352 }],
+  spawns: [
+    { k: "slime", x: 220, y: 160 }, { k: "bat", x: 260, y: 100 },
+    { k: "slime", x: 400, y: 232 }, { k: "trash", x: 480, y: 232 }, { k: "bat", x: 450, y: 180 },
+    { k: "slime", x: 650, y: 296 }, { k: "slime", x: 780, y: 296 }, { k: "trash", x: 840, y: 296 }, { k: "bat", x: 700, y: 236 },
+    { k: "slime", x: 900, y: 352 }, { k: "trash", x: 980, y: 352 }, { k: "slimeE", x: 1110, y: 352 }, { k: "slime", x: 1160, y: 352 }, { k: "bat", x: 1020, y: 300 },
+    { k: "bat", x: 950, y: 230 }, { k: "bat", x: 1080, y: 170 }, { k: "batE", x: 1180, y: 220 }, { k: "slime", x: 1030, y: 216 }, { k: "slime", x: 1150, y: 160 },
+    { k: "slime", x: 1420, y: 352 }, { k: "trash", x: 1520, y: 352 }, { k: "trashE", x: 1580, y: 352 }, { k: "bat", x: 1460, y: 290 },
+    { k: "slime", x: 80, y: 600 }, { k: "slime", x: 220, y: 600 }, { k: "trash", x: 420, y: 600 }, { k: "bat", x: 300, y: 500 }, { k: "batE", x: 600, y: 450 },
+    { k: "slime", x: 620, y: 600 }, { k: "slime", x: 690, y: 600 }, { k: "trashE", x: 860, y: 600 }, { k: "bat", x: 820, y: 500 },
+    { k: "slime", x: 950, y: 600 }, { k: "gold", x: 1080, y: 600 }, { k: "trash", x: 1130, y: 600 }, { k: "bat", x: 1150, y: 480 }, { k: "slime", x: 470, y: 544 },
+  ],
+  intro: ["系統：……這裡就是巢穴。好臭。", "系統：我聞到了。牠就在附近。……不，是在下面。"],
+  caches: [{ x: 1150, y: 144, n: 9 }, { x: 560, y: 344, n: 7 }, { x: 228, y: 504, n: 8 }],
+  events: [
+    { x: 300, say: "系統：牆上黏黏的……這整座山，都是牠吃剩的東西。" },
+    { x: 860, say: "系統：底下有東西在打呼。……地板在震。先把祭壇點亮再說。" },
+    { x: 1250, say: "系統：屋頂破了個洞。下面就是牠的房間。跳下去就回不來了喔。" },
+    { x: 1300, y: 540, lock: [1256, 1784], waves: [[["boss", 0]]] },
+  ],
 };
 // 8b 測試地圖：怪擺在各層、兩座祭壇、出口在最上層
 export const STAGE_TEST = {
@@ -182,18 +206,18 @@ export class Director {
     this.time += dt;
     // 戰鬥中：等這一波清完，再出下一波
     if (this.lock) {
-      if (this.api.alive() === 0 && (this.waveDelay -= dt) <= 0) {
+      if (this.api.alive(this.lock) === 0 && (this.waveDelay -= dt) <= 0) {
         if (this.wave < this.waves.length) this.spawnWave(this.waves[this.wave++]);
         else {
           this.lock = null;
           if (!this.stage.events.some((e) => e.lock)) this.api.say("系統：清除！……哼，還算可以。", 2);
         }
-      } else if (this.api.alive() > 0) this.waveDelay = 0.6;
+      } else if (this.api.alive(this.lock) > 0) this.waveDelay = 0.6;
       return;
     }
     // 走到下一個事件的位置就觸發
     const ev = this.stage.events[this.next];
-    if (ev && player.x >= ev.x) {
+    if (ev && player.x >= ev.x && (ev.y == null || player.y >= ev.y)) {   // 10 批：y＝要在這個高度以下才算（王房在屋頂底下）
       this.next++;
       if (ev.say) this.api.say(ev.say, SAY_TIME);
       if (ev.hint) this.api.hint(this.isTouch ? ev.hint.touch : ev.hint.key, HINT_TIME);
@@ -209,6 +233,13 @@ export class Director {
       this.done = true;
       this.api.clear();
     }
+  }
+
+  /** 10 批：王戰中死掉 → 解除封鎖，下次走進王房重新開打 */
+  resetLock() {
+    if (!this.lock) return;
+    this.lock = null; this.waves = null;
+    this.next = this.stage.events.findIndex((e) => e.lock);
   }
 
   spawnWave(list) {

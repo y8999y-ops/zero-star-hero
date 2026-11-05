@@ -523,14 +523,15 @@ const stageApi = {
     // 8b：y 沒給＝放在 x 那裡的地面上；"air"＝飛的，地面上方 60～90
     const gy = floorAt(x, typeof y === "number" ? y - 4 : 0);
     const yy = y === "air" ? gy - 60 - Math.random() * 30 : typeof y === "number" ? y : gy;
-    const e = kind === "boss" ? new Boss(x, FLOOR, bossApi) : new Enemy(kind, x, yy);
+    const e = kind === "boss" ? new Boss(x, STAGE.arena?.floor ?? FLOOR, bossApi) : new Enemy(kind, x, yy);
     enemies.push(e);
     if (started) world.dust(e.x, e.k.fly ? e.y + 8 : e.y, 4);
   },
   say: (msg, sec, focus) => sayQueue.push([msg, sec, focus]),
   hint: (msg, sec) => showHint(msg, sec),
   // 金幣史萊姆只會逃跑，不算在「清光這一波」裡
-  alive: () => enemies.reduce((n, e) => n + (e.dead || e.kind === "gold" ? 0 : 1), 0),
+  // 10 批：lock＝只算封住的王房裡的（大地圖上其他地方的怪不算）
+  alive: (lk) => enemies.reduce((n, e) => n + (e.dead || e.kind === "gold" || (lk && !e.isBoss && (e.x < lk.l || e.x > lk.r || (STAGE.arena && e.y < STAGE.arena.floor - 220))) ? 0 : 1), 0),
   dropCache(x, y, n) {
     for (let i = 0; i < n; i++) coins.push({ x: x + (i - (n - 1) / 2) * 6, y: y - (i % 2) * 4, vx: 0, vy: 0, t: 0, still: true });
   },
@@ -660,6 +661,15 @@ const world = {
       stats.deaths++;
       // 8b：從最後點亮的祭壇重來（還沒點過＝關卡起點）；打死的怪不會回來
       const to = checkpoint ?? (TOWN || ENDLESS ? null : { x: STAGE.start.x, y: floorAt(STAGE.start.x, 0) });
+      // 10 批：王戰中死掉（王房封住的時候）→ 王和房裡的小怪收掉、解除封鎖，回祭壇；再跳進王房，王滿血重新登場
+      const bossFight = director?.lock && STAGE.arena && enemies.some((e) => e.isBoss && !e.dying);
+      if (bossFight) {
+        const { l, r } = director.lock;
+        for (let i = enemies.length - 1; i >= 0; i--) { const e = enemies[i]; if (e.isBoss || (e.x >= l && e.x <= r && e.y > STAGE.arena.floor - 220)) enemies.splice(i, 1); }
+        director.resetLock();
+        bossBar.classList.remove("on");
+        music(null);
+      }
       const fade = $("fade");
       fade.classList.add("on");
       player.invuln = 2;
@@ -716,15 +726,15 @@ const bossBar = $("bossBar"), bossFill = $("bossFill"), bossLag = $("bossLag");
 const bossApi = {
   player,
   get lock() { return director?.lock ?? { l: WALL, r: LEVEL_W - WALL }; },
-  platforms: { top: PLATFORMS[2] },
+  platforms: { top: STAGE.arena?.top ?? PLATFORMS[2] },
   hurt: (dmg, fromX) => player.hurt(dmg, fromX, world),
   say: (msg, sec) => sayQueue.unshift([msg, sec]),
   line: (msg, sec) => toast(msg, sec),
-  spawnSlime: (x) => stageApi.spawnEnemy("slime", x),
+  spawnSlime: (x) => stageApi.spawnEnemy("slime", x, STAGE.arena?.floor),
   dropCoins: (x, y, n) => world.dropCoins(x, y, n),
   dropLoot(x) {
     // 王倒下的地方出現一個星箱（最高級），戰鬥結束後走過去開
-    chest = makeChest(Math.max(WALL + 30, Math.min(geo.w - WALL - 30, x)), 3);
+    chest = makeChest(Math.max(WALL + 30, Math.min(geo.w - WALL - 30, x)), 3, STAGE.arena?.floor ?? FLOOR);
     flash(chest.x, chest.y - 12, 90, 3, 0.8, "#d08cff");
     sayQueue.unshift(["系統：……王掉了一個星箱。走過去，按【攻擊】打開它。", 3]);
   },
@@ -1220,7 +1230,9 @@ function tick(dt) {
     if (e.dead) continue;
     // 戰鬥區封鎖時，敵人也出不去
     const lock = director?.lock;
-    if (lock && (e.x < lock.l + 12 || e.x > lock.r - 12)) {
+    // 10 批：有王房（真的牆圍起來）的關卡，只夾住王房裡的怪；地圖上其他地方的怪不動
+    const inLock = lock && (!STAGE.arena || (e.x > lock.l - 24 && e.x < lock.r + 24 && e.y > STAGE.arena.floor - 220));
+    if (inLock && (e.x < lock.l + 12 || e.x > lock.r - 12)) {
       e.x = Math.max(lock.l + 12, Math.min(lock.r - 12, e.x));
       if (e.kind === "gold") e.hopDir = -e.hopDir;
     }

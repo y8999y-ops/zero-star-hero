@@ -79,7 +79,7 @@ export class Boss {
   constructor(x, floor, api) {
     prepareBoss();
     this.api = api;
-    Object.assign(this, { kind: "boss", isBoss: true, elite: false, k: { dmg: 0, w: 26, h: 40, fly: false, coins: [0, 0] }, x, y: -80, vx: 0, vy: 0, hp: BOSS_HP, dead: false, stun: 0, flash: 0 });
+    Object.assign(this, { kind: "boss", isBoss: true, elite: false, k: { dmg: 0, w: 26, h: 40, fly: false, coins: [0, 0] }, x, y: floor - 264, vx: 0, vy: 0, hp: BOSS_HP, dead: false, stun: 0, flash: 0 });
     this.floor = floor;
     this.state = "intro"; this.t = 0; this.clock = 0; this.pose = "air"; this.pk = 0.5;
     this.phase = 1; this.split = false; this.ultT = 0; this.lastMove = ""; this.chain = 0;
@@ -368,7 +368,7 @@ export class Boss {
     if (P.grounded && this.trail.some((s) => Math.abs(s.x - P.x) < 6)) P.vx *= 0.82;   // 黏液：走起來很慢
     for (const q of this.rain) {
       q.t += dt;
-      if (q.t > 0.8 && !q.fell) { const y = -20 + (q.t - 0.8) * 420; if (y >= fl - 4) { q.fell = true; q.land = 0.3; dustFx("land", q.x, fl, true); shake(0.1, 1); } else if (Math.abs(P.x - q.x) < 9 && Math.abs(P.y - 10 - y) < 12) { q.fell = true; q.land = 0.3; this.api.hurt(12, q.x); } }
+      if (q.t > 0.8 && !q.fell) { const y = fl - 204 + (q.t - 0.8) * 420; /* 10 批：從王房地面往上 204 開始掉（原本畫面頂端） */ if (y >= fl - 4) { q.fell = true; q.land = 0.3; dustFx("land", q.x, fl, true); shake(0.1, 1); } else if (Math.abs(P.x - q.x) < 9 && Math.abs(P.y - 10 - y) < 12) { q.fell = true; q.land = 0.3; this.api.hurt(12, q.x); } }
       if (q.fell) q.land -= dt;
     }
     this.rain = this.rain.filter((q) => !q.fell || q.land > 0);
@@ -425,7 +425,7 @@ export class Boss {
     if (this.state === "vacuum") for (let k = 0; k < 10; k++) { const a = (this.clock * 1.6 + k * 0.1) % 1, side = k % 2 ? 1 : -1, x = this.x + side * (140 * (1 - a) + 10), y = this.y - 18 + ((k * 13) % 30 - 15) * (1 - a); for (let q = 0; q < 4; q++) put(x - side * q * 2, y, q < 2 ? C("#e8f4e0") : C("#8aa890")); }
     // 飛行的垃圾、落下的垃圾
     for (const j of this.junk) drawJunk(put, j.type, j.x, j.y, j.rot);
-    for (const q of this.rain) if (q.t > 0.8 && !q.fell) drawJunk(put, q.type, q.x, -20 + (q.t - 0.8) * 420, q.t * 8);
+    for (const q of this.rain) if (q.t > 0.8 && !q.fell) drawJunk(put, q.type, q.x, fl - 204 + (q.t - 0.8) * 420, q.t * 8);
     // 被吸收的碎片
     if (this.shardFly && !this.shardFly.done) { const s = this.shardFly; for (const [dx, dy, c] of [[0, -3, 4], [-1, -2, 3], [0, -2, 4], [1, -2, 3], [-2, -1, 2], [-1, -1, 3], [0, -1, 4], [1, -1, 3], [2, -1, 2], [-1, 0, 2], [0, 0, 3], [1, 0, 2], [0, 1, 2]]) put(s.x + dx, s.y + dy, GOLD[c]); }
   }
