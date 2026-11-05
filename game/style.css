@@ -923,6 +923,10 @@ body.touch #invBag > .ttl { padding-right: 30px; }
 .shakeNo { animation: shakeNo .32s steps(6); }
 @keyframes shakeNo { 0%, 100% { translate: 0 0; } 20% { translate: -4px 0; } 40% { translate: 4px 0; } 60% { translate: -3px 0; } 80% { translate: 2px 0; } }
 .react-pop.nomana { color: #9ad0ff; font-size: 13px; text-shadow: 0 2px 0 #0c1a3a, 0 0 4px #1e64b0; }
+/* 使用者 2026-11-05：連擊補魔力——頭上冒「+10 魔力」、魔力條亮一下 */
+.react-pop.manaup { color: #bfe8ff; font-size: 13px; text-shadow: 0 2px 0 #0c1a3a, 0 0 6px #3ab8f0; }
+.mp.gain { animation: mpGain .45s ease-out; }
+@keyframes mpGain { 0% { filter: brightness(1.9) drop-shadow(0 0 6px #6ad0ff); } 100% { filter: none; } }
 
 /* 特效補強 9：重要資源的大字橫幅（跟大招特寫帶同一個語言：深色長帶＋上下金邊，從中間往上下展開） */
 #resBanner { position: absolute; left: 0; right: 0; top: 24%; display: flex; align-items: center; justify-content: center; gap: 14px; padding: 10px 16px;

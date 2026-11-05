@@ -185,10 +185,9 @@ export function openQuests(atGuild = false, tab = "guild") {
 }
 
 // ================= 鍛造 =================
+// 使用者 2026-11-05：強化、重鑄只能用在「身上穿著的」裝備（背包裡的要先穿上）
 function itemsForForge(P) {
-  const eq = SLOTS.map((s) => P.equip[s.id]).filter(Boolean).map((it) => ({ it, eq: true }));
-  const bag = P.inv.filter((it) => it.kind !== "junk").map((it) => ({ it, eq: false }));
-  return [...eq, ...bag];
+  return SLOTS.map((s) => P.equip[s.id]).filter(Boolean).map((it) => ({ it, eq: true }));
 }
 const itemHead = (it, eq) => `<span class="fimg">${ico(it.icon, "big")}${eq ? '<i class="eqmark">E</i>' : ""}</span><span class="fn" style="color:${RARITY[it.rarity].color}">${it.name}</span>`;
 /** 強化進度：+p／上限，下面每 +5 一顆菱形（亮＝已經開過副屬性） */
@@ -200,7 +199,8 @@ const gauge = (rate) => `<span class="gauge" title="成功率"><i style="width:$
 export function openForge() {
   const P = ctx.profile;
   const enhanceTab = (body) => {
-    body.appendChild(say("岩叔", "……每 +5 會多一條能力，星核是每 +10，但能打到兩倍高、核心效果會升階。+10 以後會失敗，失敗只會少材料。"));
+    body.appendChild(say("岩叔", "……只打你身上穿著的。每 +5 會多一條能力，星核是每 +10，但能打到兩倍高、核心效果會升階。+10 以後會失敗，失敗只會少材料。"));
+    if (!itemsForForge(P).length) body.appendChild(say("岩叔", "……你身上什麼都沒穿。先去背包把裝備穿上。"));
     for (const { it, eq } of itemsForForge(P)) {
       const p = it.plus ?? 0, max = maxPlus(it), c = enhanceCost(p, it), rate = enhanceRate(p), top = p >= max;
       const row = h("div", "frow");
@@ -238,7 +238,7 @@ export function openForge() {
   const rerollTab = (body) => {
     body.appendChild(say("岩叔", "……選一條不要的，我重打。"));
     const list = itemsForForge(P).filter(({ it }) => it.affixes?.length && !it.unique);
-    if (!list.length) body.appendChild(say("岩叔", "……沒有能重打的東西。"));
+    if (!list.length) body.appendChild(say("岩叔", "……你身上沒有能重打的東西。背包裡的要先穿上。"));
     for (const { it, eq } of list) {
       const c = rerollCost(it), card = h("div", "fcard");
       card.innerHTML = `<div class="frow top"><div class="fhead">${itemHead(it, eq)}</div><div class="fcost">${costChips(c, P)}</div></div>`;

@@ -26,7 +26,8 @@ const JUMP_V = -335, JUMP2_V = -295, COYOTE = 0.15;   // 郊狼時間（走出�
 const DASH_T = 0.19, DASH_V = 345, DASH_CD = 0.32;
 const SKILL_CD = 1.1;
 // 魔力（使用者 2026-11-05：技能改成消耗魔力，冷卻保留）：每次技能 25，每秒回 8；最大魔力基礎 100，星之殘火加上限
-export const MP_COST = 25, MP_REGEN = 8;
+// 使用者 2026-11-05：魔力自然回復降到原本的 10%（8 → 0.8／秒），主要靠連擊補（main.js addCombo：每 10 連擊 +COMBO_MP）
+export const MP_COST = 25, MP_REGEN = 0.8, COMBO_MP = 10;
 
 // 連段。每一段：特效、前搖壓縮比例、何時可以接下一段、何時結束、各下傷害（攻擊力的倍數）、攻擊範圍。
 // 換形態＝換這一整組（forms.js 的 combo 指到這裡的 key；key 沿用舊的武器名）。

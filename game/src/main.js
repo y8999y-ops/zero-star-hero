@@ -18,7 +18,7 @@ import { createDeathFx } from "./deathfx.js";
 const deathFx = createDeathFx();   // 特效補強 1：死亡碎掉、祭壇重生
 import { drawLowHp, beat } from "./lowhpfx.js";
 const lowHp = { phase: 0.99, k: 1, pulse: 0 };   // 特效補強 3：低血量（< 30%）四角泛紅＋心跳
-import { Player, MP_COST } from "./player.js";
+import { Player, MP_COST, COMBO_MP } from "./player.js";
 import { Enemy } from "./enemies.js";
 import { Director, STAGES } from "./stage.js";
 import { STAGE_KEY, STAGE_ORDER, STAGE_ID, LAYOUTS } from "./stages.js";
@@ -406,7 +406,8 @@ function findUse() {
   const c = [];
   if (canOpenChest()) c.push({ kind: "chest", x: chest.x, top: chest.y - 34, go: openChest });
   if (stageDone && !leaving && portalX !== null && Math.abs(player.x - portalX) < 16 && Math.abs(player.y - portalY) < 20) c.push({ kind: "door", x: portalX, top: portalY - 48, go: leaveStage });
-  for (const a of altars) if (Math.abs(player.x - a.x) < 16 && Math.abs(player.y - a.y) < 24) c.push({ kind: "hand", x: a.x, top: a.y - 44, go: () => useAltar(a) });
+  // 使用者 2026-11-05：祭壇只能互動一次（點亮後就不能再回血）
+  for (const a of altars) if (!a.lit && Math.abs(player.x - a.x) < 16 && Math.abs(player.y - a.y) < 24) c.push({ kind: "hand", x: a.x, top: a.y - 44, go: () => useAltar(a) });
   for (const u of features?.usable() ?? []) c.push({ kind: u.t === "safe" ? "chest" : "hand", x: u.x, top: u.top, go: () => features.use(u) });
   let best = null;
   for (const o of c) if (!best || Math.abs(o.x - player.x) < Math.abs(best.x - player.x)) best = o;
@@ -1203,8 +1204,19 @@ const ultHooks = {
 };
 bindUltHooks(ultHooks);
 window.__game.ultFull = () => (player.mp = player.maxMp);
+window.__game.addCombo = (n) => addCombo(n);   // 開發用：測連擊補魔力
 window.__game.giveCore = (id) => absorb(makeCore(id));
 function addCombo(n) {
+  // 使用者 2026-11-05：連擊每滿 10 下給 COMBO_MP 魔力（自然回復只剩 10%，魔力主要靠打出來）
+  const gain = Math.floor((stats.combo + n) / 10) - Math.floor(stats.combo / 10);
+  if (gain > 0 && player.mp < player.maxMp) {
+    player.mp = Math.min(player.maxMp, player.mp + gain * COMBO_MP);
+    const k = canvas.clientWidth / W, pop = document.createElement("div");
+    pop.className = "react-pop manaup"; pop.textContent = `+${gain * COMBO_MP} 魔力`;
+    pop.style.left = canvas.offsetLeft + (player.x - camX) * k + "px"; pop.style.top = canvas.offsetTop + (player.y - camY - 30) * k + "px";
+    $("stage").appendChild(pop); setTimeout(() => pop.remove(), 900);
+    const b = $("mpBar"); b.classList.remove("gain"); void b.offsetWidth; b.classList.add("gain");
+  }
   stats.combo += n;
   stats.comboT = 2.2;
   stats.best = Math.max(stats.best, stats.combo);
