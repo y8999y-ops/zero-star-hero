@@ -602,3 +602,7 @@ body.talking #qtrack { opacity: .2; }
 .qrw { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; max-width: 190px; }
 .qcard { padding: 0 6px; }
 .qic { width: 32px; height: 32px; }
+
+/* 寶箱旁邊（不是戰鬥狀態）：攻擊鍵變成開箱鍵，發金光 */
+body.chestnear .btn.big { background-image: var(--tb-chest); animation: talkReady 1s ease-in-out infinite; }
+body.chestnear .btn.big.on { background-image: var(--tb-chest-on); }

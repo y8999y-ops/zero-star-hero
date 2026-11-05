@@ -16,6 +16,8 @@ import { Director, STAGES } from "./stage.js";
 import { STAGE_KEY, STAGE_ORDER, STAGE_ID, LAYOUTS } from "./stages.js";
 import * as levelUpFx from "../../pixelfx/src/fx/ui/level-up.js";
 import * as chestOpen from "../../pixelfx/src/fx/pickups/chest-open.js";
+import * as treasureChest from "../fx/loot/treasure-chest.js";
+import { CHEST_TIERS } from "./chest-tiers.js";
 import * as collectBurst from "../../pixelfx/src/fx/pickups/collect-burst.js";
 import { createFx } from "../../pixelfx/src/core/index.js";
 import { load, save, BAG_SIZE } from "./save.js";
@@ -283,29 +285,110 @@ function updateUniques(dt) {
   player.dmgMul = player.has("overtime") ? 1 + Math.min(1, Math.floor(combatT / 10) * 0.05) : 1;
 }
 
-// ---- 終點前的寶箱：打完最後一場才能開
-const chest = ENDLESS || TOWN || STAGE_ID === "1-4" ? null : { x: STAGE.exitX - 120, opened: false, fx: createFx(chestOpen, { x: STAGE.exitX - 120, y: FLOOR, light: 0.3 }), t: 0 };
+// ---- 寶箱（2026-11-05 改版）：分 4 個等級（chest-tiers.js），每個等級的造型都不一樣（fx/loot/treasure-chest.js）。
+// 不是戰鬥狀態、站在寶箱旁邊時，攻擊鍵變成「開箱」鍵，按下去才打開。打開後噴出可以撿的金幣和寶石（落地後走過去才吸過來）＋裝備。
+// 各關的寶箱：1-1 木箱、1-2 鐵箱、1-3 紅漆金箱；1-4 打倒王之後在王倒下的地方出現星箱。
+const STAGE_CHEST = { "1-1": 0, "1-2": 1, "1-3": 2 };
+const chestOpts = (tier) => { const T = CHEST_TIERS[tier]; return { tier, wood: T.wood, palette: T.palette, coins: 0, gems: 0, light: 0.3 + tier * 0.08 }; };
+function makeChest(x, tier) { return { x: Math.round(x), tier, opened: false, t: 0, fx: createFx(treasureChest, { x: Math.round(x), y: FLOOR, ...chestOpts(tier) }) }; }
+let chest = ENDLESS || TOWN || STAGE_ID === "1-4" ? null : makeChest(STAGE.exitX - 120, STAGE_CHEST[STAGE_ID] ?? 0);
+let chestNear = false, prevChestAtk = false;
+/** 可以開箱嗎：站在旁邊、在地上、沒有在打仗 */
+const canOpenChest = () => !!chest && !chest.opened && Math.abs(player.x - chest.x) < 24 && player.grounded && !director?.lock && stageApi.alive() === 0;
+function openChest() {
+  chest.opened = true;
+  chest.t = 0;
+  const T = CHEST_TIERS[chest.tier], c = chest;
+  spawn(treasureChest, { x: c.x, y: FLOOR, ...chestOpts(c.tier) }, { layer: "back" });
+  sfx("chest");
+  setTimeout(() => { flash(c.x, FLOOR - 16, 80 + c.tier * 30, 3, 1 + c.tier * 0.4, T.palette[5]); shake(0.15 + c.tier * 0.08, 2 + c.tier); if (c.tier >= 2) sfx("rare"); }, 800);
+  sayQueue.unshift([["系統：木箱。……聊勝於無。", "系統：鐵箱！裡面應該不是垃圾吧。", "系統：紅漆金箱！我聞到錢的味道了。", "系統：星箱……！這是傳說中的那個嗎？"][c.tier], 2.6]);
+}
 function updateChest(dt) {
-  if (!chest) return;
-  if (!chest.opened) {
-    if (Math.abs(player.x - chest.x) < 22 && player.grounded && !director?.lock && stageApi.alive() === 0) {
-      chest.opened = true;
-      chest.t = 0;
-      spawn(chestOpen, { x: chest.x, y: FLOOR, light: 0.3 }, { layer: "back" });
-      sfx("chest");
-      flash(chest.x, FLOOR - 16, 80, 3, 1.4, "#ffd84a");
-      sayQueue.unshift([profile.clears ? "系統：寶箱！……裡面應該不是垃圾吧。" : "系統：第一次通關的寶箱。我偷偷放了好東西進去。", 2.6]);
-    }
-    return;
-  }
+  const near = canOpenChest();
+  if (near !== chestNear) { chestNear = near; document.body.classList.toggle("chestnear", near); }
+  if (!chest || !chest.opened) return;
   const before = chest.t;
   chest.t += dt;
-  // 蓋子打開後噴出三件：第一件保底稀有（第一次通關保底傳說）
-  if (before < 0.7 && chest.t >= 0.7) {
-    dropItem(chest.x, FLOOR - 12, R.rare, { rarity: profile.clears ? undefined : R.legend, ilvl: ilvlNow(2), dir: -1 });
-    dropItem(chest.x, FLOOR - 12, R.magic, { ilvl: ilvlNow(1), dir: 1 });
-    dropItem(chest.x, FLOOR - 12, R.common, { ilvl: ilvlNow(1) });
-    world.dropCoins(chest.x, FLOOR - 12, 12);
+  // 蓋子彈開那一刻（0.8 秒）噴出金幣、寶石、裝備
+  if (before < 0.8 && chest.t >= 0.8) {
+    const T = CHEST_TIERS[chest.tier];
+    spawnLoot(chest.x, FLOOR - 14, T.coins, T.gems, chest.tier);
+    let k = 0;
+    for (const [rar, n] of T.items) for (let i = 0; i < n; i++, k++) {
+      const legend = k === 0 && !profile.clears && !profile.cleared[STAGE_ID];   // 第一次通關的第一個寶箱：保底傳說
+      dropItem(chest.x, FLOOR - 12, legend ? R.legend : R[rar], { rarity: legend ? R.legend : R[rar], ilvl: ilvlNow(1 + chest.tier), dir: k % 2 ? 1 : -1 });
+    }
+  }
+}
+/** 開箱鍵：在 player.update 之前攔截攻擊鍵。剛按下那一下開箱，旁邊有寶箱時不出拳 */
+function chestInput() {
+  const atk = input.attack;
+  if (chestNear && atk && !prevChestAtk) { input.attack = false; openChest(); }
+  else if (chestNear) input.attack = false;
+  prevChestAtk = atk;
+}
+
+// ---- 可以撿的金幣和寶石（寶箱噴出來的）：先彈跳落地，主角走過去才吸過來
+const GEM_TYPES = [
+  { name: "紅寶石", val: 30, G: ["#2a0612", "#6e0f2a", "#b81c3c", "#f0405a", "#ff8a96", "#ffd2d6"] },
+  { name: "翡翠", val: 20, G: ["#06200f", "#0f4a26", "#1a8040", "#34c060", "#8af0a0", "#d8ffe0"] },
+  { name: "藍寶石", val: 25, G: ["#0a1030", "#142a70", "#2050c0", "#3a8cf0", "#8ccaff", "#dcf0ff"] },
+  { name: "紫水晶", val: 50, G: ["#1a0a2a", "#3e1466", "#6a28a8", "#a050e0", "#d09cff", "#f0e0ff"] },
+].map((g) => ({ ...g, C: g.G.map((c) => hex(c) >>> 0) }));
+// 寶石的樣子（5×5，左上亮右下暗、一顆高光；外框用最暗那階＝pixelfx 的選擇性外框，色階沿用 pixelfx chest-open 的寶石）
+const GEM_ART = [".54..", "54432", "44321", ".321.", "..1.."];
+const gems = [];
+function spawnLoot(x, y, nCoins, nGems, tier) {
+  const sp = 1 + tier * 0.25;
+  for (let i = 0; i < nCoins; i++) coins.push({ x, y, vx: (Math.random() - 0.5) * 220 * sp, vy: -150 - Math.random() * 170 * sp, t: 0, lay: true });
+  for (let i = 0; i < nGems; i++) {
+    const type = tier >= 3 && i % 3 === 0 ? 3 : Math.floor(Math.random() * (tier >= 2 ? 4 : 3));
+    gems.push({ x, y, vx: (Math.random() - 0.5) * 200 * sp, vy: -170 - Math.random() * 160 * sp, t: 0, lay: true, type });
+  }
+}
+/** 落地彈跳；還躺在地上（lay）時，主角靠近才開始吸 */
+function lootPhysics(c, dt, onGet) {
+  c.t += dt;
+  const m = 30 * (1 + player.stats.magnet / 100);
+  if (c.lay) {
+    c.vy += 700 * dt;
+    c.x += c.vx * dt;
+    c.y += c.vy * dt;
+    c.x = Math.max(WALL + 4, Math.min(geo.w - WALL - 4, c.x));
+    if (c.y > FLOOR - 2) { c.y = FLOOR - 2; c.vy *= -0.4; c.vx *= 0.55; if (Math.abs(c.vy) < 30) c.vy = 0; }
+    if (c.t > 0.5 && Math.abs(player.x - c.x) < m && Math.abs(player.y - 10 - c.y) < m) { c.lay = false; c.t = 0.45; }
+    return;
+  }
+  const dx = player.x - c.x, dy = player.y - 12 - c.y, d = Math.hypot(dx, dy) || 1, s2 = 120 + (c.t - 0.45) * 900;
+  c.x += (dx / d) * s2 * dt;
+  c.y += (dy / d) * s2 * dt;
+  if (d < 10) { c.got = true; onGet(); }
+}
+function updateGems(dt) {
+  for (const g of gems) lootPhysics(g, dt, () => {
+    const T = GEM_TYPES[g.type];
+    profile.coins += T.val; stats.coins += T.val;
+    sfx("pickup");
+    spawn(collectBurst, { x: Math.round(g.x), y: Math.round(g.y), palette: T.G, light: 0.3 });
+  });
+  for (let i = gems.length - 1; i >= 0; i--) if (gems[i].got) gems.splice(i, 1);
+}
+function drawGems() {
+  const Cc = frame.color, L = frame.light, Wf = frame.w;
+  for (const g of gems) {
+    const T = GEM_TYPES[g.type], x = Math.round(g.x) - frame.ox - 2, y = Math.round(g.y) - frame.oy - 3;
+    const at = (i, j) => (GEM_ART[j]?.[i] ?? ".") !== ".";
+    for (let j = -1; j <= 5; j++) for (let i = -1; i <= 5; i++) {
+      const px = x + i, py = y + j;
+      if (px < 0 || py < 0 || px >= Wf || py >= frame.h) continue;
+      if (at(i, j)) Cc[py * Wf + px] = T.C[+GEM_ART[j][i]];
+      else if (at(i + 1, j) || at(i - 1, j) || at(i, j + 1) || at(i, j - 1)) Cc[py * Wf + px] = T.C[0];
+    }
+    const tw = Math.sin(stats.time * 5 + g.x * 0.7);   // 偶爾閃一下（十字小光）
+    if (tw > 0.92) for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) { const px = x + 1 + dx, py = y + dy; if (px >= 0 && py >= 0 && px < Wf && py < frame.h) Cc[py * Wf + px] = 0xffffffff; }
+    const lx = x + 2, ly = y + 2;
+    if (lx >= 0 && ly >= 0 && lx < Wf && ly < frame.h) L[ly * Wf + lx] = T.C[4];
   }
 }
 
@@ -443,11 +526,11 @@ const bossApi = {
   line: (msg, sec) => toast(msg, sec),
   spawnSlime: (x) => stageApi.spawnEnemy("slime", x),
   dropCoins: (x, y, n) => world.dropCoins(x, y, n),
-  dropLoot(x, y) {
-    spawn(chestOpen, { x: Math.round(x), y: FLOOR, light: 0.3 }, { layer: "back" });
-    dropItem(x, y, R.rare, { rarity: profile.cleared["1-4"] ? undefined : R.legend, ilvl: ilvlNow(3), dir: -1 });
-    dropItem(x, y, R.rare, { ilvl: ilvlNow(2), dir: 1 });
-    dropItem(x, y, R.magic, { ilvl: ilvlNow(2) });
+  dropLoot(x) {
+    // 王倒下的地方出現一個星箱（最高級），戰鬥結束後走過去開
+    chest = makeChest(Math.max(WALL + 30, Math.min(geo.w - WALL - 30, x)), 3);
+    flash(chest.x, FLOOR - 12, 90, 3, 0.8, "#d08cff");
+    sayQueue.unshift(["系統：……王掉了一個星箱。走過去，按【攻擊】打開它。", 3]);
   },
   absorb() {
     gainXp(160);
@@ -787,11 +870,13 @@ function tick(dt) {
     sfx("ultCharge");
     return;
   }
+  chestInput();
   player.update(dt, world);
   props.update(dt, propMovers(), propView());
   scenery.update(dt, player, propView());
   updateUniques(dt);
   updateChest(dt);
+  updateGems(dt);
   drops.update(dt, player, 16 * (1 + player.stats.magnet / 100), pickUp);
   if (ENDLESS) spawnEnemies(dt);
   else {
@@ -850,6 +935,7 @@ function tick(dt) {
 
   // 金幣：先噴出去，再被吸過來
   for (const c of coins) {
+    if (c.lay) { lootPhysics(c, dt, () => { stats.coins++; profile.coins++; if (coinSndT <= 0) { sfx("coin"); coinSndT = 0.05; } }); continue; }
     c.t += dt;
     if (c.still) {
       // 高處的金幣：主角靠近才吸過去
@@ -915,6 +1001,7 @@ function render() {
   drops.draw(frame);
   for (const e of enemies) e.draw(frame);
   drawCoins();
+  drawGems();
   if (ult.on) { dimScene(frame); drawFx(frame, "back"); }
   player.draw(frame);
   drawFx(frame, "front");
@@ -1260,4 +1347,4 @@ if (sessionStorage.getItem(AUTO_KEY)) {
 for (const ev of ["pointerdown", "keydown", "touchstart"]) addEventListener(ev, unlockAudio, { capture: true, passive: true });
 addEventListener("keydown", (e) => { if (!started && (e.code === "Enter" || e.code === "Space")) startOrIntro(); });
 // 開發用：主控台直接掉寶、加經驗
-Object.assign(window.__game, { dropItem, gainXp, R, toast });
+Object.assign(window.__game, { dropItem, gainXp, R, toast, gems, coins, get chest() { return chest; } });
