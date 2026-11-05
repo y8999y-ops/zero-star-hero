@@ -2,6 +2,7 @@
 // 再放大成 data URL 交給 CSS 用（border-image / background）。改顏色或形狀就改這裡。
 import { ICONS, ICON_SIZE } from "./icons.js";
 import { RARITY } from "./items.js";
+import { frameArt, THEMES as FRAME_THEMES } from "./frame-art.js";
 
 const OUT = "#0a0810";
 
@@ -173,9 +174,9 @@ function glassButton(size, k, glyph, on = false, tint = "#ffffff") {
 
 // ---- 主畫面選單的牌子（16×16，九宮格切 6）：四角斜切、1px 深色外框、金色細框（左上亮右下暗）、
 // 內側一圈暗線、深色半透明底，上緣一條淡淡的反光。main＝主按鈕（金框比較亮、底偏紫）
-function menuPlate(k, main = false) {
-  const N = 16, G1 = main ? "#ffe7a0" : "#c9a258", G2 = main ? "#c8862a" : "#7a5a2c";
-  const FILL = main ? "rgba(46,22,70,.9)" : "rgba(14,10,32,.78)", LINE = main ? "#2a1238" : "#120c22";
+function menuPlate(k, main = false, theme = null) {
+  const N = 16, G1 = theme?.[0] ?? (main ? "#ffe7a0" : "#c9a258"), G2 = theme?.[1] ?? (main ? "#c8862a" : "#7a5a2c");
+  const FILL = theme?.[2] ?? (main ? "rgba(46,22,70,.9)" : "rgba(14,10,32,.78)"), LINE = theme?.[3] ?? (main ? "#2a1238" : "#120c22");
   return pixels(N, N, k, (px) => {
     for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
       const cx = Math.min(x, N - 1 - x), cy = Math.min(y, N - 1 - y), c = cx + cy, d = Math.min(cx, cy), tl = x + y < N;
@@ -253,6 +254,13 @@ export function installUiArt() {
   set("--bubble-tail", bubbleTail(2));
   set("--inset", inset(2));
   set("--plate", menuPlate(2));
+  // 功能視窗的主題外框（frame-art.js，照 pixelfx skill 重畫）：公會金、鍛造鐵、旅館木、系統青，四角各有主題角飾
+  for (const k of Object.keys(FRAME_THEMES)) {
+    for (const [name, card] of [["win", false], ["card", true]]) {
+      const f = frameArt(k, card);
+      set(`--${name}-${k}`, pixels(f.w, f.h, 2, (px) => f.px.forEach((c, i) => c && px(i % f.w, (i / f.w) | 0, c))));
+    }
+  }
   // 設定鍵的齒輪（10×10＋1px 外框）
   set("--ic-gear", (() => {
     const G = ["....##....", ".#.####.#.", ".########.", "..##..##..", ".##....##.", ".##....##.", "..##..##..", ".########.", ".#.####.#.", "....##...."];

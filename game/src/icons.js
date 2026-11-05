@@ -8,6 +8,7 @@
 // - 細節用色塊表現，不在裡面畫黑線；不抖色、不半透明
 // 檢查：node game/tools/preview.mjs icons out.png 會畫出總表並列出違規（腫塊、雙層邊、孤立點）
 
+import { UI_ICONS } from "./ui-icons.js";
 export const PAL = {
   k: "#14101c",
   // 鋼：亮 → 暗
@@ -686,4 +687,6 @@ for (const [name, fn] of Object.entries(DRAW)) {
   fn(p);
   ICONS[name] = outline(p.g).map((ch) => (ch ? PAL[ch] : null));
 }
+// 介面圖示（照 pixelfx skill 重畫的那一批）蓋過同名的舊圖示
+for (const [name, px] of Object.entries(UI_ICONS)) ICONS[name] = px;
 export const ICON_SIZE = N;

@@ -2,6 +2,7 @@
 // ver 2（2026-11-04）：武器變成星核、加上形態。舊存檔第一次讀取時自動轉換，轉換前先把原本的存檔另存一份備份。
 import { starterGear, nameFor, BASES, UNIQUES } from "./items.js";
 import { freshForms } from "./forms.js";
+import { freshQuests } from "./quests.js";
 
 const KEY = "zero-hero-save-v1";
 const BACKUP = "zero-hero-save-v1-backup-ver1";
@@ -10,7 +11,7 @@ export const BAG_SIZE = 40;
 
 export const freshGuild = () => ({ registered: false, done: 0, quest: null });
 function fresh() {
-  return { ver: VER, lv: 1, xp: 0, coins: 0, scrap: 0, inv: [], equip: starterGear(), auto: 0, clears: 0, forms: freshForms(), guild: freshGuild() };
+  return { ver: VER, lv: 1, xp: 0, coins: 0, scrap: 0, inv: [], equip: starterGear(), auto: 0, clears: 0, forms: freshForms(), guild: freshGuild(), quests: freshQuests(), meal: null };
 }
 
 // 舊武器 → 星核：底材 id 不變，只改名字（稀有裝備保留原本的隨機名字）、拿掉武器種類
@@ -34,7 +35,9 @@ export function load() {
         s.inv.forEach(migrateItem);
         s.ver = 2;
       }
-      return { ...fresh(), ...s, forms: s.forms ?? freshForms(), guild: s.guild ?? freshGuild() };
+      const q = { ...freshQuests(), ...(s.quests ?? {}) };
+      q.stats = { ...freshQuests().stats, ...(q.stats ?? {}) };
+      return { ...fresh(), ...s, forms: s.forms ?? freshForms(), guild: s.guild ?? freshGuild(), quests: q };
     }
   } catch {}
   return fresh();

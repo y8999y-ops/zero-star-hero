@@ -26,6 +26,8 @@ import { createInventory } from "./inventory.js";
 import { playFace, moodOf } from "./system-face.js";
 import { startTitle } from "./title.js";
 import { playIntro } from "./intro.js";
+import { questEvent, refreshBoard, rewardText, sysActive } from "./quests.js";
+import { initTownUI, openQuests, openForge, openInn, isWinOpen, MEALS, questLook } from "./townui.js";
 import { installUiArt, iconURL, setAttackIcon, medal, MEDAL_SIZE } from "./ui-art.js";
 import { FORMS, CARRY_MAX, coreChance, absorbCore, makeCore, coresToLevel } from "./forms.js";
 import { createFrame as makeFrame } from "../../pixelfx/src/core/index.js";
@@ -89,12 +91,18 @@ let camX = 0, started = false, director = null, cleared = false, introOn = false
 const drops = new Drops();
 const runLoot = [];   // 這一趟撿到的東西（通關畫面顯示）
 let slowT = 0;        // 傳說掉落時的慢動作
+// 數值：裝備＋等級，再加上旅館料理的效果（下一趟冒險有效）
+function statsNow() {
+  const s = computeStats(profile.equip, profile.lv), m = MEALS[profile.meal];
+  if (m) m.apply(s);
+  return s;
+}
 function refreshStats() {
-  player.setStats(computeStats(profile.equip, profile.lv));
+  player.setStats(statsNow());
   save(profile);
   updateBagDot();
 }
-player.setStats(computeStats(profile.equip, profile.lv));
+player.setStats(statsNow());
 setAttackIcon("star");
 player.setForm(profile.forms.cur, profile.forms.owned[profile.forms.cur]?.lv ?? 1);
 player.hp = player.maxHp;
@@ -164,6 +172,7 @@ function pickUp(d) {
   profile.inv.push(it);
   runLoot.push(it);
   feed(it, "", better);
+  if (it.kind === "junk") questProgress("junk");
   if (it.kind === "junk" && Math.random() < 0.4) sayQueue.push([JUNK.find((j) => j.id === it.junk).say, 2.4]);
   sfx(it.rarity >= R.rare ? "rare" : "pickup");
   if (it.rarity >= R.rare) spawn(collectBurst, { x: Math.round(player.x), y: Math.round(player.y) - 10, palette: it.rarity === R.legend ? PAL.ember : ["#1e1206", "#4a2c08", "#86520c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"], light: 0.4 });
@@ -181,6 +190,7 @@ const FORM_BURST = {
 };
 function absorb(it) {
   const F = FORMS[it.form], res = absorbCore(profile.forms, it.form);
+  setTimeout(() => questProgress("core"), 0);
   sfx("absorb");
   spawn(collectBurst, { x: Math.round(player.x), y: Math.round(player.y) - 12, palette: FORM_BURST[it.form], light: 0.5 });
   flash(player.x, player.y - 12, 80, 3, 0.6, F.color);
@@ -386,6 +396,7 @@ const world = {
   },
   onKill(e) {
     stats.kills++;
+    questProgress("kill", { kind: e.kind, elite: e.elite });
     if (stats.kills === 30) toast("系統：……你真的是零星嗎？");
     if (stats.kills === 100) toast("系統：好啦，我承認你有一點點厲害。");
     if (e.kind === "gold") toast("系統：金幣史萊姆！今晚加菜！");
@@ -466,6 +477,7 @@ const nextRank = (done) => RANKS.find(([, need]) => need > done);
 /** 換場景：存檔、淡出、重新載入 */
 const AUTO_KEY = "zero-hero-auto";
 function goScene(next, stageId) {
+  if (!TOWN && next === "town" && profile.meal) profile.meal = null;   // 料理的效果只到這趟冒險結束
   save(profile, true);
   sessionStorage.setItem(NEXT_KEY, next);
   if (stageId) sessionStorage.setItem(STAGE_KEY, stageId);
@@ -480,7 +492,47 @@ window.__game.folk = folk;
 if (TOWN) {
   spawn(frogFx, { x: 548, y: FLOOR, seed: 3, light: 0.2 }, { keep: true, layer: "back" });
 }
+// ---- 任務：進度、獎勵、左上的追蹤框
+function grant(r) {
+  if (r.coins) profile.coins += r.coins;
+  if (r.scrap) profile.scrap += r.scrap;
+  if (r.xp) gainXp(r.xp);
+  save(profile);
+}
+function questProgress(ev, d) {
+  const r = questEvent(profile, ev, d);
+  for (const q of r.guild) sayQueue.push([`系統：公會任務「${q.title}」完成！回公會找波波交付。`, 2.6]);
+  for (const q of r.sys) { grant(q.reward); sayQueue.push([`系統：系統任務「${q.title}」完成。${q.say}（${rewardText(q.reward)}）`, 3.6]); sfx("chime"); }
+  renderTracker();
+  save(profile);
+}
+const trackEl = $("qtrack");
+function renderTracker() {
+  const Q = profile.quests, I = (n) => `<img class="ico" src="${iconURL(n, 2)}" alt="">`;
+  const lines = Q.active.map((q) => { const L = questLook(q), ok = q.have >= q.need; return `<div class="${ok ? "ok" : ""}">${I(L.icon)}${L.label}　<b>${ok ? "✓" : q.have + "/" + q.need}</b></div>`; });
+  const sys = sysActive(profile)[0];
+  if (sys) lines.push(`<div class="sys">${I("xp")}${sys.title}</div>`);
+  const m = MEALS[profile.meal];
+  if (m) lines.push(`<div class="meal">${I(m.icon)}${m.buff[1]}</div>`);
+  trackEl.innerHTML = lines.join("");
+  trackEl.classList.toggle("empty", !lines.length);
+}
+initTownUI({
+  profile, sfx, grant, unlocked,
+  RANK: () => [rankOf(profile.guild.done), nextRank(profile.guild.done)],
+  afterChange: () => { refreshStats(); renderTracker(); },
+  openBag: () => inv.show(),
+  onQuest: () => questProgress("tick"),
+  flash: (col) => flash(player.x, FLOOR - 20, 80, 3, 0.5, col),
+  shake: (t, a) => shake(t, a),
+});
+trackEl.addEventListener("click", (e) => { e.stopPropagation(); if (started && !dialog.open && !busy) openQuests(false); });
+renderTracker();
+$("btnQuest").style.backgroundImage = `url(${iconURL("paper", 2)})`;
+$("btnQuest").addEventListener("click", (e) => { e.stopPropagation(); if (started && !dialog.open && !busy) { sfx("ui"); openQuests(false); } });
 function townArrive() {
+  refreshBoard(profile.quests, unlocked());
+  questProgress("tick");
   if (profile.guild.rankUp) {
     toast(`系統：公會等級升到 ${profile.guild.rankUp} 級！`, 3);
     delete profile.guild.rankUp;
@@ -565,8 +617,20 @@ async function interact(n) {
     else if (n.place === "guild") await guild(n.name);
     else if (n.place === "workshop") await workshop(n.name);
     else if (n.place === "inn") await inn(n.name);
-    else await talk("路標", ["「往 墜星之谷 →」", "系統：要出發的話，先去公會接任務。……沒有任務就跑去打怪，公會不給錢的。"]);
+    else await travel();
   } finally { busy = false; }
+}
+// 右邊的路標：選要去的地方（公會任務在外面做，回來再交付）
+async function travel() {
+  const NOTE = { "1-1": "狂化魔物", "1-2": "垃圾桶怪很多", "1-3": "蝙蝠群、菁英", "1-4": "王：大胃王史萊姆" };
+  if (!profile.quests.active.length && profile.guild.registered) await talk("系統", ["……你沒接公會任務喔。打怪是可以，但沒有人會付錢給你。"]);
+  const v = await ask("路標", "「往 墜星之谷 →」要去哪裡？", [
+    ...unlocked().reverse().map((id) => [`${id} ${LAYOUTS[id].name}（${NOTE[id]}）${profile.cleared[id] ? "" : "　NEW"}`, "stage:" + id]),
+    ["無限討伐（打到手痠為止）", "endless"],
+    ["先不出發", null],
+  ]);
+  if (v?.startsWith?.("stage:")) goScene("stage", v.slice(6));
+  else if (v === "endless") goScene("endless");
 }
 async function guild(name) {
   const G = profile.guild;
@@ -577,40 +641,19 @@ async function guild(name) {
     G.registered = true;
     save(profile, true);
   }
-  const rank = rankOf(G.done), nr = nextRank(G.done);
-  const QUEST_NOTE = { "1-1": "清光狂化魔物", "1-2": "垃圾桶怪大量出沒", "1-3": "蝙蝠群、菁英出沒", "1-4": "王：大胃王史萊姆" };
-  const v = await ask(name, `冒險者等級 ${rank}　已完成任務 ${G.done} 個。今天要接什麼任務？`, [
-    ...unlocked().reverse().map((id) => [`討伐：${id} ${LAYOUTS[id].name}（${QUEST_NOTE[id]}）${profile.cleared[id] ? "" : "　NEW"}`, "stage:" + id]),
-    ["練功：無限討伐（打到你手痠為止）", "endless"],
-    ["問問升級的事", "rank"],
-    ["先不用", null],
-  ]);
-  if (v?.startsWith?.("stage:")) {
-    const id = v.slice(6);
-    G.quest = id;
-    await talk(name, [{ "1-1": "任務受理。墜星之谷的狂化魔物越來越多了，請小心。", "1-2": "垃圾山……那裡的垃圾桶會咬人喔。真的。", "1-3": "蝙蝠洞窟很暗。……啊，你會發光，那沒事了。", "1-4": "……大胃王。牠把墜星之谷的垃圾全吃光了，還在變大。拜託你了。" }[id]]);
-    goScene("stage", id);
+  questProgress("tick");
+  const before = rankOf(G.done);
+  await talk(name, [G.done === 0 && !profile.quests.active.length ? "任務都貼在任務板上，挑喜歡的接吧。做完再回來找我交付喔。" : "（推眼鏡）任務板在這裡。"]);
+  await openQuests(true);
+  if (rankOf(G.done) !== before) {
+    await talk(name, [`恭喜！冒險者等級升到 ${rankOf(G.done)} 級了。`, "（推眼鏡）……我就知道你可以。大概。"]);
+    questProgress("tick");
   }
-  else if (v === "endless") { await talk(name, ["無限討伐不算正式任務，不過掉的東西都歸你。"]); goScene("endless"); }
-  else if (v === "rank") await talk(name, [nr ? `再完成 ${nr[1] - G.done} 個任務就能升到 ${nr[0]} 級。` : "你已經是 S 級了。……公會的天花板，就是你。", "升級後能接更難的任務，去更遠的地方。"]);
 }
 async function workshop(name) {
-  const core = profile.equip.weapon, p = core.plus ?? 0, scrap = 3 + p * 3, gold = 20 + p * 25;
-  const opts = [["整理背包、拆解裝備", "bag"]];
-  if (p < 10) opts.push([`強化星核 +${p} → +${p + 1}（${scrap} 碎屑、${gold} 金幣）`, "up"]);
-  opts.push(["沒事", null]);
-  const v = await ask(name, `……要打什麼？（身上：${profile.scrap} 碎屑、${profile.coins} 金幣）`, opts);
-  if (v === "bag") inv.show();
-  else if (v === "up") {
-    if (profile.scrap < scrap || profile.coins < gold) return talk(name, ["……材料不夠。去打點垃圾回來拆。"]);
-    profile.scrap -= scrap;
-    profile.coins -= gold;
-    core.plus = p + 1;
-    refreshStats();
-    flash(404, FLOOR - 20, 70, 3, 0.6, "#ff9a40");
-    shake(0.2, 2);
-    await talk(name, [`（鏘、鏘、鏘）……好了。星核 +${p + 1}。`, p + 1 >= 7 ? "……再敲下去，我的手會裂開。" : "下次再來。"]);
-  }
+  await talk(name, ["……要打什麼？"]);
+  await openForge();
+  refreshStats();
 }
 const INN_CHAT = [
   "以前這裡只是隕石坑旁邊的小村子。星星掉下來以後，冒險者就變多了。",
@@ -620,15 +663,21 @@ const INN_CHAT = [
   "你是星星族？那你晚上會發光嗎？省電耶。",
 ];
 async function inn(name) {
-  const v = await ask(name, "哎呀，歡迎光臨～要休息一下嗎？", [["休息（回滿血、存檔）", "rest"], ["聊天", "chat"], ["不用了", null]]);
-  if (v === "rest") {
-    player.hp = player.maxHp;
-    save(profile, true);
-    $("fade").classList.add("on");
-    await new Promise((r) => setTimeout(r, 500));
-    $("fade").classList.remove("on");
-    await talk(name, ["睡得好嗎？生命全滿，也幫你存好檔了。"]);
-  } else if (v === "chat") await talk(name, [INN_CHAT[Math.floor(Math.random() * INN_CHAT.length)]]);
+  const v = await ask(name, "哎呀，歡迎光臨～要休息還是吃點東西？", [["休息、料理", "open"], ["聊天", "chat"], ["不用了", null]]);
+  if (v === "chat") return talk(name, [INN_CHAT[Math.floor(Math.random() * INN_CHAT.length)]]);
+  if (v !== "open") return;
+  await openInn({
+    rest: async () => {
+      player.hp = player.maxHp;
+      refreshBoard(profile.quests, unlocked(), true);
+      save(profile, true);
+      $("fade").classList.add("on");
+      await new Promise((r) => setTimeout(r, 600));
+      $("fade").classList.remove("on");
+      await talk(name, ["睡得好嗎？生命全滿，也幫你存好檔了。", "對了，公會的任務板好像換新了喔～"]);
+    },
+  });
+  refreshStats();
 }
 const SHOT_PAL = {
   star: { fx: PAL.gold, boom: PAL.gold, accent: PAL.holy, light: "#ffd27a", r: 46, push: 3 },
@@ -708,7 +757,7 @@ function tick(dt) {
   tickInput(dt);
   if (juice.shakeT > 0) juice.shakeT -= dt;
   if (juice.freeze > 0) { juice.freeze -= dt; return; }   // 命中停頓：整個世界停住
-  if (!started || inv.open || introOn) return;
+  if (!started || inv.open || introOn || isWinOpen()) return;
   updateCombatFx(dt);
   if (TOWN) { townTick(dt); return; }
 
@@ -1002,13 +1051,7 @@ function showClear() {
   const t = Math.round(stats.time), mm = Math.floor(t / 60), ss = String(t % 60).padStart(2, "0");
   profile.clears++;
   profile.cleared[STAGE_ID] = true;
-  // 公會的任務：通關＝完成
-  if (profile.guild.quest) {
-    const before = rankOf(profile.guild.done);
-    profile.guild.done++;
-    profile.guild.quest = null;
-    if (rankOf(profile.guild.done) !== before) profile.guild.rankUp = rankOf(profile.guild.done);
-  }
+  questProgress("clear", { stage: STAGE_ID, deaths: stats.deaths });
   save(profile, true);
   jingle("clear");
   // 1-4 沒有出口傳送門：打倒王之後，在主角前面打開一個

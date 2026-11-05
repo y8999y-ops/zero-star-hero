@@ -125,6 +125,17 @@ function rollAffixes(kind, count, ilvl) {
   return out;
 }
 
+/** 工坊的重鑄：把第 i 條詞綴換成同部位另一種詞綴（不會跟其他條重複），層級照物品等級重抽。回傳新的詞綴。 */
+export function rerollAffix(item, i) {
+  const have = new Set(item.affixes.map((a) => a.id));
+  const pool = Object.keys(AFFIXES).filter((id) => AFFIXES[id].slots.includes(item.kind) && (!have.has(id) || id === item.affixes[i].id));
+  const others = pool.filter((id) => id !== item.affixes[i].id);
+  const a = rollAffix(pick(others.length ? others : pool), item.ilvl);
+  item.affixes[i] = a;
+  if (item.rarity === R.magic) item.name = nameFor(item, null);   // 魔法裝備的名字跟第一條詞綴走（「精準的」→「易燃的」）
+  return a;
+}
+
 /** 產生一件物品。opts.kind / opts.base 可以指定部位或底材。 */
 export function makeItem(ilvl, rarity, opts = {}) {
   ilvl = Math.max(1, Math.round(ilvl));
