@@ -199,124 +199,245 @@ export function drawSeal(frame, x, y, lit = 0, open = 0, t = 0, H = 48) {
   if (lit >= 1) for (let j = 2; j < H - 2; j += 3) put(frame, x0 + W - 1, y0 + j - lift, GOLD[1], true);
 }
 
-// ---------- 星之殘火：10×14 的小火苗（星星形狀的芯），上下飄、火舌晃 ----------
-// 第 2 輪：原本太小看不到——火舌加長、芯改成 5×5 的星、外面一圈淡淡的光暈
+// ---------- 一次性資源（使用者 2026-11-06 重畫：原本太小、不明顯也不好看 → 都比主角大約 30%，各有自己的主色和一圈會動的光）
+// 參考 pixelfx fire/brazier（殘火：石台＋火）、ice/ice-crystal（礦脈：晶面左亮右暗、白尖、閃光）、
+//       pickups/chest-open（寶箱：縫隙漏金光）、arcane/rune-circle（碑文：符文亮起來）——只學做法。草稿：game/tools/drafts/features.mjs
+const STONE = { a: P("#1e2236"), b: P("#2e3450"), c: P("#454e72"), d: P("#6a7498"), e: P("#9aa4c4") };
+// 柔光：只寫在光層（不蓋顏色），越外面越淡（第 2 輪：原本用點狀抖色，一圈雜點蓋住細節）
+const glowRing = (frame, cx, cy, r, c, k = 0.45) => {
+  const cr = c & 255, cg = (c >>> 8) & 255, cb = (c >>> 16) & 255;
+  for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+    const d = Math.hypot(dx, dy); if (d > r) continue;
+    const gx = Math.round(cx + dx) - frame.ox, gy = Math.round(cy + dy) - frame.oy;
+    if (gx < 0 || gy < 0 || gx >= frame.w || gy >= frame.h) continue;
+    const i = gy * frame.w + gx, f = (1 - d / r) ** 2 * k, o = frame.light[i];
+    frame.light[i] = (0xff000000 | (Math.min(255, ((o >>> 16) & 255) + cb * f) << 16) | (Math.min(255, ((o >>> 8) & 255) + cg * f) << 8) | Math.min(255, (o & 255) + cr * f)) >>> 0;
+  }
+};
+
+// ---------- 星之殘火：30 高。刻花的石台（碗＋柱＋底座）上浮著一團星形的火，火舌往上舔，火星往上飄
 export function drawEmber(frame, x, y, t) {
-  const by = Math.round(y - 9 + Math.sin(t * 2.4) * 2), C = [P("#6e3a0c"), P("#f0b424"), P("#ffe066"), P("#fff6c4"), P("#ffffff"), P("#5ac8ff")];
-  // 火舌：三條往上的尖，長度隨時間晃
-  for (let k = -1; k <= 1; k++) {
-    const len = 12 + Math.round(Math.sin(t * 7 + k * 2) * 2) - Math.abs(k) * 4;   // 第 3 輪：再加長
-    for (let j = 0; j < len; j++) { const f = j / len, fx = x + k * 2 + Math.round(Math.sin(t * 5 + j) * (f * 1.6)), c = f < 0.4 ? C[3] : f < 0.75 ? C[2] : C[1]; put(frame, fx, by - 3 - j, c, true); if (f < 0.5) put(frame, fx + 1, by - 3 - j, C[2], true); }
-  }
-  // 芯：一顆小星（十字＋中心白），底部一點藍根
-  for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const d = Math.abs(dx) + Math.abs(dy); if (d === 3 && !(dx && dy)) put(frame, x + dx, by + dy, C[2], true); else if (d <= 2) put(frame, x + dx, by + dy, d === 0 ? C[4] : d === 1 ? C[3] : C[2], true); }
-  put(frame, x, by + 4, C[5], true); put(frame, x - 1, by + 4, C[5]); put(frame, x + 1, by + 4, C[5]);
-  // 第 3 輪：外面一圈光暈（只寫光，不蓋顏色）
-  for (let a = 0; a < 24; a++) { const ang = (a / 24) * Math.PI * 2, gx = Math.round(x + Math.cos(ang) * 6) - frame.ox, gy = Math.round(by + Math.sin(ang) * 6) - frame.oy; if (gx >= 0 && gy >= 0 && gx < frame.w && gy < frame.h && (a + Math.floor(t * 8)) % 3 === 0) frame.light[gy * frame.w + gx] = C[1]; }
-}
-
-// ---------- 星塵礦脈：28×20，嵌在地上的岩塊裡長出青白色結晶；hits 0～3（敲了幾下，裂開） ----------
-export function drawVein(frame, x, y, hits = 0, t = 0) {
-  const ROCK = { a: P("#2a2e48"), b: P("#3c4466"), c: P("#545e84") }, CR = [P("#1a7aa8"), P("#4cd8ec"), P("#a0f2fa"), P("#ffffff")];
-  const rows = [
-    "......bbbbbbbbbbbbb.......",
-    "....bbccccccccccccbbb.....",
-    "..bbcccccccccccccccbbbb...",
-    ".bbccccccccccccccccccbbb..",
-    "bbccccccccccccccccccccbbb.",
-    "bcccccccccccccccccccccccbb",
-    "baaaaaaaaaaaaaaaaaaaaaaaab",
+  const F = [P("#6e2a0c"), P("#d8641a"), P("#f0b424"), P("#ffe066"), P("#fff6c4"), P("#ffffff"), P("#5ac8ff")];
+  const ped = [
+    ".eeeeeeeeeeeeeeee.",
+    "edddddddddddddddcb",
+    ".cccccccccccccccb.",
+    "..bcccccccccccbb..",
+    "...abbbbbbbbbba...",
+    ".....bccccbbb.....",
+    ".....bccccbbb.....",
+    "...dcccccccccbb...",
+    "..ddccccccccccbba.",
+    "..aaaaaaaaaaaaaaa.",
   ];
-  sprite(frame, rows, Math.round(x - 13), Math.round(y - rows.length), ROCK);
-  // 結晶：5 根往上斜的晶柱，敲過的會少一根
-  const sh = Math.sin(t * 40) > 0.7 && hits > 0 ? 1 : 0;
-  [[-8, 7, -1], [-3, 11, 0], [2, 9, 1], [7, 6, 1], [-5, 5, -1]].forEach(([dx, len, lean], k) => {
-    if (k >= 5 - hits) return;
+  const px0 = Math.round(x - 9), py0 = Math.round(y - ped.length);
+  // 碗裡的炭火（碗口那排）
+  sprite(frame, ped, px0, py0, STONE);
+  for (let i = 2; i < 16; i++) put(frame, px0 + i, py0 + 1, hash(i, Math.floor(t * 8)) < 0.5 ? F[1] : F[2], true);
+  const cx = Math.round(x), cy = Math.round(py0 - 7 + Math.sin(t * 2.4) * 1.5);
+  // 火舌（畫在星的後面）：5 條，中間最長，長度一直晃
+  for (let k = -2; k <= 2; k++) {
+    const len = 13 - Math.abs(k) * 3 + Math.round(Math.sin(t * 8 + k * 1.9) * 2);
     for (let j = 0; j < len; j++) {
-      const xx = x + dx + Math.round(lean * j * 0.3) + sh, yy = y - 6 - j, tip = j >= len - 2;
-      put(frame, xx - 1, yy, tip ? CR[1] : CR[0], false); put(frame, xx, yy, tip ? CR[3] : CR[2], true); put(frame, xx + 1, yy, CR[1], j > len - 4);
+      const f = j / len, sway = Math.round(Math.sin(t * 6 + j * 0.7 + k) * f * 1.8), fx = cx + k * 2 + sway, fy = cy - 4 - j;
+      const c = f < 0.35 ? F[4] : f < 0.6 ? F[3] : f < 0.85 ? F[2] : F[1];
+      put(frame, fx, fy, c, true);
+      if (f < 0.5) put(frame, fx + (k <= 0 ? -1 : 1), fy, f < 0.25 ? F[3] : F[2], true);
     }
+  }
+  // 星形的芯：9×9 五角星（外框暗橘、金、白芯），底下一點藍根
+  for (let dy = -5; dy <= 5; dy++) for (let dx = -5; dx <= 5; dx++) {
+    // 第 3 輪：星再大一點、外框一圈暗橘（原本被火舌蓋住看不出是星）
+    const a = Math.atan2(dy, dx) + Math.PI / 2, d = Math.hypot(dx, dy), R = 2.4 + 3 * Math.max(0, Math.cos(a * 5)) ** 3;
+    if (d > R + 0.9) continue;
+    put(frame, cx + dx, cy + dy, d > R - 0.1 ? F[0] : d < 1.5 ? F[5] : d < 2.5 ? F[4] : F[3], d <= R - 0.1);
+  }
+  put(frame, cx - 1, cy + 5, F[6], true); put(frame, cx, cy + 6, F[6], true); put(frame, cx + 1, cy + 5, F[6], true);
+  // 火星：往上飄、左右晃，越高越暗
+  for (let k = 0; k < 5; k++) {
+    const life = 1.4, p = ((t + k * 0.29) % life) / life, sx = cx + Math.round(Math.sin(p * 9 + k * 2) * 3 + (hash(k, Math.floor((t + k * 0.29) / life)) - 0.5) * 8), sy = cy - 6 - p * 20;
+    put(frame, sx, sy, p < 0.4 ? F[4] : p < 0.75 ? F[2] : F[1], true);
+  }
+  glowRing(frame, cx, cy - 3, 11, F[2]);
+}
+
+// ---------- 星塵礦脈：28 高。一塊圓圓的岩石上斜插 5 根大水晶（左亮、中、右暗、白尖）；hits 0～2：岩石多一道裂縫、水晶少一根
+export function drawVein(frame, x, y, hits = 0, t = 0) {
+  const CR = [P("#0e3a5a"), P("#1a7aa8"), P("#4cd8ec"), P("#a0f2fa"), P("#ffffff")];
+  const W = 30, X0 = Math.round(x - 15), shake = hits > 0 && Math.sin(t * 40) > 0.75 ? 1 : 0;
+  // 水晶（先畫，岩石蓋在根部）：[根部 x, 長度, 傾斜]
+  const XT = [[-9, 13, -0.45], [-3, 20, -0.12], [3, 17, 0.18], [9, 12, 0.5], [-6, 9, -0.8]];
+  XT.forEach(([dx, len, lean], k) => {
+    if (k >= XT.length - hits * 2) return;
+    for (let j = 0; j < len; j++) {
+      const cx = Math.round(x + dx + lean * j + shake), cy = Math.round(y - 6 - j), tip = len - j;
+      const half = tip <= 1 ? 0 : tip <= 3 ? 1 : 2;
+      for (let i = -half - 1; i <= half + 1; i++) {
+        const edge = Math.abs(i) === half + 1;
+        put(frame, cx + i, cy, edge ? OUT : tip <= 2 ? CR[4] : i < 0 ? CR[3] : i === 0 ? CR[2] : CR[1], !edge && (tip <= 3 || i < 0));
+      }
+    }
+    put(frame, Math.round(x + dx + lean * len + shake), Math.round(y - 6 - len), OUT);
   });
+  // 岩石：半圓的一塊，左上亮、右下暗、頂上一圈亮邊
+  for (let i = 0; i < W; i++) {
+    const u = (i - W / 2 + 0.5) / (W / 2), hh = Math.round(9 * Math.sqrt(Math.max(0, 1 - u * u)) + (hash(i, 7) < 0.3 ? 1 : 0));
+    for (let j = 0; j < hh; j++) {
+      const yy = y - 1 - j, top = j === hh - 1, lit = u < -0.2 && j > hh * 0.4;
+      put(frame, X0 + i, yy, top ? STONE.e : lit ? STONE.d : u > 0.45 || j < 2 ? STONE.b : STONE.c);
+    }
+    put(frame, X0 + i, y - 1 - hh, OUT);
+  }
+  put(frame, X0 - 1, y - 1, OUT); put(frame, X0 + W, y - 1, OUT);
+  // 裂縫：敲一下多一條
+  const cracks = [[[0, 0], [1, 1], [1, 2], [2, 3], [2, 4], [3, 5]], [[0, 0], [-1, 1], [-1, 2], [-2, 3], [-3, 4], [-3, 5], [-4, 6]]];
+  for (let c = 0; c < Math.min(hits, 2); c++) for (const [dx, dy] of cracks[c]) put(frame, x + (c ? -4 : 3) + dx, y - 9 + dy, OUT);
+  // 閃光：每 2 秒一根水晶的尖端閃一下
+  const g = Math.floor(t / 2) % 5, gp = (t % 2) / 2;
+  if (gp < 0.18 && g < XT.length - hits * 2) {
+    const [dx, len, lean] = XT[g], gx = Math.round(x + dx + lean * (len - 2)), gy = Math.round(y - 6 - (len - 2)), r = gp < 0.09 ? 2 : 1;
+    for (let i = -r; i <= r; i++) { put(frame, gx + i, gy, CR[4], true); put(frame, gx, gy + i, CR[4], true); }
+  }
+  glowRing(frame, x, y - 14, 13, CR[1]);
 }
 
-// ---------- 魔物化石核：22×14，一塊平平的石板裡埋著一顆螺旋狀的核，慢慢一亮一暗 ----------
+// ---------- 魔物化石核：28 高。半埋在土堆裡的大魔物頭骨，眼窩裡嵌著一顆發光的核（形態的顏色），後面翹著兩根肋骨
 export function drawFossil(frame, x, y, t, color = "#b878ff") {
-  const k = Math.sin(t * 2) * 0.5 + 0.5, GL = P(color);
-  const rows = [
-    "...ccccccccccccccc....",
-    ".cccbbbbbbbbbbbbbccc..",
-    "ccbbbbbbbbbbbbbbbbbcc.",
-    "cbbbbbbbbbbbbbbbbbbbcc",
-    "cbbbbbbbbbbbbbbbbbbbbc",
-    "abbbbbbbbbbbbbbbbbbbba",
-    ".aaaaaaaaaaaaaaaaaaaa.",
-  ];
-  sprite(frame, rows, Math.round(x - 11), Math.round(y - rows.length), { a: P("#3a2a1e"), b: P("#7a6a54"), c: P("#a8987a") });
-  // 螺旋核（嵌在石板中間，凸出一點）
-  // 第 2 輪：原本螺旋太細看不出——改成凸出石板的一顆圓核（7×7，外圈暗、內圈發光、白點），旁邊刻一圈化石的螺紋
-  const cx = Math.round(x), cy = Math.round(y - 9);
-  for (let a = 0; a < 28; a++) { const r = 3.5 + a * 0.16, ang = a * 0.55; put(frame, cx + Math.cos(ang) * r, cy + 1 + Math.sin(ang) * r * 0.6, P("#5a4a3e")); }
-  for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const d = dx * dx + dy * dy; if (d > 10) continue; put(frame, cx + dx, cy + dy, d > 6 ? OUT : d > 2 ? GL : P("#ffffff"), d <= 6 && k > 0.25); }
+  const BONE = [P("#4a3a2e"), P("#8a7a60"), P("#c8b896"), P("#efe4c8")], DIRT = [P("#2a1c14"), P("#4a3424"), P("#6a4c32")];
+  const k = Math.sin(t * 2) * 0.5 + 0.5, GL = P(color), WH = P("#ffffff");
+  const cx = Math.round(x), base = Math.round(y);
+  // 肋骨：右後方兩根彎彎的骨頭
+  for (const [ox, h, bend] of [[5, 22, 0.55], [10, 17, 0.7]]) {
+    for (let j = 0; j < h; j++) {
+      const q = j / h, bx = Math.round(cx + ox + Math.sin(q * 1.6) * bend * 9), by = base - 4 - j;
+      put(frame, bx - 1, by, OUT); put(frame, bx, by, BONE[3]); put(frame, bx + 1, by, BONE[2]); put(frame, bx + 2, by, BONE[1]); put(frame, bx + 3, by, OUT);   // 第 3 輪：肋骨 3 格粗
+    }
+    const tx = Math.round(cx + ox + Math.sin(1.6) * bend * 9), ty = base - 4 - h;
+    put(frame, tx, ty, BONE[3]); put(frame, tx + 1, ty, BONE[2]); put(frame, tx, ty - 1, OUT); put(frame, tx + 1, ty - 1, OUT);
+  }
+  // 頭骨：大圓頂（下半埋在土裡）
+  const sx = cx - 4, sy = base - 9, rx = 11, ry = 9;
+  for (let dy = -ry - 1; dy <= 4; dy++) for (let dx = -rx - 1; dx <= rx + 1; dx++) {
+    const d = Math.hypot(dx / rx, dy / ry);
+    if (d > 1.08) continue;
+    const X = sx + dx, Y = sy + dy;
+    if (d > 0.95) { put(frame, X, Y, OUT); continue; }
+    put(frame, X, Y, dx + dy < -8 ? BONE[3] : dx + dy < 0 ? BONE[2] : dx + dy < 6 ? BONE[1] : BONE[0]);   // 第 3 輪：右下多一階暗，比較立體
+  }
+  // 頭骨上的裂紋、鼻孔、牙
+  for (const [dx, dy] of [[2, -7], [3, -6], [3, -5], [4, -4]]) put(frame, sx + dx, sy + dy, BONE[0]);
+  put(frame, sx + 3, sy + 1, OUT); put(frame, sx + 4, sy + 1, OUT);
+  for (let i = -6; i <= 4; i += 2) { put(frame, sx + i, sy + 4, BONE[3]); put(frame, sx + i + 1, sy + 4, OUT); }
+  // 眼窩（右邊小的空著）＋左邊大的嵌著核
+  for (const [dx, dy] of [[6, -2], [7, -2], [6, -1], [7, -1]]) put(frame, sx + dx, sy + dy, OUT);
+  const ex = sx - 4, ey = sy - 2;
+  for (let dy = -5; dy <= 5; dy++) for (let dx = -5; dx <= 5; dx++) {
+    const d = Math.hypot(dx, dy);
+    if (d > 5.2) continue;
+    if (d > 3.3) put(frame, ex + dx, ey + dy, d > 4.4 ? OUT : P("#141018"));
+  }
+  // 核：會呼吸的光球（暗邊、本色、亮、白點），外面一圈光
+  for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
+    const d = Math.hypot(dx, dy); if (d > 3.3) continue;
+    put(frame, ex + dx, ey + dy, d < 1.2 ? WH : dx + dy < -1 ? P(lighten(color)) : GL, d < 3);
+  }
+  put(frame, ex - 1, ey - 2, WH, true);
+  glowRing(frame, ex, ey, 8 + Math.round(k * 3), GL, 0.3);
+  // 光點：從核往上飄
+  for (let m = 0; m < 3; m++) { const p = ((t * 0.6 + m * 0.33) % 1); put(frame, ex + Math.round(Math.sin(p * 8 + m) * 3), ey - 6 - p * 14, p < 0.6 ? GL : P(lighten(color)), true); }
+  // 土堆：把頭骨下半部埋起來
+  for (let i = -16; i <= 16; i++) {
+    const u = i / 16, hh = Math.round(5 * Math.sqrt(Math.max(0, 1 - u * u)) + (hash(i, 9) < 0.35 ? 1 : 0));
+    for (let j = 0; j < hh; j++) put(frame, cx + i, base - 1 - j, j === hh - 1 ? DIRT[2] : hash(i, j, 4) < 0.2 ? DIRT[0] : DIRT[1]);
+    put(frame, cx + i, base - 1 - hh, OUT);
+  }
 }
+function lighten(hexStr) { const n = parseInt(hexStr.slice(1), 16), f = (v) => Math.min(255, v + Math.round((255 - v) * 0.55)); return "#" + [f(n >> 16), f((n >> 8) & 255), f(n & 255)].map((v) => v.toString(16).padStart(2, "0")).join(""); }
 
-// ---------- 被丟下來的寶箱：24×20 的保險箱，關著／打開（門往右邊開、裡面發光） ----------
+// ---------- 被丟下來的寶箱：26 高。從天上掉下來、歪歪斜斜插在一圈焦黑的坑裡的鐵箍木箱，蓋子的縫漏出金光、冒一點煙；opened＝蓋子往後翻開、裡面暗掉
 export function drawSafe(frame, x, y, opened = false, t = 0) {
-  const M = { a: P("#2a2a3a"), b: P("#5c5868"), c: P("#7c7884"), d: P("#9a968c"), r: P("#b05a2a"), g: P("#f0b424"), k: P("#1a1a24") };
-  const body = [
-    "cccccccccccccccccccccc",
-    "cdddddddddddddddddddbc",
-    "cdbbbbbbbbbbbbbbbbbbbc",
-    "cdbbbbbbbbbbbbbbbbbbbc",
-    "cdbbbbbbbbbbbbbbbbbbbc",
-    "cdbbbbbbbbbbbbbbbbbbbc",
-    "cdbbbbbbbbbbbbbbbbbbbc",
-    "cdbbbbbbbbbbbbbbbbbbbc",
-    "cdbbbbbbbbbbbbbbbbbbbc",
-    "cdbbbbbbbbbbbbbbbbbbbc",
-    "cdbbbbbbbbbbbbbbbbbbbc",
-    "cdbbbbbbbbbbbbbbbbbbbc",
-    "cbbbbbbbbbbbbbbbbbbbbc",
-    "aaaaaaaaaaaaaaaaaaaaaa",
-    ".aa................aa.",
-  ];
-  const x0 = Math.round(x - 11), y0 = Math.round(y - body.length);
+  const WD = [P("#3a1a14"), P("#6a2e1e"), P("#8e4428"), P("#b0603a")], FE = [P("#2a2a36"), P("#5c5a6a"), P("#8a8898"), P("#b8b6c4")], GD = [P("#8a5a10"), P("#f0b424"), P("#ffe066"), P("#fff6c4")];
+  const cx = Math.round(x), base = Math.round(y);
+  // 焦黑的坑
+  for (let i = -18; i <= 18; i++) { const u = Math.abs(i) / 18; put(frame, cx + i, base - 1, u > 0.85 ? P("#3a2a20") : P("#140c0c")); if (u < 0.7) put(frame, cx + i, base - 2, P("#241818")); }
+  // 箱子（往右歪：每往上一排往右推一點）
+  const BW = 24, BH = 13, LH = 8, x0 = cx - 13, y0 = base - 2 - BH;
+  const sh = (j) => Math.round((BH - j) * 0.18);
+  for (let j = 0; j < BH; j++) for (let i = -1; i <= BW; i++) {
+    const X = x0 + i + sh(j), Y = y0 + j;
+    if (i === -1 || i === BW || j === BH - 1) { put(frame, X, Y, OUT); continue; }
+    const band = i === 2 || i === 3 || i === BW - 4 || i === BW - 3;
+    put(frame, X, Y, band ? (i % 2 ? FE[2] : FE[1]) : (j + (i >> 2)) % 4 === 0 ? WD[0] : i < 6 ? WD[3] : WD[2]);
+  }
+  // 鎖片（金）
+  const lx = x0 + 11 + sh(2);
+  for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) put(frame, lx + i, y0 + j, j === 0 || i === 0 ? GD[2] : j === 3 || i === 3 ? GD[0] : GD[1]);
+  put(frame, lx + 1, y0 + 2, OUT); put(frame, lx + 2, y0 + 2, OUT);
+  const ly0 = y0 - LH, lsh = sh(0) + 1;
   if (!opened) {
-    sprite(frame, body, x0, y0, M);
-    // 門上的轉盤＋把手、鏽斑
-    const cx = x0 + 11, cy = y0 + 7;
-    for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2], [-1, -1], [1, -1], [-1, 1], [1, 1]]) put(frame, cx + dx, cy + dy, M.d);
-    put(frame, cx, cy, M.k); put(frame, cx + Math.round(Math.cos(t) * 1), cy + Math.round(Math.sin(t)), M.d);
-    for (let j = 5; j < 10; j++) put(frame, x0 + 17, y0 + j, M.d);
-    for (const [dx, dy] of [[4, 3], [5, 3], [14, 10], [15, 11], [3, 11]]) put(frame, x0 + dx, y0 + dy, M.r);
+    // 蓋子：半圓拱頂，鐵箍
+    for (let j = 0; j < LH; j++) for (let i = -1; i <= BW; i++) {
+      const u = (i - BW / 2 + 0.5) / (BW / 2 + 1), top = LH - Math.round(LH * Math.sqrt(Math.max(0, 1 - u * u)) * 0.95);
+      if (j < top - 1) continue;
+      const X = x0 + i + lsh + Math.round((LH - j) * 0.18), Y = ly0 + j;
+      if (j === top - 1 || i === -1 || i === BW) { put(frame, X, Y, OUT); continue; }
+      const band = i === 2 || i === 3 || i === BW - 4 || i === BW - 3;
+      put(frame, X, Y, band ? FE[3 - (j > 4 ? 1 : 0)] : j === top ? WD[3] : i < 7 ? WD[3] : WD[2]);
+    }
+    // 縫：一排金光一閃一閃，往上漏幾道光
+    for (let i = 0; i < BW; i++) put(frame, x0 + i + sh(0), y0 - 1, hash(i, Math.floor(t * 10)) < 0.65 ? GD[3] : GD[2], true);
+    for (let r = 0; r < 3; r++) { const rx = x0 + 5 + r * 7 + sh(0), len = 3 + Math.round((Math.sin(t * 3 + r * 2) * 0.5 + 0.5) * 4); for (let j = 1; j <= len; j++) { const gi = (rx - frame.ox) + (y0 - 1 - j - frame.oy) * frame.w; if (gi >= 0 && gi < frame.light.length && !frame.light[gi]) frame.light[gi] = GD[1]; } }
+    // 從天上掉下來還在冒的細煙
+    for (let m = 0; m < 3; m++) { const p = ((t * 0.4 + m * 0.33) % 1); put(frame, x0 + BW + sh(0) - 2 + Math.round(Math.sin(p * 6 + m) * 2), ly0 - 2 - p * 14, p < 0.5 ? P("#6a6070") : P("#463e4c")); }
+    glowRing(frame, cx, y0 - 2, 12, GD[1]);
   } else {
-    // 打開：箱子裡面是黑的、發金光，門板斜開在右邊
-    const inner = body.map((r, j) => (j >= 2 && j <= 11 ? r.slice(0, 2) + "k".repeat(18) + r.slice(20) : r));
-    sprite(frame, inner, x0, y0, M);
-    for (let j = 4; j < 11; j++) for (let i = 4; i < 18; i++) if (hash(i, j, Math.floor(t * 6)) < 0.08) put(frame, x0 + i, y0 + j, M.g, true);
-    for (let j = 0; j < 13; j++) for (let i = 0; i < 4; i++) put(frame, x0 + 22 + i, y0 + 1 + j + Math.round(i * 0.6), i === 0 ? M.c : i === 3 ? M.a : M.b);
+    // 打開：箱子裡面黑掉、只剩幾點金屑；蓋子往後翻（畫在箱子上方、往左倒）
+    for (let i = 0; i < BW; i++) put(frame, x0 + i + sh(0), y0, i < 2 || i > BW - 3 ? OUT : P("#120a0a"));
+    for (let i = 4; i < BW - 4; i += 5) put(frame, x0 + i + sh(0), y0, GD[0]);
+    // 第 3 輪：蓋子直直地立在箱子後面（往後翻開），看得到蓋子的內側（暗）
+    for (let j = 0; j < 9; j++) for (let i = -1; i <= BW; i++) {
+      const X = x0 + i + sh(0) + 1 - Math.round(j * 0.25), Y = y0 - 2 - j;
+      put(frame, X, Y, i === -1 || i === BW || j === 8 ? OUT : (i === 2 || i === 3 || i === BW - 4 || i === BW - 3) ? FE[1] : j < 2 ? WD[0] : WD[1]);
+    }
   }
 }
 
-// ---------- 星王的碑文：20×32 的石碑，上面刻著星形符文；read＝讀過了（符文發金光） ----------
+// ---------- 星王的碑文：36 高。拱頂的石碑（右上角缺一塊），頂上刻一顆星，下面四排符文，底座長青苔；
+//   沒讀：符文是刻痕、隔一陣子淡淡地亮一次紫光（告訴你可以讀）；讀過：符文全部變金色、一排一排亮
 export function drawStele(frame, x, y, read = false, t = 0) {
-  const ST = { a: P("#2a2e48"), b: P("#3c4466"), c: P("#545e84"), d: P("#7480a4") };
-  const rows = [];
-  for (let j = 0; j < 32; j++) {
-    const w = j < 3 ? 14 - (3 - j) * 2 : j > 28 ? 20 : 16, pad = Math.floor((20 - w) / 2);
-    rows.push(".".repeat(pad) + [...Array(w)].map((_, i) => (j > 28 ? "a" : i === 0 ? "d" : i === w - 1 ? "a" : j < 3 ? "c" : "b")).join("") + ".".repeat(20 - w - pad));
+  const W = 22, H = 32, x0 = Math.round(x - W / 2), y0 = Math.round(y - H - 4);
+  // 底座
+  for (let j = 0; j < 4; j++) for (let i = -3; i < W + 3; i++) put(frame, x0 + i, y0 + H + j, j === 0 ? STONE.e : i < 2 ? STONE.c : j === 3 ? STONE.a : STONE.b);
+  // 碑身：拱頂、右上角缺角；左邊亮、右邊暗
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+    const u = (i - W / 2 + 0.5) / (W / 2), arch = j < 6 ? 6 - Math.round(6 * Math.sqrt(Math.max(0, 1 - u * u))) : 0;
+    const chip = i > W - 6 && j < 9 && i - (W - 6) > j - 3;
+    if (j < arch || chip) continue;
+    const edgeL = i === 0 || j === arch, edgeR = i === W - 1;
+    put(frame, x0 + i, y0 + j, edgeL ? STONE.e : edgeR ? STONE.a : i < 4 ? STONE.d : i > W - 5 ? STONE.b : STONE.c);
   }
-  const x0 = Math.round(x - 10), y0 = Math.round(y - 32);
-  sprite(frame, rows, x0, y0, ST);
-  // 符文：三行，每行幾個小星和短線
-  const k = Math.sin(t * 2.2) * 0.5 + 0.5, RC = read ? (k > 0.5 ? P("#ffe066") : P("#f0b424")) : P("#1a1a30");
-  for (let line = 0; line < 4; line++) for (let i = 0; i < 4; i++) {
-    const gx = x0 + 5 + i * 3, gy = y0 + 7 + line * 5;
-    // 第 3 輪：符文改成三種形狀輪流（原本一排排像箭頭）：小星、斜線、點點
-    const kind = Math.floor(hash(line, i, 5) * 3);
-    if (kind === 0) for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, -1], [0, 1]]) put(frame, gx + dx, gy + dy, RC, read);
-    else if (kind === 1) for (const [dx, dy] of [[-1, 1], [0, 0], [1, -1]]) put(frame, gx + dx, gy + dy, RC, read);
-    else for (const [dx, dy] of [[-1, 0], [1, 0], [0, 1]]) put(frame, gx + dx, gy + dy, RC, read);
+  // 外框
+  for (let j = -1; j <= H; j++) for (let i = -1; i <= W; i++) {
+    const inside = (ii, jj) => { if (ii < 0 || jj < 0 || ii >= W || jj >= H) return false; const u = (ii - W / 2 + 0.5) / (W / 2), arch = jj < 6 ? 6 - Math.round(6 * Math.sqrt(Math.max(0, 1 - u * u))) : 0; const chip = ii > W - 6 && jj < 9 && ii - (W - 6) > jj - 3; return jj >= arch && !chip; };
+    if (!inside(i, j) && (inside(i + 1, j) || inside(i - 1, j) || inside(i, j + 1) || inside(i, j - 1))) put(frame, x0 + i, y0 + j, OUT);
   }
-  // 頂上的一顆星
-  for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, -1], [0, 1]]) put(frame, x0 + 10 + dx, y0 + 4 + dy, read ? P("#fff6c4") : P("#545e84"), read);
+  // 裂紋
+  for (const [dx, dy] of [[4, 20], [5, 21], [5, 22], [6, 23], [6, 24]]) put(frame, x0 + dx, y0 + dy, STONE.a);
+  // 符文：沒讀＝暗刻痕＋每 3 秒淡淡亮一次紫；讀過＝金色，由上往下一排一排亮
+  const pulse = (t % 3) / 3, RUNE_D = P("#1a1830"), V = [P("#4a3a8a"), P("#8a6ae0")], G = [P("#c8861a"), P("#ffe066")];
+  const glyph = [[[0, 0], [1, 0], [-1, 0], [0, -1], [0, 1]], [[-1, 1], [0, 0], [1, -1], [1, 1]], [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]], [[-1, 0], [0, 0], [1, 0], [0, 1]]];
+  for (let line = 0; line < 4; line++) for (let i = 0; i < 5; i++) {
+    const gx = x0 + 3 + i * 4, gy = y0 + 13 + line * 4, kind = Math.floor(hash(line, i, 5) * 4);
+    let c = RUNE_D, glow = false;
+    if (read) { const on = Math.sin(t * 2.2 - line * 0.8) > -0.2; c = on ? G[1] : G[0]; glow = on; }
+    else if (pulse < 0.25) { const k = Math.sin((pulse / 0.25) * Math.PI); c = k > 0.5 ? V[1] : V[0]; glow = k > 0.3; }
+    for (const [dx, dy] of glyph[kind]) put(frame, gx + dx, gy + dy, c, glow);
+  }
+  // 頂上的星（刻在拱頂裡）
+  const sc = read ? P("#fff6c4") : pulse < 0.25 ? V[1] : STONE.e, scx = x0 + W / 2 - 1, scy = y0 + 7;
+  for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const a = Math.atan2(dy, dx) + Math.PI / 2, d = Math.hypot(dx, dy), R = 1.2 + 2 * Math.max(0, Math.cos(a * 5)) ** 2; if (d <= R + 0.4) put(frame, scx + dx, scy + dy, sc, read || pulse < 0.25); }
+  // 底部的青苔
+  for (let i = 0; i < W; i++) { const h = Math.round(hash(i, 3) * 3); for (let j = 0; j < h; j++) put(frame, x0 + i, y0 + H - 1 - j, j === h - 1 ? P("#5a9a3a") : P("#2a5a2a")); }
+  if (read) glowRing(frame, x0 + W / 2, y0 + 18, 14, G[0]);
+  else if (pulse < 0.25) glowRing(frame, x0 + W / 2, y0 + 18, 12, V[0]);
 }

@@ -48,7 +48,7 @@ export const STAGE_1_2 = {
   features: [
     { t: "shroom", x: 1520, y: 240 }, { t: "ember", x: 1532, y: 112 },
     { t: "crack", x: 1720, y: 600, h: 112 }, { t: "fossil", x: 1790, y: 600, form: "can" }, { t: "safe", x: 1860, y: 600 },
-    { t: "stele", x: 1340, y: 240, i: 1 }, { t: "vein", x: 2600, y: 520 },
+    { t: "stele", x: 1340, y: 240, i: 1 }, { t: "vein", x: 2648, y: 520 },
   ],
   hazards: [["junk", 300, 600], ["drum", 1100, 376], ["pipe", 1500, 600], ["junk", 2300, 520], ["drum", 2480, 520]],
   altars: [{ x: 460, y: 600 }, { x: 1424, y: 240 }, { x: 2220, y: 520 }],

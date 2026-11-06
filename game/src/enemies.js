@@ -14,7 +14,7 @@ import { blit } from "./bake.js";
 import { A } from "./assets.js";
 import { FLOOR, LEVEL_W, WALL } from "./level.js";
 import { groundAt, floorAt, moveX, geo } from "./map.js";
-import { applyStatus, drawStatus, slowOf } from "./status.js";
+import { applyStatus, drawStatus, statusSnap, slowOf } from "./status.js";
 import { drawAlert, ALERT_T } from "./alertfx.js";
 let alertSfxT = 0;   // 一次醒很多隻：提示音 0.3 秒內只響一次
 
@@ -200,10 +200,11 @@ export class Enemy {
   }
 
   draw(frame) {
+    const snap = statusSnap(frame, this);   // 有元素狀態：先記下這塊畫面，畫完比對出身體的形狀（status.js）
     // 受擊閃白
     if (this.biting) blit(frame, this.flash > 0 ? this.k.whiteBite : this.k.bite, this.biteT, this.x, this.y, this.face < 0);
     else blit(frame, this.flash > 0 ? this.k.white : this.k.anim, this.t, this.x, this.y, this.face < 0);
-    drawStatus(frame, this);
+    drawStatus(frame, this, snap);
     if (this.alertT !== undefined && this.alertT < ALERT_T && !this.dead) drawAlert(frame, this.x, this.box().y0 - 3, this.alertT, this.elite);
   }
 }
