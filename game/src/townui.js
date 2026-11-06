@@ -39,7 +39,7 @@ export function questLook(q) {
   if (q.kind === "clear") return { icon: q.stage === "1-4" ? "guild" : "q_clear", label: `${q.stage} ${LAYOUTS[q.stage]?.name ?? ""}`, tag: q.nodeath ? "不能死" : null };
   return { icon: "core_slime", label: "吸收魔物核" };
 }
-const SYS_ICON = { reg: "guild", guild1: "seal", core1: "core_slime", forge2: "hammer", meal1: "bowl", reroll1: "dice", rankE: "guild", forms3: "star", boss1: "q_kill" };
+const SYS_ICON = { out11: "star", reg: "guild", guild1: "seal", core1: "core_slime", forge2: "hammer", meal1: "bowl", reroll1: "dice", rankE: "guild", forms3: "star", boss1: "q_kill" };
 
 let ctx = null, root = null, open = false, resolveClose = null;
 export const isWinOpen = () => open;
@@ -117,9 +117,10 @@ const say = (who, text) => h("div", "wsay", `<b>${who}</b>${text}`);
 
 // ================= 任務 =================
 /** 任務視窗。atGuild：在公會（可以接任務、交付、放棄） */
-// 使用者 2026-11-05：追蹤任務——每張任務卡右邊一顆星，亮＝追蹤中，最多 TRACK_MAX 個，顯示在左上角頭像下方
-//   Q.tracked：["公會任務 id", "sys:系統任務 id"]；新接的任務沒滿的話自動追蹤
-export const TRACK_MAX = 3;
+// 使用者 2026-11-05：追蹤任務——每張任務卡右邊一顆星，亮＝追蹤中，顯示在左上角頭像下方
+// 使用者 2026-11-06：主線（系統任務）固定顯示、不佔名額；支線（公會任務）一次只能追蹤 1 個——點別張的星星就換過去；
+//   沒有追蹤中的支線時，新接的自動追蹤。Q.tracked：["公會任務 id"]（最多 1 個）
+export const TRACK_MAX = 1;
 export function openQuests(atGuild = false, tab = "guild") {
   const P = ctx.profile, Q = P.quests;
   if (atGuild) refreshBoard(Q, ctx.unlocked());
@@ -128,8 +129,7 @@ export function openQuests(atGuild = false, tab = "guild") {
     const on = tracked.includes(key), b = ibtn("star", "", () => {
       const i = tracked.indexOf(key);
       if (i >= 0) tracked.splice(i, 1);
-      else if (tracked.length >= TRACK_MAX) { ctx.sfx("close"); return msg(`最多追蹤 ${TRACK_MAX} 個`, false); }
-      else tracked.push(key);
+      else { tracked.length = 0; tracked.push(key); msg("改追蹤這個任務"); }
       ctx.sfx("ui"); ctx.onQuest(); render();
     }, "trk mini" + (on ? " on" : ""));
     b.title = on ? "取消追蹤" : "追蹤（顯示在左上角）";
@@ -145,8 +145,7 @@ export function openQuests(atGuild = false, tab = "guild") {
     const act = h("div", "qact");
     if (!offer) act.appendChild(trackBtn(q.id));
     if (offer) {
-      const b = ibtn("check", "接受", () => { if (accept(Q, q.id)) { if (tracked.length < TRACK_MAX && !tracked.includes(q.id)) tracked.push(q.id); ctx.sfx("pickup"); msg(`接下了：${L.label}`); ctx.onQuest(); render(); } else msg(`最多同時 ${GUILD_MAX} 個`, false); });
-      if (Q.active.length >= GUILD_MAX) b.disabled = true;
+      const b = ibtn("check", "接受", () => { if (accept(Q, q.id)) { if (tracked.length < TRACK_MAX && !tracked.includes(q.id)) tracked.push(q.id); ctx.sfx("pickup"); msg(`接下了：${L.label}`); ctx.onQuest(); render(); } }); 
       act.appendChild(b);
     } else if (atGuild && ready) act.appendChild(ibtn("seal", "交付", () => {
       const r = turnIn(Q, q.id);
@@ -172,7 +171,7 @@ export function openQuests(atGuild = false, tab = "guild") {
     const head = h("div", "rankbar");
     head.innerHTML = `<div class="rank">${ico("guild", "big")}<b>${rank}</b></div>
       <div class="rankp">${next ? bar(G.done - prev, next[1] - prev) : bar(1, 1)}<small>${next ? `下一級 ${next[0]}` : "最高級"}</small></div>
-      <div class="slots">${Array.from({ length: GUILD_MAX }, (_, i) => `<i class="${i < Q.active.length ? "on" : ""}"></i>`).join("")}</div>`;
+      <div class="slots"><small>進行中 ${Q.active.length}</small></div>`;
     body.appendChild(head);
     if (!Q.active.length && !atGuild) body.appendChild(say("系統", "還沒接任務。去公會找波波。"));
     for (const q of Q.active) body.appendChild(card(q, false));
@@ -182,12 +181,11 @@ export function openQuests(atGuild = false, tab = "guild") {
     }
   };
   const sysTab = (body) => {
-    body.appendChild(say("系統", "這是我幫你排的成長路線。照著做。"));
+    body.appendChild(say("系統", "這是你的主線。一次一件，做完我再告訴你下一件。"));
     for (const s of sysActive(P)) {
       const c = h("div", "qcard sys");
       c.title = s.desc;
       c.innerHTML = `<div class="qic">${ico(SYS_ICON[s.id] ?? "xp", "big")}</div><div class="qmain"><div class="qt">${s.title}</div><div class="qd">${s.desc}</div></div><div class="qrw">${chips(s.reward)}</div>`;
-      const act = h("div", "qact"); act.appendChild(trackBtn("sys:" + s.id)); c.appendChild(act);
       body.appendChild(c);
     }
     const done = SYSTEM.filter((s) => Q.sysDone[s.id]);
@@ -195,10 +193,10 @@ export function openQuests(atGuild = false, tab = "guild") {
     grid.innerHTML = `<small>已完成 ${done.length}/${SYSTEM.length}</small>` + SYSTEM.map((s) => `<span class="${Q.sysDone[s.id] ? "on" : ""}" title="${s.title}">${ico(SYS_ICON[s.id] ?? "xp")}</span>`).join("");
     body.appendChild(grid);
   };
-  return show(atGuild ? "冒險者公會" : "任務", "guild", "guild", [
-    { id: "guild", label: "公會", icon: "guild", render: guildTab },
-    { id: "sys", label: "系統", icon: "xp", theme: "sys", emblem: "xp", title: "系統任務", render: sysTab },
-  ], tab);
+  // 主線一開始就有；支線（公會）要跟波波說話登記之後才出現
+  const tabs = [{ id: "sys", label: "主線", icon: "xp", theme: "sys", emblem: "xp", title: "主線任務", render: sysTab }];
+  if (P.guild.registered) tabs.push({ id: "guild", label: "支線", icon: "guild", title: atGuild ? "冒險者公會" : "支線任務", render: guildTab });
+  return show(atGuild ? "冒險者公會" : "任務", "guild", "guild", tabs, P.guild.registered ? tab : "sys");
 }
 
 // ================= 鍛造 =================

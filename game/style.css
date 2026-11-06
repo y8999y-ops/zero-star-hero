@@ -1055,3 +1055,7 @@ body.lock-dash #btnDash, body.lock-skill #btnSkill, body.lock-skill #pcSkill, bo
 .wm-go { align-self: stretch; height: 34px; font-size: 14px; }
 body.touch .wm-cv { width: min(92vw, calc((100vh - 70px) * 16 / 9)); }
 body.touch .wm-card { width: min(40%, 230px); }
+/* 使用者 2026-11-06：城鎮引導——第一次打開設施視窗時，主要按鈕閃金光 */
+.guide-pulse { animation: guidePulse .8s ease-in-out 5; position: relative; z-index: 2; }
+@keyframes guidePulse { 0%, 100% { filter: none; box-shadow: none; } 50% { filter: brightness(1.35); box-shadow: 0 0 0 2px #ffe066, 0 0 12px 3px rgba(255, 216, 74, .8); } }
+#qtrack .sys .main { font-style: normal; font-size: 10px; padding: 0 3px; margin-right: 3px; background: #c8861a; color: #fff6d0; border-radius: 2px; }

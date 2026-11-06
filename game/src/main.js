@@ -1,5 +1,6 @@
 // 遊戲主程式：第一章的關卡（1-1～1-3）、碎星鎮。網址加 ?endless 是無限出怪的測試模式，?stage=1-2 直接進那一關。
 import { openWorldMap } from "./worldmap.js";
+import { drawAlert } from "./alertfx.js";
 import { playOpen } from "./ui-trans.js";
 import { setNum, bump } from "./bump.js";
 import { createFrame, composite, hex, PAL } from "../../pixelfx/src/core/index.js";
@@ -901,25 +902,27 @@ function grant(r) {
 function questProgress(ev, d) {
   const r = questEvent(profile, ev, d);
   for (const q of r.guild) sayQueue.push([`系統：公會任務「${q.title}」完成！回公會找波波交付。`, 2.6]);
-  for (const q of r.sys) { grant(q.reward); sayQueue.push([`系統：系統任務「${q.title}」完成。${q.say}（${rewardText(q.reward)}）`, 3.6]); sfx("chime"); }
+  for (const q of r.sys) { grant(q.reward); sayQueue.push([`系統：主線「${q.title}」完成。${q.say}（${rewardText(q.reward)}）`, 3.6]); sfx("chime"); }
   renderTracker();
   save(profile);
 }
 const trackEl = $("qtrack");
+const SYS_TRACK_ICON = { out11: "star", reg: "guild", guild1: "seal", forge2: "hammer", meal1: "bowl", reroll1: "dice", rankE: "guild", forms3: "star", boss1: "q_kill" };
 function renderTracker() {
   const Q = profile.quests, I = (n) => `<img class="ico" src="${iconURL(n, 2)}" alt="">`;
-  // 使用者 2026-11-05：只顯示「追蹤中」的任務（任務視窗裡點星星），最多 3 個；舊存檔第一次自動追蹤前 3 個
+  // 使用者 2026-11-06：第一行固定是主線（系統任務，金色「主線」），下面是追蹤中的那一個支線（公會任務）
   const sysNow = sysActive(profile);
-  if (!Q.tracked) Q.tracked = [...Q.active.map((q) => q.id), ...sysNow.map((s) => "sys:" + s.id)].slice(0, 3);
-  Q.tracked = Q.tracked.filter((k) => (k.startsWith("sys:") ? sysNow.some((s) => "sys:" + s.id === k) : Q.active.some((q) => q.id === k)));
-  const lines = Q.tracked.map((k) => {
-    if (k.startsWith("sys:")) { const s = sysNow.find((x) => "sys:" + x.id === k); return `<div class="sys">${I("xp")}${s.title}</div>`; }
+  const keep = (Q.tracked ?? Q.active.slice(0, 1).map((q) => q.id)).filter((k) => Q.active.some((q) => q.id === k)).slice(0, 1);
+  Q.tracked ??= [];
+  Q.tracked.splice(0, Q.tracked.length, ...keep);   // 原地改（任務視窗拿著同一個陣列）
+  const lines = sysNow.map((s) => `<div class="sys"><em class="main">主線</em>${I(SYS_TRACK_ICON[s.id] ?? "xp")}${s.title}</div>`);
+  for (const k of Q.tracked) {
     const q = Q.active.find((x) => x.id === k), L = questLook(q), ok = q.have >= q.need;
-    return `<div class="${ok ? "ok" : ""}">${I(L.icon)}${L.label}　<b>${ok ? "✓" : q.have + "/" + q.need}</b><i class="qbar"><em style="width:${Math.min(100, (q.have / q.need) * 100)}%"></em></i></div>`;
-  });
+    lines.push(`<div class="${ok ? "ok" : ""}">${I(L.icon)}${L.label}　<b>${ok ? "✓" : q.have + "/" + q.need}</b><i class="qbar"><em style="width:${Math.min(100, (q.have / q.need) * 100)}%"></em></i></div>`);
+  }
   const m = MEALS[profile.meal];
   if (m) lines.push(`<div class="meal">${I(m.icon)}${m.buff[1]}</div>`);
-  if (!lines.length && (Q.active.length || sysNow.length)) lines.push(`<div class="hint">${I("paper")}點這裡選要追蹤的任務</div>`);
+  if (!Q.tracked.length && Q.active.length) lines.push(`<div class="hint">${I("paper")}點這裡選要追蹤的支線</div>`);
   const html = lines.join("");
   if (html !== trackEl.innerHTML) {
     trackEl.innerHTML = html;
@@ -940,7 +943,7 @@ initTownUI({
   inTown: TOWN,
   onTree: () => { save(profile); buildFormHud(); },
 });
-trackEl.addEventListener("click", (e) => { e.stopPropagation(); if (started && !dialog.open && !busy) openQuests(false); });
+trackEl.addEventListener("click", (e) => { e.stopPropagation(); if (started && !dialog.open && !busy) openQuests(false, profile.quests.tracked?.length ? "guild" : "sys"); });
 renderTracker();
 $("btnQuest").style.backgroundImage = `url(${iconURL("paper", 2)})`;
 $("btnQuest").addEventListener("click", (e) => { e.stopPropagation(); if (started && !dialog.open && !busy) { sfx("ui"); openQuests(false); } });
@@ -949,6 +952,36 @@ $("btnTree").style.backgroundImage = `url(${iconURL("star", 2)})`;
 const openTreeNow = () => { if (started && !dialog.open && !busy && !isWinOpen() && !inv.open) { sfx("ui"); openTree(player.form); } };
 $("btnTree").addEventListener("click", (e) => { e.stopPropagation(); openTreeNow(); });
 addEventListener("keydown", (e) => { if (e.code === "KeyT") openTreeNow(); });
+// ---- 使用者 2026-11-06：城鎮各功能的引導，一次只引導一件事：波波（登記）→ 任務板 → 岩叔的工坊 → 菇媽的旅館 → 路標（世界地圖）
+//   profile.tguide：0 找波波、1 任務板、2 工坊、3 旅館、4 路標、5 講完了。要去的地方頭上跳一個「!」；第一次打開那個視窗時主要按鈕閃一下
+//   舊存檔（已經登記、交過任務）直接當作講完了
+const GUIDE_TARGET = [186, 186, 404, 752, 924], GUIDE_HEAD = [40, 40, 62, 58, 44];   // 引導中的那個人不講閒聊泡泡（會蓋住「!」）
+const GUIDE_LINE = [null, null, "系統：下一站，岩叔的工坊。", "系統：再來是菇媽的旅館。", "系統：準備好了就去最右邊的路標。"];
+profile.tguide ??= profile.guild.registered && profile.guild.done > 0 ? 5 : profile.guild.registered ? 1 : 0;
+const guideStep = () => profile.tguide;
+const guideAt = (k) => TOWN && profile.tguide === k;
+function guideNext(line) {
+  profile.tguide++;
+  save(profile, true);
+  for (let i = sayQueue.length - 1; i >= 0; i--) if (sayQueue[i][2] === "guide") sayQueue.splice(i, 1);   // 還沒講到的上一步提示就不講了
+  if (line) sayQueue.push([line, 3.4, "guide"]);
+}
+/** 剛打開的視窗裡第一顆主要按鈕閃一下（告訴玩家先按哪裡） */
+function guideFlash() {
+  setTimeout(() => {
+    const b = document.querySelector(".win:not(.hidden) .win-box .ibtn:not(:disabled):not(.mini):not(.win-x), .win:not(.hidden) .win-box .pbtn:not(:disabled)");
+    if (!b) return;
+    b.classList.add("guide-pulse");
+    setTimeout(() => b.classList.remove("guide-pulse"), 4200);
+  }, 450);
+}
+/** 城鎮畫面：引導目標頭上跳一個「!」 */
+function drawGuideMark(frame) {
+  const k = profile.tguide;
+  if (!TOWN || k >= 5 || dialog.open || busy) return;
+  const x = GUIDE_TARGET[k], bob = Math.round(Math.abs(Math.sin(sceneClock * 3.2)) * -3);
+  drawAlert(frame, x, FLOOR - GUIDE_HEAD[k] + bob, 0.35);
+}
 function townArrive() {
   refreshBoard(profile.quests, unlocked());
   questProgress("tick");
@@ -957,7 +990,8 @@ function townArrive() {
     delete profile.guild.rankUp;
     save(profile);
   } else toast("碎星鎮", 2);
-  if (!profile.guild.registered) sayQueue.push(["系統：這裡是碎星鎮。先去左邊的冒險者公會登記吧。", 3.2]);
+  if (!profile.guild.registered) sayQueue.push(["系統：這裡是碎星鎮。先去左邊的公會找波波。", 3.2]);
+  else if (GUIDE_LINE[guideStep()]) sayQueue.push([GUIDE_LINE[guideStep()], 3.2]);
 }
 function townTick(dt) {
   updateLight(dt);
@@ -1000,7 +1034,7 @@ function updateBubble(dt) {
   if (bubbleWho) {
     if ((bubbleT -= dt) <= 0 || bubbleWho === near || bubbleWho === near?.folk) { bubbleEl.classList.remove("on"); bubbleWho = null; bubbleWait = 5 + Math.random() * 4; }
   } else if ((bubbleWait -= dt) <= 0) {
-    const seen = [...NPCS, ...folk.list.filter((o) => !o.follow)].filter((n) => n !== near && n !== near?.folk && n.x > camX + viewRect().x0 + 20 && n.x < camX + viewRect().x0 + viewRect().w - 20);
+    const seen = [...NPCS, ...folk.list.filter((o) => !o.follow)].filter((n) => n !== near && n !== near?.folk && !(profile.tguide < 5 && n.x === GUIDE_TARGET[profile.tguide]) && n.x > camX + viewRect().x0 + 20 && n.x < camX + viewRect().x0 + viewRect().w - 20);
     if (seen.length) {
       bubbleWho = seen[Math.floor(Math.random() * seen.length)];
       const L = AMBIENT[bubbleWho.id] ?? FOLK_INFO[bubbleWho.id].ambient;
@@ -1049,6 +1083,7 @@ async function interact(n) {
 // 右邊的路標：選要去的地方（公會任務在外面做，回來再交付）
 window.__game.travel = () => travel();   // 開發用：直接打開選關地圖
 async function travel() {
+  if (guideAt(4)) guideNext(null);
   const NOTE = { "1-1": "主角掉下來的地方，系統教你怎麼打", "1-2": "垃圾桶怪很多", "1-3": "蝙蝠群、菁英", "1-4": "王：大胃王史萊姆" };
   if (!profile.quests.active.length && profile.guild.registered) await talk("系統", ["……你沒接公會任務喔。打怪是可以，但沒有人會付錢給你。"]);
   // 使用者 2026-11-06：選地圖要有地圖介面與圖片，不能是文字 → 墜星之谷的像素地圖（worldmap.js）
@@ -1063,21 +1098,32 @@ async function guild(name) {
     await talk("系統", ["填「發光的五角形」應該就好。"]);
     await talk(name, ["……好的，星靈。", "這是你的冒險者證，等級 F。完成任務就會升級喔。", "（推眼鏡）別擔心，大家一開始都是 F。……大部分的人啦。"]);
     G.registered = true;
+    if (guideStep() === 0) profile.tguide = 1;
     save(profile, true);
   }
   questProgress("tick");
   const before = rankOf(G.done);
-  await talk(name, [G.done === 0 && !profile.quests.active.length ? "任務都貼在任務板上，挑喜歡的接吧。做完再回來找我交付喔。" : "（推眼鏡）任務板在這裡。"]);
-  await openQuests(true);
+  const firstBoard = guideAt(1);
+  if (firstBoard) await talk(name, ["任務都貼在任務板上，想接幾張都可以。", "不過一次只能追蹤一個——點任務右邊的星星，它就會顯示在你的頭像下面。", "做完再回來找我交付喔。"]);
+  else await talk(name, [G.done === 0 && !profile.quests.active.length ? "任務都貼在任務板上，挑喜歡的接吧。做完再回來找我交付喔。" : "（推眼鏡）任務板在這裡。"]);
+  const qp = openQuests(true);
+  if (firstBoard) guideFlash();
+  await qp;
+  if (firstBoard) guideNext("系統：下一站，岩叔的工坊。撿到用不到的裝備，可以拿去那裡拆掉、把身上的打強一點。");
   if (rankOf(G.done) !== before) {
     await talk(name, [`恭喜！冒險者等級升到 ${rankOf(G.done)} 級了。`, "（推眼鏡）……我就知道你可以。大概。"]);
     questProgress("tick");
   }
 }
 async function workshop(name) {
-  await talk(name, ["……要打什麼？"]);
-  await openForge();
+  const first = guideAt(2);
+  if (first) await talk(name, ["……新來的？我是岩叔。", "用不到的裝備拿來，拆了變碎屑。碎屑拿來強化你身上穿的。", "……要重鑄、合成，也在這裡。"]);
+  else await talk(name, ["……要打什麼？"]);
+  const fp = openForge();
+  if (first) guideFlash();
+  await fp;
   refreshStats();
+  if (first) guideNext("系統：再來是旅館。菇媽那裡可以睡一晚、吃點東西。");
 }
 const INN_CHAT = [
   "以前這裡只是隕石坑旁邊的小村子。星星掉下來以後，冒險者就變多了。",
@@ -1087,9 +1133,15 @@ const INN_CHAT = [
   "你是星靈？那你晚上會發光嗎？省電耶。",
 ];
 async function inn(name) {
+  const firstInn = guideAt(3);
+  if (firstInn) {
+    await talk(name, ["哎呀，新面孔～我是菇媽。", "累了就來睡一晚，血會回滿，公會的任務板也會換一批新的喔。", "出門前吃一道料理，會有加成～"]);
+    guideNext("系統：最後，鎮子最右邊的路標。準備好了就去那裡選要去哪。");
+  }
   const v = await ask(name, "哎呀，歡迎光臨～要休息還是吃點東西？", [["休息、料理", "open"], ["聊天", "chat"], ["不用了", null]]);
   if (v === "chat") return talk(name, [INN_CHAT[Math.floor(Math.random() * INN_CHAT.length)]]);
   if (v !== "open") return;
+  if (firstInn) guideFlash();   // 第一次打開：「睡一晚」閃一下
   await openInn({
     rest: async () => {
       player.hp = player.maxHp;
@@ -1162,8 +1214,8 @@ function useAltar(a) {
     a.lit = true;
     spawn(collectBurst, { x: a.x, y: a.y - 18, palette: ["#1e1206", "#4a2c08", "#86520c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"], light: 0.6 });
     flash(a.x, a.y - 16, 110, 3, 0.8, "#ffe066"); sfx("levelup");
-    toast("星之祭壇點亮了：生命、魔力回滿。死掉的話會從這裡重來。", 2.6);
-  } else { flash(a.x, a.y - 16, 60, 2, 0.3, "#ffe066"); sfx("chime"); toast("生命、魔力回滿了。", 1.6); }
+    toast("星之祭壇：啟動", 1.8);   // 使用者 2026-11-06：存檔點只顯示啟動，不寫效果
+  } else { flash(a.x, a.y - 16, 60, 2, 0.3, "#ffe066"); sfx("chime"); toast("星之祭壇：啟動", 1.4); }
 }
 /** 星核效果每幀：沉重（被打飛的撞到別人）、彗尾（衝刺留星光）、鈍光（暈眩計時） */
 function updateCoreFx(dt) {
@@ -1558,7 +1610,7 @@ function render() {
   props.draw(frame, lv);
   scenery.draw(frame, lv, sceneClock);
   hazards.draw(frame);
-  if (TOWN) { drawTownNpcs(frame, sceneClock); folk.draw(frame); drawPrompt(); }
+  if (TOWN) { drawTownNpcs(frame, sceneClock); folk.draw(frame); drawGuideMark(frame); drawPrompt(); }
   else if (useT) drawBang(useT.x, useT.top);
   if (chest && !chest.opened && Math.abs(chest.x - camX - W / 2) < W) { chest.fx.draw(frame); drawObjGlow(frame, "chest", chest.x, chest.y, sceneClock); }
   // 大招時：先畫怪再暗場，法陣這些背景特效畫在暗場之後才會亮
