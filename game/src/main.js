@@ -1486,7 +1486,16 @@ function tick(dt) {
   updateSay(dt);
 }
 // 攝影機：跟著主角，稍微往面對的方向看
-let lookX = 0, camRefY = null;
+let lookX = 0, camRefY = null, camLand = null;
+// 使用者 2026-11-06「進關卡畫面先停在奇怪的地方，鏡頭才移到主角」：主角從上面掉進場，鏡頭直接對準他會落地的地方，落地前不上下跟
+function snapCam() {
+  if (TOWN || ENDLESS) return;
+  const v = viewRect(), gy = floorAt(player.x, Math.max(0, player.y));
+  camLand = player.grounded ? null : gy; camRefY = gy; lookX = player.face * 36;
+  camX = Math.max(-v.x0, Math.min(LEVEL_W - v.x0 - v.w, player.x - W / 2));
+  if (director?.lock) camX = Math.max(director.lock.l - v.x0, Math.min(director.lock.r - v.x0 - v.w, camX));
+  if (MAP_H > H) camY = Math.max(-v.y0, Math.min(MAP_H - v.y0 - v.h, gy - H * 0.62));
+}
 /** 往面對的方向多看 dist 格：轉身時慢慢滑過去（約 0.6 秒） */
 function lookAhead(dt, dist) { lookX += (player.face * dist - lookX) * Math.min(1, 2.2 * dt); return lookX; }
 /** 死區跟隨：目標離鏡頭中心超過 dz 才跟，跟到剛好在死區邊上 */
@@ -1510,7 +1519,9 @@ function followCam(dt) {
   // 上下：落地才跟（跳躍時鏡頭不上下晃）。掉到比上次站的地方低、或被風吹得很高時才跟著空中的主角；
   // 往下掉越快跟得越快（平順加速，不再一頓一頓）
   if (MAP_H > H) {
-    if (player.grounded || camRefY === null) camRefY = player.y;
+    if (camLand !== null && player.grounded) camLand = null;
+    if (camLand !== null) camRefY = camLand;   // 進場還在掉：對準落地的地方
+    else if (player.grounded || camRefY === null) camRefY = player.y;
     else if (player.y > camRefY) camRefY = player.y;
     else if (player.y < camRefY - 72) camRefY = player.y + 72;
     const wy = camRefY - H * 0.62, rate = 3 + Math.min(4, Math.max(0, player.vy) / 100);
@@ -1887,6 +1898,7 @@ function start() {
   if (TOWN) townArrive();
   else if (ENDLESS) toast("系統：無限模式。打到你手痠為止。");
   else director = new Director(STAGE, stageApi, touch);
+  snapCam();
 }
 // 手機：進全螢幕、轉橫向。要在點擊的當下呼叫（瀏覽器規定），所以開場動畫開始播的時候就先開（使用者 2026-11-06）
 function goFullscreen() {
