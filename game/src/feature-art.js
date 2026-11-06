@@ -125,8 +125,33 @@ export function drawPlug(frame, x, y, w, h, t) {
   }
 }
 
+// 使用者 2026-11-06「上升氣流再明顯一點」：多一層淡淡的青色光柱（只進光層，下面亮上面淡）、兩側一條閃動的氣流邊、
+//   一個個往上飄的「︿」箭頭、出風口一排亮起來的光
+const lit = (frame, x, y, c) => { x = Math.round(x) - frame.ox; y = Math.round(y) - frame.oy; if (x >= 0 && y >= 0 && x < frame.w && y < frame.h && !frame.light[y * frame.w + x]) frame.light[y * frame.w + x] = c; };
+const WIND_LIT = [0x200e0904, 0x28140c06, 0x301c1208, 0x3826180a];   // 光層：由淡到亮（AABBGGRR）；第 2 輪：原本太亮，整根變成一塊亮藍色方塊
 export function drawWind(frame, x, y, w, h, t) {
   const x0 = Math.round(x - w / 2);
+  // 光柱：從出風口往上越來越淡（4 階，網點交錯，不是平滑漸層）
+  for (let j = 0; j < h; j++) {
+    const f = 1 - j / h, lv = f > 0.8 ? 3 : f > 0.55 ? 2 : f > 0.3 ? 1 : 0;
+    if (lv === 0 && (j & 1)) continue;
+    // 中間亮、兩邊淡（越靠邊越稀的網點），不是一整塊
+    for (let i = 1; i < w - 1; i++) {
+      const e = Math.min(i, w - 1 - i) / (w / 2), l2 = Math.max(0, lv - (e < 0.25 ? 2 : e < 0.5 ? 1 : 0));
+      if (((i + j) & 1) || (e > 0.6 && lv >= 2)) lit(frame, x0 + i, y - j, WIND_LIT[l2]);
+    }
+  }
+  // 兩側的氣流邊：一段段亮線往上爬
+  for (const ex of [x0, x0 + w - 1]) for (let j = 0; j < h; j++) {
+    const ph = (j + t * 120 + (ex === x0 ? 0 : 17)) % 34;
+    if (ph < 9) put(frame, ex + Math.round(Math.sin((j + t * 40) * 0.2)), y - j, ph < 3 ? WIND[3] : WIND[2], true);
+  }
+  // 往上飄的箭頭（︿），下面出來、上面淡掉
+  for (let n = 0; n < Math.max(2, Math.round(h / 70)); n++) {
+    const p = (t * 0.55 + n / Math.max(2, Math.round(h / 70))) % 1, cy = y - 10 - p * (h - 20), cx = x0 + w / 2 + Math.sin(p * 8 + n) * (w / 6);
+    const c = p < 0.7 ? WIND[3] : WIND[2];
+    for (let k = -4; k <= 4; k++) { put(frame, cx + k, cy + Math.abs(k), c, true); if (p < 0.5) put(frame, cx + k, cy + Math.abs(k) + 1, WIND[1], true); }
+  }
   for (let n = 0; n < Math.round(w / 1.6); n++) {   // 第 2 輪：風紋多一倍
     const sx = x0 + Math.floor(hash(n, 1) * w), speed = 90 + hash(n, 2) * 80, len = 6 + Math.floor(hash(n, 3) * 10);
     const head = y - ((t * speed + hash(n, 4) * h) % h);
@@ -144,6 +169,7 @@ export function drawWind(frame, x, y, w, h, t) {
   }
   // 地面的出風口：一排暗色的裂縫
   for (let i = 0; i < w; i++) if (hash(i, 9) < 0.5) put(frame, x0 + i, y - 1, P("#0a1a2a"));
+    else put(frame, x0 + i, y - 1, Math.sin(t * 6 + i * 0.5) > 0 ? WIND[2] : WIND[1], true);   // 出風口亮光，一閃一閃
 }
 
 // ---------- 黏液菇：24×16，半透明感的綠色傘、白點、粗短的柄；squash 0～1＝被踩扁的程度 ----------

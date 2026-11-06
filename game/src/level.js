@@ -68,6 +68,18 @@ const MIX = {
   lair: { gap: 90, pick: ["junk", "rocks", "grass", "junk"] },
 }[THEME];
 
+/** 道具貼在 (x0, 地面 fy) 時：底部幾列有像素的每一欄，下面都要是地、上面不能是牆 */
+function sitsFlat(img, x0, fy, br) {
+  for (let x = 0; x < img.w; x++) {
+    let bot = -1;
+    for (let y = img.h - 1; y >= 0; y--) if (img.px[y * img.w + x]) { bot = y; break; }
+    if (bot < 0) continue;
+    const wx = x0 + x;
+    if (bot >= br - 3 && !(solidAt(wx, fy + 1.5) || onPlatform(wx, fy))) return false;   // 這一欄底下是空的
+    if (solidAt(wx, fy - 2.5) || solidAt(wx, fy - (br - bot) - 6.5)) return false;      // 撞到台階、牆
+  }
+  return true;
+}
 function build() {
   if (!ART["valley/ground"]) return;
   const gt = ART["valley/ground"];
@@ -107,7 +119,10 @@ function build() {
     if (TORCHES.some((t) => Math.abs(t - cx) < 34)) continue;
     const [sheet, cw, ch, cells] = KIT[MIX.pick[k % MIX.pick.length]];
     const img = cell(ART[sheet], cells[Math.floor(rand(k + S, 52) * cells.length)], cw, ch);
-    blit(PF, LEVEL_W, MAP_H, img, Math.round(cx - cw / 2), (LAYOUT.solids ? floorAt(cx, FLOOR - 20) : FLOOR) + 1 - baseRow(img), { onPx: (i, c, x, y) => { if (glows(c)) { PFE[i] = 1; glow.push([x, y, c]); } } });
+    const x0 = Math.round(cx - cw / 2), fy = LAYOUT.solids ? floorAt(cx, FLOOR - 20) : FLOOR, br = baseRow(img);
+    // 使用者 2026-11-06「有些石頭邊緣浮空」：道具底邊每一欄都要踩在同一塊地上（台階邊、平台邊、坑邊就不放），也不能埋進牆裡
+    if (LAYOUT.solids && !sitsFlat(img, x0, fy, br)) continue;
+    blit(PF, LEVEL_W, MAP_H, img, x0, fy + 1 - br, { onPx: (i, c, x, y) => { if (glows(c)) { PFE[i] = 1; glow.push([x, y, c]); } } });
   }
   for (const g of glowClusters(glow, 24)) PROP_LIGHTS.push({ x: g.x, y: g.y, r: 30, lv: 1.6, col: g.col });
   // 平台：浮空岩台的左半＋右半拼成平台的寬度；苔蘚頂面（第 4 列）對準平台的高度

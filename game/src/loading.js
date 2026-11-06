@@ -32,18 +32,18 @@ if (box && cv) {
         `時間 ${rep.time}　擊倒 ${rep.kills}　最高連擊 ${rep.best}　${rep.deaths ? "死了 " + rep.deaths + " 次" : "一次都沒死"}`,
         rep.say,
       ];
-      const out = el.querySelector(".crText");
-      let li = 0, ci = 0, cur = null;
-      minUntil = performance.now() + 60000;   // 打完字之前不關
-      const step = () => {
-        if (li >= lines.length) { el.classList.remove("typing"); minUntil = performance.now() + 1200; if (ready) setTimeout(close, 1200); return; }
-        if (!cur) { cur = document.createElement("div"); out.appendChild(cur); el.classList.add("typing"); }
-        cur.textContent = lines[li].slice(0, ++ci);
-        if (ci >= lines[li].length) { li++; ci = 0; cur = null; setTimeout(step, 260); } else setTimeout(step, 34);
-      };
-      setTimeout(step, 250);
-      box.addEventListener("pointerdown", () => { li = lines.length; out.innerHTML = lines.map((l) => `<div>${l}</div>`).join(""); minUntil = 0; if (ready) close(); });
-    }
+      // 使用者 2026-11-06「結算介面順順的打字就好」：原本用 setTimeout 一個字一個字塞，後面在載入城鎮時主執行緒很忙，字會卡一下衝一下，
+      //   框也跟著字變寬。改成整段字一開始就排好（框大小固定），用「外框往右滑、裡面的字反方向滑」的遮罩一格一格露出來——
+      //   只動 transform，瀏覽器在合成層跑，主執行緒再忙也照樣順
+      const out = el.querySelector(".crText"), CH = 0.04;   // 每個字 40ms
+      let at = 0.25;
+      out.innerHTML = lines.map((l) => {
+        const n = [...l].length, d = n * CH, html = `<div class="crLine" style="--n:${n};--d:${d}s;--at:${at}s"><span>${l}</span></div>`;
+        at += d + 0.12;
+        return html;
+      }).join("");
+      minUntil = performance.now() + (at + 1.2) * 1000;
+      box.addEventListener("pointerdown", () => { el.classList.add("skip"); minUntil = 0; if (ready) close(); });    }
   } catch {}
   window.__loadDone = () => { ready = true; const wait = minUntil - performance.now(); if (wait > 0) setTimeout(close, wait); else close(); };
 }

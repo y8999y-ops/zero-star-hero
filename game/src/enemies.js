@@ -36,7 +36,7 @@ KINDS.trashE = { ...KINDS.trash, anim: A.trashEliteWalk, bite: A.trashEliteBite,
 const BITE_LUNGE = 0.3, BITE_HIT0 = 0.38, BITE_HIT1 = 0.48, BITE_END = 0.8;
 
 let seed = 1;
-export const HP_MUL = 2;
+export const HP_MUL = 3;   // 使用者 2026-11-06：普通怪、菁英怪再 +50%（原本 2 → 3；王另外算，不動）
 export class Enemy {
   constructor(kind, x, y) {
     const k = KINDS[kind];

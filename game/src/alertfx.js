@@ -10,16 +10,27 @@ const COL = Object.fromEntries(Object.entries(RAMP).map(([k, v]) => [k, v.map(he
 function glyph(h) { const px = []; for (let y = 0; y < h; y++) for (let x = 0; x < 2; x++) { px.push([x, y, y === 0 && x === 0 ? 4 : y < 1 ? 0 : y < h - 1 ? 1 : 2]); } for (let x = 0; x < 2; x++) { px.push([x, h + 2, 1]); px.push([x, h + 3, 2]); } return px; }   // 第 2 輪：點和棒子之間多空一格（原本讀起來像 8）
 const BAR = glyph(5), SQUASH = glyph(3);
 /** (x, y)＝「!」底部中心（頭頂上方），t＝冒出來多久了 */
-export function drawAlert(frame, x, y, t, elite = false) {
+export function drawAlert(frame, x, y, t, elite = false, big = 1) {
   if (t >= ALERT_T) return;
   if (t > ALERT_T - 0.15 && Math.floor(t * 30) % 2) return;   // 閃爍消失
   const C = frame.color, W = frame.w, H = frame.h, ox = frame.ox | 0, oy = frame.oy | 0, R = COL[elite ? "e" : "n"];
   const shape = t < 0.06 ? SQUASH : BAR, lift = t < 0.06 ? 0 : t < 0.14 ? 3 : t < 0.2 ? 1 : 0;
-  const hgt = shape === SQUASH ? 7 : 9, copies = elite ? [-3, 2] : [0];   // 第 2 輪：「!!」拉開（原本外框黏成一團）
+  const hgt = shape === SQUASH ? 7 : 9, copies = elite && big === 1 ? [-3, 2] : [0];   // 第 2 輪：「!!」拉開（原本外框黏成一團）
   const cells = new Map();
-  for (const cx of copies) for (const [gx, gy, v] of shape) cells.set(`${Math.round(x) - 1 + cx + gx},${Math.round(y) - hgt - lift + gy}`, v);
+  // big：每一格放大成 big×big（城鎮「有任務可以交」的紅色大驚嘆號用 2）
+  for (const cx of copies) for (const [gx, gy, v] of shape) for (let i = 0; i < big; i++) for (let j = 0; j < big; j++)
+    cells.set(`${Math.round(x) - big + cx + gx * big + i},${Math.round(y) - (hgt + 4) * big + 4 - lift + gy * big + j}`, v);
   const put = (px, py, c) => { px -= ox; py -= oy; if (px >= 0 && py >= 0 && px < W && py < H) C[py * W + px] = c; };
   // 外框（上下左右）
   for (const k of cells.keys()) { const [px, py] = k.split(",").map(Number); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!cells.has(`${px + dx},${py + dy}`)) put(px + dx, py + dy, R[3]); }
+  // 放大版（城鎮）：外框外再一圈白邊、本體發紅光——放在木門、紅盾前面也看得清楚
+  if (big > 1) {
+    const ring = new Set();
+    for (const k of cells.keys()) { const [px, py] = k.split(",").map(Number); for (let dx = -2; dx <= 2; dx++) for (let dy = -2; dy <= 2; dy++) if (Math.abs(dx) + Math.abs(dy) === 2 || (Math.abs(dx) === 1 && Math.abs(dy) === 1)) { const q = `${px + dx},${py + dy}`; if (!cells.has(q) && ![[1,0],[-1,0],[0,1],[0,-1]].some(([ax, ay]) => cells.has(`${px + dx + ax},${py + dy + ay}`))) ring.add(q); } }
+    for (const q of ring) { const [px, py] = q.split(",").map(Number); put(px, py, R[4]); }
+    // 第 3 輪：本體不發光了（光疊上去整個變粉紅色，不像紅色驚嘆號）；只在白邊外圍加一點淡紅光暈
+    const L = frame.light, halo = 0x30101040;
+    for (const q of ring) { const [px, py] = q.split(",").map(Number); const X = px - ox, Y = py - oy; if (X >= 0 && Y >= 0 && X < W && Y < H) L[Y * W + X] = halo; }
+  }
   for (const [k, v] of cells) { const [px, py] = k.split(",").map(Number); put(px, py, R[v]); }
 }

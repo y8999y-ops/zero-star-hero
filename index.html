@@ -58,10 +58,12 @@
   document.addEventListener("visibilitychange", () => setTimeout(check, 300));
   // 手機第一次點螢幕（任何地方）就進全螢幕、鎖橫向；直的拿著時點「轉成橫向」那層也一樣
   const touchy = matchMedia("(pointer: coarse)").matches;
-  if (touchy) addEventListener("pointerdown", function first() { removeEventListener("pointerdown", first, true); goFull(); }, true);
-  document.getElementById("rotate").addEventListener("pointerdown", (e) => { e.preventDefault(); goFull(); });
-  refull.querySelector(".tap").addEventListener("pointerdown", (e) => { e.preventDefault(); refull.classList.remove("on"); goFull(); f.focus(); });
-  refull.querySelector(".no").addEventListener("pointerdown", (e) => { e.preventDefault(); wantFull = false; refull.classList.remove("on"); f.focus(); });
+  // 使用者 2026-11-06「點一下回全螢幕會失效」：手指按下（pointerdown）瀏覽器不算「使用者點了」，要放開（pointerup）才可以開全螢幕
+  if (touchy) addEventListener("pointerup", function first() { removeEventListener("pointerup", first, true); goFull(); }, true);
+  document.getElementById("rotate").addEventListener("pointerup", (e) => { e.preventDefault(); goFull(); });
+  refull.addEventListener("pointerdown", (e) => e.preventDefault());
+  refull.addEventListener("pointerup", (e) => { if (e.target.closest(".no")) return; e.preventDefault(); refull.classList.remove("on"); goFull(); f.focus(); });   // 整層都可以點（不用剛好點到按鈕）
+  refull.querySelector(".no").addEventListener("pointerup", (e) => { e.preventDefault(); wantFull = false; refull.classList.remove("on"); f.focus(); });
 </script>
 </body>
 </html>

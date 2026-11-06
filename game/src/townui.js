@@ -352,6 +352,17 @@ export function openTree(form) {
       head.appendChild(row);
     }
     if (ctx.inTown) head.appendChild(ibtn("dice", "洗點", () => { refund(id); sel = null; ctx.sfx("ui"); msg("點數全部拿回來了"); ctx.onTree?.(); render(); }, "plain"));
+    // 使用者 2026-11-06「能直接從系統介面切換目前的三個形態」：每一頁上面一顆「切換成這個形態」，目前的形態顯示「目前形態」
+    if (ctx.switchForm) {
+      const cur = ctx.curForm?.() === id;
+      const sw = ibtn(cur ? "check" : id === "star" ? "star" : "core_" + id, cur ? "目前形態" : `切換成${FORMS[id].name}`, () => {
+        if (ctx.curForm?.() === id) return;
+        if (!ctx.switchForm(id)) { ctx.sfx("close"); return msg("現在不能切換", false); }
+        msg(`切換成${FORMS[id].name}`); render();
+      }, cur ? "plain off" : "");
+      sw.classList.add("tswitch");
+      head.prepend(sw);
+    }
     left.appendChild(head);
     const grid = h("div", "tree-grid");
     for (let p = 0; p < 3; p++) {

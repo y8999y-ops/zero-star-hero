@@ -1073,13 +1073,14 @@ body.touch .wm-card { width: min(40%, 230px); }
 /* 使用者 2026-11-06：魔力條中間那條大招刻度線取消 */
 #mpMark { display: none !important; }
 /* ---- 使用者 2026-11-06：吸收魔物核 —— 站到核旁邊時額外亮出「吸收」鍵（按住 1 秒），核上方一行提示；獲得新形態的大字；新形態格發光 */
-.btn.absorb { display: none; width: 64px; height: 64px; right: 110px; bottom: 96px; border-radius: 50%;
+.btn.absorb { display: none; width: 64px; height: 64px; right: 17px; bottom: 200px; border-radius: 50%;
   background: center / 70% no-repeat, radial-gradient(circle, #3a2a10 0 55%, #1a1206 56% 100%); box-shadow: 0 0 0 3px #ffd84a, 0 0 0 5px #3a1a06, 0 0 16px 4px rgba(255, 216, 74, .7);
   animation: absorbReady 0.9s ease-in-out infinite; }
 .btn.absorb b { position: absolute; left: 0; right: 0; bottom: -18px; font-size: 12px; color: #ffe27a; text-shadow: 0 1px 0 #000, 0 0 4px #000; letter-spacing: 2px; }
 .btn.absorb.on { animation: none; transform: scale(.94); box-shadow: 0 0 0 3px #fff6c4, 0 0 0 5px #3a1a06, 0 0 26px 8px rgba(255, 230, 120, .95); }
 body.absorbnear .btn.absorb { display: block; }
-body.touch .btn.absorb { width: var(--B); height: var(--B); right: calc(var(--A) + 8px); bottom: calc(var(--B) + 22px); }
+/* 使用者 2026-11-06：吸收鍵放在技能鍵正上方，不蓋到任何鍵（底下留 18px 給「吸收」兩個字） */
+body.touch .btn.absorb { width: var(--B); height: var(--B); right: calc(var(--A) * 0.78); bottom: calc(var(--A) * 1.48 + 20px); }
 @keyframes absorbReady { 50% { box-shadow: 0 0 0 3px #fff2a0, 0 0 0 5px #3a1a06, 0 0 24px 8px rgba(255, 216, 74, .95); transform: scale(1.06); } }
 #absorbTip { position: absolute; z-index: 3; transform: translate(-50%, -100%); pointer-events: none; font-size: 13px; font-weight: 700; color: #fff2c8; white-space: nowrap;
   text-shadow: 0 1px 0 #000, 0 0 4px #000, 0 0 8px rgba(0, 0, 0, .8); animation: absorbTipBob 1.2s ease-in-out infinite; }
@@ -1119,7 +1120,11 @@ body.talking #sys.imp { opacity: 1 !important; }
 #loading .crSys .sysHead::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 4px; background: #6ad8ff; box-shadow: 0 0 4px #6ad8ff; animation: sysDot 1s steps(2) infinite; }
 #loading .crText { color: #e8fbff; font-size: 15px; font-weight: 700; line-height: 1.6; text-shadow: 0 1px 0 #04101e; min-height: 3.2em; }
 #loading .crText > div:first-child { color: #ffe27a; font-size: 18px; letter-spacing: 2px; }
-#loading .crSys.typing .crText > div:last-child::after { content: "▮"; color: #8af0ff; margin-left: 1px; animation: sysDot .5s steps(2) infinite; }
+#loading .crLine { overflow: hidden; width: max-content; transform: translateX(-100%); animation: crWin var(--d) steps(var(--n)) var(--at) forwards; }
+#loading .crLine > span { display: block; transform: translateX(100%); animation: crTxt var(--d) steps(var(--n)) var(--at) forwards; }
+#loading .crSys.skip .crLine, #loading .crSys.skip .crLine > span { animation: none; transform: none; }
+@keyframes crWin { to { transform: none; } }
+@keyframes crTxt { to { transform: none; } }
 @keyframes crFade { from { opacity: 0; } to { opacity: 1; } }
 /* 使用者 2026-11-06：地圖的關卡縮圖、資訊卡放在右邊的欄位，不要蓋到地圖 */
 .wm-wrap { display: flex; align-items: stretch; gap: 8px; }

@@ -39,7 +39,7 @@ import { createInventory } from "./inventory.js";
 import { playFace, moodOf } from "./system-face.js";
 import { startTitle } from "./title.js";
 import { playIntro } from "./intro.js";
-import { questEvent, refreshBoard, rewardText, sysActive } from "./quests.js";
+import { questEvent, refreshBoard, rewardText, sysActive, isReady } from "./quests.js";
 import { initTownUI, openQuests, openForge, openInn, isWinOpen, MEALS, questLook, openTree } from "./townui.js";
 import { installUiArt, iconURL, setAttackIcon, medal, MEDAL_SIZE } from "./ui-art.js";
 import { FORMS, CARRY_MAX, coreChance, absorbCore, makeCore, CORE_COST } from "./forms.js";
@@ -1012,6 +1012,8 @@ initTownUI({
   shake: (t, a) => shake(t, a),
   inTown: TOWN,
   onTree: () => { save(profile); buildFormHud(); },
+  curForm: () => player.form,
+  switchForm: (id) => { switchForm(id); buildFormHud(); return player.form === id; },
 });
 trackEl.addEventListener("click", (e) => { e.stopPropagation(); if (started && !dialog.open && !busy) openQuests(false, profile.quests.tracked?.length ? "guild" : "sys"); });
 renderTracker();
@@ -1048,7 +1050,14 @@ function guideFlash() {
 /** 城鎮畫面：引導目標頭上跳一個「!」 */
 function drawGuideMark(frame) {
   const k = profile.tguide;
-  if (!TOWN || k >= 5 || dialog.open || busy) return;
+  if (!TOWN || dialog.open || busy) return;
+  // 使用者 2026-11-06：有支線任務可以交的時候，波波頭上一個紅色大驚嘆號（比引導的「!」大一倍）
+  if (profile.quests.active.some(isReady) && k !== 0) {
+    const bob = Math.round(Math.abs(Math.sin(sceneClock * 4)) * -4);
+    drawAlert(frame, GUIDE_TARGET[0], FLOOR - GUIDE_HEAD[0] + 14 + bob, 0.35, true, 3);
+    if (k === 1 || k === 0) return;
+  }
+  if (k >= 5) return;
   const x = GUIDE_TARGET[k], bob = Math.round(Math.abs(Math.sin(sceneClock * 3.2)) * -3);
   drawAlert(frame, x, FLOOR - GUIDE_HEAD[k] + bob, 0.35);
 }
@@ -1105,7 +1114,7 @@ function updateBubble(dt) {
   if (bubbleWho) {
     if ((bubbleT -= dt) <= 0 || bubbleWho === near || bubbleWho === near?.folk) { bubbleEl.classList.remove("on"); bubbleWho = null; bubbleWait = 5 + Math.random() * 4; }
   } else if ((bubbleWait -= dt) <= 0) {
-    const seen = [...NPCS, ...folk.list.filter((o) => !o.follow)].filter((n) => n !== near && n !== near?.folk && !(profile.tguide < 5 && n.x === GUIDE_TARGET[profile.tguide]) && n.x > camX + viewRect().x0 + 20 && n.x < camX + viewRect().x0 + viewRect().w - 20);
+    const seen = [...NPCS, ...folk.list.filter((o) => !o.follow)].filter((n) => n !== near && n !== near?.folk && !(profile.tguide < 5 && n.x === GUIDE_TARGET[profile.tguide]) && !(n.x === GUIDE_TARGET[0] && profile.quests.active.some(isReady)) && n.x > camX + viewRect().x0 + 20 && n.x < camX + viewRect().x0 + viewRect().w - 20);
     if (seen.length) {
       bubbleWho = seen[Math.floor(Math.random() * seen.length)];
       const L = AMBIENT[bubbleWho.id] ?? FOLK_INFO[bubbleWho.id].ambient;
@@ -2058,7 +2067,7 @@ function goFullscreen() {
   else if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().then(() => screen.orientation?.lock?.("landscape")).catch(() => {});
 }
 // 使用者 2026-11-06「手機進網頁時自動變橫向」：瀏覽器規定要點一下才能進全螢幕、鎖橫向——手機第一次點畫面（任何地方）就做
-addEventListener("pointerdown", function firstTap() { if (document.body.classList.contains("touch")) { removeEventListener("pointerdown", firstTap, true); goFullscreen(); } }, true);
+addEventListener("pointerup", function firstTap() { if (document.body.classList.contains("touch")) { removeEventListener("pointerup", firstTap, true); goFullscreen(); } }, true);   // pointerup：手指放開才算點擊（全螢幕要）
 // 開始冒險：新遊戲第一次進 1-1 時先播開場動畫（只播一次，可跳過），播完直接開始
 async function startOrIntro() {
   if (started || introOn) return;
