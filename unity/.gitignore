@@ -1,0 +1,19 @@
+# Unity 自動產生、不進版本控制
+/Library/
+/Temp/
+/Obj/
+/Build/
+/Builds/
+/Logs/
+/UserSettings/
+/MemoryCaptures/
+*.csproj
+*.sln
+*.suo
+*.user
+*.pidb
+*.booproj
+.vs/
+.vscode/
+# 比對測試的輸出（每次重跑都會重產）
+/Golden/

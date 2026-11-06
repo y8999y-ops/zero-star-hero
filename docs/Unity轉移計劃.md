@@ -10,6 +10,21 @@
 - **分工**：使用者不寫程式，只負責場景與美術的編輯；程式、數值、特效由 Claude 負責。
 - **做法**：B＋（見 2b），編輯器工具以「場景擺放」和「美術匯入」為主。
 
+## 進度
+
+- **階段 0 完成（2026-11-06）**
+  - Unity 專案在 `unity/`。
+  - pixelfx 核心（數學、顏色、畫筆、合成）翻成 C#，在 `unity/Assets/Scripts/PixelFX/`。
+  - 五個形態的普攻特效翻成 C#，在 `unity/Assets/Scripts/Fx/Attacks.cs`。
+  - 比對測試：28 個檔（每一步、正反兩面，共 17 萬個有內容的像素）跟網頁版逐像素完全一樣。
+  - 像素畫布：384×216，整數倍放大。Windows 版實際執行、截圖確認，每個畫布像素都是完整的 3×3 方塊。
+  - 比對方法：
+    1. `node game/tools/unity-golden.mjs`
+    2. Unity 執行 `PixelFX.Tests.Golden.Run`
+    3. `node game/tools/unity-compare.mjs`
+  - 輸出 Windows 版：Unity 執行 `ZeroStar.EditorTools.BuildTools.BuildWindows`。
+- 下一步：階段 1（1-1 第一段試玩）。
+
 ## 1. 現況盤點
 
 | 項目 | 規模 | 搬到 Unity 要做什麼 |
