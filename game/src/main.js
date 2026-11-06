@@ -2008,8 +2008,23 @@ addEventListener("pagehide", () => save(profile, true));
 const hpLag = $("hpLag"), medalEl = $("medal"), xpBar = $("xpBar"), xpText = $("xpText"), killBox = $("killBox");
 let lastHp = -1, lastXp = -1, xpShowT = 0, lastKills = 0, killShowT = 0;
 let coinSndT = 0;
+// 使用者 2026-11-06：電腦版遊玩中隱藏滑鼠，按 Alt 叫出來（再按一次收起）。
+//   開著視窗、對話、選單、地圖時（畫面中間不是遊戲畫面）自動顯示；手機沒有游標，不受影響
+let altCursor = false, curT = 0;
+addEventListener("keydown", (e) => { if (e.key === "Alt") { e.preventDefault(); if (!e.repeat) altCursor = !altCursor; } });
+addEventListener("keyup", (e) => { if (e.key === "Alt") e.preventDefault(); });   // 不要讓瀏覽器把焦點移到選單列
+function updateCursor(dt) {
+  if ((curT -= dt) > 0) return;
+  curT = 0.15;
+  const mid = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+  const field = mid && (mid.id === "screen" || mid.id === "stage" || (mid.closest?.("#touch") && !mid.closest(".btn")));
+  const paused = inv.open || isWinOpen() || mapView?.open || !$("setPanel").classList.contains("hidden");
+  document.documentElement.classList.toggle("nocur", !!(started && !introOn && !dialog.open && !paused && field && !altCursor));
+}
+
 function hud(dt) {
   coinSndT -= dt;
+  updateCursor(dt);
   const hpK = player.hp / player.maxHp;
   hpFill.style.width = hpK * 100 + "%";
   hpLag.style.width = hpK * 100 + "%";

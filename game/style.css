@@ -1177,3 +1177,6 @@ body.playing #xpBar { opacity: 1; }
 /* 使用者 2026-11-06：任務追蹤不要半透明、字下面不要底框——拿掉漸層底和左邊金線，戰鬥中／講話時也不變淡；字加深色描邊，亮的背景上也看得清楚 */
 #qtrack { background: none !important; border-left: 0 !important; padding-left: 0; text-shadow: 0 1px 0 #000, 1px 0 0 #000, -1px 0 0 #000, 0 -1px 0 #000, 0 0 4px rgba(0, 0, 0, .8); }
 #qtrack, #qtrack.dim, body.combat #qtrack, body.talking #qtrack { opacity: 1 !important; }
+
+/* 使用者 2026-11-06：電腦版遊玩中隱藏滑鼠（Alt 叫出來），main.js updateCursor 切換 */
+html.nocur, html.nocur * { cursor: none !important; }
