@@ -9,7 +9,7 @@ import { GUILD_MAX, SYSTEM, sysActive, accept, abandon, turnIn, isReady, refresh
 import { isCore, subStep, coreTier, coreOf, CORES } from "./items.js";
 import { SLOTS, RARITY, AFFIXES, rerollAffix, maxPlus, enhanceRate, enhanceCost, enhanceUp, fmtStat, mainValue } from "./items.js";
 import { uiFx } from "./ui-fx.js";
-import { TREES, PATHS, rank as treeRank, canBuy, buy, refund, freePts, pathSpent, CAP_NEED, costOf } from "./skilltree.js";
+import { TREES, PATHS, rank as treeRank, canBuy, buy, freePts, pathSpent, CAP_NEED, costOf } from "./skilltree.js";
 import { FORMS, CORE_STAT, CORE_COST, CARRY_MAX } from "./forms.js";
 import * as parryFx from "../../pixelfx/src/fx/impacts/parry.js";
 import * as burstFx from "../../pixelfx/src/fx/pickups/collect-burst.js";
@@ -387,19 +387,17 @@ export function openTree(form, tab) {
     if (!TREES[id]) { body.appendChild(say("系統", `${FORMS[id].name}的技能樹下一批開放。點數先幫你存著：${freePts(id)} 點。`)); return; }
     // 使用者 2026-11-05「技能點要往下翻才能點」：左邊技能樹、右邊說明＋投入鍵，同一個畫面不用捲；點已選的節點再點一下＝直接投入
     const wrap = h("div", "tree-wrap"), left = h("div", "tree-left");
-    const head = h("div", "tree-head", `<span class="tpts">${ico("star")}<b>${freePts(id)}</b> 點</span>`);
+    const head = h("div", "tree-head", `<span class="tpts">${ico(id === "star" ? "star" : "core_" + id)}<b>${freePts(id)}</b> 靈核</span>`);
     // 使用者 2026-11-06：魔物核 2 顆換 1 點——那個形態的技能點，或那種核的屬性
     const cs = CORE_STAT[id];
     if (cs) {
-      const f = P.forms.owned[id], have = f.cores ?? 0, row = h("span", "tcores", `${ico("core_" + id)}<b>${have}</b> 顆核`);
-      const ok = have >= CORE_COST;
-      const b1 = ibtn("star", `技能點（${CORE_COST} 顆）`, () => { if ((f.cores ?? 0) < CORE_COST) return msg("核不夠", false); f.cores -= CORE_COST; f.pts = (f.pts ?? 0) + 1; ctx.sfx("pickup"); msg("技能點 +1"); ctx.onTree?.(); ctx.afterChange?.(); render(); }, "plain mini2");
-      const b2 = ibtn(cs.id === "hp" ? "st_hp" : cs.id === "def" ? "st_def" : "st_crit", `${cs.label}（${CORE_COST} 顆）`, () => { if ((f.cores ?? 0) < CORE_COST) return msg("核不夠", false); f.cores -= CORE_COST; P.coreBonus[cs.id] = Number(((P.coreBonus[cs.id] ?? 0) + cs.v).toFixed(2)); ctx.sfx("pickup"); msg(cs.label); ctx.onTree?.(); ctx.afterChange?.(); render(); }, "plain mini2");
-      if (!ok) { b1.classList.add("off"); b2.classList.add("off"); }
-      row.append(b1, b2);
+      // 靈核除了點技能，也可以 2 顆換一次屬性（那種魔物對應的屬性）
+      const f = P.forms.owned[id], row = h("span", "tcores", "");
+      const b2 = ibtn(cs.id === "hp" ? "st_hp" : cs.id === "def" ? "st_def" : "st_crit", `${cs.label}（${CORE_COST} 靈核）`, () => { if (freePts(id) < CORE_COST) return msg("靈核不夠", false); f.pts -= CORE_COST; P.coreBonus[cs.id] = Number(((P.coreBonus[cs.id] ?? 0) + cs.v).toFixed(2)); ctx.sfx("pickup"); msg(cs.label); ctx.onTree?.(); ctx.afterChange?.(); render(); }, "plain mini2");
+      if (freePts(id) < CORE_COST) b2.classList.add("off");
+      row.append(b2);
       head.appendChild(row);
     }
-    if (ctx.inTown) head.appendChild(ibtn("dice", "洗點", () => { refund(id); sel = null; ctx.sfx("ui"); msg("點數全部拿回來了"); ctx.onTree?.(); render(); }, "plain"));
     left.appendChild(head);
     const grid = h("div", "tree-grid");
     for (let p = 0; p < 3; p++) {
@@ -417,7 +415,7 @@ export function openTree(form, tab) {
     left.appendChild(grid);
     const cap = TREES[id].find((x) => x.path === 3), capRow = h("div", "tree-cap");
     capRow.appendChild(nodeEl(id, cap));
-    capRow.appendChild(h("small", "", `三條路線各 ${CAP_NEED} 點解鎖`));
+    capRow.appendChild(h("small", "", `三條路線各投入 ${CAP_NEED} 顆靈核解鎖`));
     left.appendChild(capRow);
     wrap.appendChild(left);
     // 選中的節點：說明＋投入
@@ -427,7 +425,7 @@ export function openTree(form, tab) {
       const r = treeRank(id, n.id);
       info.innerHTML = `<div class="tn">${ico(n.icon, "big")}<b>${n.name}</b><span>${r}/${n.max}</span></div><div class="td">${n.desc(Math.max(1, r))}</div>`;
       if (r < n.max) {
-        const b = ibtn("check", `投入 ${costOf(n, r)} 點`, () => invest(id, n));
+        const b = ibtn("check", `用 ${costOf(n, r)} 顆靈核`, () => invest(id, n));
         if (!canBuy(id, n.id)) b.classList.add("off");
         info.appendChild(b);
       } else info.appendChild(h("span", "maxed", "MAX"));
@@ -438,7 +436,7 @@ export function openTree(form, tab) {
   function invest(id, n) {
     const el = document.querySelector(`[data-node="${n.id}"]`)?.getBoundingClientRect();
     if (treeRank(id, n.id) >= n.max) return;
-    if (!buy(id, n.id)) { ctx.sfx("close"); return msg(n.path === 3 ? `三條路線各要 ${CAP_NEED} 點` : "點數不夠", false); }
+    if (!buy(id, n.id)) { ctx.sfx("close"); return msg(n.path === 3 ? `三條路線各要投入 ${CAP_NEED} 顆靈核` : "靈核不夠", false); }
     ctx.sfx("levelup");
     if (el) uiFx(burstFx, { palette: ["#1a1430", FORMS[id].color, FORMS[id].color, "#ffffff"], light: 0.6 }, el.left + el.width / 2, el.top + el.height / 2);
     msg(`${n.name} ${treeRank(id, n.id)}/${n.max}`);

@@ -42,7 +42,9 @@ export const CORE_STAT = {
   can: { id: "def", v: 1, label: "防禦 +1" },
   bat: { id: "critDmg", v: 0.5, label: "暴擊傷害 +0.5%" },
 };
-/** 吸收一顆核。回傳 { unlocked, core }：第一顆解鎖形態，之後每顆存起來（2 顆換 1 點）。 */
+// 使用者 2026-11-06「核就是技能點，統一名稱取一個新的」：魔物核和技能點合併叫「靈核」——重複吸收的核直接就是那個形態的 1 顆靈核（技能樹用它來點），
+//   不再 2 顆換 1 點；技能樹上方另外可以用 2 顆靈核換一次屬性（CORE_STAT）
+/** 吸收一顆靈核。回傳 { unlocked, core }：第一顆解鎖形態，之後每顆＝那個形態 +1 靈核。 */
 export function absorbCore(forms, id) {
   const f = forms.owned[id];
   if (!f) {
@@ -50,14 +52,14 @@ export function absorbCore(forms, id) {
     if (forms.carry.length < CARRY_MAX) forms.carry.push(id);
     return { unlocked: true, point: false };
   }
-  f.cores = (f.cores ?? 0) + 1;
-  f.got = (f.got ?? 1 + (f.cores - 1) + (f.pts ?? 0)) + 1;   // 舊存檔沒有 got：用手上的核＋點數估
-  return { unlocked: false, core: true, cores: f.cores };
+  f.got = (f.got ?? 1 + (f.pts ?? 0)) + 1;   // 舊存檔沒有 got：用點數估
+  f.pts = (f.pts ?? 0) + 1;
+  return { unlocked: false, core: true };
 }
 
 /** 魔物核這個「掉落物」（不進背包，撿到就吸收） */
 let n = 0;
 export const makeCore = (id) => ({
   uid: "core" + Date.now().toString(36) + (n++).toString(36), kind: "formcore", form: id,
-  name: FORMS[id].name + "的核", icon: "core_" + id, rarity: 3, ilvl: 1, affixes: [], stats: {},
+  name: FORMS[id].name + "的靈核", icon: "core_" + id, rarity: 3, ilvl: 1, affixes: [], stats: {},
 });

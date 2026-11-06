@@ -90,5 +90,4 @@ export function buy(form, id) {
   f.tree[id] = (f.tree[id] ?? 0) + 1;
   return true;
 }
-/** 洗點（城鎮裡免費） */
-export function refund(form) { const f = forms?.owned?.[form]; if (f) f.tree = {}; }
+// 使用者 2026-11-06：取消洗點（點下去就固定了）

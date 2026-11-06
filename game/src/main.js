@@ -163,6 +163,8 @@ function statsNow() {
   return s;
 }
 profile.coreBonus ??= {};
+// 使用者 2026-11-06：核和技能點合併成「靈核」——舊存檔裡還沒換掉的核（f.cores）一顆換一顆靈核
+for (const f of Object.values(profile.forms.owned)) if (f.cores) { f.pts = (f.pts ?? 0) + f.cores; f.cores = 0; }
 setStatBonus(profile.coreBonus);   // 使用者 2026-11-06：魔物核換來的基礎屬性
 function refreshStats() {
   player.setStats(statsNow());
@@ -273,13 +275,12 @@ function absorb(it) {
   if (res.unlocked) {
     formBanner(it.form);
     profile.forms.fresh = it.form;   // 形態格一直發光，直到第一次切換過去
-    toast(`系統：吸收了${F.name}的核！新形態「${F.name}」。${profile.forms.carry.includes(it.form) ? tipFor("點右邊的【形態】就能變身。", "按【1】～【3】就能變身。") : "已經帶滿 3 個了，不在戰鬥中時打開技能樹的【形態】頁就能換。"}`, 3.4, "forms");
-    sayQueue.unshift([`系統：你把${F.from === "slime" ? "史萊姆" : "垃圾桶"}的核吃掉了？不對，是吸收。好吧，差不多。`, 2.8]);
+    toast(`系統：吸收了${F.name}的靈核！新形態「${F.name}」。${profile.forms.carry.includes(it.form) ? tipFor("點右邊的【形態】就能變身。", "按【1】～【3】就能變身。") : "已經帶滿 3 個了，不在戰鬥中時打開技能樹的【形態】頁就能換。"}`, 3.4, "forms");
+    sayQueue.unshift([`系統：你把${F.from === "slime" ? "史萊姆" : "垃圾桶"}的靈核吃掉了？不對，是吸收。好吧，差不多。`, 2.8]);
   } else {
-    // 重複的核：存起來，2 顆換 1 點（技能點或屬性，在技能樹視窗上方換）
-    const have = profile.forms.owned[it.form].cores ?? 0;
-    feed({ name: it.name, icon: it.icon, rarity: 3 }, `核 +1（${have} 顆${have >= CORE_COST ? "，可以換點數了" : ""}）`);
-    if (!profile.seenCoreTip) { profile.seenCoreTip = 1; sayQueue.push(["系統：重複的核存起來了。兩顆換一點——技能點或屬性，在左上的【技能樹】換。", 3.4]); }
+    // 重複的靈核：直接是那個形態的 1 顆靈核（技能樹用它來點）
+    feed({ name: it.name, icon: it.icon, rarity: 3 }, `靈核 +1（${F.name}有 ${freePts(it.form)} 顆）`);
+    if (!profile.seenCoreTip) { profile.seenCoreTip = 1; sayQueue.push(["系統：重複的靈核也有用——在左上的【技能樹】用它點技能，兩顆還能換一次屬性。", 3.4]); }
   }
   save(profile);
   buildFormHud();
@@ -1941,7 +1942,7 @@ $("homeBtn").addEventListener("click", () => goScene("town"));
 $("btnGoHome").addEventListener("click", async (e) => {
   e.stopPropagation();
   if (TOWN || dialog.open || !started) return;
-  if (inCombat) { sfx("close"); toast("系統：附近還有怪。先脫離戰鬥再說。", 2); return; }
+  // 使用者 2026-11-06：不用脫離戰鬥也能直接回城鎮
   $("setPanel").classList.add("hidden");
   if (await ask("系統", "要放棄這趟回碎星鎮嗎？撿到的東西都會留著，但這關要重來。", [["回城鎮", true], ["繼續打", false]])) goScene("town");
 });

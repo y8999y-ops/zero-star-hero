@@ -94,7 +94,7 @@ export function createFeatures({ stageId, list = [], profile, player, api }) {
     } else if (f.t === "fossil") {
       const form = profile.forms.owned[f.form] ? f.form : profile.forms.cur;
       profile.forms.owned[form].pts = (profile.forms.owned[form].pts ?? 0) + 1;
-      take(f); api.burst(f.x, f.y - 8, "fossil"); api.banner("res_fossil", "魔物化石核", `${FORMS[form].name} 技能點 +1`, "很久以前的魔物核，變成化石了還吸收得到。");
+      take(f); api.burst(f.x, f.y - 8, "fossil"); api.banner("res_fossil", "魔物化石核", `${FORMS[form].name} 靈核 +1`, "很久以前的魔物靈核，變成化石了還吸收得到。");
     } else if (f.t === "safe") {
       take(f); api.loot(f.x, f.y - 12); api.burst(f.x, f.y - 10, "safe"); api.toast("被丟下來的寶箱：上面的世界丟了一個保險箱下來……沒鎖。", 2.8, "res_safe");
     } else if (f.t === "stele") {

@@ -64,7 +64,7 @@ export const SYSTEM = [
   { id: "out11", title: "離開墜落之底", desc: "找到出口，走出這個洞窟。", check: (p) => !!p.cleared?.["1-1"], reward: { xp: 30 }, say: "出來了。……外面比我想的還亮。" },
   { id: "reg", title: "登記冒險者", desc: "去公會找波波登記。沒有冒險者證，哪裡都去不了。", check: (p) => p.guild.registered, reward: { coins: 50 }, say: "登記好了。F 級。……從谷底開始，很適合你。" },
   { id: "guild1", title: "第一份工作", desc: "完成並交付 1 個公會任務。", check: (p) => p.guild.done >= 1, reward: { coins: 60, xp: 40 }, say: "第一份薪水。我建議你存起來。……你不會聽的。" },
-  { id: "core1", title: "吸收的滋味", desc: "吸收 1 個魔物核，解鎖新形態。", check: (p) => Object.keys(p.forms.owned).length >= 2, reward: { scrap: 10 }, say: "你把魔物的核吃掉了。……我是說吸收。差不多啦。" },
+  { id: "core1", title: "吸收的滋味", desc: "吸收 1 顆魔物的靈核，解鎖新形態。", check: (p) => Object.keys(p.forms.owned).length >= 2, reward: { scrap: 10 }, say: "你把魔物的靈核吃掉了。……我是說吸收。差不多啦。" },
   { id: "forge2", title: "叮叮噹噹", desc: "在岩叔的工坊把任何一件裝備強化到 +2。", check: (p) => p.quests.stats.enhanceMax >= 2, reward: { coins: 80 }, say: "強化成功。岩叔的手還沒裂，很好。" },
   { id: "meal1", title: "吃飽才有力氣", desc: "在菇媽的旅館吃一道料理。", check: (p) => p.quests.stats.meals >= 1, reward: { scrap: 8 }, say: "星星需要吃東西嗎？……我也不知道，但你吃得很開心。" },
   { id: "reroll1", title: "不滿意就重來", desc: "在工坊重鑄 1 條詞綴。", check: (p) => p.quests.stats.rerolls >= 1, reward: { coins: 100 }, say: "重鑄是一種賭博。我什麼都沒說。" },
