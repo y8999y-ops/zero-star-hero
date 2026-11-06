@@ -55,7 +55,7 @@ namespace ZeroStar
     {
         public Game G;
         public List<Enemy> Enemies() => G.Enemies.FindAll(e => !e.Dead);
-        public void Hit(Enemy e, double mult, double dir, HitOpts o) { if (e.Dead) return; e.Hit(G.Player.RollDmg(mult * (1 + 0 / 100.0) * G.UltPassive()), dir, o, G); G.AddCombo(1); }
+        public void Hit(Enemy e, double mult, double dir, HitOpts o) { if (e.Dead) return; e.Hit(G.Player.RollDmg(mult * (1 + G.Player.S.Ult / 100) * G.UltPassive()), dir, o, G); G.AddCombo(1); }
         /// 大招只打看得到的範圍
         public (double l, double r, double top) View() { var v = Game.ViewRect(); return (G.CamX + v.x0, G.CamX + v.x0 + v.w, G.CamY + v.y0); }
         public void Puddle(double x, double y) { }   // 黏液灘（hazards.js）還沒搬
@@ -69,7 +69,7 @@ namespace ZeroStar
             {
                 if (e.Dead || U.HitSet.Contains(e) || e.X < x0 || e.X > x1 || Math.Abs(e.Y - (U.HasFy ? U.Fy : e.Y)) > 130) continue;
                 U.HitSet.Add(e);
-                e.Hit(G.Player.RollDmg(Ult.ULT_MULT * (1 + 0 / 100.0) * G.UltPassive()), e.X < tx ? -1 : 1, new HitOpts { Launch = true, Push = 4 }, G);
+                e.Hit(G.Player.RollDmg(Ult.ULT_MULT * (1 + G.Player.S.Ult / 100) * G.UltPassive()), e.X < tx ? -1 : 1, new HitOpts { Launch = true, Push = 4 }, G);
                 n++;
             }
             if (n > 0) G.AddCombo(n);

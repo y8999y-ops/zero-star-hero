@@ -33,6 +33,7 @@ namespace ZeroStar
             for (int i = 0; i < args.Length - 1; i++) if (args[i] == "-shot") shotDir = args[i + 1];
             if (shotDir != null) { Application.runInBackground = true; Directory.CreateDirectory(shotDir); script = TraceScript.Load(TraceScript.DefaultPath()).events; Rnd.R = new Rng(12345); }
             game = new Game();
+            if (shotDir != null && TraceScript.Load(TraceScript.DefaultPath()).tree == "max") game.MaxTree();
             screen.Tick += OnTick;
             screen.Draw += f => game.Render(f);
             screen.PostComposite += d => game.PostComposite(d);
@@ -70,6 +71,8 @@ namespace ZeroStar
             // 換形態：1～5 直接選、O 換下一個（網頁版只帶 3 個；階段 2 先全部都能用）
             for (int i = 0; i < game.Carry.Length; i++) if (Input.GetKeyDown(KeyCode.Alpha1 + i)) game.PendingForm = game.Carry[i];
             if (Input.GetKeyDown(KeyCode.O)) game.PendingForm = NextForm();
+            // 開發用：T＝技能樹全部點滿／全部清掉（之後有技能樹畫面再拿掉）
+            if (Input.GetKeyDown(KeyCode.T)) { if (game.Tree.Count > 0) game.Tree.Clear(); else game.MaxTree(); }
             if (Input.GetKeyDown(KeyCode.Escape) && !Application.isEditor) Application.Quit();
         }
 
@@ -203,7 +206,7 @@ namespace ZeroStar
     /// 比對測試的那串按鍵（game/tools/unity-trace-script.json）
     public class TraceScript
     {
-        public int ticks, frameEvery;
+        public int ticks, frameEvery; public string tree;
         public List<(int t, string type, string code)> events = new List<(int, string, string)>();
         public static string DefaultPath() => Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "game", "tools", "unity-trace-script.json"));
         public static TraceScript Load(string path)
@@ -211,6 +214,8 @@ namespace ZeroStar
             var s = new TraceScript();
             string txt = File.Exists(path) ? File.ReadAllText(path) : (Resources.Load<TextAsset>("Baked/trace-script")?.text ?? "{}");
             s.ticks = Num(txt, "\"ticks\""); s.frameEvery = Num(txt, "\"frameEvery\"");
+            var tm = System.Text.RegularExpressions.Regex.Match(txt, "\"tree\"\\s*:\\s*\"(\\w+)\"");
+            if (tm.Success) s.tree = tm.Groups[1].Value;
             int i = txt.IndexOf("\"events\"");
             if (i >= 0)
             {

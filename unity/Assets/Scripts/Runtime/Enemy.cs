@@ -30,7 +30,8 @@ namespace ZeroStar
         public double X0, Vx, Vy, Hp, MaxHp, Stun, FlashT, Face = 1, Clock, HopDir = 1, T, Speed, SqT, AwakeT, AlertT = -1;
         public double Xp, Yp;
         public bool Dead_, Awake, DeepSleep, FlungUp;
-        public StatusSet St;   // 元素狀態（status.js 的 e.st）
+        public StatusSet St;
+        public double MarkT, FlungT, FlungDmg, DizzyT, MeteorMark; public HashSet<Enemy> FlungHit;   // 元素狀態（status.js 的 e.st）
         IWorld world;
         public bool Dead => Dead_;
         public double X => Xp;
@@ -56,6 +57,7 @@ namespace ZeroStar
             this.world = world;
             FlashT -= dt;
             if (SqT > 0) SqT -= dt;
+            if (MarkT > 0) MarkT -= dt;
             bool stunned = Stun > 0;
             Stun -= dt;
             if (!stunned) T += dt;
@@ -106,7 +108,10 @@ namespace ZeroStar
 
         public void Hit(Roll roll, double dir, HitOpts o, IWorld world)
         {
-            double dmg = roll.Dmg * 1; bool crit = roll.Crit;
+            double dmg = roll.Dmg * (MarkT > 0 ? 1.1 : 1); bool crit = roll.Crit;   // 尖刺星「破綻」：被標記的多受 10% 傷害
+            if (crit && roll.Mark) MarkT = 3;
+            // 星核「沉重」：被打飛的這隻，0.4 秒內撞到別的敵人時對方也受傷
+            if (o.Fling) { FlungT = 0.4; FlungDmg = dmg * 0.5; FlungHit = new HashSet<Enemy> { this }; }
             double d = Math.Max(1, Pf.Round(dmg * (0.9 + Rnd.Next() * 0.2) * 1));
             Hp -= d;
             FlashT = 0.07;

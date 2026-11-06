@@ -31,6 +31,13 @@ namespace ZeroStar
         public Status(Game g) { G = g; }
 
         double Atk => G.Player.Atk;
+        // 技能樹（main.js 的 setStatusContext）
+        double BurnMul => 1 + 0.6 * G.Rank("star", "s_fire");
+        double PoisonMul => 1 + 0.6 * G.Rank("bat", "b_fang");
+        double PoisonDur => 1 + 0.4 * G.Rank("bat", "b_toxic");
+        bool ShockBonus => G.Player.Form == "can" && G.Rank("can", "c_volt") > 0;
+        bool ChainExtra => G.Rank("can", "c_conduct") > 0;
+        double WildR => 1 + 0.3 * G.Rank("slime", "g_fuel");
         static bool Has(Enemy e, string id) => e.St != null && e.St.Get(id) > 0;
         static (double x, double y, (double x0, double x1, double y0, double y1) b) Center(Enemy e) { var b = e.Box(); return (e.X, (b.y0 + b.y1) / 2, b); }
         List<Enemy> Near(Enemy e, double r) => G.Enemies.Where(o => o != e && !o.Dead && Math.Abs(o.X - e.X) < r && Math.Abs(o.Y - e.Y) < r * 0.8).ToList();
@@ -56,10 +63,10 @@ namespace ZeroStar
             if (id == "wet" && Has(e, "burn")) { React(e, "steam", depth); return; }
             if (id == "wet" && Has(e, "shock")) { React(e, "chain", depth); return; }
             if (id == "poison" && Has(e, "burn")) { React(e, "toxic", depth); return; }
-            S.Set(id, Math.Max(S.Get(id), DUR[id] * (id == "poison" ? 1 + 0.4 * 0 : 1)));
-            if (id == "burn") S.BurnDps = Atk * 0.3 * (1 + 0.6 * 0);
-            if (id == "poison") S.PoisonDps = Atk * 0.2 * (1 + 0.6 * 0);
-            if (id == "shock") e.Stun = Math.Max(e.Stun, 0.45);
+            S.Set(id, Math.Max(S.Get(id), DUR[id] * (id == "poison" ? PoisonDur : 1)));
+            if (id == "burn") S.BurnDps = Atk * 0.3 * BurnMul;
+            if (id == "poison") S.PoisonDps = Atk * 0.2 * PoisonMul;
+            if (id == "shock") { e.Stun = Math.Max(e.Stun, 0.45); if (ShockBonus) { S.Shock += 1; e.Stun = Math.Max(e.Stun, 1); } }
         }
 
         void React(Enemy e, string kind, int depth)
@@ -70,19 +77,20 @@ namespace ZeroStar
                 case "wildfire":
                     // 大火：燒得更久更痛，往旁邊 40px 擴散（只連 2 層）
                     S.Slime = 0; S.Oil = 0;
-                    S.Burn = DUR["burn"] * 2; S.BurnDps = atk * 0.6 * 1; S.Big = true;
+                    S.Burn = DUR["burn"] * 2; S.BurnDps = atk * 0.6 * BurnMul; S.Big = true;
                     e.Tick(atk * 0.8, G);
                     G.SpawnLive("plasma-explosion", Pf.Round(x), Pf.Round(b.y1), new FxOptions { Palette = FIRE, Light = 0.6, Seed = Pf.ToInt32(Rnd.Next() * 99) }, 1.6);
                     SceneLight.AddFlash(x, y, 70, 3, 0.35, "#ff8a30");
                     G.Fx.Shake(0.18, 2);
                     G.Sfx("hitH");
-                    if (depth < 2) foreach (var o in Near(e, 46 * (1 + 0.3 * 0))) { var oo = o; G.After(120 + Rnd.Next() * 120, () => Apply(oo, "burn", depth + 1)); }
+                    if (depth < 2) foreach (var o in Near(e, 46 * WildR)) { var oo = o; G.After(120 + Rnd.Next() * 120, () => Apply(oo, "burn", depth + 1)); }
                     break;
                 case "chain":
                 {
                     // 感電連鎖：電流跳到附近所有潮濕的敵人（和牠自己）
                     S.Wet = 0;
                     var list = new List<Enemy> { e }; list.AddRange(Near(e, 90).Where(o => Has(o, "wet")));
+                    if (ChainExtra) { var extra = Near(e, 90).FirstOrDefault(o => !list.Contains(o)); if (extra != null) list.Add(extra); }   // 導電體：多跳一隻
                     Enemy prev = e;
                     for (int i = 0; i < list.Count; i++)
                     {

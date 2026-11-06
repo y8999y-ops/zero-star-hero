@@ -46,9 +46,23 @@ namespace ZeroStar
         public readonly Ult Ult;
         double ultCd;
         public Action Vibrate;
-        public double UltPassive() => Player.Form == "star" ? 1 + 0.04 * 0 : 1;
+        public double UltPassive() => Player.Form == "star" ? 1 + 0.04 * Rank("star", "p_star") : 1;
+        /// 技能樹：形態 → 節點 → 點了幾級（skilltree.js 的 rank）
+        public readonly Dictionary<string, int> Tree = new Dictionary<string, int>();
+        [Serializable] class TreeNode { public string form, id, name; public int max, path; }
+        [Serializable] class TreeList { public TreeNode[] nodes; }
+        /// 技能樹全部點滿（比對測試、開發用）
+        public void MaxTree() { foreach (var n in JsonUtility.FromJson<TreeList>(Baked.Text("tree")).nodes) Tree[n.form + ":" + n.id] = n.max; }
+        public int Rank(string form, string id) => Tree.TryGetValue(form + ":" + id, out var r) ? r : 0;
+        // 技能樹的效果物件
+        public class Wave { public double X, Y, Dir, T, Seed; public HashSet<Enemy> Hit = new HashSet<Enemy>(); }
+        public class Mini { public double X, Y, Vx, Vy, T, Life, Cd, Seed; }
+        public readonly List<Wave> Waves = new List<Wave>();
+        public readonly List<Mini> Minis = new List<Mini>();
+        double swarmT, originT = -9;
+        static readonly string[] METAL7 = { "#14161c", "#2a2e38", "#4a5468", "#6e7a90", "#9aa6ba", "#d0d8e6", "#ffffff" };
         public readonly List<Shot> Shots = new List<Shot>();
-        public class Shot { public double X, Y, Dir, Vy, Life, Mult = 1; public string Form; public bool Small, Done; public FxRun Fx; }
+        public class Shot { public double X, Y, Dir, Vy, Life, Mult = 1; public string Form; public bool Small, Done; public FxRun Fx; public Enemy Skip; }
         const double COMBO_T = 4.4, FORM_CD = 1;
         double formCdUntil = -9;
         public string PendingForm;   // 換形態（按鍵或操作錄影）
@@ -111,7 +125,7 @@ namespace ZeroStar
             Art = new LevelArt(Data);
             Map = new GameMap(Data.W, Data.H, Data.Solids, Data.Platforms);
             var combos = JsonUtility.FromJson<ComboDef>(Baked.Text("combos"));
-            Player = new Player(START.x, START.y, combos);
+            Player = new Player(START.x, START.y, combos) { RankFn = Rank };
             Checkpoint = (START.x, 0);
             CamY = Math.Max(0, Data.H - H);
             var brazier = Baked.Anim("brazier");
@@ -136,10 +150,17 @@ namespace ZeroStar
             }
             return best;
         }
+        public List<Enemy> EnemiesIn(Box box) => Enemies.FindAll(e => !e.Dead && box.Overlaps(e.HitBox()));
         public int HitArea(Box box, Func<Roll> dmg, double dir, HitOpts o)
         {
             int n = 0;
-            foreach (var e in Enemies.ToArray()) if (!e.Dead && box.Overlaps(e.HitBox())) { var r = dmg(); e.Hit(r, dir, o, this); n++; }
+            foreach (var e in Enemies.ToArray()) if (!e.Dead && box.Overlaps(e.HitBox()))
+            {
+                var r = dmg(); bool poisoned = e.St != null && e.St.Poison > 0;
+                e.Hit(r, dir, o, this); n++;
+                // 技能樹「嗜血爪」（蝠翼星）：打中毒的敵人回復傷害的 3%
+                if (poisoned && Player.Form == "bat" && Rank("bat", "b_blood") != 0) Player.Hp = Math.Min(Player.MaxHp, Player.Hp + r.Dmg * 0.03);
+            }
             if (n > 0) AddCombo(n);
             return n;
         }
@@ -164,6 +185,65 @@ namespace ZeroStar
             var pal = SHOT_PAL.ContainsKey(form) ? SHOT_PAL[form] : SHOT_PAL["star"];
             Shots.Add(new Shot { X = x, Y = y, Dir = dir, Vy = vy, Form = form, Life = 1.1, Mult = 1, Fx = SpawnLive("fireball", x, y, new FxOptions { Flip = dir < 0, Palette = pal.fx, Light = 0.65, Seed = Pf.ToInt32(Rnd.Next() * 99) }) });
         }
+        /// 技能樹的小彈（彈跳、分裂）：比較小、比較短、不會再分
+        public void SpawnShotlet(double x, double y, double dir, string form, double vy = 0, double mult = 0.6, double life = 0.35)
+        {
+            var pal = SHOT_PAL.ContainsKey(form) ? SHOT_PAL[form] : SHOT_PAL["star"];
+            Shots.Add(new Shot { X = x, Y = y, Dir = dir, Vy = vy, Form = form, Life = life, Mult = mult, Small = true, Fx = SpawnLive("fireball", x, y, new FxOptions { Flip = dir < 0, Palette = pal.fx, Light = 0.65 * 0.6, Seed = Pf.ToInt32(Rnd.Next() * 99) }) });
+        }
+        /// 技能樹：技能彈爆開之後的追加效果（星雨、彈跳、分裂；黏液地面要等場景機關搬了才有）
+        void SkillTreeBoom(Shot s)
+        {
+            double x = s.X, y = s.Y;
+            if (s.Form == "star" && Rank("star", "s_rain") != 0)
+            {
+                double fy = Map.FloorAt(x, y - 8);
+                After(1000, () =>
+                {
+                    SpawnLive("star-fall", Pf.Round(x), fy, new FxOptions { Palette = Col.PAL["gold"], Light = 0.4, Seed = Pf.ToInt32(Rnd.Next() * 99) }, 1.2);
+                    for (int k = 0; k < 4; k++) After(150 + k * 180, () => HitArea(new Box(x - 50, x + 50, fy - 60, fy), () => Player.RollDmg(0.6 * Player.SkillMul()), s.Dir, new HitOpts { Push = 1 }));
+                });
+            }
+            if (s.Form == "slime")
+            {
+                if (Rank("slime", "g_bounce") != 0) SpawnShotlet(x, y, s.Dir, "slime", 0, 0.6, 0.3);
+                if (Rank("slime", "g_split") != 0) foreach (double vy in new[] { -140.0, 0, 140 }) SpawnShotlet(x, y, vy != 0 ? s.Dir : -s.Dir, "slime", vy, 0.5, 0.28);
+            }
+        }
+        // ---- 技能樹的世界效果
+        public void GroundSlam(double x, double y, double r, double mult)
+        {
+            double fy = Map.FloorAt(x, y - 8);
+            SpawnLive("ground-slam", Pf.Round(x), Pf.Round(fy), new FxOptions { Palette = METAL7, Light = 0.4, Seed = Pf.ToInt32(Rnd.Next() * 99) }, 1.8);
+            Fx.Shake(0.25, 3); Sfx("land");
+            HitArea(new Box(x - r, x + r, fy - 30, fy + 2), () => Player.RollDmg(mult * Player.SkillMul()), Player.Face, new HitOpts { Launch = true, Push = 3 });
+        }
+        public void SpikeBurst(double x, double y)
+        {
+            Fx.Spawn(Baked.Anim("spark"), Pf.Round(x), Pf.Round(y));
+            SceneLight.AddFlash(x, y, 70, 2.5, 0.25, "#ffd890");
+            Sfx("hitH");
+            HitArea(new Box(x - 48, x + 48, y - 40, y + 18), () => Player.RollDmg(1.2 * Player.SkillMul()), Player.Face, new HitOpts { Push = 3 });
+        }
+        public void Thorns(double fromX, double y)
+        {
+            var e = NearestEnemy(fromX, y, 40);
+            if (e == null) return;
+            e.Hit(Player.RollDmg(0.8), e.X >= Player.X ? 1 : -1, new HitOpts { Push = 2 }, this);
+            Fx.Spawn(Baked.Anim("spark"), Pf.Round(e.X), Pf.Round(y - 12));
+        }
+        public void SpawnWave(double x, double y, double dir) { Waves.Add(new Wave { X = x, Y = y, Dir = dir, Seed = Rnd.Next() }); Sfx("swing"); }
+        public void OnGlide(double dt)
+        {
+            if (Rank("bat", "b_swarm") == 0) return;
+            if ((swarmT -= dt) > 0 || Minis.Count >= 3) return;
+            swarmT = 0.5;
+            Minis.Add(new Mini { X = Player.X, Y = Player.Y - 16, Vx = 0, Vy = -40, Life = 4, Seed = Rnd.Next() * 9 });
+        }
+        // 星核的效果（裝備，下一段才搬）
+        public void CometStart() { }
+        public void CoreMeteor() { }
+        public void CoreStun(double fromX, double y) { }
         public double NoManaT;
         public void NoMana() { Sfx("close"); NoManaT = 0.6; }
         void SwitchForm(string id)
@@ -175,6 +255,14 @@ namespace ZeroStar
             Player.SetForm(id);
             Player.TurnT = 0.09;
             Player.Invuln = Math.Max(Player.Invuln, 0.15);
+            // 技能樹：切換時的效果
+            if (id == "star" && Rank("star", "s_origin") != 0 && sceneClock - originT > 3) { originT = sceneClock; Player.Mp = Math.Min(Player.MaxMp, Player.Mp + 10); }
+            if (id == "star" && Rank("star", "s_return") != 0) Player.SkillCd *= 0.5;
+            if (id == "slime" && Rank("slime", "g_film") != 0) Player.FilmT = 3;
+            if (id == "can" && Rank("can", "c_dent") != 0) Player.DentT = 3;
+            if (id == "bat" && Rank("bat", "b_night") != 0) Player.NightT = 3;
+            if (id == "spike" && Rank("spike", "k_curl") != 0) Player.CurlT = 3;
+            Player.Invuln = Math.Max(Player.Invuln, 0.15);
             SpawnLive("collect-burst", Pf.Round(Player.X), Pf.Round(Player.Y) - 12, new FxOptions { Palette = FORM_BURST[id], Light = 0.4 });
             SceneLight.AddFlash(Player.X, Player.Y - 12, 60, 2, 0.3, FORM_COLOR[id]);
         }
@@ -182,7 +270,15 @@ namespace ZeroStar
         public void Dust(double x, double y, int n) { Fx.Spawn(Baked.Anim("dust"), Pf.Round(x), Pf.Round(y), Rnd.Next() < 0.5, speed: 1.8); }
         public void DropCoins(double x, double y, int n) { Coins += n; }
         public void OnKill(Enemy e) { Kills++; if (e.SqT > 0) Fx.HitStop(0.08); }   // 直接打死的停久一點
-        public void OnPlayerHurt(double dmg) { }
+        public void OnPlayerHurt(double dmg)
+        {
+            // 技能樹「彈性」（黏液星）：被打時 20% 把旁邊的敵人彈開
+            if (Player.Form == "slime" && Rank("slime", "g_spring") != 0 && Rnd.Next() < 0.2)
+            {
+                foreach (var e in Enemies) if (!e.Dead && Math.Abs(e.X - Player.X) < 44 && Math.Abs(e.Y - Player.Y) < 40) { e.Vx = (e.X >= Player.X ? 1 : -1) * 260; e.Vy = -160; e.Stun = Math.Max(e.Stun, 0.5); }
+                SceneLight.AddFlash(Player.X, Player.Y - 12, 60, 2, 0.25, "#b4f890");
+            }
+        }
         public void Sfx(string name) { OnSfx?.Invoke(name); }
 
         // ---- 看得到的範圍（畫布座標）：放大 ZOOM 倍後四周被裁掉
@@ -296,20 +392,26 @@ namespace ZeroStar
             Separate(dt);
             Enemies.RemoveAll(e => e.Dead);
             // 技能彈：直線飛，撞到怪或地形就爆開（範圍傷害、擊飛、沾元素）
-            foreach (var s in Shots)
+            for (int si = 0; si < Shots.Count; si++)   // 跟 JS 一樣：迴圈中途加進來的小彈（彈跳、分裂）同一步也會處理
             {
+                var s = Shots[si];
                 s.X += s.Dir * 290 * dt;
                 if (s.Vy != 0) s.Y = Math.Min(Map.FloorAt(s.X, s.Y) - 6, s.Y + s.Vy * dt);
                 s.Life -= dt;
                 s.Fx.Options.X = Pf.Round(s.X); s.Fx.Options.Y = Pf.Round(s.Y);
                 bool hit = s.Life <= 0 || Map.SolidAt(s.X, s.Y);
-                if (!hit) foreach (var e in Enemies) if (!e.Dead && e.HitBox().Overlaps(new Box(s.X - 8, s.X + 8, s.Y - 8, s.Y + 8))) { hit = true; break; }
+                if (!hit) foreach (var e in Enemies.ToArray()) if (!e.Dead && e != s.Skip && e.HitBox().Overlaps(new Box(s.X - 8, s.X + 8, s.Y - 8, s.Y + 8)))
+                {
+                    // 技能樹「貫穿」（星星）：穿過第一隻，打到第二隻才爆
+                    if (s.Form == "star" && !s.Small && Rank("star", "s_pierce") != 0 && s.Skip == null) { s.Skip = e; e.Hit(Player.RollDmg(1.2 * Player.SkillMul()), s.Dir, new HitOpts { Push = 2 }, this); continue; }
+                    hit = true; break;
+                }
                 if (hit)
                 {
                     s.Done = true;
                     s.Fx.Stop();
                     var P = SHOT_PAL.ContainsKey(s.Form) ? SHOT_PAL[s.Form] : SHOT_PAL["star"];
-                    double big = 1 + 0.15 * 0, R = P.r * big * (s.Small ? 0.55 : 1);
+                    double big = 1 + 0.15 * (s.Form == "slime" ? Rank("slime", "g_big") : Rank("star", "s_big")), R = P.r * big * (s.Small ? 0.55 : 1);
                     Sfx("boom");
                     SpawnLive("plasma-explosion", Pf.Round(s.X), Pf.Round(s.Y), new FxOptions { Palette = P.boom, Accent = P.accent, Light = 0.65 * (s.Small ? 0.5 : 1), Seed = Pf.ToInt32(Rnd.Next() * 99) }, s.Small ? 1.8 : 1.3);
                     SceneLight.AddFlash(s.X, s.Y, s.Small ? 50 : 100, 4, 0.4, P.light);
@@ -317,9 +419,31 @@ namespace ZeroStar
                     HitArea(new Box(s.X - R, s.X + R, s.Y - 40, s.Y + 40), () => Player.RollDmg(2.4 * mult * Player.SkillMul()), s.Dir, new HitOpts { Launch = true, Push = P.push, Elem = Player.ELEM.TryGetValue(s.Form, out var el) ? el : "burn" });
                     Fx.HitStop(s.Small ? 0.03 : 0.06);
                     Fx.Shake(s.Small ? 0.12 : 0.3, s.Small ? 1 : 3);
+                    if (!s.Small) SkillTreeBoom(s);
+                    // 星王化＋黏液星：黏液彈連火一起點
+                    if (s.Form == "slime" && Player.KingT > 0) foreach (var e in EnemiesIn(new Box(s.X - R, s.X + R, s.Y - 40, s.Y + 40))) Status.Apply(e, "burn");
                 }
             }
             Shots.RemoveAll(s => s.Done);
+            // 技能樹「星光斬」：往前飛，穿過敵人、每隻打一次
+            foreach (var w in Waves)
+            {
+                w.T += dt; w.X += w.Dir * StarWave.WAVE_V * dt;
+                HitOnce(new Box(w.X - 8, w.X + 8, w.Y - 14, w.Y + 14), w.Hit, () => Player.RollDmg(1.0), w.Dir, new HitOpts { Push = 2 });
+            }
+            Waves.RemoveAll(w => w.T >= StarWave.WAVE_T);
+            // 技能樹「蝙蝠群」：小蝙蝠飛向最近的敵人咬一口（沾毒），0.6 秒一口，4 秒後飛走
+            foreach (var m in Minis)
+            {
+                m.T += dt; m.Life -= dt; m.Cd -= dt;
+                var tgt = NearestEnemy(m.X, m.Y, 160);
+                double tx = tgt != null ? tgt.X : Player.X + Pf.Sin(m.T * 3 + m.Seed) * 20, ty = tgt != null ? (tgt.Box().y0 + tgt.Box().y1) / 2 : Player.Y - 30;
+                m.Vx += Math.Sign(tx - m.X) * 600 * dt; m.Vy += Math.Sign(ty - m.Y) * 600 * dt;
+                m.Vx *= 1 - 3 * dt; m.Vy *= 1 - 3 * dt;
+                m.X += m.Vx * dt; m.Y += m.Vy * dt;
+                if (tgt != null && m.Cd <= 0 && Math.Abs(tgt.X - m.X) < 10 && Math.Abs(ty - m.Y) < 12) { m.Cd = 0.6; tgt.Hit(Player.RollDmg(0.4), m.Vx >= 0 ? 1 : -1, new HitOpts { Push = 1, Elem = "poison" }, this); }
+            }
+            Minis.RemoveAll(m => m.Life <= 0);
             Fx.Update(dt);
             if ((ComboT -= dt) <= 0 && Combo != 0) Combo = 0;
             FollowCam(dt);
@@ -351,6 +475,8 @@ namespace ZeroStar
             Prof.Mark("背景特效");
             foreach (var e in Enemies) e.Draw(frame, Fx, SimMs);
             Status.DrawBolts(frame);
+            foreach (var w in Waves) StarWave.Draw(frame, w);
+            foreach (var m in Minis) MiniBat.Draw(frame, m);
             Prof.Mark("怪");
             if (Ult.On) { Ult.DimScene(frame); Prof.Mark("暗場"); Fx.Draw(frame, true); Prof.Mark("背景特效"); }   // 大招：先畫怪再暗場，法陣這些背景特效畫在暗場之後才會亮
             if (Player.Hp > 0) Player.Draw(frame);

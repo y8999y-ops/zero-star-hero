@@ -54,11 +54,20 @@ const collectBurst = await import("../../pixelfx/src/fx/pickups/collect-burst.js
 const { flash } = await import("../src/light.js");
 const { ELEM, setStatusContext, updateStatus, drawBolts, setStatusAllow } = await import("../src/status.js");
 const { FORMS } = await import("../src/forms.js");
+const { TREES, bindForms, rank } = await import("../src/skilltree.js");
+const { drawWave, WAVE_T, WAVE_V } = await import("../src/starwave.js");
+const { drawMiniBat } = await import("../src/minibat.js");
+const starFallFx = await import("../../pixelfx/src/fx/arcane/star-fall.js");
+const slamFx = await import("../../pixelfx/src/fx/impacts/ground-slam.js");
 const { COMBO_MP } = await import("../src/player.js");
 const { ult, ULT_MP, ULT_MULT, startUlt, updateUlt, ultLights, dimScene, drawUlt, drawCutIn, postUlt, bindUltHooks } = await import("../src/ult.js");
 const { global: globalLight } = await import("../src/light.js");
 const SC = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "unity-trace-script.json"), "utf8"));
 const SCRIPT = SC.events.slice().sort((a, b) => a[0] - b[0]), TICKS = SC.ticks, FRAME_EVERY = SC.frameEvery;
+// 技能樹："max"＝每個形態的每個節點都點滿（每個效果都會用到）
+const treeOwned = {};
+for (const f of Object.keys(TREES)) treeOwned[f] = { pts: 0, tree: SC.tree === "max" ? Object.fromEntries(TREES[f].map((n) => [n.id, n.max])) : {} };
+bindForms({ owned: treeOwned });
 
 const W = 384, H = 216, ZOOM = 1.38, STEP = 1 / 60, LEVEL_W = L.LEVEL_W, MAP_H = L.MAP_H;
 const VIEW_DY = Math.round(0.05 * H / ZOOM);
@@ -75,7 +84,8 @@ for (const sp of STAGE_1_1.spawns) {
   e.x0 = sp.x; if (sp.deep) e.deepSleep = true;
   enemies.push(e);
 }
-const shots = [];
+const shots = [], waves = [], minis = [];
+let swarmT = 0, originT = -9;
 const stats = { combo: 0, comboT: 0, kills: 0 };
 const SHOT_PAL = {
   star: { fx: PAL.gold, boom: PAL.gold, accent: PAL.holy, light: "#ffd27a", r: 46, push: 3 },
@@ -102,27 +112,38 @@ function switchForm(id) {
   formCdUntil = sceneClock + FORM_CD;
   player.setForm(id);
   player.turnT = 0.09;
+  if (id === "star" && rank("star", "s_origin") && sceneClock - originT > 3) { originT = sceneClock; player.mp = Math.min(player.maxMp, player.mp + 10); }
+  if (id === "star" && rank("star", "s_return")) player.skillCd *= 0.5;
+  if (id === "slime" && rank("slime", "g_film")) player.filmT = 3;
+  if (id === "can" && rank("can", "c_dent")) player.dentT = 3;
+  if (id === "bat" && rank("bat", "b_night")) player.nightT = 3;
+  if (id === "spike" && rank("spike", "k_curl")) player.curlT = 3;
   player.invuln = Math.max(player.invuln, 0.15);
   spawn(collectBurst, { x: Math.round(player.x), y: Math.round(player.y) - 12, palette: FORM_BURST[id], light: 0.4 });
   flash(player.x, player.y - 12, 60, 2, 0.3, FORMS[id].color);
 }
-setStatusContext({ enemies, atk: () => player.stats.atk });
+setStatusContext({
+  enemies, atk: () => player.stats.atk,
+  burnMul: () => 1 + 0.6 * rank("star", "s_fire"), poisonMul: () => 1 + 0.6 * rank("bat", "b_fang"), poisonDur: () => 1 + 0.4 * rank("bat", "b_toxic"),
+  shockBonus: () => player.form === "can" && rank("can", "c_volt") > 0, chainExtra: () => rank("can", "c_conduct") > 0, wildR: () => 1 + 0.3 * rank("slime", "g_fuel"),
+});
 setStatusAllow(["burn", "slime"]);   // 1-1 只有燃燒和黏液（main.js 同一個設定）
 let ultCd = 0;
+const ultPassive = () => (player.form === "star" ? 1 + 0.04 * rank("star", "p_star") : 1);
 const ultHooks = {
   wave(x0, x1, tx) {
     let n = 0;
     for (const e of enemies) {
       if (e.dead || ult.hitSet.has(e) || e.x < x0 || e.x > x1 || Math.abs(e.y - (ult.fy ?? e.y)) > 130) continue;
       ult.hitSet.add(e);
-      e.hit(player.roll(ULT_MULT * (1 + player.stats.ult / 100) * 1), e.x < tx ? -1 : 1, { launch: true, push: 4 }, world);
+      e.hit(player.roll(ULT_MULT * (1 + player.stats.ult / 100) * ultPassive()), e.x < tx ? -1 : 1, { launch: true, push: 4 }, world);
       n++;
     }
     if (n) addCombo(n);
   },
   dust: (x, y) => { world.dust(x, y, 6); },
   enemies: () => enemies.filter((e) => !e.dead),
-  hit(e, mult, dir, opts) { if (e.dead) return; e.hit(player.roll(mult * (1 + player.stats.ult / 100) * 1), dir, opts, world); addCombo(1); },
+  hit(e, mult, dir, opts) { if (e.dead) return; e.hit(player.roll(mult * (1 + player.stats.ult / 100) * ultPassive()), dir, opts, world); addCombo(1); },
   view: () => { const v = viewRect(); return { l: camX + v.x0, r: camX + v.x0 + v.w, top: camY + v.y0 }; },
   puddle: () => {},   // 黏液灘（hazards.js）兩邊都還沒搬
   heal: (k) => { player.hp = Math.min(player.maxHp, player.hp + player.maxHp * k); },
@@ -138,9 +159,42 @@ const world = {
     }
     return best;
   },
+  enemiesIn(box) { return enemies.filter((e) => !e.dead && overlaps(box, e.box())); },
+  groundSlam(x, y, r, mult) {
+    const fy = floorAt(x, y - 8);
+    spawn(slamFx, { x: Math.round(x), y: Math.round(fy), palette: ["#14161c", "#2a2e38", "#4a5468", "#6e7a90", "#9aa6ba", "#d0d8e6", "#ffffff"], light: 0.4, seed: (Math.random() * 99) | 0 }, { speed: 1.8 });
+    shake(0.25, 3);
+    world.hitArea({ x0: x - r, x1: x + r, y0: fy - 30, y1: fy + 2 }, () => player.roll(mult * player.skillMul()), player.face, { launch: true, push: 3 });
+  },
+  spikeBurst(x, y) {
+    spawn(A.spark, { x: Math.round(x), y: Math.round(y) });
+    flash(x, y, 70, 2.5, 0.25, "#ffd890");
+    world.hitArea({ x0: x - 48, x1: x + 48, y0: y - 40, y1: y + 18 }, () => player.roll(1.2 * player.skillMul()), player.face, { push: 3 });
+  },
+  thorns(fromX, y) {
+    const e = world.nearestEnemy(fromX, y, 40);
+    if (!e) return;
+    e.hit(player.roll(0.8), e.x >= player.x ? 1 : -1, { push: 2 }, world);
+    spawn(A.spark, { x: Math.round(e.x), y: Math.round(y - 12) });
+  },
+  onGlide(dt) {
+    if (!rank("bat", "b_swarm")) return;
+    if ((swarmT = swarmT - dt) > 0 || minis.length >= 3) return;
+    swarmT = 0.5;
+    minis.push({ x: player.x, y: player.y - 16, vx: 0, vy: -40, t: 0, life: 4, cd: 0, seed: Math.random() * 9 });
+  },
+  spawnWave(x, y, dir) { waves.push({ x, y, dir, t: 0, hit: new Set(), seed: Math.random() }); },
+  spawnShotlet(x, y, dir, form, { vy = 0, mult = 0.6, life = 0.35, gen = 1 } = {}) {
+    const pal = SHOT_PAL[form] ?? SHOT_PAL.star;
+    shots.push({ x, y, dir, vy, form, life, mult, gen, small: true, fx: spawn(fireball, { x, y, flip: dir < 0, palette: pal.fx, light: GLOW.skill * 0.6, seed: (Math.random() * 99) | 0 }) });
+  },
   hitArea(box, dmg, dir, opts) {
     let n = 0;
-    for (const e of enemies) if (!e.dead && overlaps(box, e.box())) { const r = typeof dmg === "function" ? dmg() : dmg; e.hit(r, dir, opts, world, box); n++; }
+    for (const e of enemies) if (!e.dead && overlaps(box, e.box())) {
+      const r = typeof dmg === "function" ? dmg() : dmg, poisoned = e.st?.poison > 0;
+      e.hit(r, dir, opts, world, box); n++;
+      if (poisoned && player.form === "bat" && rank("bat", "b_blood")) player.hp = Math.min(player.maxHp, player.hp + (r.dmg ?? r) * 0.03);
+    }
     if (n) addCombo(n);
     return n;
   },
@@ -160,7 +214,13 @@ const world = {
   stepDust(x, y) { dustFx("step", x, y); },
   skidDust(x, y, dir) { dustFx("skid", x, y, false, dir); },
   dust(x, y, n) { spawn(A.dust, { x: Math.round(x), y: Math.round(y), flip: Math.random() < 0.5 }, { speed: 1.8 }); },
-  dropCoins() {}, onPlayerHurt() {},
+  dropCoins() {},
+  onPlayerHurt() {
+    if (player.form === "slime" && rank("slime", "g_spring") && Math.random() < 0.2) {
+      for (const e of enemies) if (!e.dead && Math.abs(e.x - player.x) < 44 && Math.abs(e.y - player.y) < 40) { e.vx = (e.x >= player.x ? 1 : -1) * 260; e.vy = -160; e.stun = Math.max(e.stun, 0.5); }
+      flash(player.x, player.y - 12, 60, 2, 0.25, "#b4f890");
+    }
+  },
   onKill(e) { stats.kills++; if (e.sqT > 0) hitStop(0.08); },
 };
 
@@ -204,6 +264,20 @@ function separate(dt) {
   }
 }
 let pendingForm = null;   // 操作錄影的「換形態」（網頁版是按 1～3／O，這裡直接指定形態）
+function skillTreeBoom(s) {
+  const x = s.x, y = s.y;
+  if (s.form === "star" && rank("star", "s_rain")) {
+    const fy = floorAt(x, y - 8);
+    setTimeout(() => {
+      spawn(starFallFx, { x: Math.round(x), y: fy, palette: PAL.gold, light: 0.4, seed: (Math.random() * 99) | 0 }, { speed: 1.2 });
+      for (let k = 0; k < 4; k++) setTimeout(() => world.hitArea({ x0: x - 50, x1: x + 50, y0: fy - 60, y1: fy }, () => player.roll(0.6 * player.skillMul()), s.dir, { push: 1 }), 150 + k * 180);
+    }, 1000);
+  }
+  if (s.form === "slime") {
+    if (rank("slime", "g_bounce")) world.spawnShotlet(x, y, s.dir, "slime", { mult: 0.6, life: 0.3 });
+    if (rank("slime", "g_split")) for (const vy of [-140, 0, 140]) world.spawnShotlet(x, y, vy ? s.dir : -s.dir, "slime", { vy, mult: 0.5, life: 0.28 });
+  }
+}
 function tick(dt) {
   tickInput(dt);
   if (juice.shakeT > 0) juice.shakeT -= dt;
@@ -242,20 +316,39 @@ function tick(dt) {
     s.fx.options.x = Math.round(s.x);
     s.fx.options.y = Math.round(s.y);
     let hit = s.life <= 0 || solidAt(s.x, s.y);
-    if (!hit) for (const e of enemies) if (!e.dead && e !== s.skip && overlaps(e.box(), { x0: s.x - 8, x1: s.x + 8, y0: s.y - 8, y1: s.y + 8 })) { hit = true; break; }
+    if (!hit) for (const e of enemies) if (!e.dead && e !== s.skip && overlaps(e.box(), { x0: s.x - 8, x1: s.x + 8, y0: s.y - 8, y1: s.y + 8 })) {
+      if (s.form === "star" && !s.small && rank("star", "s_pierce") && !s.skip) { s.skip = e; e.hit(player.roll(1.2 * player.skillMul()), s.dir, { push: 2 }, world); continue; }
+      hit = true; break;
+    }
     if (hit) {
       s.done = true;
       s.fx.stop();
       const P = SHOT_PAL[s.form] ?? SHOT_PAL.star;
-      const big = 1 + 0.15 * 0, R = P.r * big * (s.small ? 0.55 : 1);
+      const big = 1 + 0.15 * (s.form === "slime" ? rank("slime", "g_big") : rank("star", "s_big")), R = P.r * big * (s.small ? 0.55 : 1);
       spawn(explosion, { x: Math.round(s.x), y: Math.round(s.y), palette: P.boom, accent: P.accent, light: GLOW.skill * (s.small ? 0.5 : 1), seed: (Math.random() * 99) | 0 }, { speed: s.small ? 1.8 : 1.3 });
       flash(s.x, s.y, s.small ? 50 : 100, 4, 0.4, P.light);
       world.hitArea({ x0: s.x - R, x1: s.x + R, y0: s.y - 40, y1: s.y + 40 }, () => player.roll(2.4 * s.mult * player.skillMul()), s.dir, { launch: true, push: P.push, elem: ELEM[s.form] ?? "burn" });
       hitStop(s.small ? 0.03 : 0.06);
       shake(s.small ? 0.12 : 0.3, s.small ? 1 : 3);
+      if (!s.small) skillTreeBoom(s);
     }
   }
   for (let i = shots.length - 1; i >= 0; i--) if (shots[i].done) shots.splice(i, 1);
+  for (const w of waves) {
+    w.t += dt; w.x += w.dir * WAVE_V * dt;
+    world.hitOnce({ x0: w.x - 8, x1: w.x + 8, y0: w.y - 14, y1: w.y + 14 }, w.hit, () => player.roll(1.0), w.dir, { push: 2 });
+  }
+  for (let i = waves.length - 1; i >= 0; i--) if (waves[i].t >= WAVE_T) waves.splice(i, 1);
+  for (const m of minis) {
+    m.t += dt; m.life -= dt; m.cd -= dt;
+    const tgt = world.nearestEnemy(m.x, m.y, 160);
+    const tx = tgt ? tgt.x : player.x + Math.sin(m.t * 3 + m.seed) * 20, ty = tgt ? (tgt.box().y0 + tgt.box().y1) / 2 : player.y - 30;
+    m.vx += Math.sign(tx - m.x) * 600 * dt; m.vy += Math.sign(ty - m.y) * 600 * dt;
+    m.vx *= 1 - 3 * dt; m.vy *= 1 - 3 * dt;
+    m.x += m.vx * dt; m.y += m.vy * dt;
+    if (tgt && m.cd <= 0 && Math.abs(tgt.x - m.x) < 10 && Math.abs(ty - m.y) < 12) { m.cd = 0.6; tgt.hit(player.roll(0.4), m.vx >= 0 ? 1 : -1, { push: 1, elem: "poison" }, world); }
+  }
+  for (let i = minis.length - 1; i >= 0; i--) if (minis[i].life <= 0) minis.splice(i, 1);
   updateFx(dt);
   if ((stats.comboT -= dt) <= 0 && stats.combo) stats.combo = 0;
   followCam(dt);
@@ -287,6 +380,8 @@ function render() {
   for (const e of enemies) e.draw(frame);
   PROBE("4");
   drawBolts(frame);
+  for (const w of waves) drawWave(frame, w);
+  for (const m of minis) drawMiniBat(frame, m);
   if (ult.on) { dimScene(frame); drawFx(frame, "back"); }
   PROBE("5");
   player.draw(frame);

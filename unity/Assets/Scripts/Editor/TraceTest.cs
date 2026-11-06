@@ -27,6 +27,7 @@ namespace ZeroStar.Tests
             string ultOnly = Environment.GetEnvironmentVariable("ULT_PROF"); int profN = 0; double maxMs = 0; int maxAt = 0;
             Game.W = 384;
             var g = new Game();
+            if (sc.tree == "max") g.MaxTree();
             var frame = new Frame(Game.W, Game.H);
             var rgba = new byte[Game.W * Game.H * 4];
             var sb = new StringBuilder();

@@ -1,0 +1,354 @@
+{
+ "nodes": [
+  {
+   "form": "star",
+   "id": "s_big",
+   "max": 3,
+   "path": 0,
+   "name": "星屑增量"
+  },
+  {
+   "form": "star",
+   "id": "s_pierce",
+   "max": 1,
+   "path": 0,
+   "name": "貫穿"
+  },
+  {
+   "form": "star",
+   "id": "s_fire",
+   "max": 1,
+   "path": 0,
+   "name": "星火"
+  },
+  {
+   "form": "star",
+   "id": "s_edge",
+   "max": 3,
+   "path": 1,
+   "name": "銳角"
+  },
+  {
+   "form": "star",
+   "id": "s_wave",
+   "max": 1,
+   "path": 1,
+   "name": "星光斬"
+  },
+  {
+   "form": "star",
+   "id": "s_light",
+   "max": 1,
+   "path": 1,
+   "name": "收招輕盈"
+  },
+  {
+   "form": "star",
+   "id": "s_origin",
+   "max": 1,
+   "path": 2,
+   "name": "星之本源"
+  },
+  {
+   "form": "star",
+   "id": "s_return",
+   "max": 1,
+   "path": 2,
+   "name": "回歸"
+  },
+  {
+   "form": "star",
+   "id": "s_rain",
+   "max": 1,
+   "path": 3,
+   "name": "星雨"
+  },
+  {
+   "form": "star",
+   "id": "p_star",
+   "max": 10,
+   "path": 4,
+   "name": "星之光輝"
+  },
+  {
+   "form": "slime",
+   "id": "g_big",
+   "max": 3,
+   "path": 0,
+   "name": "大顆黏液"
+  },
+  {
+   "form": "slime",
+   "id": "g_bounce",
+   "max": 1,
+   "path": 0,
+   "name": "彈跳"
+  },
+  {
+   "form": "slime",
+   "id": "g_ground",
+   "max": 1,
+   "path": 0,
+   "name": "黏液地面"
+  },
+  {
+   "form": "slime",
+   "id": "g_horn",
+   "max": 3,
+   "path": 1,
+   "name": "長角"
+  },
+  {
+   "form": "slime",
+   "id": "g_coat",
+   "max": 1,
+   "path": 1,
+   "name": "黏液角"
+  },
+  {
+   "form": "slime",
+   "id": "g_spring",
+   "max": 1,
+   "path": 1,
+   "name": "彈性"
+  },
+  {
+   "form": "slime",
+   "id": "g_fuel",
+   "max": 1,
+   "path": 2,
+   "name": "易燃體質"
+  },
+  {
+   "form": "slime",
+   "id": "g_film",
+   "max": 1,
+   "path": 2,
+   "name": "黏液護膜"
+  },
+  {
+   "form": "slime",
+   "id": "g_split",
+   "max": 1,
+   "path": 3,
+   "name": "分裂"
+  },
+  {
+   "form": "slime",
+   "id": "p_slime",
+   "max": 10,
+   "path": 4,
+   "name": "黏液再生"
+  },
+  {
+   "form": "can",
+   "id": "c_long",
+   "max": 3,
+   "path": 0,
+   "name": "加長"
+  },
+  {
+   "form": "can",
+   "id": "c_volt",
+   "max": 1,
+   "path": 0,
+   "name": "帶電衝撞"
+  },
+  {
+   "form": "can",
+   "id": "c_brake",
+   "max": 1,
+   "path": 0,
+   "name": "急停震地"
+  },
+  {
+   "form": "can",
+   "id": "c_weight",
+   "max": 3,
+   "path": 1,
+   "name": "重量"
+  },
+  {
+   "form": "can",
+   "id": "c_quake",
+   "max": 1,
+   "path": 1,
+   "name": "震波"
+  },
+  {
+   "form": "can",
+   "id": "c_iron",
+   "max": 1,
+   "path": 1,
+   "name": "鐵皮"
+  },
+  {
+   "form": "can",
+   "id": "c_conduct",
+   "max": 1,
+   "path": 2,
+   "name": "導電體"
+  },
+  {
+   "form": "can",
+   "id": "c_dent",
+   "max": 1,
+   "path": 2,
+   "name": "凹痕記憶"
+  },
+  {
+   "form": "can",
+   "id": "c_truck",
+   "max": 1,
+   "path": 3,
+   "name": "回收車"
+  },
+  {
+   "form": "can",
+   "id": "p_can",
+   "max": 10,
+   "path": 4,
+   "name": "鐵底盤"
+  },
+  {
+   "form": "bat",
+   "id": "b_far",
+   "max": 3,
+   "path": 0,
+   "name": "遠飛"
+  },
+  {
+   "form": "bat",
+   "id": "b_fang",
+   "max": 1,
+   "path": 0,
+   "name": "毒牙"
+  },
+  {
+   "form": "bat",
+   "id": "b_double",
+   "max": 1,
+   "path": 0,
+   "name": "二段飛"
+  },
+  {
+   "form": "bat",
+   "id": "b_claw",
+   "max": 3,
+   "path": 1,
+   "name": "快爪"
+  },
+  {
+   "form": "bat",
+   "id": "b_hover",
+   "max": 1,
+   "path": 1,
+   "name": "懸停"
+  },
+  {
+   "form": "bat",
+   "id": "b_blood",
+   "max": 1,
+   "path": 1,
+   "name": "嗜血爪"
+  },
+  {
+   "form": "bat",
+   "id": "b_toxic",
+   "max": 1,
+   "path": 2,
+   "name": "劇毒"
+  },
+  {
+   "form": "bat",
+   "id": "b_night",
+   "max": 1,
+   "path": 2,
+   "name": "夜行"
+  },
+  {
+   "form": "bat",
+   "id": "b_swarm",
+   "max": 1,
+   "path": 3,
+   "name": "蝙蝠群"
+  },
+  {
+   "form": "bat",
+   "id": "p_bat",
+   "max": 10,
+   "path": 4,
+   "name": "夜翼"
+  },
+  {
+   "form": "spike",
+   "id": "k_long",
+   "max": 3,
+   "path": 0,
+   "name": "長滾"
+  },
+  {
+   "form": "spike",
+   "id": "k_shed",
+   "max": 1,
+   "path": 0,
+   "name": "散刺"
+  },
+  {
+   "form": "spike",
+   "id": "k_refund",
+   "max": 1,
+   "path": 0,
+   "name": "連滾"
+  },
+  {
+   "form": "spike",
+   "id": "k_tip",
+   "max": 3,
+   "path": 1,
+   "name": "尖端"
+  },
+  {
+   "form": "spike",
+   "id": "k_mark",
+   "max": 1,
+   "path": 1,
+   "name": "破綻"
+  },
+  {
+   "form": "spike",
+   "id": "k_sharp",
+   "max": 1,
+   "path": 1,
+   "name": "銳利"
+  },
+  {
+   "form": "spike",
+   "id": "k_thorn",
+   "max": 1,
+   "path": 2,
+   "name": "反刺"
+  },
+  {
+   "form": "spike",
+   "id": "k_curl",
+   "max": 1,
+   "path": 2,
+   "name": "縮成一團"
+  },
+  {
+   "form": "spike",
+   "id": "k_double",
+   "max": 1,
+   "path": 3,
+   "name": "滾滾滾"
+  },
+  {
+   "form": "spike",
+   "id": "p_spike",
+   "max": 10,
+   "path": 4,
+   "name": "刺蝟本能"
+  }
+ ]
+}

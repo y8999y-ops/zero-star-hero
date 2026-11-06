@@ -107,6 +107,13 @@ const comboKeys = {};   // 形態 → [{ anim 名稱, 招式 }]
   writeFileSync(join(OUT, "combos.json"), JSON.stringify({ forms: list, ...k }, null, 1));
   console.log("  combos.json");
 }
+// ---- 4b. 技能樹的節點（形態、id、最高級）
+{
+  const { TREES } = await import("../src/skilltree.js");
+  const nodes = Object.entries(TREES).flatMap(([form, list]) => list.map((n) => ({ form, id: n.id, max: n.max, path: n.path, name: n.name })));
+  writeFileSync(join(OUT, "tree.json"), JSON.stringify({ nodes }, null, 1));
+  console.log("  tree.json");
+}
 // ---- 5. 比對測試的那串按鍵（輸出的遊戲用 -shot 自動玩時讀這份）
 writeFileSync(join(OUT, "trace-script.json"), readFileSync(join(ROOT, "game", "tools", "unity-trace-script.json")));
 console.log("  trace-script.json");
