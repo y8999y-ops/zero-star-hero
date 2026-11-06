@@ -577,3 +577,6 @@ export class Player {
     paintStar(frame, this.x, this.y, this.pose, this.drawFlip(), { tint: this.flash > 0 ? WHITE : 0, form: this.form });
   }
 }
+
+/** Unity 轉移用（game/tools/unity-export.mjs）：連段表。網頁版不會用到。 */
+export const BAKED_COMBOS = { COMBO_DEF, CHARGE_T, CHARGE_V, SPIKE_T, SPIKE_V, FLY_T, FLY_VX, FLY_VY, GLIDE_FALL };

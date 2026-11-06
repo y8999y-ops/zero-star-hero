@@ -30,6 +30,8 @@ namespace ZeroStar
         public double X0, Vx, Vy, Hp, MaxHp, Stun, FlashT, Face = 1, Clock, HopDir = 1, T, Speed, SqT, AwakeT, AlertT = -1;
         public double Xp, Yp;
         public bool Dead_, Awake, DeepSleep, FlungUp;
+        public StatusSet St;   // 元素狀態（status.js 的 e.st）
+        IWorld world;
         public bool Dead => Dead_;
         public double X => Xp;
         public double Y => Yp;
@@ -50,7 +52,8 @@ namespace ZeroStar
         public void Update(double dt, Player player, IWorld world)
         {
             Clock += dt;
-            dt *= 1;
+            dt *= St != null && St.Slime > 0 ? 0.5 : 1;   // 黏液：動作、移動都變慢
+            this.world = world;
             FlashT -= dt;
             if (SqT > 0) SqT -= dt;
             bool stunned = Stun > 0;
@@ -118,6 +121,19 @@ namespace ZeroStar
             SceneLight.AddFlash(Xp, cy, heavy ? 36 : 18, heavy ? 2.2 : 1.1, heavy ? 0.14 : 0.08);
             world.Combat.Damage(this, Xp, b.y0 - 3, d, crit, heavy);
             if (Hp <= 0) Die(world);
+            else if (o.Elem != null) (world as Game)?.Status.Apply(this, o.Elem);
+        }
+
+        /// 狀態、反應造成的傷害：不會硬直、不會擊退，只跳數字（small＝持續傷害）
+        public void Tick(double dmg, IWorld w, bool small = false)
+        {
+            if (Dead_) return;
+            double d = Math.Max(1, Pf.Round(dmg));
+            Hp -= d;
+            if (!small) FlashT = 0.05;
+            var b = Box();
+            w.Combat.Damage(this, Xp, b.y0 - 3, d, false, !small);
+            if (Hp <= 0 && world != null) Die(world);
         }
 
         void Die(IWorld world)
@@ -144,10 +160,12 @@ namespace ZeroStar
             {
                 double p = 1 - SqT / SQ_T;
                 if (p < 0.4) { sx = 1.18; sy = 0.85; }
-                else { double q = (p - 0.4) / 0.6, w = Math.Sin(q * Math.PI) * (1 - q); sx = 1 - 0.14 * w; sy = 1 + 0.16 * w; }
+                else { double q = (p - 0.4) / 0.6, w = Pf.Sin(q * Math.PI) * (1 - q); sx = 1 - 0.14 * w; sy = 1 + 0.16 * w; }
             }
             if (fx.Freeze > 0 && FlashT > 0) jx = (long)Math.Floor(simMs / 34) % 2 != 0 ? 1 : -1;   // 停頓中原地抖
+            var snap = Status.TakeSnap(frame, this);   // 有元素狀態：先記下這塊畫面，畫完比對出身體的形狀
             Blit.DrawScaled(frame, FlashT > 0 ? white : anim, T, Xp + jx, Yp, Face < 0, sx, sy);
+            Status.DrawOn(frame, this, snap);
             if (AlertT >= 0 && AlertT < CombatFx.ALERT_T && !Dead_) CombatFx.DrawAlert(frame, Xp, Box().y0 - 3, AlertT);
         }
     }

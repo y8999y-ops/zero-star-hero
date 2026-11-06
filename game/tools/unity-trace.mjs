@@ -2,7 +2,7 @@
 // 照一串固定的按鍵（SCRIPT）跑 1-1 第一段，每一步記下主角、怪、鏡頭的數值，每 20 步存一張合成好的畫面。
 // Unity 那邊（零星工具／比對測試：操作錄影）用同一串按鍵跑一次，再用 node game/tools/unity-trace-compare.mjs 逐步比對。
 // 亂數換成固定種子（兩邊同一個順序取亂數）；音效關掉；performance.now 換成遊戲時間。
-// 執行：node game/tools/unity-trace.mjs   → unity/Golden/web/trace.txt、trace-frames.bin
+// 執行：node --no-use-std-math-pow game/tools/unity-trace.mjs   → unity/Golden/web/trace.txt、trace-frames.bin
 import { installDom } from "./unity/node-dom.mjs";
 // 收集 input.js 掛的鍵盤事件，等一下自己觸發
 const handlers = {};
@@ -10,6 +10,19 @@ globalThis.addEventListener = (type, fn) => { (handlers[type] ??= []).push(fn); 
 installDom();
 let simMs = 0;
 performance.now = () => simMs;
+// setTimeout 換成遊戲時間：每一步開始前，把到時間的依序執行（Unity 那邊是 Game.After，同一個規則）
+const timers = []; let timerSeq = 0;
+globalThis.setTimeout = (fn, ms = 0) => { timers.push({ due: simMs + ms, seq: timerSeq++, fn }); return 0; };
+globalThis.clearTimeout = () => {};
+function runTimers() {
+  for (;;) {
+    let best = -1;
+    for (let i = 0; i < timers.length; i++) if (timers[i].due <= simMs && (best < 0 || timers[i].due < timers[best].due || (timers[i].due === timers[best].due && timers[i].seq < timers[best].seq))) best = i;
+    if (best < 0) return;
+    const [t] = timers.splice(best, 1);
+    t.fn();
+  }
+}
 // 固定種子的亂數（mulberry32，跟 Unity 的 PixelFX.Rng 一樣）
 let rs = 12345;
 Math.random = () => { rs = (rs + 0x6d2b79f5) | 0; let t = rs; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -26,13 +39,22 @@ const { tickInput } = await import("../src/input.js");
 const { Player } = await import("../src/player.js");
 const { Enemy } = await import("../src/enemies.js");
 const { POSES } = await import("../src/star.js");
-const { spawn, updateFx, drawFx, juice, shakeOffset } = await import("../src/fx.js");
+const { spawn, updateFx, drawFx, juice, shakeOffset, hitStop, shake } = await import("../src/fx.js");
 const { updateCombatFx, drawCombatFx, drawDamageNumbers, dustFx, fxState } = await import("../src/combatfx.js");
 const { updateLight, computeLight } = await import("../src/light.js");
 const L = await import("../src/level.js");
 const { A } = await import("../src/assets.js");
-const { floorAt } = await import("../src/map.js");
+const { floorAt, solidAt } = await import("../src/map.js");
 const { STAGE_1_1 } = await import("../src/stage.js");
+const { PAL, createFx } = await import("../../pixelfx/src/core/index.js");
+const { GLOW } = await import("../src/assets.js");
+const fireball = await import("../../pixelfx/src/fx/fire/fireball.js");
+const explosion = await import("../../pixelfx/src/fx/explosions/plasma-explosion.js");
+const collectBurst = await import("../../pixelfx/src/fx/pickups/collect-burst.js");
+const { flash } = await import("../src/light.js");
+const { ELEM, setStatusContext, updateStatus, drawBolts, setStatusAllow } = await import("../src/status.js");
+const { FORMS } = await import("../src/forms.js");
+const { COMBO_MP } = await import("../src/player.js");
 const SC = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "unity-trace-script.json"), "utf8"));
 const SCRIPT = SC.events.slice().sort((a, b) => a[0] - b[0]), TICKS = SC.ticks, FRAME_EVERY = SC.frameEvery;
 
@@ -51,6 +73,39 @@ for (const sp of STAGE_1_1.spawns) {
   e.x0 = sp.x; if (sp.deep) e.deepSleep = true;
   enemies.push(e);
 }
+const shots = [];
+const stats = { combo: 0, comboT: 0, kills: 0 };
+const SHOT_PAL = {
+  star: { fx: PAL.gold, boom: PAL.gold, accent: PAL.holy, light: "#ffd27a", r: 46, push: 3 },
+  slime: { fx: PAL.poison, boom: PAL.poison, accent: PAL.leaf, light: "#7ee86a", r: 62, push: 5 },
+};
+const FORM_BURST = {
+  star: ["#1e1206", "#4a2c08", "#86520c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"],
+  slime: ["#0c2010", "#1a4a20", "#2a8a3a", "#4cc04a", "#8ee86a", "#d4ffb0", "#ffffff"],
+  bat: ["#160c24", "#2e1a4a", "#5c388c", "#8058b8", "#b48ae8", "#e2d0ff", "#ffffff"],
+  can: ["#14161c", "#2a2e38", "#4a5468", "#6e7a90", "#9aa6ba", "#d0d8e6", "#ffffff"],
+  spike: ["#2a1206", "#6a3010", "#a85a1c", "#e09a3a", "#ffd890", "#fff2d0", "#ffffff"],
+};
+const COMBO_T = 4.4, FORM_CD = 1;
+function addCombo(n) {
+  const gain = Math.floor((stats.combo + n) / 10) - Math.floor(stats.combo / 10);
+  if (gain > 0 && player.mp < player.maxMp) player.mp = Math.min(player.maxMp, player.mp + gain * COMBO_MP);
+  stats.combo += n;
+  stats.comboT = COMBO_T;
+}
+let formCdUntil = -9;
+function switchForm(id) {
+  if (!id || id === player.form) return;
+  if (sceneClock < formCdUntil) return;
+  formCdUntil = sceneClock + FORM_CD;
+  player.setForm(id);
+  player.turnT = 0.09;
+  player.invuln = Math.max(player.invuln, 0.15);
+  spawn(collectBurst, { x: Math.round(player.x), y: Math.round(player.y) - 12, palette: FORM_BURST[id], light: 0.4 });
+  flash(player.x, player.y - 12, 60, 2, 0.3, FORMS[id].color);
+}
+setStatusContext({ enemies, atk: () => player.stats.atk });
+setStatusAllow(["burn", "slime"]);   // 1-1 只有燃燒和黏液（main.js 同一個設定）
 const world = {
   nearestEnemy(x, y, range, dir = 0) {
     let best = null, bd = range;
@@ -61,18 +116,30 @@ const world = {
     }
     return best;
   },
-  // 元素狀態（燃燒）還沒搬：兩邊都先不沾
   hitArea(box, dmg, dir, opts) {
     let n = 0;
-    for (const e of enemies) if (!e.dead && overlaps(box, e.box())) { const r = typeof dmg === "function" ? dmg() : dmg; e.hit(r, dir, { ...opts, elem: null }, world, box); n++; }
+    for (const e of enemies) if (!e.dead && overlaps(box, e.box())) { const r = typeof dmg === "function" ? dmg() : dmg; e.hit(r, dir, opts, world, box); n++; }
+    if (n) addCombo(n);
     return n;
   },
+  hitOnce(box, hit, dmg, dir, opts) {
+    let n = 0;
+    for (const e of enemies) if (!e.dead && !hit.has(e) && overlaps(box, e.box())) { hit.add(e); const r = dmg(); e.hit(r, dir, opts, world, box); n++; }
+    if (n) { addCombo(n); hitStop(0.05); shake(0.15, 2); }
+    return n;
+  },
+  spawnFireball(x, y, dir, form = "star", vy = 0) {
+    const pal = SHOT_PAL[form] ?? SHOT_PAL.star;
+    shots.push({ x, y, dir, vy, form, life: 1.1, mult: 1, gen: 0, fx: spawn(fireball, { x, y, flip: dir < 0, palette: pal.fx, light: GLOW.skill, seed: (Math.random() * 99) | 0 }) });
+  },
+  noMana() {},
   land(x, y, hard) { dustFx("land", x, y, hard); },
   jumpDust(x, y, first) { dustFx(first ? "jump" : "double", x, y); },
   stepDust(x, y) { dustFx("step", x, y); },
   skidDust(x, y, dir) { dustFx("skid", x, y, false, dir); },
   dust(x, y, n) { spawn(A.dust, { x: Math.round(x), y: Math.round(y), flip: Math.random() < 0.5 }, { speed: 1.8 }); },
-  dropCoins() {}, onKill() {}, onPlayerHurt() {},
+  dropCoins() {}, onPlayerHurt() {},
+  onKill(e) { stats.kills++; if (e.sqT > 0) hitStop(0.08); },
 };
 
 // ---- 鏡頭（main.js 的 snapCam、followCam）
@@ -114,12 +181,15 @@ function separate(dt) {
     }
   }
 }
+let pendingForm = null;   // 操作錄影的「換形態」（網頁版是按 1～3／O，這裡直接指定形態）
 function tick(dt) {
   tickInput(dt);
   if (juice.shakeT > 0) juice.shakeT -= dt;
   if (juice.freeze > 0) { juice.freeze -= dt; return; }
   updateCombatFx(dt);
   updateLight(dt);
+  updateStatus(dt, enemies);
+  if (pendingForm) { switchForm(pendingForm); pendingForm = null; }
   player.update(dt, world);
   for (const e of enemies) {
     if (e.dead) continue;
@@ -131,12 +201,39 @@ function tick(dt) {
   }
   separate(dt);
   for (let i = enemies.length - 1; i >= 0; i--) if (enemies[i].dead) enemies.splice(i, 1);
+  // 技能彈（main.js 的「火球」段）
+  for (const s of shots) {
+    s.x += s.dir * 290 * dt;
+    if (s.vy) s.y = Math.min(floorAt(s.x, s.y) - 6, s.y + s.vy * dt);
+    s.life -= dt;
+    s.fx.options.x = Math.round(s.x);
+    s.fx.options.y = Math.round(s.y);
+    let hit = s.life <= 0 || solidAt(s.x, s.y);
+    if (!hit) for (const e of enemies) if (!e.dead && e !== s.skip && overlaps(e.box(), { x0: s.x - 8, x1: s.x + 8, y0: s.y - 8, y1: s.y + 8 })) { hit = true; break; }
+    if (hit) {
+      s.done = true;
+      s.fx.stop();
+      const P = SHOT_PAL[s.form] ?? SHOT_PAL.star;
+      const big = 1 + 0.15 * 0, R = P.r * big * (s.small ? 0.55 : 1);
+      spawn(explosion, { x: Math.round(s.x), y: Math.round(s.y), palette: P.boom, accent: P.accent, light: GLOW.skill * (s.small ? 0.5 : 1), seed: (Math.random() * 99) | 0 }, { speed: s.small ? 1.8 : 1.3 });
+      flash(s.x, s.y, s.small ? 50 : 100, 4, 0.4, P.light);
+      world.hitArea({ x0: s.x - R, x1: s.x + R, y0: s.y - 40, y1: s.y + 40 }, () => player.roll(2.4 * s.mult * player.skillMul()), s.dir, { launch: true, push: P.push, elem: ELEM[s.form] ?? "burn" });
+      hitStop(s.small ? 0.03 : 0.06);
+      shake(s.small ? 0.12 : 0.3, s.small ? 1 : 3);
+    }
+  }
+  for (let i = shots.length - 1; i >= 0; i--) if (shots[i].done) shots.splice(i, 1);
   updateFx(dt);
+  if ((stats.comboT -= dt) <= 0 && stats.combo) stats.combo = 0;
   followCam(dt);
 }
 // ---- 畫（main.js 的 render 子集）
 const frame = createFrame(W, H), img = new Uint8ClampedArray(W * H * 4);
+frame.view = viewRect();   // 看得到的範圍（main.js 的 applyZoom 設的；跳字會推回這個範圍裡）
 let sceneClock = 0;
+const PROBE = (k) => { if (process.env.DUMP_TICK && +process.env.DUMP_TICK === curTick) console.log("PROBE", k, (frame.color[145 * 384 + 144] >>> 0).toString(16)); };
+let curTick = 0;
+globalThis.__probe = (k) => PROBE(k);
 function render() {
   const [sx, sy] = shakeOffset();
   frame.ox = Math.round(camX) + sx;
@@ -145,17 +242,29 @@ function render() {
   sceneClock += 1 / 60;
   const lights = L.sceneLights(camX, W, sceneClock);
   lights.push({ x: player.x, y: player.y - 10, r: 64, lv: 1.6, col: "#ffcf6a" });
+  for (const s of shots) lights.push({ x: s.x, y: s.y, r: 64, lv: 3, col: (SHOT_PAL[s.form] ?? SHOT_PAL.star).light });
   const lv = computeLight(frame, lights);
   L.drawLevel(frame, lv);
+  PROBE("1");
   L.drawAtmosphere(frame, sceneClock);
+  PROBE("2");
   drawFx(frame, "back");
+  PROBE("3");
   for (const e of enemies) e.draw(frame);
+  PROBE("4");
+  drawBolts(frame);
+  PROBE("5");
   player.draw(frame);
+  PROBE("6");
   drawFx(frame, "front");
+  PROBE("7");
   fxState.form = player.form;
   drawCombatFx(frame);
+  PROBE("8");
   L.drawForeground(frame);
+  PROBE("9");
   drawDamageNumbers(frame);
+  PROBE("10");
   composite(frame, img, null, 0.8);
 }
 
@@ -168,15 +277,18 @@ const lines = [], frames = [];
 snapCam();
 let si = 0;
 for (let n = 0; n < TICKS; n++) {
-  while (si < SCRIPT.length && SCRIPT[si][0] === n) { const [, type, code] = SCRIPT[si++]; ev(type === "d" ? "keydown" : "keyup", code); }
+  while (si < SCRIPT.length && SCRIPT[si][0] === n) { const [, type, code] = SCRIPT[si++]; if (type === "f") pendingForm = code; else ev(type === "d" ? "keydown" : "keyup", code); }
+  runTimers();
+  curTick = n;
   tick(STEP);
   simMs += 1000 / 60;
   render();
   const p = player;
-  const row = [n, p.x, p.y, p.vx, p.vy, p.state, p.hp, p.face, p.grounded ? 1 : 0, poseName.get(p.pose) ?? "?", camX, camY, juice.freeze, juice.shakeT, enemies.length];
-  for (const e of enemies) row.push(e.x, e.y, e.vx, e.vy, e.hp, e.awake ? 1 : 0);
+  const row = [n, p.x, p.y, p.vx, p.vy, p.state, p.hp, p.face, p.grounded ? 1 : 0, poseName.get(p.pose) ?? "?", camX, camY, juice.freeze, juice.shakeT, p.form, p.mp, stats.combo, shots.length, enemies.length];
+  for (const e of enemies) { const S = e.st ?? {}; row.push(e.x, e.y, e.vx, e.vy, e.hp, e.awake ? 1 : 0, ["burn", "slime", "shock", "poison", "stuck"].map((k) => (S[k] > 0 ? k[0] : "")).join("") || "-"); }
   lines.push(row.map(f).join(" "));
   if (n % FRAME_EVERY === 0) frames.push(Buffer.from(img.buffer.slice(0)));
+  if (process.env.DUMP_TICK && +process.env.DUMP_TICK === n) writeFileSync(join(OUT, "dump.bin"), Buffer.concat([Buffer.from(frame.color.buffer.slice(0)), Buffer.from(frame.light.buffer.slice(0))]));
 }
 writeFileSync(join(OUT, "trace.txt"), lines.join("\n") + "\n");
 writeFileSync(join(OUT, "trace-frames.bin"), Buffer.concat(frames));

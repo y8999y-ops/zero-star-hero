@@ -2,6 +2,7 @@
 // 不碰 Unity 的東西（畫面、按鍵），所以比對測試可以在編輯器裡直接跑同一份程式。
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using PixelFX;
 
@@ -40,7 +41,50 @@ namespace ZeroStar
         public double CamX, CamY;
         double lookX, sceneClock;
         double? camRefY, camLand;
-        public int Kills, Coins;
+        public int Kills, Coins, Combo; public double ComboT;
+        public readonly Status Status;
+        public readonly List<Shot> Shots = new List<Shot>();
+        public class Shot { public double X, Y, Dir, Vy, Life, Mult = 1; public string Form; public bool Small, Done; public FxRun Fx; }
+        const double COMBO_T = 4.4, FORM_CD = 1;
+        double formCdUntil = -9;
+        public string PendingForm;   // 換形態（按鍵或操作錄影）
+        public string[] Carry = { "star", "slime", "bat", "can", "spike" };   // 帶在身上的形態（階段 2：全部都有）
+        static readonly string[] POISON = { "#0d1a0c", "#173a14", "#265e18", "#3f8a1e", "#6cb82a", "#a8e04a", "#e0ff8a" };   // pixelfx PAL.poison
+        static readonly string[] LEAF = { "#0c1a0e", "#163418", "#225224", "#357530", "#4f9a3a", "#7cc048", "#b4e070", "#e4ffb0" };   // pixelfx PAL.leaf
+        // 技能彈的顏色（main.js 的 SHOT_PAL）
+        static readonly Dictionary<string, (string[] fx, string[] boom, string[] accent, string light, double r, double push)> SHOT_PAL = new Dictionary<string, (string[], string[], string[], string, double, double)>
+        {
+            ["star"] = (Col.PAL["gold"], Col.PAL["gold"], Col.PAL["holy"], "#ffd27a", 46, 3),
+            ["slime"] = (POISON, POISON, LEAF, "#7ee86a", 62, 5),
+        };
+        static readonly Dictionary<string, string[]> FORM_BURST = new Dictionary<string, string[]>
+        {
+            ["star"] = new[] { "#1e1206", "#4a2c08", "#86520c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff" },
+            ["slime"] = new[] { "#0c2010", "#1a4a20", "#2a8a3a", "#4cc04a", "#8ee86a", "#d4ffb0", "#ffffff" },
+            ["bat"] = new[] { "#160c24", "#2e1a4a", "#5c388c", "#8058b8", "#b48ae8", "#e2d0ff", "#ffffff" },
+            ["can"] = new[] { "#14161c", "#2a2e38", "#4a5468", "#6e7a90", "#9aa6ba", "#d0d8e6", "#ffffff" },
+            ["spike"] = new[] { "#2a1206", "#6a3010", "#a85a1c", "#e09a3a", "#ffd890", "#fff2d0", "#ffffff" },
+        };
+        public static readonly Dictionary<string, string> FORM_COLOR = new Dictionary<string, string> { ["star"] = "#ffd84a", ["slime"] = "#7ee86a", ["bat"] = "#b48ae8", ["spike"] = "#e09a3a", ["can"] = "#9aa6ba" };
+
+        // ---- 遊戲時間的計時器（網頁版的 setTimeout）：每一步開始前，到時間的依序執行
+        class Timer { public double Due; public long Seq; public Action Fn; }
+        readonly List<Timer> timers = new List<Timer>(); long timerSeq;
+        public void After(double ms, Action fn) { timers.Add(new Timer { Due = SimMs + ms, Seq = timerSeq++, Fn = fn }); }
+        public void RunTimers()
+        {
+            for (;;)
+            {
+                int best = -1;
+                for (int i = 0; i < timers.Count; i++) if (timers[i].Due <= SimMs && (best < 0 || timers[i].Due < timers[best].Due || (timers[i].Due == timers[best].Due && timers[i].Seq < timers[best].Seq))) best = i;
+                if (best < 0) return;
+                var t = timers[best]; timers.RemoveAt(best);
+                t.Fn();
+            }
+        }
+
+        // ---- 即時特效（pixelfx 的特效翻成 C#，跟烘焙動畫放在同一個清單）
+        public FxRun SpawnLive(string name, double x, double y, FxOptions o, double speed = 1, bool back = false) => Fx.SpawnLive(name, x, y, o, speed, back);
         public Action<string> OnSfx;
         public (double x, double y) Checkpoint;
 
@@ -55,11 +99,12 @@ namespace ZeroStar
         {
             Enemy.ResetStatics();
             SceneLight.Reset();
+            Status = new Status(this) { Allow = new HashSet<string> { "burn", "slime" } };   // 1-1 只有燃燒和黏液（main.js 同一個設定）
             Data = Baked.Level(stage);
             Art = new LevelArt(Data);
             Map = new GameMap(Data.W, Data.H, Data.Solids, Data.Platforms);
-            var combo = JsonUtility.FromJson<ComboDef>(Baked.Text("combo-star")).steps;
-            Player = new Player(START.x, START.y, combo);
+            var combos = JsonUtility.FromJson<ComboDef>(Baked.Text("combos"));
+            Player = new Player(START.x, START.y, combos);
             Checkpoint = (START.x, 0);
             CamY = Math.Max(0, Data.H - H);
             var brazier = Baked.Anim("brazier");
@@ -87,13 +132,49 @@ namespace ZeroStar
         public int HitArea(Box box, Func<Roll> dmg, double dir, HitOpts o)
         {
             int n = 0;
-            foreach (var e in Enemies) if (!e.Dead && box.Overlaps(e.HitBox())) { var r = dmg(); e.Hit(r, dir, o, this); n++; }
+            foreach (var e in Enemies.ToArray()) if (!e.Dead && box.Overlaps(e.HitBox())) { var r = dmg(); e.Hit(r, dir, o, this); n++; }
+            if (n > 0) AddCombo(n);
             return n;
+        }
+        public int HitOnce(Box box, HashSet<Enemy> hit, Func<Roll> dmg, double dir, HitOpts o)
+        {
+            int n = 0;
+            foreach (var e in Enemies.ToArray()) if (!e.Dead && !hit.Contains(e) && box.Overlaps(e.HitBox())) { hit.Add(e); var r = dmg(); e.Hit(r, dir, o, this); n++; }
+            if (n > 0) { AddCombo(n); Fx.HitStop(0.05); Fx.Shake(0.15, 2); }
+            return n;
+        }
+        /// 連擊：每滿 10 下給 10 魔力
+        void AddCombo(int n)
+        {
+            int gain = (int)(Math.Floor((Combo + n) / 10.0) - Math.Floor(Combo / 10.0));
+            if (gain > 0 && Player.Mp < Player.MaxMp) Player.Mp = Math.Min(Player.MaxMp, Player.Mp + gain * Player.COMBO_MP);
+            Combo += n;
+            ComboT = COMBO_T;
+        }
+        public void SpawnFireball(double x, double y, double dir, string form, double vy = 0)
+        {
+            Sfx("shot");
+            var pal = SHOT_PAL.ContainsKey(form) ? SHOT_PAL[form] : SHOT_PAL["star"];
+            Shots.Add(new Shot { X = x, Y = y, Dir = dir, Vy = vy, Form = form, Life = 1.1, Mult = 1, Fx = SpawnLive("fireball", x, y, new FxOptions { Flip = dir < 0, Palette = pal.fx, Light = 0.65, Seed = Pf.ToInt32(Rnd.Next() * 99) }) });
+        }
+        public double NoManaT;
+        public void NoMana() { Sfx("close"); NoManaT = 0.6; }
+        void SwitchForm(string id)
+        {
+            if (id == null || id == Player.Form) return;
+            if (sceneClock < formCdUntil) { Sfx("close"); return; }
+            formCdUntil = sceneClock + FORM_CD;
+            Sfx("form");
+            Player.SetForm(id);
+            Player.TurnT = 0.09;
+            Player.Invuln = Math.Max(Player.Invuln, 0.15);
+            SpawnLive("collect-burst", Pf.Round(Player.X), Pf.Round(Player.Y) - 12, new FxOptions { Palette = FORM_BURST[id], Light = 0.4 });
+            SceneLight.AddFlash(Player.X, Player.Y - 12, 60, 2, 0.3, FORM_COLOR[id]);
         }
         public void Land(double x, double y, bool hard) { Sfx("land"); Combat.Dust("land", x, y, hard); }
         public void Dust(double x, double y, int n) { Fx.Spawn(Baked.Anim("dust"), Pf.Round(x), Pf.Round(y), Rnd.Next() < 0.5, speed: 1.8); }
         public void DropCoins(double x, double y, int n) { Coins += n; }
-        public void OnKill(Enemy e) { Kills++; }
+        public void OnKill(Enemy e) { Kills++; if (e.SqT > 0) Fx.HitStop(0.08); }   // 直接打死的停久一點
         public void OnPlayerHurt(double dmg) { }
         public void Sfx(string name) { OnSfx?.Invoke(name); }
 
@@ -158,11 +239,15 @@ namespace ZeroStar
         /// 一步（固定 1/60 秒）
         public void Tick(double dt)
         {
+            RunTimers();
             Input.Tick(dt);
             if (Fx.ShakeT > 0) Fx.ShakeT -= dt;
             if (Fx.Freeze > 0) { Fx.Freeze -= dt; return; }
             Combat.Update(dt);
             SceneLight.Update(dt);
+            Status.Update(dt);
+            if (NoManaT > 0) NoManaT -= dt;
+            if (PendingForm != null) { SwitchForm(PendingForm); PendingForm = null; }
             if (Player.Hp <= 0)
             {
                 // 階段 1 的簡化：倒下 1 秒後從檢查點重來
@@ -182,7 +267,33 @@ namespace ZeroStar
             }
             Separate(dt);
             Enemies.RemoveAll(e => e.Dead);
+            // 技能彈：直線飛，撞到怪或地形就爆開（範圍傷害、擊飛、沾元素）
+            foreach (var s in Shots)
+            {
+                s.X += s.Dir * 290 * dt;
+                if (s.Vy != 0) s.Y = Math.Min(Map.FloorAt(s.X, s.Y) - 6, s.Y + s.Vy * dt);
+                s.Life -= dt;
+                s.Fx.Options.X = Pf.Round(s.X); s.Fx.Options.Y = Pf.Round(s.Y);
+                bool hit = s.Life <= 0 || Map.SolidAt(s.X, s.Y);
+                if (!hit) foreach (var e in Enemies) if (!e.Dead && e.HitBox().Overlaps(new Box(s.X - 8, s.X + 8, s.Y - 8, s.Y + 8))) { hit = true; break; }
+                if (hit)
+                {
+                    s.Done = true;
+                    s.Fx.Stop();
+                    var P = SHOT_PAL.ContainsKey(s.Form) ? SHOT_PAL[s.Form] : SHOT_PAL["star"];
+                    double big = 1 + 0.15 * 0, R = P.r * big * (s.Small ? 0.55 : 1);
+                    Sfx("boom");
+                    SpawnLive("plasma-explosion", Pf.Round(s.X), Pf.Round(s.Y), new FxOptions { Palette = P.boom, Accent = P.accent, Light = 0.65 * (s.Small ? 0.5 : 1), Seed = Pf.ToInt32(Rnd.Next() * 99) }, s.Small ? 1.8 : 1.3);
+                    SceneLight.AddFlash(s.X, s.Y, s.Small ? 50 : 100, 4, 0.4, P.light);
+                    var sx = s.X; var mult = s.Mult;
+                    HitArea(new Box(s.X - R, s.X + R, s.Y - 40, s.Y + 40), () => Player.RollDmg(2.4 * mult * Player.SkillMul()), s.Dir, new HitOpts { Launch = true, Push = P.push, Elem = Player.ELEM.TryGetValue(s.Form, out var el) ? el : "burn" });
+                    Fx.HitStop(s.Small ? 0.03 : 0.06);
+                    Fx.Shake(s.Small ? 0.12 : 0.3, s.Small ? 1 : 3);
+                }
+            }
+            Shots.RemoveAll(s => s.Done);
             Fx.Update(dt);
+            if ((ComboT -= dt) <= 0 && Combo != 0) Combo = 0;
             FollowCam(dt);
         }
 
@@ -196,6 +307,7 @@ namespace ZeroStar
             sceneClock += 1 / 60.0;
             var lights = Art.SceneLights(CamX, W, sceneClock);
             lights.Add(new LightSrc(Player.X, Player.Y - 10, 64, 1.6, "#ffcf6a"));
+            foreach (var s in Shots) lights.Add(new LightSrc(s.X, s.Y, 64, 3, (SHOT_PAL.ContainsKey(s.Form) ? SHOT_PAL[s.Form] : SHOT_PAL["star"]).light));
             Prof.Mark(null);
             var lv = SceneLight.Compute(frame, lights);
             Prof.Mark("光源");
@@ -205,6 +317,7 @@ namespace ZeroStar
             Prof.Mark("大氣");
             Fx.Draw(frame, true);
             foreach (var e in Enemies) e.Draw(frame, Fx, SimMs);
+            Status.DrawBolts(frame);
             if (Player.Hp > 0) Player.Draw(frame);
             Fx.Draw(frame, false);
             Combat.Form = Player.Form;

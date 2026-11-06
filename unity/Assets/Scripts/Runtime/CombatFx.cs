@@ -48,7 +48,7 @@ namespace ZeroStar
             for (int i = 0; i < n; i++)
             {
                 double a = (Rnd.Next() - 0.5) * (heavy ? 2.2 : 1.6) + (dir < 0 ? Math.PI : 0), sp = (heavy ? 140 : 90) + Rnd.Next() * (heavy ? 120 : 60);
-                double vx = Math.Cos(a) * sp, vy = Math.Sin(a) * sp - 30, life = (heavy ? 0.28 : 0.18) * (0.7 + Rnd.Next() * 0.6);
+                double vx = Pf.Cos(a) * sp, vy = Pf.Sin(a) * sp - 30, life = (heavy ? 0.28 : 0.18) * (0.7 + Rnd.Next() * 0.6);
                 parts.Add(new Part { X = x, Y = y, Vx = vx, Vy = vy, Life = life, Col = pal[1 + (i % 3)], Trail = heavy, G = 300 });
             }
         }
@@ -65,7 +65,7 @@ namespace ZeroStar
                 for (int i = 0; i < 8; i++)
                 {
                     double a = (i / 8.0) * Math.PI * 2;
-                    parts.Add(new Part { X = x, Y = y + 1, Vx = Math.Cos(a) * 46, Vy = Math.Sin(a) * 18 + 8, Life = 0.26, Col = pal[i % 2 != 0 ? 2 : 1], Trail = false, G = 0 });
+                    parts.Add(new Part { X = x, Y = y + 1, Vx = Pf.Cos(a) * 46, Vy = Pf.Sin(a) * 18 + 8, Life = 0.26, Col = pal[i % 2 != 0 ? 2 : 1], Trail = false, G = 0 });
                 }
                 puffs.Add(new Puff { X = x, Y = y + 1, Vx = 0, R0 = 2, R1 = 4, T = 0, Life = 0.18 });
                 return;
@@ -161,11 +161,11 @@ namespace ZeroStar
                         int D = (int)Pf.Round(R * 0.6);
                         for (int i = -D; i <= D; i++) { uint c = pal[Math.Abs(i) > D - 2 ? 3 : 2]; Plot(frame, x + i, y + i, c); Plot(frame, x + i, y - i, c); }
                         int rr = step == 1 ? 6 : 8;
-                        for (int a = 0; a < 32; a++) { if (step == 2 && a % 3 == 0) continue; Plot(frame, x + (int)Pf.Round(Math.Cos(a / 32.0 * Math.PI * 2) * rr), y + (int)Pf.Round(Math.Sin(a / 32.0 * Math.PI * 2) * rr * 0.8), pal[step == 1 ? 2 : 3]); }
+                        for (int a = 0; a < 32; a++) { if (step == 2 && a % 3 == 0) continue; Plot(frame, x + (int)Pf.Round(Pf.Cos(a / 32.0 * Math.PI * 2) * rr), y + (int)Pf.Round(Pf.Sin(a / 32.0 * Math.PI * 2) * rr * 0.8), pal[step == 1 ? 2 : 3]); }
                     }
                     else
                     {
-                        for (int a = 0; a < 12; a++) if (a % 2 == 0) Plot(frame, x + (int)Pf.Round(Math.Cos(a / 12.0 * Math.PI * 2) * 11), y + (int)Pf.Round(Math.Sin(a / 12.0 * Math.PI * 2) * 9), pal[3]);
+                        for (int a = 0; a < 12; a++) if (a % 2 == 0) Plot(frame, x + (int)Pf.Round(Pf.Cos(a / 12.0 * Math.PI * 2) * 11), y + (int)Pf.Round(Pf.Sin(a / 12.0 * Math.PI * 2) * 9), pal[3]);
                     }
                 }
             }

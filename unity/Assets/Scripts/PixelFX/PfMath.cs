@@ -42,6 +42,15 @@ namespace PixelFX
             return Math.Sqrt(sum) * max;
         }
 
+        // V8 的超越函數（fdlibm 翻譯，見 PfLibm.cs）：跟網頁版每一位都一樣，不要用 Math.Sin 等。
+        public static double Sin(double x) => Fdlibm.Sin(x);
+        public static double Cos(double x) => Fdlibm.Cos(x);
+        public static double Atan2(double y, double x) => Fdlibm.Atan2(y, x);
+        public static double Exp(double x) => Fdlibm.Exp(x);
+        public static double Pow(double x, double y) => Fdlibm.Pow(x, y);
+        /// JS Math.sign
+        public static double Sign(double x) => x > 0 ? 1 : x < 0 ? -1 : x;
+
         public static double Clamp(double x, double a = 0, double b = 1) => x < a ? a : x > b ? b : x;
         public static double Lerp(double a, double b, double t) => a + (b - a) * t;
         public static double InvLerp(double a, double b, double x) => b == a ? 0 : (x - a) / (b - a);
@@ -50,10 +59,10 @@ namespace PixelFX
         public static double Wrap(double x, double m) => ((x % m) + m) % m;
         public static double Seg(double t, double t0, double t1) => Clamp((t - t0) / (t1 - t0));
         public static double Smooth(double e0, double e1, double x) { double t = Seg(x, e0, e1); return t * t * (3 - 2 * t); }
-        public static double Bump(double t, double t0, double t1) => t <= t0 || t >= t1 ? 0 : Math.Sin(Math.PI * Seg(t, t0, t1));
+        public static double Bump(double t, double t0, double t1) => t <= t0 || t >= t1 ? 0 : Sin(Math.PI * Seg(t, t0, t1));
         public static double Pingpong(double x) => 1 - Math.Abs(Wrap(x, 2) - 1);
         public static double Dist(double x0, double y0, double x1, double y1) => Hypot(x1 - x0, y1 - y0);
-        public static double AngleTo(double x0, double y0, double x1, double y1) => Math.Atan2(y1 - y0, x1 - x0);
+        public static double AngleTo(double x0, double y0, double x1, double y1) => Atan2(y1 - y0, x1 - x0);
 
         static int Imul(int a, int b) => unchecked(a * b);
         /// 32 位元雜湊（照 math.js 的 hash）。
@@ -90,10 +99,21 @@ namespace PixelFX
             for (int o = 0; o < octaves; o++) { s += Noise2(x, y, seed + o * 101) * a; n += a; x *= 2.03; y *= 2.03; a *= 0.5; }
             return s / n;
         }
+        /// 格子每 px、py 格重複的 2D 雜訊（0＝不重複），照 math.js 的 tileNoise。
+        public static double TileNoise(double x, double y, double px = 0, double py = 0, int seed = 0)
+        {
+            double ix = Math.Floor(x), iy = Math.Floor(y), fx = x - ix, fy = y - iy;
+            double ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy);
+            double x0 = px != 0 ? Wrap(ix, px) : ix, x1 = px != 0 ? Wrap(ix + 1, px) : ix + 1;
+            double y0 = py != 0 ? Wrap(iy, py) : iy, y1 = py != 0 ? Wrap(iy + 1, py) : iy + 1;
+            int X0 = ToInt32(x0), X1 = ToInt32(x1), Y0 = ToInt32(y0), Y1 = ToInt32(y1);
+            double a = Rand(X0, Y0, seed), b = Rand(X1, Y0, seed), c = Rand(X0, Y1, seed), d = Rand(X1, Y1, seed);
+            return Lerp(Lerp(a, b, ux), Lerp(c, d, ux), uy) * 2 - 1;
+        }
         public static double LoopNoise(double phase, double radius = 1, int seed = 0)
         {
             double a = phase * TAU;
-            return Noise2(Math.Cos(a) * radius + 50, Math.Sin(a) * radius + 50, seed);
+            return Noise2(Cos(a) * radius + 50, Sin(a) * radius + 50, seed);
         }
     }
 
@@ -103,20 +123,20 @@ namespace PixelFX
         public static double Linear(double t) => t;
         public static double InQuad(double t) => t * t;
         public static double OutQuad(double t) => 1 - (1 - t) * (1 - t);
-        public static double InOutQuad(double t) => t < 0.5 ? 2 * t * t : 1 - Math.Pow(-2 * t + 2, 2) / 2;
+        public static double InOutQuad(double t) => t < 0.5 ? 2 * t * t : 1 - Pf.Pow(-2 * t + 2, 2) / 2;
         public static double InCubic(double t) => t * t * t;
-        public static double OutCubic(double t) => 1 - Math.Pow(1 - t, 3);
-        public static double InOutCubic(double t) => t < 0.5 ? 4 * t * t * t : 1 - Math.Pow(-2 * t + 2, 3) / 2;
+        public static double OutCubic(double t) => 1 - Pf.Pow(1 - t, 3);
+        public static double InOutCubic(double t) => t < 0.5 ? 4 * t * t * t : 1 - Pf.Pow(-2 * t + 2, 3) / 2;
         public static double InQuart(double t) => t * t * t * t;
-        public static double OutQuart(double t) => 1 - Math.Pow(1 - t, 4);
-        public static double InExpo(double t) => t <= 0 ? 0 : Math.Pow(2, 10 * t - 10);
-        public static double OutExpo(double t) => t >= 1 ? 1 : 1 - Math.Pow(2, -10 * t);
-        public static double InSine(double t) => 1 - Math.Cos((t * Math.PI) / 2);
-        public static double OutSine(double t) => Math.Sin((t * Math.PI) / 2);
-        public static double InOutSine(double t) => -(Math.Cos(Math.PI * t) - 1) / 2;
+        public static double OutQuart(double t) => 1 - Pf.Pow(1 - t, 4);
+        public static double InExpo(double t) => t <= 0 ? 0 : Pf.Pow(2, 10 * t - 10);
+        public static double OutExpo(double t) => t >= 1 ? 1 : 1 - Pf.Pow(2, -10 * t);
+        public static double InSine(double t) => 1 - Pf.Cos((t * Math.PI) / 2);
+        public static double OutSine(double t) => Pf.Sin((t * Math.PI) / 2);
+        public static double InOutSine(double t) => -(Pf.Cos(Math.PI * t) - 1) / 2;
         public static double InBack(double t, double s = 1.70158) => t <= 0 ? 0 : t >= 1 ? 1 : (s + 1) * t * t * t - s * t * t;
-        public static double OutBack(double t, double s = 1.70158) => t <= 0 ? 0 : t >= 1 ? 1 : 1 + (s + 1) * Math.Pow(t - 1, 3) + s * Math.Pow(t - 1, 2);
-        public static double OutElastic(double t) => t <= 0 ? 0 : t >= 1 ? 1 : Math.Pow(2, -10 * t) * Math.Sin((t * 10 - 0.75) * ((2 * Math.PI) / 3)) + 1;
+        public static double OutBack(double t, double s = 1.70158) => t <= 0 ? 0 : t >= 1 ? 1 : 1 + (s + 1) * Pf.Pow(t - 1, 3) + s * Pf.Pow(t - 1, 2);
+        public static double OutElastic(double t) => t <= 0 ? 0 : t >= 1 ? 1 : Pf.Pow(2, -10 * t) * Pf.Sin((t * 10 - 0.75) * ((2 * Math.PI) / 3)) + 1;
         public static double OutBounce(double t)
         {
             const double n = 7.5625, d = 2.75;
@@ -147,6 +167,7 @@ namespace PixelFX
         public int Int(int a, int b) => (int)Math.Floor(Range(a, b + 1));
         public bool Chance(double p) => Next() < p;
         public int Sign() => Next() < 0.5 ? -1 : 1;
+        public T Pick<T>(T[] list) => list[(int)Math.Floor(Next() * list.Length)];
         public double Gauss() => (Next() + Next() + Next() + Next() - 2) * 1.732;
         public static Rng Of(params int[] ns) => new Rng(Pf.Hash(ns));
     }

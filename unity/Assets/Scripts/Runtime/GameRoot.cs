@@ -13,7 +13,7 @@ namespace ZeroStar
         PixelScreen screen;
         Game game;
         // 自動玩（-shot）
-        string shotDir; List<(int t, string type, string code)> script; int tickN, si; readonly int[] shotAt = { 60, 200, 300, 380, 560, 640, 900, 1100 }; int shotNo;
+        string shotDir; List<(int t, string type, string code)> script; int tickN, si; readonly int[] shotAt = { 640, 1700, 1860, 2030, 2210, 2290, 2420, 2470 }; int shotNo;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
@@ -63,14 +63,19 @@ namespace ZeroStar
             }
             else touchMode = true;
             if (touchMode) UpdateTouch(inp);
+            // 換形態：1～5 直接選、O 換下一個（網頁版只帶 3 個；階段 2 先全部都能用）
+            for (int i = 0; i < game.Carry.Length; i++) if (Input.GetKeyDown(KeyCode.Alpha1 + i)) game.PendingForm = game.Carry[i];
+            if (Input.GetKeyDown(KeyCode.O)) game.PendingForm = NextForm();
             if (Input.GetKeyDown(KeyCode.Escape) && !Application.isEditor) Application.Quit();
         }
+
+        string NextForm() { int i = Array.IndexOf(game.Carry, game.Player.Form); return game.Carry[(i + 1) % game.Carry.Length]; }
 
         void OnTick(double dt)
         {
             if (shotDir != null)
             {
-                while (si < script.Count && script[si].t == tickN) { var e = script[si++]; if (e.type == "d") game.Input.KeyDown(e.code); else game.Input.KeyUp(e.code); }
+                while (si < script.Count && script[si].t == tickN) { var e = script[si++]; if (e.type == "f") game.PendingForm = e.code; else if (e.type == "d") game.Input.KeyDown(e.code); else game.Input.KeyUp(e.code); }
                 if (shotNo < shotAt.Length && tickN == shotAt[shotNo]) { ScreenCapture.CaptureScreenshot(Path.Combine(shotDir, $"play-{shotNo}.png")); shotNo++; }
                 if (tickN % 120 == 0) Debug.Log($"[Perf] 第 {tickN} 步：{screen.Fps:F0} fps，每格 {screen.AvgMs:F2} ms");
                 if (shotNo >= shotAt.Length && tickN > shotAt[shotAt.Length - 1] + 20) Application.Quit();
@@ -90,6 +95,8 @@ namespace ZeroStar
         // 按鈕的位置（螢幕像素，左上原點）：攻擊最大、在右下角；閃避在它左邊
         (Vector2 c, float r) AtkBtn { get { float A = Mathf.Clamp(Screen.height / Css * 0.19f, 58, 86) * Css; return (new Vector2(Screen.width - 14 * Css - A * 0.55f, Screen.height - 12 * Css - A * 0.55f), A * 0.55f); } }
         (Vector2 c, float r) DashBtn { get { var a = AtkBtn; float B = a.r * 2 * 0.7f; return (new Vector2(a.c.x - a.r - B * 0.7f, a.c.y + a.r - B * 0.5f), B * 0.5f); } }
+        (Vector2 c, float r) SkillBtn { get { var a = AtkBtn; float B = a.r * 2 * 0.68f; return (new Vector2(a.c.x - a.r * 0.15f, a.c.y - a.r - B * 0.62f), B * 0.5f); } }
+        (Vector2 c, float r) FormBtn { get { var a = AtkBtn; float B = a.r * 2 * 0.55f; return (new Vector2(Screen.width - 14 * Css - B * 0.5f, a.c.y - a.r * 2.6f - B * 0.5f), B * 0.5f); } }
 
         void UpdateTouch(GameInput inp)
         {
@@ -105,6 +112,8 @@ namespace ZeroStar
                     var a = AtkBtn; var d = DashBtn;
                     if (Vector2.Distance(p, a.c) < a.r) { btnOf[t.fingerId] = "attack"; }
                     else if (Vector2.Distance(p, d.c) < d.r) { btnOf[t.fingerId] = "dash"; inp.Press("dash"); }
+                    else if (Vector2.Distance(p, SkillBtn.c) < SkillBtn.r) { btnOf[t.fingerId] = "skill"; inp.Press("skill"); }
+                    else if (Vector2.Distance(p, FormBtn.c) < FormBtn.r) { btnOf[t.fingerId] = "form"; game.PendingForm = NextForm(); }
                     else if (p.x < Screen.width / 2f)
                     {
                         if (inp.Air) { inp.Press("jump"); inp.JumpHeld = true; }   // 在空中點一下左半邊＝二段跳
@@ -168,6 +177,8 @@ namespace ZeroStar
                 var a = AtkBtn; var d = DashBtn;
                 Disc(a.c, a.r, game.Input.TouchAttack ? new Color(1f, 0.82f, 0.3f, 0.75f) : new Color(0.95f, 0.72f, 0.2f, 0.45f));   // 攻擊＝金色（主要按鈕）
                 Disc(d.c, d.r, new Color(0.62f, 0.55f, 0.72f, 0.4f));                                                                   // 閃避＝紫灰
+                var sk = SkillBtn; Disc(sk.c, sk.r, game.Player.Mp >= Player.MP_COST && game.Player.SkillCd <= 0 ? new Color(0.62f, 0.55f, 0.72f, 0.5f) : new Color(0.3f, 0.28f, 0.35f, 0.4f));   // 技能
+                var fb = FormBtn; ColorUtility.TryParseHtmlString(Game.FORM_COLOR[game.Player.Form], out var fc); fc.a = 0.55f; Disc(fb.c, fb.r, fc);   // 換形態（目前形態的顏色）
                 if (stickId >= 0) { Disc(stickPos, 55 * Css, new Color(1, 1, 1, 0.08f)); Disc(stickPos + knobOff, 22 * Css, new Color(1, 1, 1, 0.3f)); }
             }
         }

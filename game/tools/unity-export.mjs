@@ -1,6 +1,6 @@
 // Unity 轉移：把網頁版「載入時算好的東西」原封不動匯出成資料，給 Unity 直接用（保證每個像素跟網頁版一樣）。
 //   場景（1-1 的遊玩層、各圖層、光源）、主角每個姿勢的像素、烘焙好的動畫（史萊姆、火把、煙、刀光）、連段數值。
-// 執行：node game/tools/unity-export.mjs   → 寫到 unity/Assets/Resources/Baked/（.bytes 是 gzip 壓過的二進位）
+// 執行：node --no-use-std-math-pow game/tools/unity-export.mjs   → 寫到 unity/Assets/Resources/Baked/（.bytes 是 gzip 壓過的二進位）
 // 改了網頁版的美術或數值之後重跑一次，Unity 就會用新的。
 import { installDom } from "./unity/node-dom.mjs";
 installDom();
@@ -66,12 +66,17 @@ class W {
   w.save("hero.bytes");
 }
 
-// ---- 3. 烘焙好的動畫
+// ---- 3. 烘焙好的動畫（五個形態的連段招式＝slashAnim(招式, 形態)）
+const { BAKED_COMBOS } = await import("../src/player.js");
+const { FORMS } = await import("../src/forms.js");
+const comboKeys = {};   // 形態 → [{ anim 名稱, 招式 }]
 {
   const anims = {
-    slime: A.slime, slimeWhite: A.slimeWhite, poofSlime: A.poofSlime, brazier: A.brazier, dust: A.dust, spark: A.spark, sparkRed: A.sparkRed,
-    "atk:star:0": slashAnim(ATK_STAR.jabA, "star"), "atk:star:1": slashAnim(ATK_STAR.jabB, "star"), "atk:star:2": slashAnim(ATK_STAR.spinRam, "star"),
+    slime: A.slime, slimeWhite: A.slimeWhite, poofSlime: A.poofSlime, brazier: A.brazier, dust: A.dust, spark: A.spark, sparkRed: A.sparkRed, spikeBall: A.spikeBall,
   };
+  for (const [form, F] of Object.entries(FORMS)) {
+    comboKeys[form] = BAKED_COMBOS.COMBO_DEF[F.combo].map((s, i) => { const n = `atk:${form}:${i}`; anims[n] = slashAnim(s.mod, form); return n; });
+  }
   const w = new W();
   w.str("ZAN1").i32(Object.keys(anims).length);
   for (const [n, a] of Object.entries(anims)) {
@@ -86,19 +91,20 @@ class W {
   w.save("anims.bytes");
 }
 
-// ---- 4. 連段數值（player.js 的 COMBO_DEF，星星）：前搖、命中時間、停頓、推力
+// ---- 4. 連段數值（player.js 的 COMBO_DEF，五個形態）：前搖、命中時間、停頓、推力；技能的時間與速度
 {
-  const steps = [
-    { mod: ATK_STAR.jabA, anim: "atk:star:0", wind: 0.6, cancel: 0.13, end: 0.26, dmg: [1.15], reach: 46, back: 8 },
-    { mod: ATK_STAR.jabB, anim: "atk:star:1", wind: 0.6, cancel: 0.13, end: 0.26, dmg: [1.25], reach: 46, back: 8 },
-    { mod: ATK_STAR.spinRam, anim: "atk:star:2", wind: 0.6, cancel: 0.3, end: 0.46, dmg: [0.9, 1.6], reach: 52, back: 30, launch: true },
-  ].map((s) => ({
-    anim: s.anim, wind: s.wind, cancel: s.cancel, end: s.end, dmg: s.dmg, reach: s.reach, back: s.back, launch: !!s.launch, big: !!s.big,
-    start: Math.min(0, ...s.mod.act.poses.map(([t]) => (t < 0 ? t * s.wind : 0))),
-    hits: s.mod.act.hits.map((h) => ({ t: h.t, stop: h.stop ?? -1, push: h.push ?? -1, amp: h.amp ?? -1 })),
-  }));
-  writeFileSync(join(OUT, "combo-star.json"), JSON.stringify({ steps }, null, 1));
-  console.log("  combo-star.json");
+  const forms = {};
+  for (const [form, F] of Object.entries(FORMS)) {
+    forms[form] = BAKED_COMBOS.COMBO_DEF[F.combo].map((s, i) => ({
+      anim: comboKeys[form][i], wind: s.wind, cancel: s.cancel, end: s.end, dmg: s.dmg, reach: s.reach, back: s.back, launch: !!s.launch, big: !!s.big,
+      start: Math.min(0, ...s.mod.act.poses.map(([t]) => (t < 0 ? t * s.wind : 0))),
+      hits: s.mod.act.hits.map((h) => ({ t: h.t, stop: h.stop ?? -1, push: h.push ?? -1, amp: h.amp ?? -1 })),
+    }));
+  }
+  const { COMBO_DEF, ...k } = BAKED_COMBOS;
+  const list = Object.entries(forms).map(([form, steps]) => ({ form, skill: FORMS[form].skill, steps }));
+  writeFileSync(join(OUT, "combos.json"), JSON.stringify({ forms: list, ...k }, null, 1));
+  console.log("  combos.json");
 }
 // ---- 5. 比對測試的那串按鍵（輸出的遊戲用 -shot 自動玩時讀這份）
 writeFileSync(join(OUT, "trace-script.json"), readFileSync(join(ROOT, "game", "tools", "unity-trace-script.json")));

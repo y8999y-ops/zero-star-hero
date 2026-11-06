@@ -33,21 +33,35 @@ namespace ZeroStar.Tests
             int si = 0;
             for (int n = 0; n < sc.ticks; n++)
             {
-                while (si < sc.events.Count && sc.events[si].t == n) { var e = sc.events[si++]; if (e.type == "d") g.Input.KeyDown(e.code); else g.Input.KeyUp(e.code); }
+                while (si < sc.events.Count && sc.events[si].t == n) { var e = sc.events[si++]; if (e.type == "f") g.PendingForm = e.code; else if (e.type == "d") g.Input.KeyDown(e.code); else g.Input.KeyUp(e.code); }
                 Prof.Mark(null);
                 g.Tick(Game.STEP);
                 Prof.Mark("邏輯");
                 g.SimMs += 1000 / 60.0;
                 frame.Clear();
+                var fr = frame;
+                FxSystem.Probe = Environment.GetEnvironmentVariable("DUMP_TICK") == n.ToString() ? (Action<string>)(k => Debug.Log("PROBE " + k + " " + fr.Color[145 * 384 + 144].ToString("x"))) : null;
                 g.Render(frame);
                 Prof.Mark(null);
                 frame.Composite(rgba, null, 0.8);
                 Prof.Mark("合成");
                 var p = g.Player;
-                var row = new List<string> { n.ToString(), F(p.X), F(p.Y), F(p.Vx), F(p.Vy), p.State, F(p.Hp), F(p.Face), p.Grounded ? "1" : "0", p.Pose, F(g.CamX), F(g.CamY), F(g.Fx.Freeze), F(g.Fx.ShakeT), g.Enemies.Count.ToString() };
-                foreach (var e in g.Enemies) { row.Add(F(e.X)); row.Add(F(e.Y)); row.Add(F(e.Vx)); row.Add(F(e.Vy)); row.Add(F(e.Hp)); row.Add(e.Awake ? "1" : "0"); }
+                var row = new List<string> { n.ToString(), F(p.X), F(p.Y), F(p.Vx), F(p.Vy), p.State, F(p.Hp), F(p.Face), p.Grounded ? "1" : "0", p.Pose, F(g.CamX), F(g.CamY), F(g.Fx.Freeze), F(g.Fx.ShakeT), p.Form, F(p.Mp), g.Combo.ToString(), g.Shots.Count.ToString(), g.Enemies.Count.ToString() };
+                foreach (var e in g.Enemies)
+                {
+                    row.Add(F(e.X)); row.Add(F(e.Y)); row.Add(F(e.Vx)); row.Add(F(e.Vy)); row.Add(F(e.Hp)); row.Add(e.Awake ? "1" : "0");
+                    var S = e.St; string st = S == null ? "" : (S.Burn > 0 ? "b" : "") + (S.Slime > 0 ? "s" : "") + (S.Shock > 0 ? "s" : "") + (S.Poison > 0 ? "p" : "") + (S.Stuck > 0 ? "s" : "");
+                    row.Add(st == "" ? "-" : st);
+                }
                 sb.Append(string.Join(" ", row)).Append('\n');
                 if (n % sc.frameEvery == 0) frames.Write(rgba, 0, rgba.Length);
+                if (Environment.GetEnvironmentVariable("DUMP_TICK") == n.ToString())
+                {
+                    var raw = new byte[frame.Color.Length * 8];
+                    Buffer.BlockCopy(frame.Color, 0, raw, 0, frame.Color.Length * 4); Buffer.BlockCopy(frame.Light, 0, raw, frame.Color.Length * 4, frame.Light.Length * 4);
+                    Directory.CreateDirectory(Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Golden", "unity"));
+                    File.WriteAllBytes(Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Golden", "unity", "dump.bin"), raw);
+                }
             }
             string outDir = Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Golden", "unity");
             Directory.CreateDirectory(outDir);

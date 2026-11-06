@@ -186,7 +186,7 @@ namespace ZeroStar
         {
             int W = frame.W, Hh = frame.H, os = (int)Math.Floor(frame.Ox * SHAFT_PAR);
             uint[] Lb = frame.Light, Cb = frame.Color;
-            double flicker = 0.75 + 0.25 * Math.Sin(time * 1.3);
+            double flicker = 0.75 + 0.25 * Pf.Sin(time * 1.3);
             foreach (var s in SHAFTS) for (int rep = -1; rep <= 1; rep++)
             {
                 double sw = s[1], bas = s[0] + rep * SHAFT_W - os;
@@ -207,7 +207,7 @@ namespace ZeroStar
             int om = (int)Math.Floor(frame.Ox * 0.6);
             for (int n = 0; n < 36; n++)
             {
-                int x = Wrap((int)Math.Floor(Pf.Rand(n, 71) * 1440) + (int)Pf.Round(Math.Sin(time * 0.8 + n) * 3) - om, 1440);
+                int x = Wrap((int)Math.Floor(Pf.Rand(n, 71) * 1440) + (int)Pf.Round(Pf.Sin(time * 0.8 + n) * 3) - om, 1440);
                 if (x >= W) continue;
                 int y = D.Floor - 4 - (int)Math.Floor((time * (6 + Pf.Rand(n, 72) * 8) + Pf.Rand(n, 73) * 170) % 170);
                 if (y < 0 || y >= Hh) continue;

@@ -103,7 +103,7 @@ namespace PixelFX
         /// 把特效原點放在畫布座標 (x, y)；flip 左右鏡像；angle 旋轉（弧度）。
         public Painter Place(double x, double y, bool flip = false, double angle = 0)
         {
-            tx = x; ty = y; fx = flip ? -1 : 1; cs = Math.Cos(angle); sn = Math.Sin(angle);
+            tx = x; ty = y; fx = flip ? -1 : 1; cs = Pf.Cos(angle); sn = Pf.Sin(angle);
             return this;
         }
 
@@ -158,7 +158,7 @@ namespace PixelFX
             {
                 double dx = x - cx, dy = y - cy, d2 = dx * dx + dy * dy;
                 if (d2 > r * r) return;
-                double d = Math.Sqrt(d2) / r, ang = Math.Atan2(dy, dx);
+                double d = Math.Sqrt(d2) / r, ang = Pf.Atan2(dy, dx);
                 BlendPx(sx, sy, c(d, ang), a(d, ang));
             });
         }
@@ -246,7 +246,7 @@ namespace PixelFX
             {
                 double dx = x - cx, dy = y - cy, d2 = dx * dx + dy * dy;
                 if (d2 > r * r) return;
-                double d = Math.Sqrt(d2) / r, ang = Math.Atan2(dy, dx);
+                double d = Math.Sqrt(d2) / r, ang = Pf.Atan2(dy, dx);
                 o.c = c(d, ang); o.a = a(d, ang);
             });
         }
@@ -258,7 +258,7 @@ namespace PixelFX
             {
                 double dx = (x - cx) / rx, dy = (y - cy) / ry, d2 = dx * dx + dy * dy;
                 if (d2 > 1) return;
-                double d = Math.Sqrt(d2), ang = Math.Atan2(dy, dx);
+                double d = Math.Sqrt(d2), ang = Pf.Atan2(dy, dx);
                 o.c = c(d, ang); o.a = a(d, ang);
             });
         }
@@ -271,7 +271,7 @@ namespace PixelFX
                 double dx = x - cx, dy = y - cy, d2 = dx * dx + dy * dy;
                 if (d2 > r * r || d2 < r0 * r0) return;
                 double den = r - r0; if (den == 0) den = 1;
-                double v = wd > 0 ? (Math.Sqrt(d2) - r0) / den : 1, ang = Math.Atan2(dy, dx);
+                double v = wd > 0 ? (Math.Sqrt(d2) - r0) / den : 1, ang = Pf.Atan2(dy, dx);
                 o.c = c(v, ang); o.a = a(v, ang);
             });
         }
@@ -283,7 +283,7 @@ namespace PixelFX
             {
                 double dx = x - cx, dy = y - cy, d = Math.Sqrt(dx * dx + dy * dy);
                 if (d > r) return;
-                double ang = Math.Atan2(dy, dx) - a0;
+                double ang = Pf.Atan2(dy, dx) - a0;
                 ang -= Math.Floor(ang / (Math.PI * 2)) * Math.PI * 2;
                 if (ang > span) return;
                 double u = ang / span, ww = wf(u);

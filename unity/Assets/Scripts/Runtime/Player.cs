@@ -9,7 +9,8 @@ namespace ZeroStar
 {
     [Serializable] public class ComboHit { public double t, stop = -1, push = -1, amp = -1; }
     [Serializable] public class ComboStep { public string anim; public double wind, cancel, end, reach, back, start; public double[] dmg; public bool launch, big; public ComboHit[] hits; }
-    [Serializable] public class ComboDef { public ComboStep[] steps; }
+    [Serializable] public class FormCombo { public string form, skill; public ComboStep[] steps; }
+    [Serializable] public class ComboDef { public FormCombo[] forms; public double CHARGE_T, CHARGE_V, SPIKE_T, SPIKE_V, FLY_T, FLY_VX, FLY_VY, GLIDE_FALL; }
 
     public struct Roll { public double Dmg; public bool Crit; }
     public struct Box
@@ -18,7 +19,7 @@ namespace ZeroStar
         public Box(double x0, double x1, double y0, double y1) { X0 = x0; X1 = x1; Y0 = y0; Y1 = y1; }
         public bool Overlaps(Box b) => X0 < b.X1 && X1 > b.X0 && Y0 < b.Y1 && Y1 > b.Y0;
     }
-    public struct HitOpts { public bool Launch; public double Push; }
+    public struct HitOpts { public bool Launch; public double Push; public string Elem; }
 
     /// 主角和怪要用到的世界（main.js 的 world）
     public interface IWorld
@@ -30,6 +31,9 @@ namespace ZeroStar
         double SimMs { get; }
         Enemy NearestEnemy(double x, double y, double range, int dir = 0);
         int HitArea(Box box, Func<Roll> dmg, double dir, HitOpts o);
+        int HitOnce(Box box, HashSet<Enemy> hit, Func<Roll> dmg, double dir, HitOpts o);
+        void SpawnFireball(double x, double y, double dir, string form, double vy = 0);
+        void NoMana();
         void Land(double x, double y, bool hard);
         void Dust(double x, double y, int n);
         void DropCoins(double x, double y, int n);
@@ -45,7 +49,8 @@ namespace ZeroStar
         const double DASH_T = 0.19, DASH_V = 345, DASH_CD = 0.32;
         const double ATK_BUF = 0.15;
         const double APEX_V = 50, FALL_K = 1.15;
-        public const double MP_REGEN = 0.8;
+        public const double MP_REGEN = 0.8, MP_COST = 25, COMBO_MP = 10, SKILL_CD = 1.1;
+        public static readonly Dictionary<string, string> ELEM = new Dictionary<string, string> { ["star"] = "burn", ["slime"] = "slime", ["can"] = "shock", ["bat"] = "poison" };
 
         static readonly uint WHITE = Col.Hex("#f0ecff");
         static readonly uint[] GHOST = { Col.Hex("#8ae8ff"), Col.Hex("#4ab0d8"), Col.Hex("#2a6ea0"), Col.Hex("#1c3e6a") };
@@ -63,18 +68,35 @@ namespace ZeroStar
         class Ghost { public double X, Y, Age; public string Q; public bool Flip; }
         readonly List<Ghost> ghosts = new List<Ghost>();
         public ComboStep[] Combo;
+        readonly ComboDef def;
+        string skill = "stardust";
+        public double SkillMax = SKILL_CD, ChargeDur, FlyDur, SpikeDur;
+        bool cast; int spikeBounce;
+        HashSet<Enemy> chargeHit = new HashSet<Enemy>();
 
-        public Player(double x, double y, ComboStep[] combo) { X = x; Y = y; Combo = combo; }
+        public Player(double x, double y, ComboDef def) { X = x; Y = y; this.def = def; SetForm("star"); }
+
+        /// 換形態：連段、技能、身體顏色一起換
+        public void SetForm(string id)
+        {
+            Form = id;
+            foreach (var f in def.forms) if (f.form == id) { Combo = f.steps; skill = f.skill; }
+            Step = 0;
+            if (State == "attack") { State = "move"; Atk_ = null; }
+        }
 
         /// 一下攻擊的傷害（攻擊力 × 倍率，再算暴擊）。force＝必定暴擊
         public Roll RollDmg(double mult, bool force = false)
         {
-            double critK = Crit + 0;
+            bool spk = Form == "spike";
+            double critK = Crit + (spk ? 8 + 3 * 0 + 0 : 0);
             bool crit = force || Rnd.Next() * 100 < critK;
             double coreMul = (Hp >= MaxHp * 0.8 ? 1 + 0 / 100.0 : 1) * 1;
             double dmg = Atk * mult * (1 + BuffAtk) * DmgMul * 1.0 * (crit ? 1 + (CritDmg + 0) / 100 : 1) * 1 * coreMul;
             return new Roll { Dmg = dmg, Crit = crit };
         }
+
+        public double SkillMul() => (1 + 0 / 100.0) * 1;
 
         public void Update(double dt, IWorld w)
         {
@@ -106,6 +128,16 @@ namespace ZeroStar
                 Invuln = Math.Max(Invuln, DASH_T + 0.06);
                 DashCd = DASH_CD * 1;
             }
+            // 魔力不夠：按了沒反應，魔力條閃一下
+            if (input.Skill && SkillCd <= 0 && Mp < MP_COST && State != "hurt" && State != "dash") { input.Consume("skill"); w.NoMana(); }
+            if (input.Skill && SkillCd <= 0 && State != "hurt" && State != "dash")
+            {
+                input.Consume("skill");
+                Mp -= MP_COST;
+                Aim(w);
+                State = "cast"; T = 0; Atk_ = null; cast = false;
+                SkillCd = SkillMax * 1;
+            }
             // 攻擊輸入緩衝
             if (input.Attack) AtkBuf = ATK_BUF; else AtkBuf -= dt;
             if (AtkBuf > 0 && (State == "move" || (State == "attack" && Atk_.Time >= Atk_.S.cancel))) { AtkBuf = input.Attack ? ATK_BUF : 0; StartAttack(w); }
@@ -121,12 +153,59 @@ namespace ZeroStar
                 if (GhostAcc > 1 / 40.0) { GhostAcc = 0; ghosts.Add(new Ghost { X = X, Y = Y, Q = Pose, Flip = DrawFlip(), Age = 0 }); }
             }
             else if (State == "attack") UpdateAttack(dt, w);
+            else if (State == "cast")
+            {
+                if (!cast && T >= 0.1)
+                {
+                    cast = true;
+                    ChargeDur = def.CHARGE_T * (1 + 0.12 * 0);
+                    FlyDur = def.FLY_T * (1 + 0.12 * 0);
+                    if (skill == "spikeball")
+                    {
+                        State = "spikeball"; T = 0; chargeHit = new HashSet<Enemy>(); spikeBounce = 0;
+                        SpikeDur = def.SPIKE_T * (1 + 0.12 * 0);
+                        Invuln = Math.Max(Invuln, SpikeDur + 0.05); w.Sfx("dash");
+                    }
+                    else if (skill == "charge") { State = "charge"; T = 0; chargeHit = new HashSet<Enemy>(); Invuln = Math.Max(Invuln, ChargeDur + 0.05); }
+                    else if (skill == "flight") { State = "fly"; T = 0; chargeHit = new HashSet<Enemy>(); Grounded = false; Invuln = Math.Max(Invuln, FlyDur + 0.05); w.Sfx("dash"); }
+                    else w.SpawnFireball(X + Face * 18, Y - 14, Face, Form);
+                }
+                if (State == "cast" && T >= 0.28) State = "move";
+            }
+            else if (State == "charge")
+            {
+                // 鐵罐星：往前衝，路上的怪每隻打一次、擊飛
+                Vx = Face * def.CHARGE_V;
+                GhostAcc += dt;
+                if (GhostAcc > 1 / 30.0) { GhostAcc = 0; ghosts.Add(new Ghost { X = X, Y = Y, Q = Pose, Flip = DrawFlip(), Age = 0 }); }
+                w.HitOnce(new Box(X - 12, X + 12, Y - 26, Y + 2), chargeHit, () => RollDmg(2.2 * SkillMul()), Face, new HitOpts { Launch = true, Push = 4, Elem = "shock" });
+                if (T >= ChargeDur) { State = "move"; Vx *= 0.3; }
+            }
+            else if (State == "spikeball")
+            {
+                // 尖刺星：縮成刺球往前滾，路上的怪每隻刺一次；撞牆彈回來一次
+                Vx = Face * def.SPIKE_V;
+                GhostAcc += dt;
+                if (GhostAcc > 1 / 24.0) { GhostAcc = 0; w.Combat.Dust("step", X - Face * 5, Y); }
+                w.HitOnce(new Box(X - 13, X + 13, Y - 24, Y + 2), chargeHit, () => RollDmg(1.7 * SkillMul()), Face, new HitOpts { Push = 3 });
+                if (T >= SpikeDur) { State = "move"; Vx *= 0.3; }
+            }
+            else if (State == "fly")
+            {
+                // 蝠翼星：往前上方飛，越飛越平；路上的怪每隻打一次。飛完可以再跳一次
+                Vx = Face * def.FLY_VX;
+                Vy = def.FLY_VY * (1 - T / def.FLY_T);
+                GhostAcc += dt;
+                if (GhostAcc > 1 / 30.0) { GhostAcc = 0; ghosts.Add(new Ghost { X = X, Y = Y, Q = Pose, Flip = DrawFlip(), Age = 0 }); }
+                w.HitOnce(new Box(X - 14, X + 14, Y - 28, Y + 2), chargeHit, () => RollDmg(1.8 * SkillMul()), Face, new HitOpts { Push = 3, Elem = "poison" });
+                if (T >= FlyDur) { State = "move"; Vx *= 0.5; Jumps = Math.Min(Jumps, 1); }
+            }
             else if (State == "hurt") { if (T >= 0.32 * HurtK) State = "move"; }
 
             // ---- 水平移動
-            if (State != "dash" && State != "hurt")
+            if (State != "dash" && State != "hurt" && State != "charge" && State != "fly" && State != "spikeball")
             {
-                double target = input.Move * RUN * (1 + MoveP / 100 + BuffMove + 0 + 0 + 0) * ctl;
+                double target = input.Move * RUN * (1 + MoveP / 100 + BuffMove + 0 + 0 + (Form == "bat" ? 0.02 * 0 : 0)) * ctl;
                 double acc = (Grounded ? ACC_GROUND : ACC_AIR) * dt;
                 Vx += Math.Max(-acc, Math.Min(acc, target - Vx));
                 if (State == "move" && input.Move != 0) Face = Math.Sign(input.Move);
@@ -145,7 +224,7 @@ namespace ZeroStar
                 {
                     input.Consume("jump");
                     bool first = Grounded || Coyote > 0;
-                    double jk = 1;
+                    double jk = Form == "bat" ? Math.Sqrt(1 + 0.015 * 0) : 1;
                     Vy = (first ? JUMP_V : JUMP2_V) * jk;
                     Jumps = first ? 1 : 2;
                     Grounded = false; Coyote = 0;
@@ -157,15 +236,20 @@ namespace ZeroStar
             if (!input.JumpHeld && Vy < -150 && State == "move") Vy = -150;   // 短按跳得低
 
             // ---- 重力
-            if (State != "dash")
+            if (State != "dash" && State != "fly")
             {
-                double g = State == "attack" && !Grounded && Vy > -40 ? GRAV * 0.25 : GRAV;   // 空中攻擊時懸停一下
-                double cap = MAX_FALL;
-                double g2 = State == "move" && !Grounded ? (Math.Abs(Vy) < APEX_V && input.JumpHeld ? g * 0.5 : Vy > 0 ? g * FALL_K : g) : g;
+                // 空中攻擊時懸停一下（蝠翼星停得更久）
+                bool bat = Form == "bat";
+                double g = State == "attack" && !Grounded && Vy > -40 ? GRAV * (bat ? 0.08 : 0.25) : GRAV;
+                // 蝠翼星按住跳往下掉時：滑翔
+                bool gliding = bat && input.JumpHeld && State == "move" && !Grounded && Vy > 0;
+                double cap = gliding ? def.GLIDE_FALL : MAX_FALL;
+                double g2 = State == "move" && !Grounded && !gliding ? (Math.Abs(Vy) < APEX_V && input.JumpHeld ? g * 0.5 : Vy > 0 ? g * FALL_K : g) : g;
                 Vy = Math.Min(cap, Vy + g2 * dt);
             }
             double prevY = Y;
             double nx = map.MoveX(X, X + Vx * dt, Y, 24, 7);
+            if (nx != X + Vx * dt && State == "spikeball" && spikeBounce == 0) { spikeBounce = 1; Face = -Face; w.Dust(X, Y, 4); }   // 刺球撞牆彈回來
             if (nx != X + Vx * dt && State != "dash") Vx = 0;
             X = Math.Max(7, Math.Min(map.W - 7, nx));
             Y += Vy * dt;
@@ -262,15 +346,17 @@ namespace ZeroStar
             for (; a.Nh < s.hits.Length && s.hits[a.Nh].t <= a.Time; a.Nh++)
             {
                 var h = s.hits[a.Nh]; double d = Face;
-                double reach = s.reach * 1 * (1 + 0 / 100.0);
+                double reach = s.reach * (Form == "slime" ? 1 + 0.08 * 0 : 1) * (1 + 0 / 100.0);
                 var box = new Box(X - d * s.back, X + d * reach, Y - 44, Y + 4);
                 if (box.X0 > box.X1) { double tmp = box.X0; box.X0 = box.X1; box.X1 = tmp; }
-                double mult = (a.Nh < s.dmg.Length ? s.dmg[a.Nh] : s.dmg[0]) * (1 + 0.05 * 0);
+                double mult = (a.Nh < s.dmg.Length ? s.dmg[a.Nh] : s.dmg[0]) * (Form == "star" ? 1 + 0.05 * 0 : Form == "bat" ? 1 + 0.04 * 0 : 1);
                 bool force = a.Crit && a.Nh == 0;
                 bool fin = s.launch && a.Nh == s.hits.Length - 1;
                 double finMul = fin ? 1 + 0 / 100.0 : 1;
-                double push = (h.push >= 0 ? h.push : 2) * 1 * (1 + 0 / 100.0);
-                int n = w.HitArea(box, () => RollDmg(mult * finMul, force), d, new HitOpts { Launch = fin, Push = push });
+                double push = (h.push >= 0 ? h.push : 2) * (Form == "can" ? 1 + 0.1 * 0 : 1) * (1 + 0 / 100.0);
+                // 連段最後一下沾上形態的元素（星星燃燒、黏液星黏液、鐵罐星帶電、蝠翼星毒）
+                string elem = fin && ELEM.TryGetValue(Form, out var el) ? el : null;
+                int n = w.HitArea(box, () => RollDmg(mult * finMul, force), d, new HitOpts { Launch = fin, Push = push, Elem = elem });
                 if (n > 0)
                 {
                     w.Fx.HitStop(Math.Min(s.big ? 0.14 : 0.11, (h.stop >= 0 ? h.stop : 0.06) * (n > 3 ? 0.7 : 1)));
@@ -290,7 +376,7 @@ namespace ZeroStar
             Hp = Math.Max(0, Hp - dmg);
             Invuln = 0.9; Flash = 0.08;
             State = "hurt"; T = 0; Atk_ = null;
-            HurtK = 1;
+            HurtK = Form == "can" ? 1 - 0.05 * 0 : 1;
             Vx = (X >= fromX ? 1 : -1) * 170 * HurtK;
             Vy = -170 * HurtK;
             Grounded = false;
@@ -307,7 +393,9 @@ namespace ZeroStar
             switch (State)
             {
                 case "attack": return AttackPose();
-                case "dash": return "dash";
+                case "dash": case "charge": case "spikeball": return "dash";
+                case "fly": return "jump";
+                case "cast": return "cast";
                 case "hurt": return "hurt";
             }
             if (TurnT > 0 && State == "move") return "turn";
@@ -341,6 +429,7 @@ namespace ZeroStar
         {
             foreach (var g in ghosts) HeroArt.Paint(frame, g.X, g.Y, HeroArt.Pose(Form, g.Q), g.Flip, GHOST[Math.Min(GHOST.Length - 1, (int)Math.Floor((g.Age / 0.22) * GHOST.Length))]);
             if (Invuln > 0 && State != "dash" && (long)Math.Floor(Clock * 20) % 2 == 0) return;
+            if (State == "spikeball") { Blit.Draw(frame, Baked.Anim("spikeBall"), T, X, Y, Face < 0); return; }   // 尖刺星：縮成刺球
             HeroArt.Paint(frame, X, Y, HeroArt.Pose(Form, Pose), DrawFlip(), Flash > 0 ? WHITE : 0);
         }
 

@@ -1,0 +1,378 @@
+{
+ "forms": [
+  {
+   "form": "star",
+   "skill": "stardust",
+   "steps": [
+    {
+     "anim": "atk:star:0",
+     "wind": 0.6,
+     "cancel": 0.13,
+     "end": 0.26,
+     "dmg": [
+      1.15
+     ],
+     "reach": 46,
+     "back": 8,
+     "launch": false,
+     "big": false,
+     "start": -0.12,
+     "hits": [
+      {
+       "t": 0.05,
+       "stop": 0.07,
+       "push": 2,
+       "amp": 2
+      }
+     ]
+    },
+    {
+     "anim": "atk:star:1",
+     "wind": 0.6,
+     "cancel": 0.13,
+     "end": 0.26,
+     "dmg": [
+      1.25
+     ],
+     "reach": 46,
+     "back": 8,
+     "launch": false,
+     "big": false,
+     "start": -0.12,
+     "hits": [
+      {
+       "t": 0.05,
+       "stop": 0.07,
+       "push": 2,
+       "amp": 2
+      }
+     ]
+    },
+    {
+     "anim": "atk:star:2",
+     "wind": 0.6,
+     "cancel": 0.3,
+     "end": 0.46,
+     "dmg": [
+      0.9,
+      1.6
+     ],
+     "reach": 52,
+     "back": 30,
+     "launch": true,
+     "big": false,
+     "start": -0.168,
+     "hits": [
+      {
+       "t": 0.05,
+       "stop": 0.05,
+       "push": 2,
+       "amp": 2
+      },
+      {
+       "t": 0.12,
+       "stop": 0.12,
+       "push": 3,
+       "amp": 3
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "form": "slime",
+   "skill": "goo",
+   "steps": [
+    {
+     "anim": "atk:slime:0",
+     "wind": 0.6,
+     "cancel": 0.17,
+     "end": 0.32,
+     "dmg": [
+      1.25
+     ],
+     "reach": 92,
+     "back": 0,
+     "launch": false,
+     "big": false,
+     "start": -0.144,
+     "hits": [
+      {
+       "t": 0.08,
+       "stop": 0.07,
+       "push": 2.4,
+       "amp": 2
+      }
+     ]
+    },
+    {
+     "anim": "atk:slime:1",
+     "wind": 0.6,
+     "cancel": 0.17,
+     "end": 0.32,
+     "dmg": [
+      1.25
+     ],
+     "reach": 92,
+     "back": 0,
+     "launch": false,
+     "big": false,
+     "start": -0.132,
+     "hits": [
+      {
+       "t": 0.08,
+       "stop": 0.07,
+       "push": 2.4,
+       "amp": 2
+      }
+     ]
+    },
+    {
+     "anim": "atk:slime:2",
+     "wind": 0.6,
+     "cancel": 0.3,
+     "end": 0.5,
+     "dmg": [
+      2.1
+     ],
+     "reach": 88,
+     "back": 20,
+     "launch": true,
+     "big": false,
+     "start": -0.18,
+     "hits": [
+      {
+       "t": 0.12,
+       "stop": 0.12,
+       "push": 3,
+       "amp": 3
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "form": "bat",
+   "skill": "flight",
+   "steps": [
+    {
+     "anim": "atk:bat:0",
+     "wind": 0.6,
+     "cancel": 0.5,
+     "end": 0.62,
+     "dmg": [
+      0.55,
+      0.55,
+      0.55,
+      1.3
+     ],
+     "reach": 56,
+     "back": 8,
+     "launch": false,
+     "big": false,
+     "start": -0.18,
+     "hits": [
+      {
+       "t": 0,
+       "stop": 0.05,
+       "push": 1.2,
+       "amp": 1
+      },
+      {
+       "t": 0.11,
+       "stop": 0.05,
+       "push": 1.2,
+       "amp": 1
+      },
+      {
+       "t": 0.22,
+       "stop": 0.05,
+       "push": 1.2,
+       "amp": 1
+      },
+      {
+       "t": 0.36,
+       "stop": 0.12,
+       "push": 2.6,
+       "amp": 3
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "form": "spike",
+   "skill": "spikeball",
+   "steps": [
+    {
+     "anim": "atk:spike:0",
+     "wind": 0.6,
+     "cancel": 0.11,
+     "end": 0.22,
+     "dmg": [
+      0.8
+     ],
+     "reach": 66,
+     "back": 0,
+     "launch": false,
+     "big": false,
+     "start": -0.108,
+     "hits": [
+      {
+       "t": 0.05,
+       "stop": 0.05,
+       "push": 1.6,
+       "amp": 1
+      }
+     ]
+    },
+    {
+     "anim": "atk:spike:1",
+     "wind": 0.6,
+     "cancel": 0.11,
+     "end": 0.22,
+     "dmg": [
+      0.8
+     ],
+     "reach": 66,
+     "back": 0,
+     "launch": false,
+     "big": false,
+     "start": -0.096,
+     "hits": [
+      {
+       "t": 0.05,
+       "stop": 0.05,
+       "push": 1.6,
+       "amp": 1
+      }
+     ]
+    },
+    {
+     "anim": "atk:spike:2",
+     "wind": 0.6,
+     "cancel": 0.11,
+     "end": 0.22,
+     "dmg": [
+      0.85
+     ],
+     "reach": 68,
+     "back": 0,
+     "launch": false,
+     "big": false,
+     "start": -0.096,
+     "hits": [
+      {
+       "t": 0.05,
+       "stop": 0.05,
+       "push": 1.8,
+       "amp": 1
+      }
+     ]
+    },
+    {
+     "anim": "atk:spike:3",
+     "wind": 0.6,
+     "cancel": 0.28,
+     "end": 0.42,
+     "dmg": [
+      1.9
+     ],
+     "reach": 80,
+     "back": 0,
+     "launch": true,
+     "big": false,
+     "start": -0.192,
+     "hits": [
+      {
+       "t": 0.08,
+       "stop": 0.12,
+       "push": 3,
+       "amp": 3
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "form": "can",
+   "skill": "charge",
+   "steps": [
+    {
+     "anim": "atk:can:0",
+     "wind": 0.6,
+     "cancel": 0.22,
+     "end": 0.36,
+     "dmg": [
+      1.2
+     ],
+     "reach": 56,
+     "back": 8,
+     "launch": false,
+     "big": false,
+     "start": -0.156,
+     "hits": [
+      {
+       "t": 0.07,
+       "stop": 0.08,
+       "push": 2.6,
+       "amp": 2
+      }
+     ]
+    },
+    {
+     "anim": "atk:can:1",
+     "wind": 0.6,
+     "cancel": 0.22,
+     "end": 0.36,
+     "dmg": [
+      1.3
+     ],
+     "reach": 56,
+     "back": 8,
+     "launch": false,
+     "big": false,
+     "start": -0.144,
+     "hits": [
+      {
+       "t": 0.07,
+       "stop": 0.08,
+       "push": 2.6,
+       "amp": 2
+      }
+     ]
+    },
+    {
+     "anim": "atk:can:2",
+     "wind": 0.5,
+     "cancel": 0.42,
+     "end": 0.62,
+     "dmg": [
+      2.5
+     ],
+     "reach": 72,
+     "back": 32,
+     "launch": true,
+     "big": true,
+     "start": -0.2,
+     "hits": [
+      {
+       "t": 0.14,
+       "stop": 0.14,
+       "push": 3.2,
+       "amp": 4
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "CHARGE_T": 0.3,
+ "CHARGE_V": 330,
+ "SPIKE_T": 0.42,
+ "SPIKE_V": 310,
+ "FLY_T": 0.34,
+ "FLY_VX": 290,
+ "FLY_VY": -170,
+ "GLIDE_FALL": 90
+}
