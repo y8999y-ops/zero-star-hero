@@ -452,6 +452,24 @@ function updateUniques(dt) {
 // 各關的寶箱：1-1 木箱、1-2 鐵箱、1-3 紅漆金箱；1-4 打倒王之後在王倒下的地方出現星箱。
 const STAGE_CHEST = { "1-1": 0, "1-2": 1, "1-3": 2 };
 const chestOpts = (tier) => { const T = CHEST_TIERS[tier]; return { tier, wood: T.wood, palette: T.palette, coins: 0, gems: 0, light: 0.3 + tier * 0.08 }; };
+// 使用者 2026-11-06「寶箱看起來有點透明（鐵箱）」：寶箱身上的像素其實是實的，是寶箱自己的柔光＋「可以開」的光暈疊在箱子上，
+//   暗色的鐵被照成一片金色，看起來像透明。畫之前記下那一塊的顏色，畫完後箱子本體（顏色變了的格子）的光壓到 2 成，光只留在箱子周圍
+let chestSnap = new Uint32Array(0);
+function drawChestSolid(frame) {
+  const Wf = frame.w, Hf = frame.h, C = frame.color, L = frame.light;
+  const x0 = Math.max(0, Math.round(chest.x - (frame.ox | 0)) - 40), x1 = Math.min(Wf, x0 + 80), y1 = Math.min(Hf, Math.round(chest.y - (frame.oy | 0)) + 4), y0 = Math.max(0, y1 - 70);
+  const bw = Math.max(0, x1 - x0), n = bw * Math.max(0, y1 - y0);
+  if (chestSnap.length < n) chestSnap = new Uint32Array(n);
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) chestSnap[(y - y0) * bw + x - x0] = C[y * Wf + x];
+  chest.fx.draw(frame);
+  drawObjGlow(frame, "chest", chest.x, chest.y, sceneClock);
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+    const i = y * Wf + x;
+    if (C[i] === chestSnap[(y - y0) * bw + x - x0] || !L[i]) continue;
+    const d = L[i];
+    L[i] = (0xff000000 | ((((d >>> 16) & 255) * 0.2) << 16) | ((((d >>> 8) & 255) * 0.2) << 8) | ((d & 255) * 0.2)) >>> 0;
+  }
+}
 function makeChest(x, tier, y = FLOOR) { return { x: Math.round(x), y, tier, opened: false, t: 0, fx: createFx(treasureChest, { x: Math.round(x), y, ...chestOpts(tier) }) }; }
 let chest = ENDLESS || TOWN || STAGE_ID === "1-4" ? null : makeChest(STAGE.exitX - 120, STAGE_CHEST[STAGE_ID] ?? 0, floorAt(STAGE.exitX - 120, (STAGE.exitY || FLOOR) - 8));
 let prevUseAtk = false, useT = null, useKind = "";
@@ -1730,7 +1748,7 @@ function render() {
   hazards.draw(frame);
   if (TOWN) { drawTownNpcs(frame, sceneClock); folk.draw(frame); drawGuideMark(frame); drawPrompt(); }
   else if (useT) drawBang(useT.x, useT.top);
-  if (chest && !chest.opened && Math.abs(chest.x - camX - W / 2) < W) { chest.fx.draw(frame); drawObjGlow(frame, "chest", chest.x, chest.y, sceneClock); }
+  if (chest && !chest.opened && Math.abs(chest.x - camX - W / 2) < W) drawChestSolid(frame);
   // 大招時：先畫怪再暗場，法陣這些背景特效畫在暗場之後才會亮
   if (!ult.on) drawFx(frame, "back");
   drops.draw(frame);
