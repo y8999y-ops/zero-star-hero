@@ -46,11 +46,12 @@ export const CORE_STAT = {
 export function absorbCore(forms, id) {
   const f = forms.owned[id];
   if (!f) {
-    forms.owned[id] = { pts: 0, tree: {} };
+    forms.owned[id] = { pts: 0, tree: {}, got: 1 };   // got＝總共吸過幾顆（裝備頁星星周圍的粒子數，heroaura.js）
     if (forms.carry.length < CARRY_MAX) forms.carry.push(id);
     return { unlocked: true, point: false };
   }
   f.cores = (f.cores ?? 0) + 1;
+  f.got = (f.got ?? 1 + (f.cores - 1) + (f.pts ?? 0)) + 1;   // 舊存檔沒有 got：用手上的核＋點數估
   return { unlocked: false, core: true, cores: f.cores };
 }
 

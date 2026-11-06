@@ -10,7 +10,7 @@ import { isCore, subStep, coreTier, coreOf, CORES } from "./items.js";
 import { SLOTS, RARITY, AFFIXES, rerollAffix, maxPlus, enhanceRate, enhanceCost, enhanceUp, fmtStat, mainValue } from "./items.js";
 import { uiFx } from "./ui-fx.js";
 import { TREES, PATHS, rank as treeRank, canBuy, buy, refund, freePts, pathSpent, CAP_NEED } from "./skilltree.js";
-import { FORMS, CORE_STAT, CORE_COST } from "./forms.js";
+import { FORMS, CORE_STAT, CORE_COST, CARRY_MAX } from "./forms.js";
 import * as parryFx from "../../pixelfx/src/fx/impacts/parry.js";
 import * as burstFx from "../../pixelfx/src/fx/pickups/collect-burst.js";
 import * as questFx from "../../pixelfx/src/fx/ui/quest-complete.js";
@@ -328,6 +328,60 @@ export function openInn({ rest }) {
     { id: "rest", label: "休息", icon: "moon", render: restTab },
     { id: "food", label: "料理", icon: "stew", render: foodTab },
   ]);
+}
+
+// ================= 形態（使用者 2026-11-06「另外做一個專門切換形態的介面」） =================
+/** 形態視窗：上面一排「帶在身上」的 3 格，下面每個已經吸收的形態一張卡（全身像、名字、連段、技能、說明）。
+ *  點卡片上的【變身】＝馬上切過去（要帶在身上）；在城鎮可以【帶上】／【放下】，換帶哪 3 個（冒險中不能換） */
+export function openForms() {
+  const P = ctx.profile, F = P.forms;
+  const page = (body) => {
+    const cur = ctx.curForm?.(), owned = Object.keys(FORMS).filter((id) => F.owned[id]);
+    const top = h("div", "fm-carry", `<div class="fm-ttl">帶在身上 <em>${F.carry.length}/${CARRY_MAX}</em>${ctx.inTown ? "" : '<small>（回城鎮才能換帶哪幾個）</small>'}</div>`);
+    const row = h("div", "fm-slots");
+    for (let i = 0; i < CARRY_MAX; i++) {
+      const id = F.carry[i], s = h("div", "fm-slot" + (id === cur ? " on" : "") + (id ? "" : " empty"));
+      if (id) { s.appendChild(ctx.portrait(id, 1)); s.appendChild(h("b", "", `${i + 1}`)); s.style.setProperty("--fc", FORMS[id].color); }
+      else s.innerHTML = "<i>空</i>";
+      row.appendChild(s);
+    }
+    top.appendChild(row);
+    body.appendChild(top);
+    const grid = h("div", "fm-grid");
+    for (const id of owned) {
+      const D = FORMS[id], carried = F.carry.includes(id), card = h("div", "fm-card" + (id === cur ? " on" : "") + (carried ? " carried" : ""));
+      card.style.setProperty("--fc", D.color);
+      const pic = h("div", "fm-pic"); pic.appendChild(ctx.portrait(id, 2)); card.appendChild(pic);
+      card.appendChild(h("div", "fm-info", `<div class="fm-name">${D.name}${id === cur ? '<span class="fm-tag">目前</span>' : carried ? '<span class="fm-tag dim">帶著</span>' : ""}</div><div class="fm-desc">${D.desc}</div>`));
+      const btns = h("div", "fm-btns");
+      if (carried && id !== cur) btns.appendChild(ibtn(id === "star" ? "star" : "core_" + id, "變身", () => {
+        if (!ctx.switchForm(id)) { ctx.sfx("close"); return msg("現在不能變身", false); }
+        msg(`變成${D.name}了`); render();
+      }));
+      if (ctx.inTown) {
+        if (carried) {
+          const b = ibtn("close", "放下", () => {
+            if (id === cur) return msg("正在用的形態不能放下", false);
+            if (F.carry.length <= 1) return msg("至少要帶一個", false);
+            F.carry.splice(F.carry.indexOf(id), 1); ctx.sfx("ui"); ctx.onCarry?.(); render();
+          }, "plain");
+          if (id === cur) b.classList.add("off");
+          btns.appendChild(b);
+        } else {
+          const b = ibtn("check", "帶上", () => {
+            if (F.carry.length >= CARRY_MAX) return msg(`最多帶 ${CARRY_MAX} 個，先放下一個`, false);
+            F.carry.push(id); ctx.sfx("pickup"); ctx.onCarry?.(); msg(`帶上${D.name}`); render();
+          }, "plain");
+          if (F.carry.length >= CARRY_MAX) b.classList.add("off");
+          btns.appendChild(b);
+        }
+      }
+      card.appendChild(btns);
+      grid.appendChild(card);
+    }
+    body.appendChild(grid);
+  };
+  return show("形態", "sys", "star", [{ id: "forms", label: "形態", icon: "star", render: page }]);
 }
 
 // ================= 形態技能樹（第 4 批） =================

@@ -40,7 +40,7 @@ import { playFace, moodOf } from "./system-face.js";
 import { startTitle } from "./title.js";
 import { playIntro } from "./intro.js";
 import { questEvent, refreshBoard, rewardText, sysActive, isReady } from "./quests.js";
-import { initTownUI, openQuests, openForge, openInn, isWinOpen, MEALS, questLook, openTree } from "./townui.js";
+import { initTownUI, openQuests, openForge, openInn, isWinOpen, MEALS, questLook, openTree, openForms } from "./townui.js";
 import { installUiArt, iconURL, setAttackIcon, medal, MEDAL_SIZE } from "./ui-art.js";
 import { FORMS, CARRY_MAX, coreChance, absorbCore, makeCore, CORE_COST } from "./forms.js";
 import { bindForms, rank, freePts } from "./skilltree.js";
@@ -273,7 +273,7 @@ function absorb(it) {
   if (res.unlocked) {
     formBanner(it.form);
     profile.forms.fresh = it.form;   // 形態格一直發光，直到第一次切換過去
-    toast(`系統：吸收了${F.name}的核！新形態「${F.name}」。${profile.forms.carry.includes(it.form) ? tipFor("點右邊的【形態】就能變身。", "按【1】～【3】就能變身。") : "已經帶滿 3 個了，回城鎮再換。"}`, 3.4, "forms");
+    toast(`系統：吸收了${F.name}的核！新形態「${F.name}」。${profile.forms.carry.includes(it.form) ? tipFor("點右邊的【形態】就能變身。", "按【1】～【3】就能變身。") : "已經帶滿 3 個了，回城鎮打開選單的【形態】再換。"}`, 3.4, "forms");
     sayQueue.unshift([`系統：你把${F.from === "slime" ? "史萊姆" : "垃圾桶"}的核吃掉了？不對，是吸收。好吧，差不多。`, 2.8]);
   } else {
     // 重複的核：存起來，2 顆換 1 點（技能點或屬性，在技能樹視窗上方換）
@@ -1013,6 +1013,16 @@ initTownUI({
   inTown: TOWN,
   onTree: () => { save(profile); buildFormHud(); },
   curForm: () => player.form,
+  onCarry: () => { save(profile); buildFormHud(); },
+  // 形態的全身像（canvas），k＝放大倍數（CSS 放大，像素不糊）
+  portrait: (id, k = 1) => {
+    const f = makeFrame(40, 34), c = document.createElement("canvas"), im = new ImageData(40, 34);
+    c.width = 40; c.height = 34; c.className = "fm-cv"; c.style.width = 40 * k + "px"; c.style.height = 34 * k + "px";
+    paintStar(f, 20, 31, POSES.stand, false, { glow: 0, form: id });
+    composite(f, im.data, null);
+    c.getContext("2d").putImageData(im, 0, 0);
+    return c;
+  },
   switchForm: (id) => { switchForm(id); buildFormHud(); return player.form === id; },
 });
 trackEl.addEventListener("click", (e) => { e.stopPropagation(); if (started && !dialog.open && !busy) openQuests(false, profile.quests.tracked?.length ? "guild" : "sys"); });
@@ -1023,6 +1033,11 @@ $("btnQuest").addEventListener("click", (e) => { e.stopPropagation(); if (starte
 $("btnTree").style.backgroundImage = `url(${iconURL("star", 2)})`;
 const openTreeNow = () => { if (started && !dialog.open && !busy && !isWinOpen() && !inv.open) { sfx("ui"); openTree(player.form); } };
 $("btnTree").addEventListener("click", (e) => { e.stopPropagation(); openTreeNow(); });
+// 使用者 2026-11-06：專門切換形態的視窗（選單裡的【形態】、G 鍵）
+const openFormsNow = () => { if (started && !dialog.open && !busy && !isWinOpen() && !inv.open) { sfx("ui"); openForms(); } };
+$("btnForms").style.backgroundImage = `url(${iconURL("core_slime", 2)})`;
+$("btnForms").addEventListener("click", (e) => { e.stopPropagation(); openFormsNow(); });
+addEventListener("keydown", (e) => { if (e.code === "KeyG" && !e.repeat) openFormsNow(); });
 addEventListener("keydown", (e) => { if (e.code === "KeyT") openTreeNow(); });
 // ---- 使用者 2026-11-06：城鎮各功能的引導，一次只引導一件事：波波（登記）→ 任務板 → 岩叔的工坊 → 菇媽的旅館 → 路標（世界地圖）
 //   profile.tguide：0 找波波、1 任務板、2 工坊、3 旅館、4 路標、5 講完了。要去的地方頭上跳一個「!」；第一次打開那個視窗時主要按鈕閃一下
@@ -1054,7 +1069,7 @@ function drawGuideMark(frame) {
   // 使用者 2026-11-06：有支線任務可以交的時候，波波頭上一個紅色大驚嘆號（比引導的「!」大一倍）
   if (profile.quests.active.some(isReady) && k !== 0) {
     const bob = Math.round(Math.abs(Math.sin(sceneClock * 4)) * -4);
-    drawAlert(frame, GUIDE_TARGET[0], FLOOR - GUIDE_HEAD[0] + 14 + bob, 0.35, true, 3);
+    drawAlert(frame, GUIDE_TARGET[0], FLOOR - GUIDE_HEAD[0] + 12 + bob, 0.35, true, 2.55);   // 使用者 2026-11-06：再縮小 15%（3 → 2.55）
     if (k === 1 || k === 0) return;
   }
   if (k >= 5) return;
@@ -1882,8 +1897,10 @@ function showClear() {
     // 大檢查：有王房的關卡，傳送門一定開在王房的地上（原本靠牆時會開到牆後面去）
     if (STAGE.arena) {
       const { l, r } = STAGE.arena, clampA = (v) => Math.round(Math.max(l + 40, Math.min(r - 40, v)));
-      portalX = clampA(player.x + player.face * 70);
-      if (Math.abs(portalX - player.x) < 40) portalX = clampA(player.x - player.face * 70);   // 前面就是牆：開在背後
+      // 使用者 2026-11-06「打完王後寶箱與傳送門不能疊在一起」：候選位置（前面、背後、再遠一點、王房兩端）挑第一個離主角 40 以上、離星箱 72 以上的
+      const away = (v) => Math.abs(v - player.x) >= 40 && (!chest || Math.abs(v - chest.x) >= 72);
+      const cand = [70, -70, 120, -120, 170, -170].map((d) => clampA(player.x + player.face * d)).concat([clampA(l), clampA(r)]);
+      portalX = cand.find(away) ?? cand.reduce((b, v) => (Math.abs(v - (chest?.x ?? 0)) > Math.abs(b - (chest?.x ?? 0)) ? v : b));
       portalY = STAGE.arena.floor;
     }
     spawn(A.portal, { x: portalX, y: portalY }, { layer: "back", keep: true });

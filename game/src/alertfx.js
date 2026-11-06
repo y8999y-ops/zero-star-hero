@@ -18,8 +18,10 @@ export function drawAlert(frame, x, y, t, elite = false, big = 1) {
   const hgt = shape === SQUASH ? 7 : 9, copies = elite && big === 1 ? [-3, 2] : [0];   // 第 2 輪：「!!」拉開（原本外框黏成一團）
   const cells = new Map();
   // big：每一格放大成 big×big（城鎮「有任務可以交」的紅色大驚嘆號用 2）
-  for (const cx of copies) for (const [gx, gy, v] of shape) for (let i = 0; i < big; i++) for (let j = 0; j < big; j++)
-    cells.set(`${Math.round(x) - big + cx + gx * big + i},${Math.round(y) - (hgt + 4) * big + 4 - lift + gy * big + j}`, v);
+  // big 可以是小數（每一格蓋到 floor(g×big)～floor((g+1)×big) 的範圍）
+  const S = (g) => Math.floor(g * big + 1e-6), top = Math.round(y) - S(hgt + 4) + 4 - lift, left = Math.round(x) - S(1);
+  for (const cx of copies) for (const [gx, gy, v] of shape) for (let i = S(gx); i < S(gx + 1); i++) for (let j = S(gy); j < S(gy + 1); j++)
+    cells.set(`${left + cx + i},${top + j}`, v);
   const put = (px, py, c) => { px -= ox; py -= oy; if (px >= 0 && py >= 0 && px < W && py < H) C[py * W + px] = c; };
   // 外框（上下左右）
   for (const k of cells.keys()) { const [px, py] = k.split(",").map(Number); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!cells.has(`${px + dx},${py + dy}`)) put(px + dx, py + dy, R[3]); }

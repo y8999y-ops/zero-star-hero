@@ -13,6 +13,7 @@ import { computeStats, compare, power, STAT_ROWS, xpNeed, MAX_LV } from "./stats
 import { BAG_SIZE } from "./save.js";
 import { iconURL } from "./ui-art.js";
 import { paintStar, POSES } from "./star.js";
+import { drawAura } from "./heroaura.js";
 import { sfx } from "./audio.js";
 import { drawOrbit, blit2x } from "./heroorbit.js";
 
@@ -419,8 +420,13 @@ export function createInventory(profile, { onChange, onClose }) {
     for (const o of ORB.slots) { const el = slotEls[o.id]; el.style.left = (ORB.cx + Math.cos(o.a) * ORB.rx) * 2 + "px"; el.style.top = (ORB.cy + Math.sin(o.a) * ORB.ry) * 2 + "px"; el.style.zIndex = Math.sin(o.a) >= 0 ? 3 : 1; }
     of.color.fill(0); of.light.fill(0); sf.color.fill(0); sf.light.fill(0);
     drawOrbit(of, t, ORB, "back");
+    // 使用者 2026-11-06：吸收過的魔物種類，各自一圈粒子繞著星星（吸越多那一圈越多，heroaura.js）
+    const aura = Object.keys(FORMS).filter((id) => id !== "star" && profile.forms?.owned?.[id]).map((id) => { const f = profile.forms.owned[id]; return { id, n: f.got ?? 1 + (f.cores ?? 0) + (f.pts ?? 0) }; });
+    const ao = { cx: ORB.cx, cy: ORB.cy + 4, k: 1.3, colors: Object.fromEntries(Object.entries(FORMS).map(([k, v]) => [k, v.color])) };
+    drawAura(of, t, ao, aura, "back");
     paintStar(sf, 24, 50, POSES.stand, false, { glow: 0 });
     blit2x(of, sf, ORB.cx, ORB.feet + 28 + Math.round(Math.sin(t * 2.5)));
+    drawAura(of, t, ao, aura, "front");
     drawOrbit(of, t, ORB, "front");
     composite(of, oimg.data, null, 0.6);
     octx.putImageData(oimg, 0, 0);
