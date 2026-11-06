@@ -19,7 +19,7 @@ import { reduction } from "./stats.js";
 import { spawn, hitStop, shake } from "./fx.js";
 import { sfx } from "./audio.js";
 import { groundAt, onPlatform, geo, WALL } from "./level.js";
-import { moveX, ceilingAt } from "./map.js";
+import { moveX, ceilingAt, solidAt, floorAt } from "./map.js";
 
 const RUN = 128, ACC_GROUND = 1500, ACC_AIR = 950, GRAV = 1000, MAX_FALL = 430;
 const JUMP_V = -335, JUMP2_V = -295, COYOTE = 0.15;   // 郊狼時間（走出平台邊緣後還能起跳的時間）：使用者 2026-11-05 要好跳一點，0.08 → 0.15 秒
@@ -328,6 +328,7 @@ export class Player {
       if (this.vy >= 0) { this.coyote = COYOTE; this.jumps = 1; }
     }
     input.air = !this.grounded && this.jumps < 2;   // 手機：還能二段跳，點一下左半邊就跳
+    this.unstick();
 
     // ---- 動畫
     // 轉身：臉朝的方向一改，先轉到正面一下再轉過去
@@ -343,6 +344,18 @@ export class Player {
   }
 
   // 自動瞄準：有推方向時優先打前面；前面打不到、但背後很近有敵人，就轉身打背後
+  /** 使用者 2026-11-06「1-1 二段跳那邊掉出地圖外」：大招（黏黏大海嘯等）會直接把主角放到某個位置，
+   *  放在牆邊的話身體會卡進地形裡，腳底找不到地面就一路掉出地圖。卡進去的時候推回最近的空位（先左右、再往上） */
+  unstick() {
+    const inside = (x, y) => solidAt(x, y - 3) || solidAt(x, y - 12);
+    if (!inside(this.x, this.y) && this.y <= geo.h) return;
+    for (let d = 1; d <= 40; d++) for (const s of [-1, 1]) {
+      const x = this.x + s * d;
+      if (x > 7 && x < geo.w - 7 && !inside(x, this.y) && !solidAt(x + s * 6, this.y - 6) && this.y <= geo.h) { this.x = x; return; }
+    }
+    for (let up = 8; up <= 96; up += 8) if (!inside(this.x, this.y - up)) { this.y = floorAt(this.x, this.y - up); this.vy = 0; return; }
+    this.y = floorAt(this.x, 0); this.vy = 0;   // 真的找不到：放到這一欄最上面的地面
+  }
   aim(world) {
     const held = Math.abs(input.move) > 0.3 ? Math.sign(input.move) : 0;
     if (held && world.nearestEnemy(this.x, this.y - 16, 80, held)) { this.face = held; return; }
