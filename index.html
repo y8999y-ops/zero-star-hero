@@ -23,9 +23,19 @@
   #refull .tap { padding: 14px 28px; border: 3px solid #ffd84a; border-radius: 8px; background: #2a1c08; box-shadow: 0 0 18px rgba(255, 216, 74, .6); animation: rf 1.2s ease-in-out infinite; }
   #refull .no { font-size: 13px; color: #a89cc0; letter-spacing: 1px; padding: 8px 14px; }
   @keyframes rf { 50% { transform: scale(1.05); box-shadow: 0 0 28px rgba(255, 216, 74, .9); } }
+  /* 使用者 2026-11-06「手機進網頁時自動變橫向」：瀏覽器不讓網頁一打開就自己轉——要點一下（進全螢幕時順便鎖橫向）。
+     直的拿著的時候先蓋一層「轉成橫向」的提示，點一下就進全螢幕＋鎖橫向 */
+  #rotate { position: fixed; inset: 0; z-index: 10; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+    background: #0d0b14; color: #ffe27a; font: 900 18px/1.5 system-ui, sans-serif; letter-spacing: 2px; text-align: center; -webkit-user-select: none; user-select: none; }
+  #rotate small { color: #a89cc0; font-size: 13px; font-weight: 700; letter-spacing: 1px; }
+  #rotate .phone { width: 46px; height: 78px; border: 4px solid #ffd84a; border-radius: 9px; position: relative; animation: rot 2.2s ease-in-out infinite; box-shadow: 0 0 16px rgba(255, 216, 74, .5); }
+  #rotate .phone::after { content: ""; position: absolute; left: 50%; bottom: 5px; width: 10px; height: 4px; margin-left: -5px; border-radius: 2px; background: #ffd84a; }
+  @keyframes rot { 0%, 25% { transform: rotate(0); } 55%, 100% { transform: rotate(-90deg); } }
+  @media (orientation: portrait) and (pointer: coarse) { #rotate { display: flex; } }
 </style>
 </head>
 <body>
+<div id="rotate"><div class="phone"></div><div>把手機轉成橫的來玩</div><small>點一下畫面，自動切成橫向全螢幕</small></div>
 <div id="refull"><div class="tap">點一下回到全螢幕</div><div class="no">不用了</div></div>
 <iframe id="game" allow="fullscreen; autoplay" title="轉生成星星碎片的我，靠吸收魔物變成最強"></iframe>
 <script>
@@ -46,6 +56,10 @@
   const check = () => refull.classList.toggle("on", wantFull && !document.fullscreenElement && document.visibilityState === "visible");
   document.addEventListener("fullscreenchange", () => { if (document.fullscreenElement) wantFull = true; setTimeout(check, 300); });
   document.addEventListener("visibilitychange", () => setTimeout(check, 300));
+  // 手機第一次點螢幕（任何地方）就進全螢幕、鎖橫向；直的拿著時點「轉成橫向」那層也一樣
+  const touchy = matchMedia("(pointer: coarse)").matches;
+  if (touchy) addEventListener("pointerdown", function first() { removeEventListener("pointerdown", first, true); goFull(); }, true);
+  document.getElementById("rotate").addEventListener("pointerdown", (e) => { e.preventDefault(); goFull(); });
   refull.querySelector(".tap").addEventListener("pointerdown", (e) => { e.preventDefault(); refull.classList.remove("on"); goFull(); f.focus(); });
   refull.querySelector(".no").addEventListener("pointerdown", (e) => { e.preventDefault(); wantFull = false; refull.classList.remove("on"); f.focus(); });
 </script>

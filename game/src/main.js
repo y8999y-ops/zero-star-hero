@@ -2046,6 +2046,8 @@ function goFullscreen() {
   if (window.top !== window) window.parent.postMessage({ type: "zero-hero-fullscreen" }, location.origin);
   else if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().then(() => screen.orientation?.lock?.("landscape")).catch(() => {});
 }
+// 使用者 2026-11-06「手機進網頁時自動變橫向」：瀏覽器規定要點一下才能進全螢幕、鎖橫向——手機第一次點畫面（任何地方）就做
+addEventListener("pointerdown", function firstTap() { if (document.body.classList.contains("touch")) { removeEventListener("pointerdown", firstTap, true); goFullscreen(); } }, true);
 // 開始冒險：新遊戲第一次進 1-1 時先播開場動畫（只播一次，可跳過），播完直接開始
 async function startOrIntro() {
   if (started || introOn) return;
