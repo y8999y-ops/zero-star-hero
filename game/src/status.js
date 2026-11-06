@@ -45,8 +45,12 @@ const center = (e) => { const b = e.box(); return [e.x, (b.y0 + b.y1) / 2, b]; }
 const near = (e, r) => C.enemies.filter((o) => o !== e && !o.dead && Math.abs(o.x - e.x) < r && Math.abs(o.y - e.y) < r * 0.8);
 
 /** 沾上一個狀態（會先檢查反應）。power：持續傷害的強度（攻擊力倍率）。depth：連鎖深度（避免無限連鎖）。 */
+let ALLOW = null;
+/** 只允許這幾種狀態（1-1 只有黏液和燃燒）；null＝全部 */
+export const setStatusAllow = (ids) => (ALLOW = ids ? new Set(ids) : null);
 export function applyStatus(e, id, depth = 0) {
-  if (!e || e.dead || e.isBoss || !e.tick) return;   // 王先不吃狀態（之後再設計王的抗性）
+  if (!e || e.dead || e.isBoss || !e.tick) return;
+  if (ALLOW && !ALLOW.has(id === "fire" ? "burn" : id)) return;   // 王先不吃狀態（之後再設計王的抗性）
   const S = st(e);
   // ---- 反應
   if (id === "burn" || id === "fire") {

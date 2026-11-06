@@ -36,11 +36,13 @@ KINDS.trashE = { ...KINDS.trash, anim: A.trashEliteWalk, bite: A.trashEliteBite,
 const BITE_LUNGE = 0.3, BITE_HIT0 = 0.38, BITE_HIT1 = 0.48, BITE_END = 0.8;
 
 let seed = 1;
+export const HP_MUL = 2;
 export class Enemy {
   constructor(kind, x, y) {
     const k = KINDS[kind];
     seed++;
-    Object.assign(this, { kind: k.base ?? kind, elite: !!k.elite, k, x, y, vx: 0, vy: 0, hp: k.hp, stun: 0, flash: 0, dead: false, face: 1, clock: 0, hopDir: 1 });
+    // 使用者 2026-11-06：所有怪物的血量 +100%
+    Object.assign(this, { kind: k.base ?? kind, elite: !!k.elite, k, x, y, vx: 0, vy: 0, hp: k.hp * HP_MUL, maxHp: k.hp * HP_MUL, stun: 0, flash: 0, dead: false, face: 1, clock: 0, hopDir: 1 });
     this.t = rand(seed, 3) * k.anim.duration; // 錯開動畫，不要大家一起跳
     this.speed = kind === "gold" ? 120 : (52 + rand(seed, 4) * 30) * (k.elite ? 1.25 : 1);
     if (k.fly) { this.mode = "hover"; this.modeT = 1 + rand(seed, 5) * 2; this.side = rand(seed, 6) < 0.5 ? -1 : 1; }
@@ -64,7 +66,8 @@ export class Enemy {
     this.world = world;
     // 8b：怪物擺在地圖上，主角靠近（左右 160、上下 90 以內；使用者 2026-11-05 鏡頭拉近後 200 → 160，看到怪時牠才剛發現你）或被打到才醒來追；還沒醒的在原地待著（史萊姆原地輕跳、蝙蝠在原地飛）
     if (!this.awake) {
-      if (Math.abs(player.x - this.x) < 160 && Math.abs(player.y - this.y) < 90 || this.hp < this.k.hp) {
+      // deepSleep（1-1 教攻擊那隻）：只有被打才會醒
+      if ((!this.deepSleep && Math.abs(player.x - this.x) < 160 && Math.abs(player.y - this.y) < 90) || this.hp < this.maxHp) {
         this.awake = true; this.alertT = 0;   // 特效補強 2：發現主角，頭上冒「!」
         const now = performance.now(); if (now - alertSfxT > 300) { alertSfxT = now; sfx("chime"); }
       }

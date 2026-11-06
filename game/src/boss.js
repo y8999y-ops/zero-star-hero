@@ -19,7 +19,7 @@ import { sfx, music, tempo } from "./audio.js";
 
 const C = (s) => hex(s) >>> 0;
 const GRAV = 900;
-export const BOSS_HP = 2400;
+export const BOSS_HP = 4800;   // 使用者 2026-11-06：所有怪物血量 +100%（原本 2400）
 const PHASE2 = 0.6, PHASE3 = 0.3;
 
 // ---- 烘焙每個姿勢（第一次用到時，1-4 一載入就先烘好）

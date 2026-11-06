@@ -268,6 +268,8 @@ function bubbleTail(k) {
   return pixels(7, 4, k, (px) => rows.forEach((r, y) => [...r].forEach((ch, x) => ch !== "." && px(x, y, ch === "o" ? OUT : "#c8c0dc"))));
 }
 
+/** 只裝系統框（載入畫面的通關播報用：那時 main.js 還沒載完） */
+export function installSysPanel() { document.documentElement.style.setProperty("--panel-sys2", `url(${url(panel(2, SYS_PANEL))})`); }
 /** 把所有介面素材設成 CSS 變數。在遊戲一開始呼叫一次。 */
 import { btnArt } from "./btn-art.js";
 export function installUiArt() {

@@ -13,22 +13,36 @@ if (box && cv) {
     raf = requestAnimationFrame(tick);
   };
   tick();
-  // 使用者 2026-11-06：踩進傳送門之後，通關播報在這裡播（後面同時在載入城鎮）；至少播 3.6 秒，點一下可以跳過
+  // 使用者 2026-11-06：踩進傳送門之後，通關播報在這裡播（後面同時在載入城鎮）。
+  //   樣子跟遊戲裡的系統框一樣（SYSTEM // 系統、全像掃描線），一行一行、一個字一個字打出來；打完再停 1.2 秒，點一下可以跳過
   let minUntil = 0, ready = false, closed = false;
   const close = () => { if (closed) return; closed = true; box.classList.add("done"); setTimeout(() => { cancelAnimationFrame(raf); box.remove(); }, 400); };
   try {
     const rep = JSON.parse(sessionStorage.getItem("zero-hero-clear") || "null");
     sessionStorage.removeItem("zero-hero-clear");
     if (rep) {
+      import("./ui-art.js").then((m) => m.installSysPanel()).catch(() => {});
       const el = document.createElement("div");
-      el.className = "clearRep";
-      el.innerHTML = `<div class="cr-ttl">${rep.chapter ? "第一章　完" : "通關！"}</div><div class="cr-stage">${rep.stage}</div>
-        <div class="cr-rows"><span>時間<b>${rep.time}</b></span><span>擊倒<b>${rep.kills}</b></span><span>最高連擊<b>${rep.best}</b></span><span>${rep.deaths ? "死亡" : "沒死過"}<b>${rep.deaths ? rep.deaths + " 次" : "★"}</b></span></div>
-        <div class="cr-say"><em>系統</em>${rep.say}</div>`;
+      el.className = "crSys";
+      el.innerHTML = `<div class="sysHead">SYSTEM // 系統</div><div class="crText"></div>`;
       box.appendChild(el);
       box.classList.add("rep");
-      minUntil = performance.now() + 3600;
-      box.addEventListener("pointerdown", () => { minUntil = 0; if (ready) close(); });
+      const lines = [
+        `${rep.chapter ? "第一章　完。" : "通關！"}${rep.stage}`,
+        `時間 ${rep.time}　擊倒 ${rep.kills}　最高連擊 ${rep.best}　${rep.deaths ? "死了 " + rep.deaths + " 次" : "一次都沒死"}`,
+        rep.say,
+      ];
+      const out = el.querySelector(".crText");
+      let li = 0, ci = 0, cur = null;
+      minUntil = performance.now() + 60000;   // 打完字之前不關
+      const step = () => {
+        if (li >= lines.length) { el.classList.remove("typing"); minUntil = performance.now() + 1200; if (ready) setTimeout(close, 1200); return; }
+        if (!cur) { cur = document.createElement("div"); out.appendChild(cur); el.classList.add("typing"); }
+        cur.textContent = lines[li].slice(0, ++ci);
+        if (ci >= lines[li].length) { li++; ci = 0; cur = null; setTimeout(step, 260); } else setTimeout(step, 34);
+      };
+      setTimeout(step, 250);
+      box.addEventListener("pointerdown", () => { li = lines.length; out.innerHTML = lines.map((l) => `<div>${l}</div>`).join(""); minUntil = 0; if (ready) close(); });
     }
   } catch {}
   window.__loadDone = () => { ready = true; const wait = minUntil - performance.now(); if (wait > 0) setTimeout(close, wait); else close(); };

@@ -55,7 +55,7 @@ import { createComboArt } from "./combo-art.js";
 import { unlock as unlockAudio, sfx, music, jingle, vol as audioVol, setVolume } from "./audio.js";
 import { fxState, dustFx, updateCombatFx, drawCombatFx, drawDamageNumbers } from "./combatfx.js";
 import { PLATFORMS } from "./level.js";
-import { ELEM, setStatusContext, updateStatus, drawBolts, REACTION, applyStatus } from "./status.js";
+import { ELEM, setStatusContext, updateStatus, drawBolts, REACTION, applyStatus, setStatusAllow } from "./status.js";
 import { createHazards } from "./hazards.js";
 import * as starFallFx from "../../pixelfx/src/fx/arcane/star-fall.js";
 import { drawWave, WAVE_T, WAVE_V } from "./starwave.js";
@@ -576,7 +576,9 @@ function drawGems() {
 const BARE = !TOWN && !!LAYOUTS[STAGE_ID].solids;
 // 10 批：大地圖的草叢、木箱、水晶、水窪、小生物、元素物件改成照地面段擺（原本 8b 先拿掉）
 const RUNS = BARE ? surfaceRuns(32).filter((R) => R.y > 40 && R.x1 - R.x0 >= 24) : null;
-const scenery = createScenery({ floor: FLOOR, w: geo.w, platforms: TOWN ? [] : PLATFORMS, town: TOWN, runs: RUNS });
+const scenery = createScenery({ floor: FLOOR, w: geo.w, platforms: TOWN ? [] : PLATFORMS, town: TOWN, runs: RUNS, noPuddles: STAGE_ID === "1-1" && !TOWN && !ENDLESS });
+// 使用者 2026-11-06：第一關只保留黏液和火焰（還有兩個一起的「大火」反應），其他元素（帶電、毒、潮濕、油汙）在 1-1 不會沾上
+if (STAGE_ID === "1-1" && !TOWN && !ENDLESS) setStatusAllow(["burn", "slime"]);
 // 元素場景物件（第 3 批）：黏液池、油桶、廚餘堆、漏電管線；水窪＝潮濕、火盆＝燃燒
 const hazards = createHazards({ stage: TOWN || ENDLESS ? "" : STAGE_ID, floor: FLOOR, torches: TOWN ? [] : TORCH_POS, puddles: TOWN ? [] : scenery.puddles, items: BARE ? (STAGE.hazards ?? []) : null });
 window.__game.hazards = hazards;
@@ -671,7 +673,8 @@ const stageApi = {
   },
   say: (msg, sec, focus) => sayQueue.push([msg, sec, focus]),
   // 使用者 2026-11-06：1-1 一段一段來——附近還有醒著的怪就先不講下一段
-  coreLeft: () => drops.list.some((d) => d.item.kind === "formcore" && !d.got),   // 地上還有沒吸的核（1-1：吸完才講祭壇）
+  coreLeft: () => drops.list.some((d) => d.item.kind === "formcore" && !d.got),
+  coreNear: (p) => drops.list.some((d) => d.item.kind === "formcore" && !d.got && d.landed && Math.abs(d.x - p.x) < 70),   // 地上還有沒吸的核（1-1：吸完才講祭壇）
   busy: (x, y, before) => enemies.some((e) => !e.dead && e.awake && e.kind !== "gold" && (e.x0 ?? e.x) < before && Math.abs(e.x - x) < 220 && Math.abs(e.y - y) < 120),
   // 系統還在講（上一句至少要給 sysMin 秒看完）；cut＝看完了就直接換下一句，不用等它自己消失
   talking: () => sayQueue.length > 0 || (sysT > 0.3 && sysAge < sysMin),

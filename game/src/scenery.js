@@ -60,11 +60,12 @@ const MOTH = {
 };
 
 // 10 批：runs＝地面段（大地圖用），水窪、小生物、螢火蟲照地面段擺
-export function createScenery({ floor, w, platforms = [], town = false, runs = null }) {
+export function createScenery({ floor, w, platforms = [], town = false, runs = null, noPuddles = false }) {
   const critters = [], swarms = [], hangs = [], puddles = [], drops = [], rings = [];
 
   // ---- 水窪（關卡）：x 是中心
-  if (!town && runs) runs.forEach((R, i) => { if (R.x1 - R.x0 >= 120 && i % 3 === 1) { const x = Math.round((R.x0 + R.x1) / 2 + (rnd(i, 4) - 0.5) * 40); puddles.push({ x, w: 26 + Math.floor(rnd(i, 5) * 10), y: R.y, stepD: 0, dripT: 1 + rnd(x) * 3 }); } });
+  if (noPuddles) { /* 使用者 2026-11-06：1-1 只留黏液和火焰——會讓怪潮濕的水窪拿掉 */ }
+  else if (!town && runs) runs.forEach((R, i) => { if (R.x1 - R.x0 >= 120 && i % 3 === 1) { const x = Math.round((R.x0 + R.x1) / 2 + (rnd(i, 4) - 0.5) * 40); puddles.push({ x, w: 26 + Math.floor(rnd(i, 5) * 10), y: R.y, stepD: 0, dripT: 1 + rnd(x) * 3 }); } });
   else if (!town) for (const [x, pw] of [[470, 30], [1010, 34], [1360, 26], [1800, 32], [2075, 28]]) if (x < w - 30) puddles.push({ x, w: pw, y: floor, stepD: 0, dripT: 1 + rnd(x) * 3 });
 
   // ---- 小生物
