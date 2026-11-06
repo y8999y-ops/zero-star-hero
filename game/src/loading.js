@@ -13,5 +13,23 @@ if (box && cv) {
     raf = requestAnimationFrame(tick);
   };
   tick();
-  window.__loadDone = () => { box.classList.add("done"); setTimeout(() => { cancelAnimationFrame(raf); box.remove(); }, 400); };
+  // 使用者 2026-11-06：踩進傳送門之後，通關播報在這裡播（後面同時在載入城鎮）；至少播 3.6 秒，點一下可以跳過
+  let minUntil = 0, ready = false, closed = false;
+  const close = () => { if (closed) return; closed = true; box.classList.add("done"); setTimeout(() => { cancelAnimationFrame(raf); box.remove(); }, 400); };
+  try {
+    const rep = JSON.parse(sessionStorage.getItem("zero-hero-clear") || "null");
+    sessionStorage.removeItem("zero-hero-clear");
+    if (rep) {
+      const el = document.createElement("div");
+      el.className = "clearRep";
+      el.innerHTML = `<div class="cr-ttl">${rep.chapter ? "第一章　完" : "通關！"}</div><div class="cr-stage">${rep.stage}</div>
+        <div class="cr-rows"><span>時間<b>${rep.time}</b></span><span>擊倒<b>${rep.kills}</b></span><span>最高連擊<b>${rep.best}</b></span><span>${rep.deaths ? "死亡" : "沒死過"}<b>${rep.deaths ? rep.deaths + " 次" : "★"}</b></span></div>
+        <div class="cr-say"><em>系統</em>${rep.say}</div>`;
+      box.appendChild(el);
+      box.classList.add("rep");
+      minUntil = performance.now() + 3600;
+      box.addEventListener("pointerdown", () => { minUntil = 0; if (ready) close(); });
+    }
+  } catch {}
+  window.__loadDone = () => { ready = true; const wait = minUntil - performance.now(); if (wait > 0) setTimeout(close, wait); else close(); };
 }

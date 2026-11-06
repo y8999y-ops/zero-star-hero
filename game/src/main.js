@@ -1271,6 +1271,7 @@ function leaveStage() {
   leaving = true;
   sfx("form");
   flash(portalX, portalY - 16, 90, 3, 0.5, "#a8f0ff");
+  if (clearReport) sessionStorage.setItem("zero-hero-clear", JSON.stringify(clearReport));   // 下一個場景的載入畫面播通關成績
   goScene("town");
 }
 function updateAltars() {
@@ -1877,9 +1878,16 @@ function showClear() {
     flash(portalX, portalY - 16, 110, 3, 0.6, "#a8f0ff");
   }
   sayQueue.length = 0;
-  toast(`系統：通關！${mm}:${ss}，擊倒 ${stats.kills}、最高連擊 ${stats.best}${stats.deaths ? "、死了 " + stats.deaths + " 次" : "，一次都沒死"}。`, 3.2);
-  sayQueue.push([STAGE_ID === "1-4" ? "系統：第一章　墜星之谷　完。走到傳送門按互動，前面就是碎星鎮了。" : stats.deaths === 0 ? "系統：一次都沒死？……我收回「零星」那句話。一半。走到傳送門按互動回碎星鎮吧。" : "系統：過是過了。走到傳送門按互動回碎星鎮，死了幾次這件事我會幫你保密。", 4]);
+  // 使用者 2026-11-06「通關播報在進入傳送門才播報，過程中順便載入」：這裡只說傳送門開了；
+  //   成績跟系統的評語存起來，踩進傳送門時帶到下一個場景，在載入畫面上播（城鎮在後面同時載入）
+  toast("系統：傳送門開了。走過去按互動，回碎星鎮。", 2.6);
+  clearReport = {
+    stage: `${STAGE_ID} ${LAYOUTS[STAGE_ID]?.name ?? ""}`, time: `${mm}:${ss}`, kills: stats.kills, best: stats.best, deaths: stats.deaths,
+    say: STAGE_ID === "1-4" ? "第一章　墜星之谷　完。前面就是碎星鎮了。" : stats.deaths === 0 ? "一次都沒死？……我收回「零星」那句話。一半。" : "過是過了。死了幾次這件事我會幫你保密。",
+    chapter: STAGE_ID === "1-4",
+  };
 }
+let clearReport = null;
 $("againBtn").addEventListener("click", () => goScene(ENDLESS ? "endless" : "stage", STAGE_ID));
 $("nextBtn").addEventListener("click", () => nextStage() && goScene("stage", nextStage()));
 $("homeBtn").addEventListener("click", () => goScene("town"));
