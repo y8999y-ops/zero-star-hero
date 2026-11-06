@@ -183,7 +183,7 @@ export function drawTownWeather(frame, time) {
   rainT = time;
   if (rain < 0.03) return;
   const base = Math.floor((frame.ox | 0) / 332) * 332 + 166;
-  RAIN.forEach((fx, k) => { fx.update(dt); fx.options.x = base + k * 332; fx.options.y = FLOOR + 1; fx.options.density = rain; fx.draw(frame); });
+  RAIN.forEach((fx, k) => { fx.update(dt); fx.options.x = base + k * 332; fx.options.y = FLOOR + 1; fx.options.density = rain * 0.45; fx.draw(frame); });   // 使用者 2026-11-06「雨有點太大」：雨量減到一半以下
 }
 
 /** 鎮上的固定光源 */

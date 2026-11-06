@@ -54,6 +54,8 @@ const CRYSTAL_LIGHTS = [];
 /** 地上道具水晶的光（遊玩層座標） */
 const PROP_LIGHTS = [];
 const wrap = (x, w) => ((x % w) + w) % w;
+/** 使用者 2026-11-06：地上的大水晶（黃、藍）不烘進地圖，改成可以打的物件（props.js）：{ col, img, x, y }，y＝地面 */
+export const BIG_CRYSTALS = [];
 
 // 每關放在地上的道具（主題不同，放的東西不同）：[素材表, 格寬, 格高, 可用的格子]
 const KIT = {
@@ -122,6 +124,8 @@ function build() {
     const x0 = Math.round(cx - cw / 2), fy = LAYOUT.solids ? floorAt(cx, FLOOR - 20) : FLOOR, br = baseRow(img);
     // 使用者 2026-11-06「有些石頭邊緣浮空」：道具底邊每一欄都要踩在同一塊地上（台階邊、平台邊、坑邊就不放），也不能埋進牆裡
     if (LAYOUT.solids && !sitsFlat(img, x0, fy, br)) continue;
+    const kind = MIX.pick[k % MIX.pick.length];
+    if (kind === "gold" || kind === "cyan") { BIG_CRYSTALS.push({ col: kind, img, x: Math.round(cx), y: fy + 1, x0, y0: fy + 1 - br }); continue; }
     blit(PF, LEVEL_W, MAP_H, img, x0, fy + 1 - br, { onPx: (i, c, x, y) => { if (glows(c)) { PFE[i] = 1; glow.push([x, y, c]); } } });
   }
   for (const g of glowClusters(glow, 24)) PROP_LIGHTS.push({ x: g.x, y: g.y, r: 30, lv: 1.6, col: g.col });

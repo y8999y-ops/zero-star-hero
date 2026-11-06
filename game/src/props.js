@@ -11,6 +11,7 @@ import { spawn, shake } from "./fx.js";
 import { flash } from "./light.js";
 import { blip } from "./dialog.js";
 import { sfx } from "./audio.js";
+import { glows } from "./art.js";
 
 const ramp = (a) => a.map((c) => hex(c) >>> 0);
 const GRASS = ramp(["#07120e", "#0e2219", "#163626", "#1f4d35", "#2c6a46", "#3f8c58", "#5cb06c", "#86d488"]);
@@ -29,7 +30,10 @@ const rnd = (a, b = 0) => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.54
  * opts: { floor, w, platforms, town, avoid: [x...] }
  */
 // 10 批：runs＝地面段（map.js surfaceRuns，大地圖用）、floorFn(x, y)＝那裡往下的地面（碎屑落地用）
-export function createProps({ floor, w, platforms = [], town = false, avoid = [], runs = null, floorFn = null }) {
+// 使用者 2026-11-06：黃水晶＝打 3 下碎掉、掉錢；藍水晶＝打一下掉魔力、暗掉 25 秒後再亮回來，不會碎
+//   bigCrystals＝level.js 地上的大水晶（用原本的美術圖畫）
+const CYAN_DIM = 25;
+export function createProps({ floor, w, platforms = [], town = false, avoid = [], runs = null, floorFn = null, bigCrystals = [] }) {
   const grassPal = town ? TOWN_GRASS : GRASS;
   const tufts = [], boxes = [], crystals = [], bits = [];
   const clear = (x, r) => avoid.every((a) => Math.abs(a - x) > r);
@@ -54,7 +58,7 @@ export function createProps({ floor, w, platforms = [], town = false, avoid = []
       if (R.x1 - R.x0 < 80) continue;
       for (let x = R.x0 + 60 + Math.floor(rnd(R.x0, R.y) * 80); x < R.x1 - 40; x += 200 + Math.floor(rnd(x, R.y) * 130), n++) {
         if (!clear(x, 20)) continue;
-        if (n % 3 === 2) crystals.push({ x, y: R.y, col: n % 2 ? "cyan" : "gold", big: n % 4 === 0 ? 1 : 0, glow: 0, broken: false, cool: 0, hp: 2, chimed: false });
+        if (n % 3 === 2) crystals.push({ x, y: R.y, col: n % 2 ? "cyan" : "gold", big: n % 4 === 0 ? 1 : 0, glow: 0, broken: false, cool: 0, hp: 2, chimed: false, dimT: 0 });
         else { const type = n % 2 ? "junk" : "crate"; boxes.push({ x, y: R.y, type, hp: type === "crate" ? 2 : 3, cool: 0, shakeT: 0, broken: false, seed: x }); }
       }
     }
@@ -65,6 +69,11 @@ export function createProps({ floor, w, platforms = [], town = false, avoid = []
     [[560, "cyan", 1], [1280, "gold", 1], [1720, "cyan", 0], [2240, "cyan", 1], [880, "gold", 0]].forEach(([x, col, big]) => {
       if (x < w - 30 && clear(x, 16)) crystals.push({ x, y: floor, col, big, glow: 0, broken: false, cool: 0, hp: 2, chimed: false });
     });
+  }
+
+  if (!town) for (const b of bigCrystals) {
+    // 大水晶：碰撞高度用圖的實際高度；黃的比較硬（3 下）
+    crystals.push({ x: b.x, y: b.y, col: b.col, big: 2, art: b.img, ax: b.x0, ay: b.y0, hgt: b.y - b.y0, glow: 0, broken: false, cool: 0, hp: 3, chimed: false, dimT: 0, shakeT: 0 });
   }
 
   // ---- 粒子（草屑、木片、碎片）：自己的小系統，有重力、會在地上彈一下
@@ -94,8 +103,15 @@ export function createProps({ floor, w, platforms = [], town = false, avoid = []
     for (const b of boxes) { b.cool -= dt; b.shakeT -= dt; }
     for (const c of crystals) {
       if (c.broken) continue;
-      c.cool -= dt;
-      const p = movers[0], near = p && Math.abs(p.x - c.x) < 40 && Math.abs(p.y - c.y) < 40;
+      c.cool -= dt; c.shakeT = (c.shakeT ?? 0) - dt;
+      if (c.dimT > 0 && (c.dimT -= dt) <= 0) {
+        // 藍水晶恢復：叮一聲、亮一下
+        c.dimT = 0; c.glow = 1;
+        flash(c.x, c.y - (c.hgt ?? 10) / 2, 70, 2.5, 0.5, "#46d4e8");
+        [0, 80].forEach((ms, i) => setTimeout(() => blip([1976, 2637][i], "sine"), ms));
+        emit(c.x, c.y - (c.hgt ?? 10) / 2, 8, CYAN, { spread: 120, up: 120, life: 1 });
+      }
+      const p = movers[0], near = p && Math.abs(p.x - c.x) < 40 && Math.abs(p.y - c.y) < 40 && !(c.dimT > 0);
       c.glow += ((near ? 1 : 0) - c.glow) * Math.min(1, dt * (near ? 5 : 1.5));
       if (near && !c.chimed && c.glow > 0.5) { c.chimed = true; blip(c.col === "gold" ? 1568 : 1976, "sine"); setTimeout(() => blip(c.col === "gold" ? 2093 : 2637, "sine"), 70); }
       if (!near && c.glow < 0.15) c.chimed = false;
@@ -151,18 +167,30 @@ export function createProps({ floor, w, platforms = [], town = false, avoid = []
     }
     for (const c of crystals) {
       if (c.broken || c.cool > 0) continue;
-      const hgt = c.big ? 16 : 11;
+      const hgt = c.hgt ?? (c.big ? 16 : 11), my = c.y - hgt / 2;
       if (!inBox(c.x, c.y - hgt, c.y)) continue;
-      c.cool = 0.2; c.hp--; c.glow = 1; n++;
       const pal = c.col === "gold" ? GOLD : CYAN, light = c.col === "gold" ? "#ffd84a" : "#46d4e8";
+      if (c.col === "cyan") {
+        // 藍水晶：亮著的時候打一下＝噴出魔力（main.js onMana）、暗掉 25 秒；暗著打只會「鏗」一聲
+        c.cool = 0.3; c.shakeT = 0.14; n++;
+        if (c.dimT > 0) { sfx("clank"); emit(c.x, my, 2, CYAN, { vx: dir * 40, up: 60 }); continue; }
+        c.dimT = CYAN_DIM; c.glow = 0;
+        blip(2349, "triangle"); setTimeout(() => blip(1760, "sine"), 90);
+        flash(c.x, my, 90, 3, 0.5, light);
+        emit(c.x, my, 12, CYAN, { vx: dir * 30, spread: 180, up: 170, life: 1.4 });
+        hitFx(c.x - dir * 4, my, dir, false);
+        api.onMana?.(c);
+        continue;
+      }
+      c.cool = 0.2; c.hp--; c.glow = 1; c.shakeT = 0.14; n++;
       blip(c.col === "gold" ? 1760 : 2349, "triangle");
-      flash(c.x, c.y - 8, 50, 2, 0.25, light);
-      emit(c.x, c.y - 8, 3, pal, { vx: dir * 60, up: 100 });
+      flash(c.x, my, 50, 2, 0.25, light);
+      emit(c.x, my, c.art ? 6 : 3, pal, { vx: dir * 60, up: 100 });
       if (c.hp <= 0) {
         c.broken = true;
-        flash(c.x, c.y - 8, 90, 3.5, 0.6, light);
-        emit(c.x, c.y - 8, 14, pal, { vx: dir * 50, spread: 200, up: 200, big: true, life: 2.4 });
-        emit(c.x, c.y - 10, 8, pal, { spread: 120, up: 140, life: 1.2 });
+        flash(c.x, my, c.art ? 120 : 90, 3.5, 0.6, light);
+        emit(c.x, my, c.art ? 26 : 14, pal, { vx: dir * 50, spread: 220, up: 220, big: true, life: 2.4 });
+        emit(c.x, my - 2, c.art ? 14 : 8, pal, { spread: 140, up: 160, life: 1.2 });
         [0, 90, 180].forEach((ms, i) => setTimeout(() => blip([2637, 2093, 3136][i], "sine"), ms));
         shake(0.15, 2);
         api.onBreak?.(c);
@@ -180,7 +208,11 @@ export function createProps({ floor, w, platforms = [], town = false, avoid = []
 
   /** 水晶的光（靠近時變亮） */
   function lights(list) {
-    for (const c of crystals) if (!c.broken) list.push({ x: c.x, y: c.y - (c.big ? 8 : 5), r: 22 + c.glow * 26, lv: 0.5 + c.glow * 1.8, col: c.col === "gold" ? "#ffd27a" : "#46d4e8" });
+    for (const c of crystals) {
+      if (c.broken) continue;
+      const dim = c.dimT > 0 ? 0.15 : 1, big = c.art ? 1.6 : 1;   // 暗掉的藍水晶幾乎不亮
+      list.push({ x: c.x, y: c.y - (c.hgt ? c.hgt * 0.45 : c.big ? 8 : 5), r: (22 + c.glow * 26) * big, lv: (0.5 + c.glow * 1.8) * dim * (c.art ? 1.3 : 1), col: c.col === "gold" ? "#ffd27a" : "#46d4e8" });
+    }
   }
 
   // ---- 畫：跟遊玩層一樣，色階位置加上光照（lv 是螢幕座標的亮度）
@@ -212,8 +244,11 @@ export function createProps({ floor, w, platforms = [], town = false, avoid = []
       else drawJunk(put, b.x + sx, b.y, b.hp, b.seed);
     }
     for (const c of crystals) {
-      if (c.broken || c.x < x0 || c.x > x1) continue;
-      drawCrystal(put, c.x, c.y, c.big, c.col === "gold" ? GOLD : CYAN, c.glow, c.hp);
+      if (c.broken || c.x < x0 - 30 || c.x > x1 + 30) continue;
+      const sx = c.shakeT > 0 ? (Math.floor(c.shakeT * 60) % 2 ? 1 : -1) : 0;
+      if (c.art) { drawArtCrystal(frame, lv, c, sx); continue; }
+      if (c.dimT > 0) { drawCrystal((x, y, pal, t) => put(x, y, pal, t - 2, 0), c.x + sx, c.y, c.big, CYAN, 0, c.hp); continue; }
+      drawCrystal(put, c.x + sx, c.y, c.big, c.col === "gold" ? GOLD : CYAN, c.glow, c.hp);
     }
     for (const q of bits) {
       const blink = q.life < 0.3 && Math.floor(q.life * 20) % 2;   // 快消失時閃一下
@@ -223,7 +258,37 @@ export function createProps({ floor, w, platforms = [], town = false, avoid = []
     }
   }
 
-  const api = { update, hit, landing, lights, draw, onBreak: null, tufts, boxes, crystals, bits };
+  /** 大水晶：照原本的圖畫，暗處跟著場景光暗一點，發光的像素保持亮；被打過（黃）多幾道裂痕、暗掉的藍水晶整顆變暗變灰 */
+  function drawArtCrystal(frame, lv, c, sx) {
+    const img = c.art, Wf = frame.w, Hf = frame.h, C = frame.color, L = frame.light, ox = frame.ox | 0, oy = frame.oy | 0;
+    const dim = c.dimT > 0, k0 = c.glow * 0.25;
+    for (let y = 0; y < img.h; y++) for (let x = 0; x < img.w; x++) {
+      const v = img.px[y * img.w + x]; if (!v) continue;
+      const X = c.ax + x + sx - ox, Y = c.ay + y - oy;
+      if (X < 0 || Y < 0 || X >= Wf || Y >= Hf) continue;
+      const i = Y * Wf + X, g = glows(v);
+      let r = v & 255, gg = (v >>> 8) & 255, b = (v >>> 16) & 255;
+      if (dim) { const m = (r + gg + b) / 3; r = (r * 0.35 + m * 0.25) * 0.6; gg = (gg * 0.35 + m * 0.25) * 0.6; b = (b * 0.4 + m * 0.25) * 0.7; }
+      else if (!g) { const l = lv ? Math.min(1.6, lv[i]) : 1, f = 0.62 + l * 0.3 + k0; r *= f; gg *= f; b *= f; }
+      else { const f = 1 + k0; r *= f; gg *= f; b *= f; }
+      const out = (0xff000000 | (Math.min(255, Math.round(b)) << 16) | (Math.min(255, Math.round(gg)) << 8) | Math.min(255, Math.round(r))) >>> 0;
+      C[i] = out;
+      if (g && !dim) L[i] = out;
+    }
+    // 黃水晶被打過：從中間往外的白色裂痕（剩 2 下＝一條、剩 1 下＝三條）
+    if (c.col === "gold" && c.hp < 3) {
+      const cx = c.x + sx, cy = c.y - Math.round(c.hgt * 0.45), n = c.hp === 2 ? 1 : 3;
+      for (let m = 0; m < n; m++) {
+        const a = -1.2 + m * 1.1;
+        for (let d = 0; d < 9; d++) {
+          const X = Math.round(cx + Math.cos(a) * d + (d % 3 === 1 ? 1 : 0)) - ox, Y = Math.round(cy + Math.sin(a) * d * 1.2) - oy;
+          if (X >= 0 && Y >= 0 && X < Wf && Y < Hf && C[Y * Wf + X] >>> 24) C[Y * Wf + X] = d < 3 ? 0xffe0fbff : 0xff7ad8ff;
+        }
+      }
+    }
+  }
+
+  const api = { update, hit, landing, lights, draw, onBreak: null, onMana: null, tufts, boxes, crystals, bits };
   return api;
 }
 

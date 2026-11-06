@@ -387,14 +387,18 @@ export function drawSafe(frame, x, y, opened = false, t = 0) {
   // 焦黑的坑
   // 使用者 2026-11-06「所有寶箱尺寸調大 30%」：箱子 24×13 → 31×17、蓋子 8 → 10、坑 18 → 23（照比例畫大，線條還是 1 格）
   for (let i = -23; i <= 23; i++) { const u = Math.abs(i) / 23; put(frame, cx + i, base - 1, u > 0.85 ? P("#3a2a20") : P("#140c0c")); if (u < 0.7) put(frame, cx + i, base - 2, P("#241818")); }
-  // 箱子（往右歪：每往上一排往右推一點）
+  // 使用者 2026-11-06「歪的寶箱不好看」：改成正的，只是有點破損（右上角缺一塊、一條木板裂開、左邊鐵條斷一截、幾個釘孔）
   const BW = 31, BH = 17, LH = 10, x0 = cx - 16, y0 = base - 2 - BH;
-  const sh = (j) => Math.round((BH - j) * 0.18);
+  const sh = () => 0;
+  const chipped = (i, j) => i >= BW - 5 && j <= 4 - (BW - 1 - i);   // 右上角缺一塊（三角形）
   for (let j = 0; j < BH; j++) for (let i = -1; i <= BW; i++) {
     const X = x0 + i + sh(j), Y = y0 + j;
-    if (i === -1 || i === BW || j === BH - 1) { put(frame, X, Y, OUT); continue; }
-    const band = i === 2 || i === 3 || i === BW - 4 || i === BW - 3;
-    put(frame, X, Y, band ? (i % 2 ? FE[2] : FE[1]) : (j + (i >> 2)) % 4 === 0 ? WD[0] : i < 6 ? WD[3] : WD[2]);
+    if (chipped(i, j)) continue;
+    if (i === -1 || i === BW || j === BH - 1 || chipped(i - 1, j) || chipped(i, j - 1)) { put(frame, X, Y, OUT); continue; }
+    const brokeBand = (i === 2 || i === 3) && j >= 7 && j <= 12;   // 左邊鐵條斷一截（露出木頭、上下有翹起的斷口）
+    const band = (i === 2 || i === 3 || i === BW - 4 || i === BW - 3) && !brokeBand;
+    const crack = j >= 5 && j <= 12 && i === 19 + ((j * 3) % 2) - (j > 9 ? 1 : 0);   // 一條木板裂開（往下斜的裂縫）
+    put(frame, X, Y, crack ? OUT : band ? (i % 2 ? FE[2] : FE[1]) : brokeBand && (j === 7 || j === 12) ? (i === 2 ? FE[3] : FE[0]) : brokeBand && j === 8 && i === 3 ? FE[2] : (j + (i >> 2)) % 4 === 0 ? WD[0] : i < 6 ? WD[3] : WD[2]);
   }
   // 鎖片（金）
   const lx = x0 + 13 + sh(2);
@@ -406,7 +410,7 @@ export function drawSafe(frame, x, y, opened = false, t = 0) {
     for (let j = 0; j < LH; j++) for (let i = -1; i <= BW; i++) {
       const u = (i - BW / 2 + 0.5) / (BW / 2 + 1), top = LH - Math.round(LH * Math.sqrt(Math.max(0, 1 - u * u)) * 0.95);
       if (j < top - 1) continue;
-      const X = x0 + i + lsh + Math.round((LH - j) * 0.18), Y = ly0 + j;
+      const X = x0 + i + lsh - 1, Y = ly0 + j;
       if (j === top - 1 || i === -1 || i === BW) { put(frame, X, Y, OUT); continue; }
       const band = i === 2 || i === 3 || i === BW - 4 || i === BW - 3;
       put(frame, X, Y, band ? FE[3 - (j > 4 ? 1 : 0)] : j === top ? WD[3] : i < 7 ? WD[3] : WD[2]);

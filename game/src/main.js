@@ -9,7 +9,7 @@ import * as fireball from "../../pixelfx/src/fx/fire/fireball.js";
 import * as explosion from "../../pixelfx/src/fx/explosions/plasma-explosion.js";
 import { A, GLOW } from "./assets.js";
 import { input, tickInput, initTouch, consume } from "./input.js";
-import { drawLevel, drawForeground, drawAtmosphere, sceneLights, lightStyle, LEVEL_W, FLOOR, H, TORCHES, TORCH_POS, WALL, geo, MAP_H } from "./level.js";
+import { drawLevel, drawForeground, drawAtmosphere, sceneLights, lightStyle, LEVEL_W, FLOOR, H, TORCHES, TORCH_POS, WALL, geo, MAP_H, BIG_CRYSTALS } from "./level.js";
 import { initMap, flatMap, groundAt, floorAt, solidAt, moveX, surfaceRuns, setSolid } from "./map.js";
 import { drawPlug } from "./feature-art.js";
 import { TOWN_W, NPCS, townLights, drawTown, drawTownNpcs, drawTownFg, nearby, setDayPhase, setWeather, drawTownWeather } from "./town.js";
@@ -599,7 +599,7 @@ window.__game.weather = setWeather;   // 開發用：__game.weather("rain" / "cl
   for (let i = scenery.puddles.length - 1; i >= 0; i--) { const p = scenery.puddles[i]; if (busy.some(([x, y]) => Math.abs(x - p.x) < 40 && Math.abs(y - p.y) < 8)) scenery.puddles.splice(i, 1); }
 }
 const props = createProps({
-  floor: FLOOR, w: geo.w, platforms: TOWN ? [] : PLATFORMS, town: TOWN, runs: RUNS, floorFn: BARE ? floorAt : null,
+  floor: FLOOR, w: geo.w, platforms: TOWN ? [] : PLATFORMS, town: TOWN, runs: RUNS, floorFn: BARE ? floorAt : null, bigCrystals: TOWN ? [] : BIG_CRYSTALS,
   avoid: TOWN ? [...NPCS.map((n) => n.x), 924] : [...TORCHES, ...altars.map((a) => a.x), ...(STAGE.features ?? []).map((f) => f.x), ...hazards.list.flatMap((h) => [h.x - 14, h.x, h.x + 14]), STAGE.exitX - 120, STAGE.exitX + 26, STAGE.start.x, ...scenery.puddles.flatMap((p) => [p.x - p.w / 4, p.x, p.x + p.w / 4])],
 });
 // 8d：形態機關＋一次性資源
@@ -652,7 +652,17 @@ const openMap = () => { if (mapView && started && !dialog.open && !inv.open && !
 addEventListener("keydown", (e) => { if (e.code === "KeyM") openMap(); if (e.code === "Escape" && mapView?.open) mapView.hide(); });
 $("btnMap").style.backgroundImage = `url(${iconURL("map", 2)})`;
 $("btnMap").addEventListener("click", (e) => { e.stopPropagation(); document.body.classList.remove("menuOpen"); openMap(); });
+// 使用者 2026-11-06：藍水晶打一下＝補魔力（最大魔力的 25%，大水晶 35%），數字從水晶飄到主角身上
+props.onMana = (c) => {
+  const n = Math.round(player.maxMp * (c.art ? 0.35 : 0.25)), before = player.mp;
+  player.mp = Math.min(player.maxMp, player.mp + n);
+  sfx("pickup");
+  flash(player.x, player.y - 12, 60, 2, 0.4, "#46d4e8");
+  feed({ name: "藍水晶", icon: "mana", rarity: 1 }, `魔力 +${Math.round(player.mp - before)}`);
+};
 props.onBreak = (o) => {
+  // 黃水晶碎掉掉比較多錢（大水晶 8～12 枚、小的 4～7 枚）
+  if (o.col === "gold") { world.dropCoins(o.x, o.y - (o.hgt ?? 10) / 2, o.art ? 8 + Math.floor(Math.random() * 5) : 4 + Math.floor(Math.random() * 4)); return; }
   world.dropCoins(o.x, o.y - 10, o.type ? 2 + Math.floor(Math.random() * 3) : 1 + Math.floor(Math.random() * 3));
   if (o.type === "crate" && Math.random() < 0.12) dropItem(o.x, o.y - 10, R.common, { ilvl: ilvlNow(0) });
 };
