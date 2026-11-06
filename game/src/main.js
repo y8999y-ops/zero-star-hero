@@ -707,7 +707,9 @@ const stageApi = {
     const e = kind === "boss" ? new Boss(x, STAGE.arena?.floor ?? FLOOR, bossApi) : new Enemy(kind, x, yy);
     e.x0 = x;   // 擺放的位置（1-1 的 quiet 用來分「前面幾段的怪」）
     enemies.push(e);
-    if (started) world.dust(e.x, e.k.fly ? e.y + 8 : e.y, 4);
+    // 使用者 2026-11-06「進關卡時怪臉上有一個圓形白色放射狀的特效，然後才同時開始動」：原本關卡一開始擺好的怪也會冒出生的煙（白色放射＋灰煙），
+    //   看起來像所有怪都停住、等煙散了才一起動。只有中途冒出來的怪（波次）才冒煙
+    if (started && !placing) world.dust(e.x, e.k.fly ? e.y + 8 : e.y, 4);
     return e;
   },
   say: (msg, sec, focus) => sayQueue.push([msg, sec, focus]),
@@ -729,6 +731,7 @@ const stageApi = {
   clear: showClear,
 };
 
+let placing = false;   // 關卡一開始擺怪中（不冒出生的煙）
 const overlaps = (a, b) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
 const world = {
   /** 最近的敵人；dir 給 1 或 -1 時只找那一邊的。 */
@@ -2113,7 +2116,7 @@ function start() {
   goFullscreen();
   if (TOWN) townArrive();
   else if (ENDLESS) toast("系統：無限模式。打到你手痠為止。");
-  else director = new Director(STAGE, stageApi, touch);
+  else { placing = true; director = new Director(STAGE, stageApi, touch); placing = false; }
   snapCam();
 }
 // 手機：進全螢幕、轉橫向。要在點擊的當下呼叫（瀏覽器規定），所以開場動畫開始播的時候就先開（使用者 2026-11-06）
