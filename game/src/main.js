@@ -398,9 +398,8 @@ function buildFormHud() {
     c.getContext("2d").putImageData(im, 0, 0);
     b.appendChild(c);
     // 有沒花掉的技能點：右下角一顆小點（原本的 Lv 拿掉了）
-    if (freePts(id) > 0) { const dot = document.createElement("i"); dot.className = "ptdot"; dot.textContent = freePts(id); b.appendChild(dot); }
-    const any = Object.keys(profile.forms.owned).reduce((s, f) => s + Math.max(0, freePts(f)), 0);
-    $("treeDot").textContent = any; $("treeDot").classList.toggle("on", any > 0);
+    // 使用者 2026-11-06：有可以用的靈核不用提示（形態格的小數字、技能樹和選單的點都拿掉）
+    $("treeDot").classList.remove("on");
     if (typeof updateMenuDot === "function") updateMenuDot();
     b.addEventListener("pointerdown", (e) => { e.stopPropagation(); switchForm(id); });
     formHud.appendChild(b);
@@ -2013,6 +2012,12 @@ function hud(dt) {
   if (lastXp >= 0 && xpKey !== lastXp) xpShowT = 2.5;
   lastXp = xpKey;
   xpBar.classList.toggle("show", (xpShowT -= dt) > 0 || inv.open);
+  // 使用者 2026-11-06：獲得物品的提示（左邊那一排）放在任務追蹤的下面，任務多一行就跟著往下
+  {
+    const q = trackEl, fd = $("feed"), top = q.offsetHeight && getComputedStyle(q).display !== "none" ? q.offsetTop + q.offsetHeight + 6 : null;
+    const want = top === null ? "" : top + "px";
+    if (fd.style.top !== want) fd.style.top = want;
+  }
   xpText.textContent = profile.lv >= MAX_LV ? "MAX" : `${profile.xp}/${xpNeed(profile.lv)}`;
   // 擊倒數：打倒東西才出現幾秒
   if (stats.kills !== lastKills) { lastKills = stats.kills; killShowT = 3; }
