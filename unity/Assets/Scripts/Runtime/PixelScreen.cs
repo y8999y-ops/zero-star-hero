@@ -36,6 +36,8 @@ namespace ZeroStar
         /// 效能：最近 0.5 秒平均每格花多少毫秒算畫面（遊戲邏輯＋畫圖＋合成，不含上傳貼圖）、每秒幾格
         public double AvgMs { get; private set; }
         public double Fps { get; private set; }
+        public double MaxMs { get; private set; }   // 最近 0.5 秒最慢的一格
+        double perfMax;
         double perfMs, perfT; int perfN;
         readonly System.Diagnostics.Stopwatch watch = new System.Diagnostics.Stopwatch();
 
@@ -78,8 +80,9 @@ namespace ZeroStar
             Draw?.Invoke(Frame);
             Frame.Composite(rgba, null, 0.8);
             PostComposite?.Invoke(rgba);
-            perfMs += watch.Elapsed.TotalMilliseconds; perfN++;
-            if ((perfT += Time.unscaledDeltaTime) >= 0.5) { AvgMs = perfMs / perfN; Fps = perfN / perfT; perfMs = 0; perfN = 0; perfT = 0; }
+            double ms = watch.Elapsed.TotalMilliseconds;
+            perfMs += ms; perfN++; perfMax = Math.Max(perfMax, ms);
+            if ((perfT += Time.unscaledDeltaTime) >= 0.5) { AvgMs = perfMs / perfN; Fps = perfN / perfT; MaxMs = perfMax; perfMs = 0; perfN = 0; perfT = 0; perfMax = 0; }
             // 沒畫到的地方（透明）在網頁上會露出黑底：這裡直接補成不透明
             for (int i = 3; i < rgba.Length; i += 4) rgba[i] = 255;
             tex.SetPixelData(rgba, 0);

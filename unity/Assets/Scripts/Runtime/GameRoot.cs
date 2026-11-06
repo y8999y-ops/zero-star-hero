@@ -81,7 +81,7 @@ namespace ZeroStar
             {
                 while (si < script.Count && script[si].t == tickN) { var e = script[si++]; if (e.type == "f") game.PendingForm = e.code; else if (e.type == "m") game.Player.Mp = game.Player.MaxMp; else if (e.type == "d") game.Input.KeyDown(e.code); else game.Input.KeyUp(e.code); }
                 if (shotNo < shotAt.Length && tickN == shotAt[shotNo]) { ScreenCapture.CaptureScreenshot(Path.Combine(shotDir, $"play-{shotNo}.png")); shotNo++; }
-                if (tickN % 120 == 0) Debug.Log($"[Perf] 第 {tickN} 步：{screen.Fps:F0} fps，每格 {screen.AvgMs:F2} ms");
+                if (tickN % 30 == 0) Debug.Log($"[Perf] 第 {tickN} 步{(game.Ult.On ? "（大招）" : "")}：{screen.Fps:F0} fps，平均 {screen.AvgMs:F2} ms，最慢 {screen.MaxMs:F2} ms");
                 if (shotNo >= shotAt.Length && tickN > shotAt[shotAt.Length - 1] + 20) Application.Quit();
             }
             game.Tick(dt);
@@ -184,7 +184,7 @@ namespace ZeroStar
             // 效能（右上角）：每秒幾格、每格算畫面花幾毫秒
             if (perfStyle == null) perfStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperRight, fontSize = Mathf.RoundToInt(10 * u) };
             perfStyle.normal.textColor = new Color(1, 1, 1, 0.55f);
-            GUI.Label(new UnityEngine.Rect(Screen.width - 220 * u, 6 * u, 210 * u, 20 * u), $"{screen.Fps:F0} fps  {screen.AvgMs:F1} ms  {screen.W}×216", perfStyle);
+            GUI.Label(new UnityEngine.Rect(Screen.width - 220 * u, 6 * u, 210 * u, 20 * u), $"{screen.Fps:F0} fps  {screen.AvgMs:F1} ms（最慢 {screen.MaxMs:F0}）  {screen.W}×216", perfStyle);
             if (touchMode)
             {
                 var a = AtkBtn; var d = DashBtn;

@@ -19,6 +19,19 @@ namespace ZeroStar
             ["ground-slam"] = PixelFX.Fx.GroundSlam.Def, ["star-fall"] = PixelFX.Fx.StarFall.Def,
         };
 
+        /// 載入時把每個即時特效先建一次、跑幾步、畫一次（第一次用到時要編譯程式、建表，會卡一下；先做掉）。
+        /// 用自己的畫布和自己的亂數，不影響遊戲。
+        public static void WarmUp()
+        {
+            var f = new Frame(160, 120, -80, -60);
+            foreach (var d in DEFS.Values)
+            {
+                var fx = new FxRun(d, new FxOptions { X = 0, Y = 0 });
+                for (int i = 0; i < 6; i++) { fx.Update(1 / 60.0); fx.Draw(f); }
+                fx.Stop(); fx.Update(0.1); fx.Draw(f);
+            }
+        }
+
         void Add(E e)
         {
             list.Add(e);
@@ -51,7 +64,7 @@ namespace ZeroStar
         {
             double mid = frame.Ox + frame.W / 2.0;
             foreach (var e in list)
-                if (e.Back == back && Math.Abs(e.X - mid) < frame.W / 2.0 + 220) { if (e.Baked != null) e.Baked.Draw(frame); else e.Live.Draw(frame); Probe?.Invoke(e.Baked != null ? e.Baked.Anim.Name + " t=" + e.Baked.T.ToString("R") : e.Live.Def.Name + " t=" + e.Live.T.ToString("R")); }
+                if (e.Back == back && Math.Abs(e.X - mid) < frame.W / 2.0 + 220) { if (Prof.On) Prof.Mark(back ? "背景特效" : "前景特效"); if (e.Baked != null) e.Baked.Draw(frame); else e.Live.Draw(frame); if (Prof.On) Prof.Mark("fx:" + (e.Baked != null ? "烘焙" : e.Live.Def.Name)); Probe?.Invoke(e.Baked != null ? e.Baked.Anim.Name + " t=" + e.Baked.T.ToString("R") : e.Live.Def.Name + " t=" + e.Live.T.ToString("R")); }
         }
         public int Count => list.Count;
         public static Action<string> Probe;   // 開發用：每畫完一個特效呼叫一次

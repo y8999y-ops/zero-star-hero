@@ -105,6 +105,7 @@ namespace ZeroStar
             SceneLight.Reset();
             Status = new Status(this) { Allow = new HashSet<string> { "burn", "slime" } };
             Ult = new Ult(this);
+            FxSystem.WarmUp();
             SceneLight.GlobalLv = 0;   // 1-1 只有燃燒和黏液（main.js 同一個設定）
             Data = Baked.Level(stage);
             Art = new LevelArt(Data);
@@ -347,19 +348,25 @@ namespace ZeroStar
             Art.DrawAtmosphere(frame, sceneClock);
             Prof.Mark("大氣");
             if (!Ult.On) Fx.Draw(frame, true);
+            Prof.Mark("背景特效");
             foreach (var e in Enemies) e.Draw(frame, Fx, SimMs);
             Status.DrawBolts(frame);
-            if (Ult.On) { Ult.DimScene(frame); Fx.Draw(frame, true); }   // 大招：先畫怪再暗場，法陣這些背景特效畫在暗場之後才會亮
+            Prof.Mark("怪");
+            if (Ult.On) { Ult.DimScene(frame); Prof.Mark("暗場"); Fx.Draw(frame, true); Prof.Mark("背景特效"); }   // 大招：先畫怪再暗場，法陣這些背景特效畫在暗場之後才會亮
             if (Player.Hp > 0) Player.Draw(frame);
+            Prof.Mark("主角");
             Fx.Draw(frame, false);
+            Prof.Mark("前景特效");
             Combat.Form = Player.Form;
             Combat.Draw(frame);
+            Prof.Mark("戰鬥小特效");
             Ult.Draw(frame);
-            Prof.Mark("角色特效");
+            Prof.Mark("大招畫");
             Art.DrawForeground(frame);
             Combat.DrawNumbers(frame, ViewRect());
-            Ult.DrawCutIn(frame);
             Prof.Mark("前景");
+            Ult.DrawCutIn(frame);
+            Prof.Mark("特寫帶");
         }
     }
 }

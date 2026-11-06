@@ -274,14 +274,33 @@ namespace ZeroStar
             double kc = Math.Max(0.2, 1 - 0.62 * d), kl = Math.Max(0, 1 - 0.75 * d);
             uint[] C = frame.Color, L = frame.Light; int n = frame.W * frame.H;
             var tint = Mod?.Tint; double tk = (1 - kc) * 0.9;
-            for (int i = 0; i < n; i++)
+            // 每個像素各算各的：切成 8 條同時算。數值都是 0～255 的正數，直接截成整數（跟 JS 的 << 一樣）
+            const int BANDS = 8; int per = (n + BANDS - 1) / BANDS;
+            System.Threading.Tasks.Parallel.For(0, BANDS, band =>
             {
-                uint c = C[i];
-                if (tint != null) C[i] = (uint)((int)(c & 0xff000000) | (Pf.ToInt32(((c >> 16) & 255) * kc + tint[2] * tk) << 16) | (Pf.ToInt32(((c >> 8) & 255) * kc + tint[1] * tk) << 8) | Pf.ToInt32((c & 255) * kc + tint[0] * tk));
-                else C[i] = (uint)((int)(c & 0xff000000) | (Pf.ToInt32(((c >> 16) & 255) * kc) << 16) | (Pf.ToInt32(((c >> 8) & 255) * kc) << 8) | Pf.ToInt32((c & 255) * kc));
-                uint l = L[i];
-                if ((l & 0xffffff) != 0) L[i] = (uint)((int)(l & 0xff000000) | (Pf.ToInt32(((l >> 16) & 255) * kl) << 16) | (Pf.ToInt32(((l >> 8) & 255) * kl) << 8) | Pf.ToInt32((l & 255) * kl));
-            }
+                int i0 = band * per, i1 = Math.Min(n, i0 + per);
+                if (tint != null)
+                {
+                    double t0 = tint[0] * tk, t1 = tint[1] * tk, t2 = tint[2] * tk;
+                    for (int i = i0; i < i1; i++)
+                    {
+                        uint c = C[i];
+                        C[i] = (c & 0xff000000) | ((uint)(int)(((c >> 16) & 255) * kc + t2) << 16) | ((uint)(int)(((c >> 8) & 255) * kc + t1) << 8) | (uint)(int)((c & 255) * kc + t0);
+                        uint l = L[i];
+                        if ((l & 0xffffff) != 0) L[i] = (l & 0xff000000) | ((uint)(int)(((l >> 16) & 255) * kl) << 16) | ((uint)(int)(((l >> 8) & 255) * kl) << 8) | (uint)(int)((l & 255) * kl);
+                    }
+                }
+                else
+                {
+                    for (int i = i0; i < i1; i++)
+                    {
+                        uint c = C[i];
+                        C[i] = (c & 0xff000000) | ((uint)(int)(((c >> 16) & 255) * kc) << 16) | ((uint)(int)(((c >> 8) & 255) * kc) << 8) | (uint)(int)((c & 255) * kc);
+                        uint l = L[i];
+                        if ((l & 0xffffff) != 0) L[i] = (l & 0xff000000) | ((uint)(int)(((l >> 16) & 255) * kl) << 16) | ((uint)(int)(((l >> 8) & 255) * kl) << 8) | (uint)(int)((l & 255) * kl);
+                    }
+                }
+            });
         }
 
         static void DrawStar(UltPainter P, double cx, double cy, double R, double rot, double glow = 1)

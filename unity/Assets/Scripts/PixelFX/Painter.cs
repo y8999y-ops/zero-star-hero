@@ -6,6 +6,14 @@ using System;
 
 namespace PixelFX
 {
+    /// 開發用：量畫筆函式各花多少時間（On＝true 才量；巢狀呼叫會重複算）
+    public static class PfProf
+    {
+        public static bool On;
+        public static readonly System.Collections.Generic.Dictionary<string, double> Ms = new System.Collections.Generic.Dictionary<string, double>();
+        public static long T0() => On ? System.Diagnostics.Stopwatch.GetTimestamp() : 0;
+        public static void T1(string k, long t0) { if (!On) return; double ms = (System.Diagnostics.Stopwatch.GetTimestamp() - t0) * 1000.0 / System.Diagnostics.Stopwatch.Frequency; Ms.TryGetValue(k, out var v); Ms[k] = v + ms; }
+    }
     public delegate uint ColorFn(double u, double v);
     public delegate double AlphaFn(double u, double v);
 
@@ -132,9 +140,10 @@ namespace PixelFX
             int x = sx - ox, y = sy - oy;
             if (x < 0 || y < 0 || x >= w || y >= h) return;
             int i = y * w + x; uint d = L[i];
-            int r = Pf.ToInt32(Math.Min(255, (d & 255) + (c & 255) * k));
-            int g = Pf.ToInt32(Math.Min(255, ((d >> 8) & 255) + ((c >> 8) & 255) * k));
-            int b = Pf.ToInt32(Math.Min(255, ((d >> 16) & 255) + ((c >> 16) & 255) * k));
+            // 這裡 k > 0.004，值都是 0～255 的正數：直接截成整數（跟 ToInt32 一樣，比較快）
+            int r = (int)Math.Min(255, (d & 255) + (c & 255) * k);
+            int g = (int)Math.Min(255, ((d >> 8) & 255) + ((c >> 8) & 255) * k);
+            int b = (int)Math.Min(255, ((d >> 16) & 255) + ((c >> 16) & 255) * k);
             L[i] = unchecked((uint)((255 << 24) | (b << 16) | (g << 8) | r));
         }
         /// 半透明混色（煙、霧、塵）：保留結果的透明度。
@@ -150,7 +159,33 @@ namespace PixelFX
             C[i] = unchecked((uint)(((Pf.ToInt32(oa * 255) & 255) << 24) | (Ch(16) << 16) | (Ch(8) << 8) | Ch(0)));
         }
         public void Blend(double x, double y, uint c, double a) => BlendPx(CellX(x, y), CellY(x, y), c, a);
-        public void Disc(double cx, double cy, double r, uint c, double a) => Disc(cx, cy, r, (d, g) => c, (d, g) => a);
+        // 顏色、透明度是固定值的快速版（粒子的煙、塵大多是這種）：不用每格算距離和角度（它們只是傳給顏色函式用），畫到的像素一樣
+        void Bounds(double x0, double y0, double x1, double y1, out int sx0, out int sx1, out int sy0, out int sy1)
+        {
+            double ax = double.PositiveInfinity, bx = double.NegativeInfinity, ay = double.PositiveInfinity, by = double.NegativeInfinity;
+            for (int k = 0; k < 4; k++)
+            {
+                double x = (k & 1) != 0 ? x1 : x0, y = (k & 2) != 0 ? y1 : y0, sx = ToX(x, y), sy = ToY(x, y);
+                if (sx < ax) ax = sx; if (sx > bx) bx = sx; if (sy < ay) ay = sy; if (sy > by) by = sy;
+            }
+            sx0 = (int)Math.Max(Math.Floor(ax), ox); sx1 = (int)Math.Min(Math.Ceiling(bx), ox + w - 1);
+            sy0 = (int)Math.Max(Math.Floor(ay), oy); sy1 = (int)Math.Min(Math.Ceiling(by), oy + h - 1);
+        }
+        public void Disc(double cx, double cy, double r, uint c, double a)
+        {
+            long __t = PfProf.T0(); try {
+            if (r < 0.5) { Blend(cx, cy, c, a); return; }
+            Bounds(cx - r, cy - r, cx + r, cy + r, out int sx0, out int sx1, out int sy0, out int sy1);
+            double r2 = r * r;
+            for (int sy = sy0; sy <= sy1; sy++)
+                for (int sx = sx0; sx <= sx1; sx++)
+                {
+                    double px = sx + 0.5, py = sy + 0.5, dx = FromX(px, py) - cx, dy = FromY(px, py) - cy;
+                    if (dx * dx + dy * dy > r2) continue;
+                    BlendPx(sx, sy, c, a);
+                }
+        } finally { PfProf.T1("Disc", __t); }
+        }
         public void Disc(double cx, double cy, double r, ColorFn c, AlphaFn a)
         {
             if (r < 0.5) { Blend(cx, cy, c(0, 0), a(0, 0)); return; }
@@ -198,6 +233,7 @@ namespace PixelFX
         public delegate void ShadeFn(double x, double y, ref Out o);
         public void Shade(double x0, double y0, double x1, double y1, ShadeFn fn)
         {
+            long __t = PfProf.T0(); try {
             Each(x0, y0, x1, y1, (lx, ly, sx, sy) =>
             {
                 var o = new Out { c = 0, a = 1, l = 0, k = 0 };
@@ -205,12 +241,14 @@ namespace PixelFX
                 if (o.c != 0) Put(sx, sy, o.c, o.a);
                 if (o.k > 0) Add(sx, sy, o.l != 0 ? o.l : o.c, o.k);
             });
+        } finally { PfProf.T1("Shade", __t); }
         }
 
         // ---- 形狀
         public void Line(double x0, double y0, double x1, double y1, uint c, double a = 1) => Line(x0, y0, x1, y1, u => c, u => a);
         public void Line(double x0, double y0, double x1, double y1, Func<double, uint> c, Func<double, double> a)
         {
+            long __t = PfProf.T0(); try {
             int sx = CellX(x0, y0), sy = CellY(x0, y0), ex = CellX(x1, y1), ey = CellY(x1, y1);
             int dx = Math.Abs(ex - sx), dy = -Math.Abs(ey - sy), stepx = sx < ex ? 1 : -1, stepy = sy < ey ? 1 : -1;
             int n = Math.Max(dx, -dy); if (n == 0) n = 1;
@@ -224,10 +262,12 @@ namespace PixelFX
                 if (e2 >= dy) { err += dy; sx += stepx; }
                 if (e2 <= dx) { err += dx; sy += stepy; }
             }
+        } finally { PfProf.T1("Line", __t); }
         }
         public void Beam(double x0, double y0, double x1, double y1, double width, uint c, double a = 1) => Beam(x0, y0, x1, y1, width, (u, v) => c, (u, v) => a);
         public void Beam(double x0, double y0, double x1, double y1, double width, ColorFn c, AlphaFn a)
         {
+            long __t = PfProf.T0(); try {
             double r = width / 2, dx = x1 - x0, dy = y1 - y0, L2 = dx * dx + dy * dy; if (L2 == 0) L2 = 1e-9;
             Shade(Math.Min(x0, x1) - r, Math.Min(y0, y1) - r, Math.Max(x0, x1) + r, Math.Max(y0, y1) + r, (double x, double y, ref Out o) =>
             {
@@ -237,8 +277,21 @@ namespace PixelFX
                 double v = Math.Sqrt(d2) / r;
                 o.c = c(u, v); o.a = a(u, v);
             });
+        } finally { PfProf.T1("Beam", __t); }
         }
-        public void Circle(double cx, double cy, double r, uint c, double a = 1) => Circle(cx, cy, r, (d, g) => c, (d, g) => a);
+        public void Circle(double cx, double cy, double r, uint c, double a = 1)
+        {
+            if (r < 0.6) { Dot(cx, cy, c, a); return; }
+            Bounds(cx - r, cy - r, cx + r, cy + r, out int sx0, out int sx1, out int sy0, out int sy1);
+            double r2 = r * r;
+            for (int sy = sy0; sy <= sy1; sy++)
+                for (int sx = sx0; sx <= sx1; sx++)
+                {
+                    double px = sx + 0.5, py = sy + 0.5, dx = FromX(px, py) - cx, dy = FromY(px, py) - cy;
+                    if (dx * dx + dy * dy > r2) continue;
+                    Put(sx, sy, c, a);
+                }
+        }
         public void Circle(double cx, double cy, double r, ColorFn c, AlphaFn a)
         {
             if (r < 0.6) { Dot(cx, cy, c(0, 0), a(0, 0)); return; }
@@ -309,6 +362,7 @@ namespace PixelFX
         public void Poly(double[][] pts, uint c, double a = 1) => Poly(pts, (x, y) => c, (x, y) => a);
         public void Poly(double[][] pts, ColorFn c, AlphaFn a)
         {
+            long __t = PfProf.T0(); try {
             double x0 = double.PositiveInfinity, y0 = double.PositiveInfinity, x1 = double.NegativeInfinity, y1 = double.NegativeInfinity;
             foreach (var q in pts) { if (q[0] < x0) x0 = q[0]; if (q[0] > x1) x1 = q[0]; if (q[1] < y0) y0 = q[1]; if (q[1] > y1) y1 = q[1]; }
             int n = pts.Length;
@@ -323,35 +377,61 @@ namespace PixelFX
                 if (!inside) return;
                 o.c = c(x, y); o.a = a(x, y);
             });
+        } finally { PfProf.T1("Poly", __t); }
         }
         public void Tri(double x0, double y0, double x1, double y1, double x2, double y2, uint c, double a = 1) =>
             Poly(new[] { new[] { x0, y0 }, new[] { x1, y1 }, new[] { x2, y2 } }, c, a);
 
         // ---- 光
+        // 光暈的迴圈範圍先夾在畫布內（畫布外的格子 Add 本來就會丟掉，結果一樣，少算很多）
+        int ClipX0(int v) => Math.Max(v, ox); int ClipX1(int v) => Math.Min(v, ox + w - 1);
+        int ClipY0(int v) => Math.Max(v, oy); int ClipY1(int v) => Math.Min(v, oy + h - 1);
         public void Glow(double x, double y, double r, uint c, double k = 0.5)
         {
+            long __t = PfProf.T0(); try {
             if (r < 1 || k <= 0.004) return;
             double cx = ToX(x, y), cy = ToY(x, y);
-            int x0 = (int)Math.Floor(cx - r), x1 = (int)Math.Ceiling(cx + r), y0 = (int)Math.Floor(cy - r), y1 = (int)Math.Ceiling(cy + r);
-            for (int sy = y0; sy <= y1; sy++)
+            int x0 = ClipX0((int)Math.Floor(cx - r)), x1 = ClipX1((int)Math.Ceiling(cx + r)), y0 = ClipY0((int)Math.Floor(cy - r)), y1 = ClipY1((int)Math.Ceiling(cy + r));
+            if (x1 < x0 || y1 < y0) return;
+            // 跟 Add 一樣的算法，直接寫在迴圈裡（範圍已經夾在畫布內，不用每格再檢查）；大的光暈切成幾條同時算（每個像素只加一次，結果一樣）
+            double fl = Fade * LightK; uint cr = c & 255, cg = (c >> 8) & 255, cb = (c >> 16) & 255;
+            uint[] Lb = L; int W = w, OX = ox, OY = oy;
+            void Rows(int ya, int yb)
             {
-                double dy = (sy + 0.5 - cy) / r;
-                for (int sx = x0; sx <= x1; sx++)
+                for (int sy = ya; sy <= yb; sy++)
                 {
-                    double dx = (sx + 0.5 - cx) / r, d = dx * dx + dy * dy;
-                    if (d >= 1) continue;
-                    double f = 1 - Math.Sqrt(d);
-                    Add(sx, sy, c, f * f * k);
+                    double dy = (sy + 0.5 - cy) / r; int row = (sy - OY) * W - OX;
+                    for (int sx = x0; sx <= x1; sx++)
+                    {
+                        double dx = (sx + 0.5 - cx) / r, d = dx * dx + dy * dy;
+                        if (d >= 1) continue;
+                        double f = 1 - Math.Sqrt(d), kk = f * f * k * fl;
+                        if (kk <= 0.004) continue;
+                        int i = row + sx; uint dd = Lb[i];
+                        int rr = (int)Math.Min(255, (dd & 255) + cr * kk);
+                        int gg = (int)Math.Min(255, ((dd >> 8) & 255) + cg * kk);
+                        int bb = (int)Math.Min(255, ((dd >> 16) & 255) + cb * kk);
+                        Lb[i] = unchecked((uint)((255 << 24) | (bb << 16) | (gg << 8) | rr));
+                    }
                 }
             }
+            int n = y1 - y0 + 1;
+            if (n * (x1 - x0 + 1) < 2500) Rows(y0, y1);
+            else
+            {
+                const int B = 4; int per = (n + B - 1) / B;
+                System.Threading.Tasks.Parallel.For(0, B, b => { int ya = y0 + b * per, yb = Math.Min(y1, ya + per - 1); if (ya <= yb) Rows(ya, yb); });
+            }
+            } finally { PfProf.T1("Glow", __t); }
         }
         public void GlowLine(double x0, double y0, double x1, double y1, double r, uint c, double k = 0.5)
         {
+            long __t = PfProf.T0(); try {
             if (r < 1 || k <= 0.004) return;
             double ax = ToX(x0, y0), ay = ToY(x0, y0), bx = ToX(x1, y1), by = ToY(x1, y1);
             double dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy; if (L2 == 0) L2 = 1e-9;
-            int X0 = (int)Math.Floor(Math.Min(ax, bx) - r), X1 = (int)Math.Ceiling(Math.Max(ax, bx) + r);
-            int Y0 = (int)Math.Floor(Math.Min(ay, by) - r), Y1 = (int)Math.Ceiling(Math.Max(ay, by) + r);
+            int X0 = ClipX0((int)Math.Floor(Math.Min(ax, bx) - r)), X1 = ClipX1((int)Math.Ceiling(Math.Max(ax, bx) + r));
+            int Y0 = ClipY0((int)Math.Floor(Math.Min(ay, by) - r)), Y1 = ClipY1((int)Math.Ceiling(Math.Max(ay, by) + r));
             for (int sy = Y0; sy <= Y1; sy++)
                 for (int sx = X0; sx <= X1; sx++)
                 {
@@ -361,19 +441,23 @@ namespace PixelFX
                     double f = 1 - d;
                     Add(sx, sy, c, f * f * k);
                 }
+        } finally { PfProf.T1("GlowLine", __t); }
         }
         public void GlowRing(double x, double y, double R, double r, uint c, double k = 0.5)
         {
+            long __t = PfProf.T0(); try {
             if (r < 1 || k <= 0.004) return;
             double cx = ToX(x, y), cy = ToY(x, y), E = R + r;
-            for (int sy = (int)Math.Floor(cy - E); sy <= (int)Math.Ceiling(cy + E); sy++)
-                for (int sx = (int)Math.Floor(cx - E); sx <= (int)Math.Ceiling(cx + E); sx++)
+            int ry1 = ClipY1((int)Math.Ceiling(cy + E)), rx0 = ClipX0((int)Math.Floor(cx - E)), rx1 = ClipX1((int)Math.Ceiling(cx + E));
+            for (int sy = ClipY0((int)Math.Floor(cy - E)); sy <= ry1; sy++)
+                for (int sx = rx0; sx <= rx1; sx++)
                 {
                     double d = Math.Abs(Pf.Hypot(sx + 0.5 - cx, sy + 0.5 - cy) - R) / r;
                     if (d >= 1) continue;
                     double f = 1 - d;
                     Add(sx, sy, c, f * f * k);
                 }
+        } finally { PfProf.T1("GlowRing", __t); }
         }
     }
 }
