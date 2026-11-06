@@ -80,7 +80,7 @@ export function createFeatures({ stageId, list = [], profile, player, api }) {
     }
   }
   /** 互動鍵：站在旁邊可以用的東西（殘火、化石核、保險箱、碑文），top＝頭上「！」的高度 */
-  const USE = { ember: [14, 22, 24], fossil: [16, 16, 20], safe: [18, 22, 24], stele: [16, 34, 40] };
+  const USE = { ember: [14, 22, 24], fossil: [16, 16, 20], safe: [22, 26, 31], stele: [16, 34, 40] };
   function usable() {
     const out = [];
     for (const f of items) { const u = USE[f.t]; if (u && !f.done && near(f, u[0], u[1])) out.push({ f, t: f.t, x: f.x, y: f.y, top: f.y - u[2] }); }

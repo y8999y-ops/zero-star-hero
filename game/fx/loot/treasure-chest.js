@@ -50,13 +50,16 @@ const SHAPES = [
   { HW: 13, FH: 10, LA: 6.5, LB: 7, STRAPS: [-10, 8], corner: "gold", rim: "gold", lock: "gem", band: true, dots: false, spikes: false, rivets: false, goldStraps: true },
   { HW: 14, FH: 11, LA: 7, LB: 8.5, STRAPS: [-11, 9], corner: "gold", rim: "gold", lock: "star", band: true, dots: true, spikes: true, rivets: false, goldStraps: true, glow: true },
 ];
+// 使用者 2026-11-06「所有寶箱尺寸調大 30%」：形狀的尺寸（寬、正面高、蓋子、鐵條位置）全部 ×1.3，用畫的放大（不是把像素拉大，線條還是 1 格）
+const CHEST_K = 1.3, k5 = (v) => Math.round(v * CHEST_K * 2) / 2;
+for (const S of SHAPES) { S.HW = Math.round(S.HW * CHEST_K); S.FH = Math.round(S.FH * CHEST_K); S.LA = k5(S.LA); S.LB = k5(S.LB); S.STRAPS = S.STRAPS.map((v) => Math.round(v * CHEST_K)); }
 let SH = SHAPES[1];
 function setShape(tier) {
   SH = SHAPES[tier] ?? SHAPES[1];
   ({ HW, FH, LA, LB, STRAPS } = SH);
   HB = FH / CS;
 }
-const L = new Layer(48, 56), IL = new Layer(16, 16);
+const L = new Layer(64, 76), IL = new Layer(16, 16);   // 寶箱放大 30%，畫布也加大
 
 // the lid as rows of screen pixels: which point of its curved profile each row shows, which side, how lit.
 // Points that swing below the rim (behind the back wall) are hidden.
@@ -355,7 +358,7 @@ export function create(o) {
         // the empty chest dissolves from the lid down into rising gold dust
         poofed = true;
         lights.add(0, -12, 40, C[5], 0.5, 0.6);
-        L.begin(-24, -44);
+        L.begin(-32, -62);
         paintChest(C, W, lidAngle(0), 0.3);
         L.outline(W[0]);
         const f = L.f;
@@ -388,7 +391,7 @@ export function create(o) {
       pool(p, 0, 0, 30 + 10 * g, 4, C[4], (0.1 + 0.18 * open) * g);
       p.glow(0, -16, 24 + 8 * g, C[4], (0.1 + 0.2 * open) * g);
       if (t < T_POOF) {
-        L.begin(-24, -44);
+        L.begin(-32, -62);
         paintChest(C, W, th, Math.min(1.2, g));
         L.outline(W[0]);
         L.draw(p, sh.dx, -sh.hop);

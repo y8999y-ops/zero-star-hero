@@ -385,9 +385,10 @@ export function drawSafe(frame, x, y, opened = false, t = 0) {
   const WD = [P("#3a1a14"), P("#6a2e1e"), P("#8e4428"), P("#b0603a")], FE = [P("#2a2a36"), P("#5c5a6a"), P("#8a8898"), P("#b8b6c4")], GD = [P("#8a5a10"), P("#f0b424"), P("#ffe066"), P("#fff6c4")];
   const cx = Math.round(x), base = Math.round(y);
   // 焦黑的坑
-  for (let i = -18; i <= 18; i++) { const u = Math.abs(i) / 18; put(frame, cx + i, base - 1, u > 0.85 ? P("#3a2a20") : P("#140c0c")); if (u < 0.7) put(frame, cx + i, base - 2, P("#241818")); }
+  // 使用者 2026-11-06「所有寶箱尺寸調大 30%」：箱子 24×13 → 31×17、蓋子 8 → 10、坑 18 → 23（照比例畫大，線條還是 1 格）
+  for (let i = -23; i <= 23; i++) { const u = Math.abs(i) / 23; put(frame, cx + i, base - 1, u > 0.85 ? P("#3a2a20") : P("#140c0c")); if (u < 0.7) put(frame, cx + i, base - 2, P("#241818")); }
   // 箱子（往右歪：每往上一排往右推一點）
-  const BW = 24, BH = 13, LH = 8, x0 = cx - 13, y0 = base - 2 - BH;
+  const BW = 31, BH = 17, LH = 10, x0 = cx - 16, y0 = base - 2 - BH;
   const sh = (j) => Math.round((BH - j) * 0.18);
   for (let j = 0; j < BH; j++) for (let i = -1; i <= BW; i++) {
     const X = x0 + i + sh(j), Y = y0 + j;
@@ -396,9 +397,9 @@ export function drawSafe(frame, x, y, opened = false, t = 0) {
     put(frame, X, Y, band ? (i % 2 ? FE[2] : FE[1]) : (j + (i >> 2)) % 4 === 0 ? WD[0] : i < 6 ? WD[3] : WD[2]);
   }
   // 鎖片（金）
-  const lx = x0 + 11 + sh(2);
-  for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) put(frame, lx + i, y0 + j, j === 0 || i === 0 ? GD[2] : j === 3 || i === 3 ? GD[0] : GD[1]);
-  put(frame, lx + 1, y0 + 2, OUT); put(frame, lx + 2, y0 + 2, OUT);
+  const lx = x0 + 13 + sh(2);
+  for (let j = 0; j < 5; j++) for (let i = 0; i < 5; i++) put(frame, lx + i, y0 + j, j === 0 || i === 0 ? GD[2] : j === 4 || i === 4 ? GD[0] : GD[1]);
+  put(frame, lx + 2, y0 + 2, OUT); put(frame, lx + 2, y0 + 3, OUT);
   const ly0 = y0 - LH, lsh = sh(0) + 1;
   if (!opened) {
     // 蓋子：半圓拱頂，鐵箍
@@ -412,18 +413,18 @@ export function drawSafe(frame, x, y, opened = false, t = 0) {
     }
     // 縫：一排金光一閃一閃，往上漏幾道光
     for (let i = 0; i < BW; i++) put(frame, x0 + i + sh(0), y0 - 1, hash(i, Math.floor(t * 10)) < 0.65 ? GD[3] : GD[2], true);
-    for (let r = 0; r < 3; r++) { const rx = x0 + 5 + r * 7 + sh(0), len = 3 + Math.round((Math.sin(t * 3 + r * 2) * 0.5 + 0.5) * 4); for (let j = 1; j <= len; j++) { const gi = (rx - frame.ox) + (y0 - 1 - j - frame.oy) * frame.w; if (gi >= 0 && gi < frame.light.length && !frame.light[gi]) frame.light[gi] = GD[1]; } }
+    for (let r = 0; r < 3; r++) { const rx = x0 + 6 + r * 9 + sh(0), len = 4 + Math.round((Math.sin(t * 3 + r * 2) * 0.5 + 0.5) * 5); for (let j = 1; j <= len; j++) { const gi = (rx - frame.ox) + (y0 - 1 - j - frame.oy) * frame.w; if (gi >= 0 && gi < frame.light.length && !frame.light[gi]) frame.light[gi] = GD[1]; } }
     // 從天上掉下來還在冒的細煙
-    for (let m = 0; m < 3; m++) { const p = ((t * 0.4 + m * 0.33) % 1); put(frame, x0 + BW + sh(0) - 2 + Math.round(Math.sin(p * 6 + m) * 2), ly0 - 2 - p * 14, p < 0.5 ? P("#6a6070") : P("#463e4c")); }
-    glowRing(frame, cx, y0 - 2, 12, GD[1]);
+    for (let m = 0; m < 3; m++) { const p = ((t * 0.4 + m * 0.33) % 1); put(frame, x0 + BW + sh(0) - 2 + Math.round(Math.sin(p * 6 + m) * 2), ly0 - 2 - p * 18, p < 0.5 ? P("#6a6070") : P("#463e4c")); }
+    glowRing(frame, cx, y0 - 2, 16, GD[1]);
   } else {
     // 打開：箱子裡面黑掉、只剩幾點金屑；蓋子往後翻（畫在箱子上方、往左倒）
     for (let i = 0; i < BW; i++) put(frame, x0 + i + sh(0), y0, i < 2 || i > BW - 3 ? OUT : P("#120a0a"));
-    for (let i = 4; i < BW - 4; i += 5) put(frame, x0 + i + sh(0), y0, GD[0]);
+    for (let i = 4; i < BW - 4; i += 6) put(frame, x0 + i + sh(0), y0, GD[0]);
     // 第 3 輪：蓋子直直地立在箱子後面（往後翻開），看得到蓋子的內側（暗）
-    for (let j = 0; j < 9; j++) for (let i = -1; i <= BW; i++) {
+    for (let j = 0; j < 12; j++) for (let i = -1; i <= BW; i++) {
       const X = x0 + i + sh(0) + 1 - Math.round(j * 0.25), Y = y0 - 2 - j;
-      put(frame, X, Y, i === -1 || i === BW || j === 8 ? OUT : (i === 2 || i === 3 || i === BW - 4 || i === BW - 3) ? FE[1] : j < 2 ? WD[0] : WD[1]);
+      put(frame, X, Y, i === -1 || i === BW || j === 11 ? OUT : (i === 2 || i === 3 || i === BW - 4 || i === BW - 3) ? FE[1] : j < 2 ? WD[0] : WD[1]);
     }
   }
 }
