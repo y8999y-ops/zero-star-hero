@@ -142,7 +142,7 @@ export const SET_IDS = Object.keys(SETS);
 const SET_KIND_NAME = { weapon: "核", head: "冠", body: "殼", hands: "爪", feet: "靴", acc: "碎片" };
 
 // 隨機名字：稀有以上叫「○○之＋短名」
-const RARE_NAMES = ["社畜", "加班狂", "外送員", "失眠者", "禿頭勇者", "深淵", "午夜", "墜星", "打工仔", "零星", "前男友", "房東", "末班車", "便利商店"];
+const RARE_NAMES = ["社畜", "加班狂", "外送員", "失眠者", "禿頭勇者", "深淵", "午夜", "墜星", "打工仔", "流星", "前男友", "房東", "末班車", "便利商店"];
 
 const pick = (a, r = Math.random) => a[Math.floor(r() * a.length)];
 const randIn = (a, b, dec = 0) => { const k = 10 ** dec; return Math.round((a + Math.random() * (b - a)) * k) / k; };
@@ -317,7 +317,7 @@ export function nameFor(item, rareName) {
   if (item.unique) return UNIQUES[item.unique].name;
   const b = BASES[item.base];
   if (item.rarity === R.fine) return (MAIN_ADJ[item.main.id] ?? MAIN_ADJ[item.affixes[0]?.id] ?? "精良") + "的" + b.short;
-  if (item.rarity >= R.rare) return (rareName ?? "零星") + "之" + b.short;
+  if (item.rarity >= R.rare) return (rareName ?? "墜星") + "之" + b.short;
   return b.name;
 }
 

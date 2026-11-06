@@ -37,7 +37,7 @@ export function questLook(q) {
   if (q.kind === "kill") return { icon: "q_kill", label: `${ENEMY[q.enemy]}` };
   if (q.kind === "junk") return { icon: "q_junk", label: "撿垃圾" };
   if (q.kind === "clear") return { icon: q.stage === "1-4" ? "guild" : "q_clear", label: `${q.stage} ${LAYOUTS[q.stage]?.name ?? ""}`, tag: q.nodeath ? "不能死" : null };
-  return { icon: "core_slime", label: "吸收魔物核" };
+  return { icon: "core_slime", label: "吸收靈核" };
 }
 const SYS_ICON = { out11: "star", reg: "guild", guild1: "seal", core1: "core_slime", forge2: "hammer", meal1: "bowl", reroll1: "dice", rankE: "guild", forms3: "star", boss1: "q_kill" };
 

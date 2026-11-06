@@ -1,4 +1,4 @@
-// 大招「零星墜落」：起承轉合。
+// 大招「流星墜落」（使用者 2026-11-06：舊名「零星墜落」，零星設定取消）：起承轉合。
 //   起（0～0.65 秒）：全場停住變暗，腳下展開金色法陣，四周的光點被吸進主角手中，聚成一顆星核。
 //   承（0.65～1.28 秒）：主角跳上半空、劍指天，星核長大；畫面下方橫過一條特寫帶（主角的臉＋招式名）。
 //   轉（1.28～1.46 秒）：星核往上射出畫面，一顆巨大的星星從天上斜斜砸下；落地瞬間黑白反轉兩拍（衝擊定格）、全場大亮、震動。
@@ -19,7 +19,7 @@ import { FORM_ULTS } from "./ult-forms.js";
 import { drawJunk } from "./boss.js";
 import { sfx } from "./audio.js";
 import * as poisonCloud from "../../pixelfx/src/fx/nature/poison-cloud.js";
-// 使用者 2026-11-05：每個形態不同的大招——星星是這個檔案的「零星墜落」，黏液星、鐵罐星、蝠翼星在 ult-forms.js
+// 使用者 2026-11-05：每個形態不同的大招——星星是這個檔案的「流星墜落」，黏液星、鐵罐星、蝠翼星在 ult-forms.js
 let HK = null, BOUNDS = null;
 /** main.js 開場呼叫一次：大招要用的操作（列出敵人、打怪、鏡頭範圍、黏液灘、回血、灰塵） */
 export function bindUltHooks(h) { HK = h; }
@@ -363,6 +363,6 @@ function showName(on) {
   const el = document.getElementById("ultName");
   if (!el) return;
   el.classList.remove("on");
-  if (on) el.textContent = ult.mod?.name ?? "零星墜落";
+  if (on) el.textContent = ult.mod?.name ?? "流星墜落";
   if (on) setTimeout(() => { if (ult.on) { void el.offsetWidth; el.classList.add("on"); } }, (ult.mod?.cut[0] ?? T.cut0) * 1000);
 }

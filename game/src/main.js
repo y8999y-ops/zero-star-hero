@@ -425,12 +425,12 @@ function drawMedal() {
 }
 buildFormHud();
 
-// ---- 傳說效果：很吵的劍、加班證明
+// ---- 傳說效果：很吵的星核、加班證明
 const NOISY = [
-  ["系統（劍）：拜託你認真打好嗎。給你攻擊 +30%。", { atk: 0.3 }],
-  ["系統（劍）：太慢了啦！攻速 +30%，快點！", { spd: 0.3 }],
-  ["系統（劍）：跑起來！移速 +30%！", { move: 0.3 }],
-  ["系統（劍）：……我不想講話。攻擊 +30%，自己看著辦。", { atk: 0.3 }],
+  ["系統（星核）：拜託你認真打好嗎。給你攻擊 +30%。", { atk: 0.3 }],
+  ["系統（星核）：太慢了啦！攻速 +30%，快點！", { spd: 0.3 }],
+  ["系統（星核）：跑起來！移速 +30%！", { move: 0.3 }],
+  ["系統（星核）：……我不想講話。攻擊 +30%，自己看著辦。", { atk: 0.3 }],
 ];
 let noisyT = 4, combatT = 0, idleT = 0;
 function updateUniques(dt) {
@@ -835,7 +835,7 @@ const world = {
     stats.kills++;
     mythKill();
     questProgress("kill", { kind: e.kind, elite: e.elite });
-    if (stats.kills === 30) toast("系統：……你真的是零星嗎？");
+    if (stats.kills === 30) toast("系統：……三十隻了。你真的只是一塊碎片嗎？");
     if (stats.kills === 100) toast("系統：好啦，我承認你有一點點厲害。");
     if (e.kind === "gold") toast("系統：金幣史萊姆！今晚加菜！");
     const s = player.stats;
@@ -1515,7 +1515,7 @@ function tick(dt) {
   if (input.form) { consume("form"); const c = profile.forms.carry; switchForm(c[(c.indexOf(player.form) + 1) % c.length]); }
   for (let i = 0; i < CARRY_MAX; i++) if (input["form" + (i + 1)]) { consume("form" + (i + 1)); switchForm(profile.forms.carry[i]); }
   ultCd -= dt;
-  if (!ultTipped && ultReady() && stats.kills >= 3 && (STAGE_ID !== "1-1" || director?.ultOK)) { ultTipped = true; teach("ult"); sayQueue.push(["系統：" + tipFor("魔力夠了就能放大招！按【大招】，讓牠們見識一下零星的厲害。", "魔力夠了就能放大招！按【Q】，讓牠們見識一下零星的厲害。"), 2.6, "ult"]); }   // 排隊，不要蓋掉系統正在講的話
+  if (!ultTipped && ultReady() && stats.kills >= 3 && (STAGE_ID !== "1-1" || director?.ultOK)) { ultTipped = true; teach("ult"); sayQueue.push(["系統：" + tipFor("魔力夠了就能放大招！按【大招】，讓牠們見識一下星星的厲害。", "魔力夠了就能放大招！按【Q】，讓牠們見識一下星星的厲害。"), 2.6, "ult"]); }   // 排隊，不要蓋掉系統正在講的話
   if (input.ult && !ultReady() && !ult.on) { consume("ult"); if (player.mp < ULT_MP) world.noMana?.("ult"); }
   if (input.ult && ultReady() && player.state !== "hurt") {
     consume("ult");
@@ -1951,7 +1951,7 @@ function showClear() {
   toast("系統：傳送門開了。走過去按互動，回碎星鎮。", 2.6);
   clearReport = {
     stage: `${STAGE_ID} ${LAYOUTS[STAGE_ID]?.name ?? ""}`, time: `${mm}:${ss}`, kills: stats.kills, best: stats.best, deaths: stats.deaths,
-    say: STAGE_ID === "1-4" ? "第一章　墜星之谷　完。前面就是碎星鎮了。" : stats.deaths === 0 ? "一次都沒死？……我收回「零星」那句話。一半。" : "過是過了。死了幾次這件事我會幫你保密。",
+    say: STAGE_ID === "1-4" ? "第一章　墜星之谷　完。前面就是碎星鎮了。" : stats.deaths === 0 ? "一次都沒死？……好吧，我對你改觀了。一點點。" : "過是過了。死了幾次這件事我會幫你保密。",
     chapter: STAGE_ID === "1-4",
   };
 }

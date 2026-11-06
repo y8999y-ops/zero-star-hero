@@ -35,7 +35,7 @@ function makeOffer(unlocked) {
     const nodeath = Math.random() < 0.35 && stage !== "1-4";
     return { id: qid(), kind: "clear", stage, nodeath, need: 1, have: 0, title: `${stage === "1-4" ? "討伐王" : "探索"}：${LAYOUTS[stage].name}`, desc: `通關 ${stage} ${LAYOUTS[stage].name}${nodeath ? "，而且一次都不能死" : ""}`, reward: { coins: (nodeath ? 120 : 70) + STAGE_ORDER.indexOf(stage) * 40, scrap: 6, xp: 60 + STAGE_ORDER.indexOf(stage) * 30 } };
   }
-  return { id: qid(), kind: "core", need: 1, have: 0, title: "研究：魔物核", desc: "吸收 1 個魔物核（史萊姆、垃圾桶怪、蝙蝠都會掉）", reward: { coins: 90, scrap: 8, xp: 50 } };
+  return { id: qid(), kind: "core", need: 1, have: 0, title: "研究：靈核", desc: "吸收 1 顆魔物的靈核（史萊姆、垃圾桶怪、蝙蝠都會掉）", reward: { coins: 90, scrap: 8, xp: 50 } };
 }
 /** 任務板沒了或要換新時：補到 4 張 */
 export function refreshBoard(Q, unlocked, force = false) {
