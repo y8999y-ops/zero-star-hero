@@ -315,7 +315,39 @@ namespace PixelFX
                 o.c = c(d, ang); o.a = a(d, ang);
             });
         }
-        public void Ring(double cx, double cy, double r, double wd, uint c, double a = 1) => Ring(cx, cy, r, wd, (v, g) => c, (v, g) => a);
+        /// 跟 Shade 一樣，但切成幾條同時算。只能用在 fn 只看自己那一格（不改外面的東西）的地方：每個像素只寫一次，結果一樣
+        public void ShadePar(double x0, double y0, double x1, double y1, ShadeFn fn)
+        {
+            Bounds(x0, y0, x1, y1, out int sx0, out int sx1, out int sy0, out int sy1);
+            if (sx1 < sx0 || sy1 < sy0) return;
+            void Rows(int ya, int yb)
+            {
+                for (int sy = ya; sy <= yb; sy++)
+                    for (int sx = sx0; sx <= sx1; sx++)
+                    {
+                        double px = sx + 0.5, py = sy + 0.5;
+                        var o = new Out { c = 0, a = 1, l = 0, k = 0 };
+                        fn(FromX(px, py), FromY(px, py), ref o);
+                        if (o.c != 0) Put(sx, sy, o.c, o.a);
+                        if (o.k > 0) Add(sx, sy, o.l != 0 ? o.l : o.c, o.k);
+                    }
+            }
+            int n = sy1 - sy0 + 1;
+            if (n * (sx1 - sx0 + 1) < 2000) { Rows(sy0, sy1); return; }
+            const int B = 4; int per = (n + B - 1) / B;
+            System.Threading.Tasks.Parallel.For(0, B, b => { int ya = sy0 + b * per, yb = Math.Min(sy1, ya + per - 1); if (ya <= yb) Rows(ya, yb); });
+        }
+        /// 顏色、透明度固定的環：不用每格算角度和距離（只傳給顏色函式用），切條同時算；畫到的像素一樣
+        public void Ring(double cx, double cy, double r, double wd, uint c, double a = 1)
+        {
+            double r0 = Math.Max(0, r - wd);
+            ShadePar(cx - r, cy - r, cx + r, cy + r, (double x, double y, ref Out o) =>
+            {
+                double dx = x - cx, dy = y - cy, d2 = dx * dx + dy * dy;
+                if (d2 > r * r || d2 < r0 * r0) return;
+                o.c = c; o.a = a;
+            });
+        }
         public void Ring(double cx, double cy, double r, double wd, ColorFn c, AlphaFn a)
         {
             double r0 = Math.Max(0, r - wd);
@@ -396,12 +428,21 @@ namespace PixelFX
             // 跟 Add 一樣的算法，直接寫在迴圈裡（範圍已經夾在畫布內，不用每格再檢查）；大的光暈切成幾條同時算（每個像素只加一次，結果一樣）
             double fl = Fade * LightK; uint cr = c & 255, cg = (c >> 8) & 255, cb = (c >> 16) & 255;
             uint[] Lb = L; int W = w, OX = ox, OY = oy;
+            // 有效半徑：離中心越遠光越弱，弱到 ≤ 0.004 的格子 Add 本來就不加。先算出那個距離（留安全邊界），
+            // 每一列只算那個距離以內的格子（邊界內照原本逐格精確計算，結果一樣）
+            double kf = k * fl;
+            if (kf <= 0.004) return;
+            double fmin = Math.Sqrt(0.004 / kf), rc = 1 - fmin, dcut = rc * rc * (1 + 1e-6) + 1e-9;
             void Rows(int ya, int yb)
             {
                 for (int sy = ya; sy <= yb; sy++)
                 {
                     double dy = (sy + 0.5 - cy) / r; int row = (sy - OY) * W - OX;
-                    for (int sx = x0; sx <= x1; sx++)
+                    double m = dcut - dy * dy;
+                    if (m < 0) continue;
+                    double half = r * Math.Sqrt(m);
+                    int xa = Math.Max(x0, (int)Math.Floor(cx - 0.5 - half) - 1), xb = Math.Min(x1, (int)Math.Ceiling(cx - 0.5 + half) + 1);
+                    for (int sx = xa; sx <= xb; sx++)
                     {
                         double dx = (sx + 0.5 - cx) / r, d = dx * dx + dy * dy;
                         if (d >= 1) continue;
@@ -464,8 +505,13 @@ namespace PixelFX
             if (r < 1 || k <= 0.004) return;
             double ax = ToX(x0, y0), ay = ToY(x0, y0), bx = ToX(x1, y1), by = ToY(x1, y1);
             double dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy; if (L2 == 0) L2 = 1e-9;
-            int X0 = ClipX0((int)Math.Floor(Math.Min(ax, bx) - r)), X1 = ClipX1((int)Math.Ceiling(Math.Max(ax, bx) + r));
-            int Y0 = ClipY0((int)Math.Floor(Math.Min(ay, by) - r)), Y1 = ClipY1((int)Math.Ceiling(Math.Max(ay, by) + r));
+            // 有效半徑：離線越遠光越弱，弱到 ≤ 0.004 的格子本來就不加；範圍只取到那裡（留 1 格邊界，裡面照原本逐格算）
+            double kf = k * Fade * LightK;
+            if (kf <= 0.004) return;
+            double re = r * (1 - Math.Sqrt(0.004 / kf)) + 1;
+            if (re > r) re = r;
+            int X0 = ClipX0((int)Math.Floor(Math.Min(ax, bx) - re)), X1 = ClipX1((int)Math.Ceiling(Math.Max(ax, bx) + re));
+            int Y0 = ClipY0((int)Math.Floor(Math.Min(ay, by) - re)), Y1 = ClipY1((int)Math.Ceiling(Math.Max(ay, by) + re));
             GlowRows(X0, X1, Y0, Y1, c, (sx, sy) =>
             {
                 double px = sx + 0.5, py = sy + 0.5, u = Pf.Clamp(((px - ax) * dx + (py - ay) * dy) / L2);

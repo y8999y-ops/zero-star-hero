@@ -28,6 +28,20 @@ namespace PixelFX
         /// JS Math.hypot（照 V8 的做法：先除以最大值再平方加總，避免溢位）。
         public static double Hypot(double a, double b)
         {
+            {   // 半格座標查表（同上）
+                double ha = a * 2, hb = b * 2;
+                if (ha >= -257 && ha <= 257 && hb >= -257 && hb <= 257 && ha == Math.Floor(ha) && hb == Math.Floor(hb))
+                {
+                    int i = ((int)hb + 257) * 515 + (int)ha + 257;
+                    double v = hypMemo[i];
+                    if (!double.IsNaN(v)) return v;
+                    return hypMemo[i] = HypotCalc(a, b);
+                }
+            }
+            return HypotCalc(a, b);
+        }
+        static double HypotCalc(double a, double b)
+        {
             a = Math.Abs(a); b = Math.Abs(b);
             double max = Math.Max(a, b);
             if (double.IsInfinity(max)) return double.PositiveInfinity;
@@ -45,7 +59,21 @@ namespace PixelFX
         // V8 的超越函數（fdlibm 翻譯，見 PfLibm.cs）：跟網頁版每一位都一樣，不要用 Math.Sin 等。
         public static double Sin(double x) => Fdlibm.Sin(x);
         public static double Cos(double x) => Fdlibm.Cos(x);
-        public static double Atan2(double y, double x) => Fdlibm.Atan2(y, x);
+        /// atan2：座標都落在半格（k＋0.5，-128～128）時查表（算過就記住；同樣的輸入一定是同樣的答案），其他照算
+        public static double Atan2(double y, double x)
+        {
+            double hx = x * 2, hy = y * 2;
+            if (hx != 0 && hy != 0 && hx >= -257 && hx <= 257 && hy >= -257 && hy <= 257 && hx == Math.Floor(hx) && hy == Math.Floor(hy))   // 0 有正負之分（atan2 結果不同），不查表
+            {
+                int i = ((int)hy + 257) * 515 + (int)hx + 257;
+                double v = atanMemo[i];
+                if (!double.IsNaN(v)) return v;
+                return atanMemo[i] = Fdlibm.Atan2(y, x);
+            }
+            return Fdlibm.Atan2(y, x);
+        }
+        static readonly double[] atanMemo = NewMemo(), hypMemo = NewMemo();
+        static double[] NewMemo() { var a = new double[515 * 515]; for (int i = 0; i < a.Length; i++) a[i] = double.NaN; return a; }
         public static double Exp(double x) => Fdlibm.Exp(x);
         public static double Pow(double x, double y) => Fdlibm.Pow(x, y);
         /// JS Math.sign
@@ -79,6 +107,14 @@ namespace PixelFX
             return (uint)h;
         }
         public static double Rand(params int[] ns) => Hash(ns) / 4294967296.0;
+        // 不建陣列的版本（params 每次呼叫都會建一個新陣列，雜訊一格要算很多次）：算法跟上面完全一樣
+        static int Mix1(int h, int n) { unchecked { h = (h ^ n) * (int)0x85ebca6b; h ^= (int)((uint)h >> 13); h *= (int)0xc2b2ae35; h ^= (int)((uint)h >> 16); return h; } }
+        public static uint Hash(int a) => (uint)Mix1(unchecked((int)0x9e3779b9), a);
+        public static uint Hash(int a, int b) => (uint)Mix1(Mix1(unchecked((int)0x9e3779b9), a), b);
+        public static uint Hash(int a, int b, int c) => (uint)Mix1(Mix1(Mix1(unchecked((int)0x9e3779b9), a), b), c);
+        public static double Rand(int a) => Hash(a) / 4294967296.0;
+        public static double Rand(int a, int b) => Hash(a, b) / 4294967296.0;
+        public static double Rand(int a, int b, int c) => Hash(a, b, c) / 4294967296.0;
 
         public static double Noise(double x, int seed = 0)
         {

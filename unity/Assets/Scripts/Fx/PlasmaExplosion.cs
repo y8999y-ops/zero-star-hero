@@ -64,7 +64,7 @@ namespace PixelFX.Fx
                     if (t < BALL)
                     {
                         double u = t / BALL, r = Shell(t), hollow = Smooth(0.35, 1, u), boil = Math.Floor(t * 20);
-                        p.Shade(-r - 3, -r - 3, r + 3, r + 3, (double x, double y, ref Painter.Out o2) =>
+                        p.ShadePar(-r - 3, -r - 3, r + 3, r + 3, (double x, double y, ref Painter.Out o2) =>   // 每格只看自己的位置：切條同時算
                         {
                             double d = Hypot(x, y), a = Atan2(y, x), edge = r * (1 + 0.1 * Noise(a * 3 + boil * 0.7, 3));
                             if (d > edge) return;
