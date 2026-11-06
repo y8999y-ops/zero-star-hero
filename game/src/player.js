@@ -55,9 +55,9 @@ const COMBO_DEF = {
     { mod: swordSlash, wind: 0.6, cancel: 0.22, end: 0.42, dmg: [1.15], reach: 68, back: 16 },
     { mod: heavyCleave, wind: 0.45, cancel: 0.5, end: 0.66, dmg: [2.4], reach: 78, back: 34, launch: true },
   ],
-  // 蝠翼星：七下翼刃，最後一下交叉＋爪痕
+  // 蝠翼星：三下翼刃＋第四下交叉＋爪痕（原本七下、每秒傷害約 6.7，太強；現在約 4.3，仍是最快的形態）
   dagger: [
-    { mod: ATK_BAT.flurry, wind: 0.5, cancel: 0.48, end: 0.6, dmg: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.2], reach: 56, back: 8 },
+    { mod: ATK_BAT.flurry, wind: 0.6, cancel: 0.5, end: 0.62, dmg: [0.55, 0.55, 0.55, 1.3], reach: 56, back: 8 },
   ],
   // 黏液星：黏液鞭兩下（一上一下），第三下兩手一起拍地
   spear: [

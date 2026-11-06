@@ -1,11 +1,12 @@
-// 蝠翼星的普攻：翅膀爪擊。一套七下：紫色新月形的翼刃一上一下交錯劃過（中間白、兩端收尖、劃過去的方向拖一點殘影），
-//   每一下掉一兩片小羽毛（左右飄、慢慢落）；第七下兩片翼刃交叉成 X，加三道爪痕。
+// 蝠翼星的普攻：翅膀爪擊。一套四下（2026-11-06 使用者：七下太多、太快，破壞平衡 → 改四下、間隔拉長）：紫色新月形的翼刃一上一下交錯劃過（中間白、兩端收尖、劃過去的方向拖一點殘影），
+//   每一下掉一兩片小羽毛（左右飄、慢慢落）；第四下兩片翼刃交叉成 X，加三道爪痕。
 // 參考（只學做法）：pixelfx melee/sword-slash（新月刀光：厚的中段、細的兩端、白色前緣）、critters/bat（翅膀的紫色明暗）、
 //   本專案 ult-forms 的「月下夜襲」爪痕（三道平行斜線、中間白）。
 import { fit, ease, clamp, TAU, WHITE } from "../../../pixelfx/src/core/index.js";
 
 const PAL = ["#160c24", "#2e1a4a", "#5c388c", "#8058b8", "#b48ae8", "#e2d0ff", "#ffffff"];
-const HITS = [0.0, 0.06, 0.12, 0.18, 0.24, 0.3, 0.42];
+const HITS = [0.0, 0.11, 0.22, 0.36];
+const LAST = HITS.length - 1;
 
 // 新月：圓心 (cx, cy)、半徑 r、從 a0 劃到 a1；prog＝劃到哪（0～1）、k＝亮度
 function crescent(p, C, cx, cy, r, a0, a1, prog, k) {
@@ -28,14 +29,14 @@ function feather(p, C, x, y, a, seed) {
   p.dot(sx, sy, C[4], k); p.dot(sx + 1, sy, C[3], k); p.dot(sx - 1, sy + 1, C[3], k); p.dot(sx, sy + 1, C[2], k);
 }
 
-export const meta = { name: "Bat wing flurry", desc: "Bat wing flurry", tags: ["melee", "claw", "bat"], size: [150, 90], origin: [40, 70], duration: 0.7, loop: false, fps: 30, bg: "ground", options: { palette: PAL, seed: 1 } };
-export const act = { poses: [[-0.3, {}], [0, {}]], hits: HITS.map((t, i) => ({ t, stop: i === 6 ? 0.12 : 0.04, shake: i === 6 ? 0.2 : 0.08, amp: i === 6 ? 3 : 1, push: i === 6 ? 2.6 : 0.8 })) };
+export const meta = { name: "Bat wing flurry", desc: "Bat wing flurry", tags: ["melee", "claw", "bat"], size: [150, 90], origin: [40, 70], duration: 0.64, loop: false, fps: 30, bg: "ground", options: { palette: PAL, seed: 1 } };
+export const act = { poses: [[-0.3, {}], [0, {}]], hits: HITS.map((t, i) => ({ t, stop: i === LAST ? 0.12 : 0.05, shake: i === LAST ? 0.2 : 0.08, amp: i === LAST ? 3 : 1, push: i === LAST ? 2.6 : 1.2 })) };
 export function draw(p, t, o) {
   const C = fit(o.palette, 7);
   HITS.forEach((ht, i) => {
     const a = t - ht + 0.04; if (a < 0 || a > 0.16) return;
     const prog = ease.outCubic(clamp(a / 0.06, 0, 1)), k = 1 - clamp((a - 0.06) / 0.1, 0, 1);
-    if (i < 6) {
+    if (i < LAST) {
       const up = i % 2 === 0;   // 一上一下交錯
       crescent(p, C, 18, -13, 13 + (i % 3), up ? -2.3 : 2.3, up ? 0.9 : -0.9, prog, k);
     } else {
@@ -43,8 +44,8 @@ export function draw(p, t, o) {
       crescent(p, C, 20, -13, 17, 2.4, -1.0, prog, k);
     }
   });
-  // 第七下：三道爪痕
-  const a7 = t - HITS[6];
+  // 最後一下：三道爪痕
+  const a7 = t - HITS[LAST];
   if (a7 >= 0 && a7 < 0.26) {
     const g = clamp(a7 / 0.05, 0, 1), k = 1 - clamp((a7 - 0.08) / 0.18, 0, 1);
     for (let j = -1; j <= 1; j++) for (let s = -10; s <= -10 + 20 * g; s++) {
