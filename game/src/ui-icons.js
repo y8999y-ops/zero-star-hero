@@ -393,9 +393,9 @@ export const ICON_DEFS = {
     ".QRRRHaHRRST..", "..QRRRHRRRT...", "...QRRRRST....", "....QRRST.....", ".....QST......", "......T.......",
   ] },
   // ---- 傳說（第 6 批重畫，照 pixelfx skill）
-  leg_slipper: { ox: 3, oy: 1, rows: [
-    ".AAAAA....", "ABBBBBC...", "ABBBBBBC..", "ABBBBBBC..", "pApApApq..", "qaqAqAqr..", "ABBBBBBC..", ".ABBBBBC..",
-    "..ABBBC...", "..ABBBC...", "..ABBBC...", "...CCC..G.", ".......GaH",
+  leg_slipper: { ox: 2, oy: 1, rows: [   // 前任冒險者的草鞋（使用者 2026-11-06：拖鞋改草鞋）：金色稻草一列亮一列暗＝編織＋紅褐夾腳繩帶；右上一顆傳說閃光
+    "....HHHH....G", "...IIwwIJ..GaH", "..HHwwwwHJ..G.", "..IwwIIwwJ....", "..wwHHHHww....", "..IIIIIIIJ....",
+    "..HHHHHHHJ....", "...IIIIIJ.....", "...HHHHHJ.....", "...IIIIIJ.....", "...HHHHHJ.....", "..IIIIIIIJ....", "..HHHHHHHJ....", "...JJJJJJ.....",
   ] },
   leg_overtime: { ox: 2, oy: 1, rows: [
     "AAAAAAAAA..", "ABBBBBBBBC.", "ABDDDDDDBC.", "ABBBBBBBBC.", "ABDDDDDBBC.", "ABBBBhhhBC.", "ABDDhBBBhC.",

@@ -380,7 +380,26 @@ const DRAW = {
     ]);
   },
   // ---- 腳：藍白拖（俯視）
-  slipper(p) { slipperShape(p, "y", "Y", "c", "C"); },
+  slipper(p) {
+    // 草編涼鞋（俯視；使用者 2026-11-06：藍白拖改成異世界風格）：稻草鞋底一列亮一列暗＝編織紋（右邊一欄暗＝受光）；
+    //   夾腳繩帶：從腳趾中間往兩側斜下去，深褐色
+    p.art(3, 1, [
+      "...yyyy...",
+      "..YYBBYz..",
+      ".yyBBBByz.",
+      ".YBBYYBBz.",
+      ".BByyyyBB.",
+      ".YYYYYYYz.",
+      ".yyyyyyyz.",
+      "..YYYYYz..",
+      "..yyyyyz..",
+      "..YYYYYz..",
+      "..yyyyyz..",
+      ".YYYYYYYz.",
+      ".yyyyyyyz.",
+      "..zzzzzz..",
+    ]);
+  },
   goldslipper(p) { slipperShape(p, "h", "G", "o", "O"); p.px(5, 4, "w"); },
   boot(p) {
     p.art(3, 1, [
@@ -414,18 +433,20 @@ const DRAW = {
   },
   // ---- 飾品
   pulltab(p) {
-    p.art(3, 1, [
-      "..ssssss..",
-      ".sS....Sd.",
-      ".s......d.",
-      ".sS....Sd.",
-      "..sSSSdd..",
-      "...sSSd...",
-      "..sSddSd..",
-      ".sS....Sd.",
-      ".s......d.",
-      ".sS....Sd.",
-      "..sSSSdd..",
+    // 生鏽的鐵環（取代易開罐拉環）：粗鐵環，左上亮、右下暗，好幾塊橘褐色鏽斑（亮 O、暗 Q）
+    p.art(2, 2, [
+      "....ssSS....",
+      "..wsSSOOdd..",
+      ".wsS....OQd.",
+      ".sS......dd.",
+      "sS........Qd",
+      "sO........QQ",
+      "OO........dd",
+      "SS........dd",
+      ".Sd......Qd.",
+      ".SOO....dQd.",
+      "..dQQddddd..",
+      "....dddd....",
     ]);
   },
   ring(p) {

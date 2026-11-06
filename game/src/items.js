@@ -86,11 +86,11 @@ export const BASES = {
   hands1: { kind: "hands", name: "工作手套", short: "手套", icon: "glove", atk: 3, lv: 1 },
   hands2: { kind: "hands", name: "皮護手", short: "護手", icon: "gauntlet", atk: 5, lv: 5 },
   // 星靴（主屬性隨機）
-  feet1: { kind: "feet", name: "藍白拖", short: "拖鞋", icon: "slipper", lv: 1 },
+  feet1: { kind: "feet", name: "草編涼鞋", short: "涼鞋", icon: "slipper", lv: 1 },
   feet2: { kind: "feet", name: "皮靴", short: "皮靴", icon: "boot", lv: 4 },
   feet3: { kind: "feet", name: "鐵靴", short: "鐵靴", icon: "ironboot", lv: 10 },
   // 碎片（主屬性隨機）
-  acc1: { kind: "acc", name: "易開罐拉環", short: "拉環", icon: "pulltab", lv: 1 },
+  acc1: { kind: "acc", name: "生鏽的鐵環", short: "鐵環", icon: "pulltab", lv: 1 },
   acc2: { kind: "acc", name: "銅戒指", short: "戒指", icon: "ring", lv: 3 },
   acc3: { kind: "acc", name: "舊護身符", short: "護身符", icon: "amulet", lv: 6 },
 };
