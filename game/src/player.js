@@ -2,6 +2,11 @@
 // 外型用 PixelFX 的骨架角色（posed），攻擊動作直接借用近戰特效的 act。
 import { hex } from "../../pixelfx/src/core/index.js";
 import { paintStar, POSES } from "./star.js";
+import * as ATK_STAR from "../fx/attacks/star.js";
+import * as ATK_SLIME from "../fx/attacks/slime.js";
+import * as ATK_BAT from "../fx/attacks/bat.js";
+import * as ATK_CAN from "../fx/attacks/can.js";
+import * as ATK_SPIKE from "../fx/attacks/spike.js";
 import { blit } from "./bake.js";
 import * as swordSlash from "../../pixelfx/src/fx/melee/sword-slash.js";
 import * as doubleSlash from "../../pixelfx/src/fx/melee/double-slash.js";
@@ -35,37 +40,43 @@ export const MP_COST = 25, MP_REGEN = 0.8, COMBO_MP = 10;
 
 // 連段。每一段：特效、前搖壓縮比例、何時可以接下一段、何時結束、各下傷害（攻擊力的倍數）、攻擊範圍。
 // 換形態＝換這一整組（forms.js 的 combo 指到這裡的 key；key 沿用舊的武器名）。
+// 使用者 2026-11-06「每個形態都要獨立設計一個普通攻擊模組」：五個形態各自的招式特效在 game/fx/attacks/（草稿 game/tools/drafts/attacks.mjs）。
+//   key 沿用舊的武器名（forms.js 的 combo）：sword＝星星的星角拳、spear＝黏液星的黏液鞭、dagger＝蝠翼星的翼刃爪擊、hammer＝鐵罐星的蓋子咬、rapier＝尖刺星的刺擊。
+//   wind：前搖壓縮比例（模組的 act.poses 負的時間 × wind）；傷害總量跟舊的連段差不多。
 const COMBO_DEF = {
+  // 星星：左拳、右拳、轉一圈撞出去（兩下）
   sword: [
-    { mod: swordSlash, wind: 0.3, cancel: 0.15, end: 0.34, dmg: [1.3], reach: 58, back: 10 },
-    { mod: doubleSlash, wind: 0.3, cancel: 0.25, end: 0.42, dmg: [0.75, 1.2], reach: 64, back: 10 },
-    { mod: spinSlash, wind: 0.32, cancel: 0.32, end: 0.5, dmg: [2.2], reach: 62, back: 46, launch: true },
+    { mod: ATK_STAR.jabA, wind: 0.6, cancel: 0.13, end: 0.26, dmg: [1.15], reach: 46, back: 8 },
+    { mod: ATK_STAR.jabB, wind: 0.6, cancel: 0.13, end: 0.26, dmg: [1.25], reach: 46, back: 8 },
+    { mod: ATK_STAR.spinRam, wind: 0.6, cancel: 0.3, end: 0.46, dmg: [0.9, 1.6], reach: 52, back: 30, launch: true },
   ],
-  // 大劍：慢、重、範圍大
+  // 大劍：慢、重、範圍大（目前沒有形態用）
   greatsword: [
     { mod: swordSlash, wind: 0.6, cancel: 0.22, end: 0.42, dmg: [1.15], reach: 68, back: 16 },
     { mod: heavyCleave, wind: 0.45, cancel: 0.5, end: 0.66, dmg: [2.4], reach: 78, back: 34, launch: true },
   ],
-  // 雙匕首：一套七連刺，暴擊高
+  // 蝠翼星：七下翼刃，最後一下交叉＋爪痕
   dagger: [
-    { mod: daggerFlurry, wind: 0.35, cancel: 0.44, end: 0.56, dmg: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.2], reach: 54, back: 8 },
+    { mod: ATK_BAT.flurry, wind: 0.5, cancel: 0.48, end: 0.6, dmg: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.2], reach: 56, back: 8 },
   ],
-  // 長槍：距離長，最後一下大範圍橫掃
+  // 黏液星：黏液鞭兩下（一上一下），第三下兩手一起拍地
   spear: [
-    { mod: thrust, wind: 0.3, cancel: 0.16, end: 0.32, dmg: [1.25], reach: 92, back: 0 },
-    { mod: thrust, wind: 0.25, cancel: 0.16, end: 0.32, dmg: [1.25], reach: 92, back: 0 },
-    { mod: spearSweep, wind: 0.35, cancel: 0.3, end: 0.5, dmg: [2.1], reach: 84, back: 70, launch: true },
+    { mod: ATK_SLIME.whipA, wind: 0.6, cancel: 0.17, end: 0.32, dmg: [1.25], reach: 92, back: 0 },
+    { mod: ATK_SLIME.whipB, wind: 0.6, cancel: 0.17, end: 0.32, dmg: [1.25], reach: 92, back: 0 },
+    { mod: ATK_SLIME.whipSlam, wind: 0.6, cancel: 0.3, end: 0.5, dmg: [2.1], reach: 88, back: 20, launch: true },
   ],
-  // 尖刺星（第二章）：細劍式的快速突刺，三下短刺＋一下長刺擊飛
+  // 尖刺星：三下短刺＋一下全身的刺扇形炸開
   rapier: [
-    { mod: thrust, wind: 0.18, cancel: 0.11, end: 0.22, dmg: [0.8], reach: 64, back: 0 },
-    { mod: thrust, wind: 0.16, cancel: 0.11, end: 0.22, dmg: [0.8], reach: 64, back: 0 },
-    { mod: thrust, wind: 0.16, cancel: 0.11, end: 0.22, dmg: [0.85], reach: 66, back: 0 },
-    { mod: thrust, wind: 0.32, cancel: 0.28, end: 0.42, dmg: [1.9], reach: 80, back: 0, launch: true },
+    { mod: ATK_SPIKE.stabA, wind: 0.6, cancel: 0.11, end: 0.22, dmg: [0.8], reach: 66, back: 0 },
+    { mod: ATK_SPIKE.stabB, wind: 0.6, cancel: 0.11, end: 0.22, dmg: [0.8], reach: 66, back: 0 },
+    { mod: ATK_SPIKE.stabC, wind: 0.6, cancel: 0.11, end: 0.22, dmg: [0.85], reach: 68, back: 0 },
+    { mod: ATK_SPIKE.spikeFan, wind: 0.6, cancel: 0.28, end: 0.42, dmg: [1.9], reach: 80, back: 0, launch: true },
   ],
-  // 大錘：一下砸地，全部擊飛
+  // 鐵罐星：蓋子咬兩下，第三下跳起來砸地（全部擊飛）
   hammer: [
-    { mod: hammerSmash, wind: 0.4, cancel: 0.42, end: 0.62, dmg: [2.5], reach: 74, back: 36, launch: true, big: true },
+    { mod: ATK_CAN.biteA, wind: 0.6, cancel: 0.22, end: 0.36, dmg: [1.2], reach: 56, back: 8 },
+    { mod: ATK_CAN.biteB, wind: 0.6, cancel: 0.22, end: 0.36, dmg: [1.3], reach: 56, back: 8 },
+    { mod: ATK_CAN.smashDown, wind: 0.5, cancel: 0.42, end: 0.62, dmg: [2.5], reach: 72, back: 32, launch: true, big: true },
   ],
 };
 const comboCache = {};
