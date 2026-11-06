@@ -1062,7 +1062,7 @@ async function guild(name) {
   if (!G.registered) {
     await talk(name, ["歡迎來到冒險者公會碎星鎮分部。我是櫃檯的波波。", "要登記冒險者嗎？請在這裡填寫……種族？"]);
     await talk("系統", ["填「發光的五角形」應該就好。"]);
-    await talk(name, ["……好的，星星族。", "這是你的冒險者證，等級 F。完成任務就會升級喔。", "（推眼鏡）別擔心，大家一開始都是 F。……大部分的人啦。"]);
+    await talk(name, ["……好的，星靈。", "這是你的冒險者證，等級 F。完成任務就會升級喔。", "（推眼鏡）別擔心，大家一開始都是 F。……大部分的人啦。"]);
     G.registered = true;
     save(profile, true);
   }
@@ -1085,7 +1085,7 @@ const INN_CHAT = [
   "野外的史萊姆會咬人？哎呀，我家隔壁的史萊姆很乖的。是那些碎片害的啦。",
   "岩叔看起來很兇，其實他會偷偷幫小孩修玩具喔。",
   "波波每天都推眼鏡推一千次。我數過。",
-  "你是星星族？那你晚上會發光嗎？省電耶。",
+  "你是星靈？那你晚上會發光嗎？省電耶。",
 ];
 async function inn(name) {
   const v = await ask(name, "哎呀，歡迎光臨～要休息還是吃點東西？", [["休息、料理", "open"], ["聊天", "chat"], ["不用了", null]]);
@@ -1922,7 +1922,7 @@ async function startOrIntro() {
   introOn = false;
   profile.seenIntro = true;
   save(profile, true);
-  // 開場已經講過「轉生成功、種族星星」，1-1 一開始改講別的
+  // 開場已經講過「轉生成功、種族星靈」，1-1 一開始改講別的
   STAGE.intro = [];   // 使用者 2026-11-06：直接接第一句教學（走路），不要多一句擋在前面
   const fade = $("fade");
   fade.style.transition = "none"; fade.classList.add("on");
