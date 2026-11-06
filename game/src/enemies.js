@@ -3,14 +3,16 @@
 import { rand } from "../../pixelfx/src/core/index.js";
 import { hitFx, damageFx } from "./combatfx.js";
 import { sfx } from "./audio.js";
-import { spawn } from "./fx.js";
+import { spawn, juice } from "./fx.js";
 import * as hitSpark from "../../pixelfx/src/fx/impacts/hit-spark.js";
 // 特效補強 7：一次打死一群時，死亡煙霧疊成一大片、把主角和怪都蓋住 → 煙播快一點（1.5 倍）；0.35 秒內、70px 內已經冒過兩團，後面的改成往上噴的小火花
 //   （草稿 game/tools/drafts/poofcrowd.mjs：6 隻同時死，被蓋住的像素最高 4022 → 1988、1.3 秒 → 0.9 秒散完；試過收集光爆，4 個白圓環疊在一起像泡泡，不用）
 let recentPoofs = [];
 const POOF_SPARK = { slime: ["#0b2f2b", "#12594a", "#1f8f4f", "#47c752", "#a6f06a", "#f0ffd2", "#ffffff"], gold: ["#4a2e06", "#8c5a0c", "#d49a14", "#ffd23a", "#fff09a", "#ffffff", "#ffffff"], bat: ["#1f1629", "#382645", "#5b3f66", "#866089", "#b88fb0", "#e8cfe0", "#ffffff"], trash: ["#1f272c", "#313d42", "#485a5c", "#667a78", "#8ea29c", "#c4d4cc", "#ffffff"] };
 import { flash } from "./light.js";
-import { blit } from "./bake.js";
+import { blitScaled } from "./bake.js";
+// 使用者 2026-11-06 打擊感：被打的那一下壓扁（變寬變矮）→ 彈回來拉長一點 → 回原狀；命中停頓的時候被打的那隻原地左右抖
+const SQ_T = 0.18;
 import { A } from "./assets.js";
 import { FLOOR, LEVEL_W, WALL } from "./level.js";
 import { groundAt, floorAt, moveX, geo } from "./map.js";
@@ -58,6 +60,7 @@ export class Enemy {
     this.clock += dt;
     dt *= slowOf(this);   // 黏液：動作、移動都變慢
     this.flash -= dt;
+    if (this.sqT > 0) this.sqT -= dt;
     const stunned = this.stun > 0;
     this.stun -= dt;
     if (!stunned) this.t += dt;   // 硬直時動畫停住
@@ -150,7 +153,11 @@ export class Enemy {
     this.x = Math.max(9, Math.min(geo.w - 9, nx));
     this.y += this.vy * dt;
     const g = this.vy >= 0 ? groundAt(this.x, prevY, this.y) : null;
-    if (g !== null) { this.y = g; this.vy = 0; }
+    if (g !== null) {
+      // 被打飛的落地彈一下、冒點灰（使用者 2026-11-06 打擊感）
+      if (this.flungUp && this.vy > 140) { this.flungUp = false; this.y = g; this.vy = -this.vy * 0.32; this.vx *= 0.6; this.sqT = SQ_T * 0.7; this.world?.dust?.(this.x, g, 4); return; }
+      this.flungUp = false; this.y = g; this.vy = 0;
+    }
     if (this.y > geo.h + 40) { this.y = floorAt(this.x, 0); this.vy = 0; }   // 掉出地圖：放回最上面的地面
   }
 
@@ -162,9 +169,10 @@ export class Enemy {
     const d = Math.max(1, Math.round(dmg * (0.9 + Math.random() * 0.2)));
     this.hp -= d;
     this.flash = 0.07;
+    this.sqT = SQ_T;
     this.stun = this.kind === "gold" ? 0.1 : 0.3;
     this.vx = dir * push * (this.k.fly ? 55 : 42);
-    if (launch || crit) this.vy = this.k.fly ? -120 : -230;
+    if (launch || crit) { this.vy = this.k.fly ? -120 : -230; this.flungUp = !this.k.fly; }
     const b = this.box(), cy = Math.round((b.y0 + b.y1) / 2);
     // 重擊：最後一段／擊飛、爆擊、推得遠的（技能、衝撞）。輕擊的光和火花都收小
     const heavy = launch || crit || push >= 3;
@@ -204,9 +212,17 @@ export class Enemy {
 
   draw(frame) {
     const snap = statusSnap(frame, this);   // 有元素狀態：先記下這塊畫面，畫完比對出身體的形狀（status.js）
+    // 受擊變形：前 40% 壓扁（寬 1.18、高 0.85），之後彈回、拉長一點、停住
+    let sx = 1, sy = 1, jx = 0;
+    if (this.sqT > 0) {
+      const p = 1 - this.sqT / SQ_T;
+      if (p < 0.4) { sx = 1.18; sy = 0.85; }
+      else { const q = (p - 0.4) / 0.6, w = Math.sin(q * Math.PI) * (1 - q); sx = 1 - 0.14 * w; sy = 1 + 0.16 * w; }
+    }
+    if (juice.freeze > 0 && this.flash > 0) jx = Math.floor(performance.now() / 34) % 2 ? 1 : -1;   // 停頓中原地抖
     // 受擊閃白
-    if (this.biting) blit(frame, this.flash > 0 ? this.k.whiteBite : this.k.bite, this.biteT, this.x, this.y, this.face < 0);
-    else blit(frame, this.flash > 0 ? this.k.white : this.k.anim, this.t, this.x, this.y, this.face < 0);
+    if (this.biting) blitScaled(frame, this.flash > 0 ? this.k.whiteBite : this.k.bite, this.biteT, this.x + jx, this.y, this.face < 0, sx, sy);
+    else blitScaled(frame, this.flash > 0 ? this.k.white : this.k.anim, this.t, this.x + jx, this.y, this.face < 0, sx, sy);
     drawStatus(frame, this, snap);
     if (this.alertT !== undefined && this.alertT < ALERT_T && !this.dead) drawAlert(frame, this.x, this.box().y0 - 3, this.alertT, this.elite);
   }

@@ -4,6 +4,8 @@
 // 第一次有聲音前要有使用者操作（按「點擊開始」時呼叫 unlock）。音量存在 localStorage（讀不到就用預設）。
 const KEY = "zero-hero-audio";
 export const vol = { music: 0.55, sfx: 0.8, mute: false };
+// 使用者 2026-11-06 打擊感：連擊越高，打中的聲音越高（main.js 每格依連擊數設定；每 5 連擊升半音，最多升 8 個半音）
+export const hitTune = { k: 1 };
 try { Object.assign(vol, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch {}
 
 let ctx = null, master, sfxBus, musicBus, noiseBuf = null;
@@ -96,8 +98,8 @@ const S = {
   land: (hard) => { hiss({ dur: hard ? 0.12 : 0.07, vol: hard ? 0.26 : 0.14, f0: 900, f1: 300 }); if (hard) tone({ wave: "tri", f0: 120, f1: 55, dur: 0.1, vol: 0.3 }); },
   dash: () => hiss({ dur: 0.16, vol: 0.2, type: "bandpass", f0: 900, f1: 3200, q: 1.4 }),
   swing: (form) => form === "can" ? tone({ wave: "sq50", f0: 900 * rnd(), f1: 700, dur: 0.06, vol: 0.07 }) : hiss({ dur: 0.07, vol: form === "slime" ? 0.1 : 0.12, type: form === "slime" ? "lowpass" : "highpass", f0: form === "slime" ? 1400 : 2600, f1: form === "slime" ? 500 : 5000 }),
-  hitL: () => { tone({ wave: "sq25", f0: 230 * rnd(0.08), f1: 120, dur: 0.06, vol: 0.2 }); hiss({ dur: 0.04, vol: 0.12, f0: 3000 }); },
-  hitH: () => { tone({ wave: "saw", f0: 170 * rnd(), f1: 55, dur: 0.15, vol: 0.26, lp: 1800 }); hiss({ dur: 0.12, vol: 0.28, f0: 1800, f1: 400 }); },
+  hitL: () => { const k = hitTune.k; tone({ wave: "sq25", f0: 230 * k * rnd(0.08), f1: 120 * k, dur: 0.06, vol: 0.2 }); hiss({ dur: 0.04, vol: 0.12, f0: 3000 * k }); },
+  hitH: () => { const k = hitTune.k; tone({ wave: "saw", f0: 170 * k * rnd(), f1: 55 * k, dur: 0.15, vol: 0.26, lp: 1800 }); hiss({ dur: 0.12, vol: 0.28, f0: 1800 * k, f1: 400 }); },
   crit: () => { S.hitH(); tone({ wave: "tri", f0: 1320, f1: 1760, dur: 0.12, vol: 0.18, at: 0.01 }); },
   kill: () => { tone({ wave: "sq25", f0: 620 * rnd(), f1: 90, dur: 0.2, vol: 0.18 }); hiss({ dur: 0.12, vol: 0.14, f0: 2400, f1: 600 }); },
   hurt: () => { tone({ wave: "saw", f0: 320, f1: 90, dur: 0.22, vol: 0.24, vib: [30, 30], lp: 2400 }); hiss({ dur: 0.08, vol: 0.18, f0: 1200 }); },

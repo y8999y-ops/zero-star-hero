@@ -76,6 +76,39 @@ export function blit(frame, anim, t, x, y, flip = false, alpha = 1) {
   }
 }
 
+/** 跟 blit 一樣，但以原點（腳底）為中心縮放：sx > 1 變寬、sy < 1 變矮（受擊壓扁用）。最近鄰取樣，像素維持方正。 */
+export function blitScaled(frame, anim, t, x, y, flip = false, sx = 1, sy = 1) {
+  if (sx === 1 && sy === 1) return blit(frame, anim, t, x, y, flip);
+  const n = anim.frames.length;
+  let i = Math.floor(t * anim.fps);
+  i = anim.loop ? ((i % n) + n) % n : Math.min(n - 1, Math.max(0, i));
+  const s = anim.frames[i];
+  if (!s.w) return;
+  const W = frame.w, H = frame.h, C = frame.color, L = frame.light;
+  const bx = Math.round(x) - (frame.ox | 0), by = Math.round(y) - (frame.oy | 0);
+  const x0 = Math.floor(s.lx * sx), x1 = Math.ceil((s.lx + s.w) * sx), y0 = Math.floor(s.ly * sy), y1 = Math.ceil((s.ly + s.h) * sy);
+  for (let dy = y0; dy < y1; dy++) {
+    const py = by + dy, yy = Math.floor((dy + 0.5) / sy) - s.ly;
+    if (py < 0 || py >= H || yy < 0 || yy >= s.h) continue;
+    for (let dx = x0; dx < x1; dx++) {
+      const xx = Math.floor((dx + 0.5) / sx) - s.lx;
+      if (xx < 0 || xx >= s.w) continue;
+      const px = flip ? bx - dx - 1 : bx + dx;
+      if (px < 0 || px >= W) continue;
+      const k = yy * s.w + xx, c = s.color[k], j = py * W + px;
+      if (c) {
+        const a = c >>> 24;
+        if (a === 255) C[j] = c;
+        else { const d = C[j], q = a / 255, m = 1 - q; C[j] = (255 << 24) | ((((c >>> 16) & 255) * q + ((d >>> 16) & 255) * m) << 16) | ((((c >>> 8) & 255) * q + ((d >>> 8) & 255) * m) << 8) | (((c & 255) * q + (d & 255) * m) | 0); }
+      }
+      if (s.light && s.light[k]) {
+        const l = s.light[k], d = L[j];
+        L[j] = (255 << 24) | (Math.min(255, ((d >>> 16) & 255) + ((l >>> 16) & 255)) << 16) | (Math.min(255, ((d >>> 8) & 255) + ((l >>> 8) & 255)) << 8) | Math.min(255, (d & 255) + (l & 255));
+      }
+    }
+  }
+}
+
 /** 烘焙動畫的播放器，介面跟 PixelFX 的 createFx 一樣，可以直接丟進特效管理。 */
 export function play(anim, o = {}) {
   let t = 0, stopAt = Infinity;

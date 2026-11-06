@@ -52,7 +52,7 @@ import { createProps } from "./props.js";
 import { createScenery } from "./scenery.js";
 import { Boss, prepareBoss } from "./boss.js";
 import { createComboArt } from "./combo-art.js";
-import { unlock as unlockAudio, sfx, music, jingle, vol as audioVol, setVolume } from "./audio.js";
+import { unlock as unlockAudio, sfx, music, jingle, vol as audioVol, setVolume, hitTune } from "./audio.js";
 import { fxState, dustFx, updateCombatFx, drawCombatFx, drawDamageNumbers } from "./combatfx.js";
 import { PLATFORMS } from "./level.js";
 import { ELEM, setStatusContext, updateStatus, drawBolts, REACTION, applyStatus, setStatusAllow } from "./status.js";
@@ -833,6 +833,10 @@ const world = {
   },
   onKill(e) {
     stats.kills++;
+    // 使用者 2026-11-06 打擊感：擊殺的最後一下停久一點；打倒菁英、或清掉這一波的最後一隻 → 0.45 秒慢動作
+    if (e.sqT > 0) hitStop(0.08);   // 直接打死的才停（燒死、毒死不停，不然會像卡頓）
+    const lastOne = director?.lock && director.wave >= director.waves.length && stageApi.alive(director.lock) === 0;
+    if (e.elite || lastOne) { hitStop(0.11); slowT = Math.max(slowT, 0.45); }
     mythKill();
     questProgress("kill", { kind: e.kind, elite: e.elite });
     if (stats.kills === 30) toast("系統：……三十隻了。你真的只是一塊碎片嗎？");
@@ -1670,6 +1674,7 @@ function tick(dt) {
 
   updateFx(dt);
   if ((stats.comboT -= dt) <= 0 && stats.combo) stats.combo = 0;
+  hitTune.k = 2 ** (Math.min(8, Math.floor(stats.combo / 5)) / 12);   // 連擊越高打擊音越高
 
   followCam(dt);
   { const v = viewRect(); mapView?.update(dt, camX + v.x0, camY + v.y0, v.w, v.h); }   // 小地圖：看得到的範圍才算走過

@@ -411,7 +411,9 @@ export class Player {
       }
       if (n) {
         hitStop(Math.min(s.big ? 0.14 : 0.11, (h.stop ?? 0.06) * (n > 3 ? 0.7 : 1)));
-        shake(h.shake ?? 0.15, Math.min(s.big ? 4 : 3, (h.amp ?? 2) + (n > 4 ? 1 : 0)));
+        // 使用者 2026-11-06 打擊感：震動往打的方向頓一下；輕擊只頓 1 格，重擊（收招、爆擊、大招式）才明顯
+        if (fin || a.crit || s.big) shake(0.2, Math.min(s.big ? 4 : 3, (h.amp ?? 2) + 1 + (n > 4 ? 1 : 0)), true, d);
+        else shake(0.1, 2, false, d);
       } else if (s.big) shake(0.2, 2);   // 大錘砸空也要震
     }
     if (a.time >= s.end) { this.state = "move"; this.atk = null; }

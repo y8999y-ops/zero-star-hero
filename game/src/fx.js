@@ -36,19 +36,26 @@ export function drawFx(frame, layer) {
 export const fxCount = () => list.length;
 
 // ---- 命中停頓與震動
-export const juice = { freeze: 0, shakeT: 0, shake0: 0, amp: 0 };
+export const juice = { freeze: 0, shakeT: 0, shake0: 0, amp: 0, dir: 0 };
 export function hitStop(sec) {
   juice.freeze = Math.max(juice.freeze, sec);
 }
-export function shake(sec, amp, keep = false) {   // keep：王的吼叫、大招這類大震動不減半
+// dir（使用者 2026-11-06 打擊感）：±1＝有方向的震——往打的方向「頓」一下再彈回來（像被衝擊推了一下），不亂晃；0＝原本的隨機晃（王吼、爆炸）
+export function shake(sec, amp, keep = false, dir = 0) {   // keep：王的吼叫、大招這類大震動不減半
   if (amp < 4 && !keep) amp *= 0.5;   // 使用者 2026-11-05「鏡頭太晃」：一般打擊的震動減半，只留大招、王戰的大震動
   if (amp >= juice.amp * (juice.shakeT / (juice.shake0 || 1))) {
     juice.shakeT = juice.shake0 = sec;
     juice.amp = amp;
+    juice.dir = dir;
   }
 }
 export function shakeOffset() {
   if (juice.shakeT <= 0) return [0, 0];
+  if (juice.dir) {
+    // 0 → 1：一開始推到最遠，然後彈回去、過頭一點點、停住（衰減的半個多來回）
+    const p = 1 - juice.shakeT / juice.shake0, v = Math.cos(p * Math.PI * 2.2) * (1 - p) * (1 - p);
+    return [Math.round(juice.dir * juice.amp * v), Math.round(Math.abs(v) * juice.amp * 0.3)];
+  }
   const k = juice.amp * (juice.shakeT / juice.shake0), f = Math.floor(juice.shakeT * 60);
   return [Math.round(Math.sin(f * 2.4) * k), Math.round(Math.cos(f * 3.7) * k * 0.7)];
 }
