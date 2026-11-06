@@ -1426,7 +1426,7 @@ function tick(dt) {
   if (juice.shakeT > 0) juice.shakeT -= dt;
   if (juice.freeze > 0) { juice.freeze -= dt; return; }   // 命中停頓：整個世界停住
   // 使用者 2026-11-06「主線完成的提示要等我跳出頁面才跳出來」：視窗開著時遊戲暫停，但系統的話照樣播
-  if (!started || inv.open || introOn || isWinOpen() || mapView?.open) { if (started && !introOn) updateSay(STEP); return; }
+  if (!started || inv.open || introOn || isWinOpen() || mapView?.open || !$("setPanel").classList.contains("hidden")) { if (started && !introOn) updateSay(STEP); return; }
   updateCombatFx(dt);
   if (TOWN) { townTick(dt); return; }
 
@@ -1912,6 +1912,17 @@ $("btnGoHome").addEventListener("click", async (e) => {
   s.addEventListener("input", () => { setVolume("sfx", s.value / 100); sync(); sfx("coin"); });
   mute.addEventListener("click", () => { setVolume("mute", !audioVol.mute); sync(); sfx("ui"); });
   for (const el of [panel, $("btnSet")]) el.addEventListener("pointerdown", (e) => e.stopPropagation());
+  // 使用者 2026-11-06：設定開著＝遊戲暫停（tick 裡擋掉）；點設定框外面任何地方就關掉（這一下不會變成攻擊或移動）
+  addEventListener("pointerdown", (e) => {
+    if (panel.classList.contains("hidden") || panel.contains(e.target) || $("btnSet").contains(e.target) || $("soundBtn").contains(e.target)) return;
+    if (e.target.closest?.(".win-box, #dlg, #worldWin")) return;   // 設定裡開出來的確認框
+    e.stopPropagation(); e.preventDefault();
+    panel.classList.add("hidden"); sfx("close");
+    // 接著來的 click 也吃掉（不然點到底下的按鈕會順便按下去）
+    const eat = (c) => { c.stopPropagation(); c.preventDefault(); };
+    addEventListener("click", eat, { capture: true, once: true });
+    setTimeout(() => removeEventListener("click", eat, true), 400);
+  }, true);
 }
 $("bagBtn2").addEventListener("click", () => inv.show());
 $("btnBag").addEventListener("click", () => inv.show("invBag"));
