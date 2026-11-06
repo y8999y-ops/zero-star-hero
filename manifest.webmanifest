@@ -1,0 +1,14 @@
+{
+  "name": "轉生成星星碎片的我，靠吸收魔物變成最強",
+  "short_name": "零星勇者",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0d0b14",
+  "theme_color": "#0d0b14",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

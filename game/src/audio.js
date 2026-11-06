@@ -12,7 +12,11 @@ export function unlock() {
   try {
     if (!ctx) {
       ctx = new (window.AudioContext || window.webkitAudioContext)();
-      master = ctx.createGain(); master.connect(ctx.destination);
+      // 使用者 2026-11-06：音樂再大一倍——總輸出前面加一個壓縮器當限幅，大聲的地方不會破音
+      const lim = ctx.createDynamicsCompressor();
+      lim.threshold.value = -6; lim.knee.value = 6; lim.ratio.value = 12; lim.attack.value = 0.003; lim.release.value = 0.2;
+      lim.connect(ctx.destination);
+      master = ctx.createGain(); master.connect(lim);
       sfxBus = ctx.createGain(); sfxBus.connect(master);
       musicBus = ctx.createGain(); musicBus.connect(master);
       applyVolume();
@@ -29,7 +33,7 @@ function applyVolume() {
   if (!ctx) return;
   master.gain.value = vol.mute ? 0 : 1;
   sfxBus.gain.value = vol.sfx * 0.9;
-  musicBus.gain.value = vol.music * 1.25;   // 使用者 2026-11-05「只聽得到音效」：原本 0.5，音樂比音效小約 10 倍 → 拉到 2.5 倍
+  musicBus.gain.value = vol.music * 2.5;   // 使用者 2026-11-05「只聽得到音效」：0.5 → 1.25；使用者 2026-11-06：再調高 100% → 2.5
 }
 // 方波的佔空比（NES 的 12.5%、25%、50%）：用傅立葉係數做出 PeriodicWave
 function pulse(duty) {

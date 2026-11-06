@@ -6,6 +6,9 @@
 <meta name="theme-color" content="#0d0b14">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>轉生成星星碎片的我，靠吸收魔物變成最強</title>
 <style>
   /* 外框頁：遊戲放在 iframe 裡。換場景只重新載入 iframe，全螢幕跟橫向鎖定留在這一層，不會被跳出來 */
@@ -13,9 +16,17 @@
   iframe { position: fixed; border: 0; display: block;
     top: env(safe-area-inset-top); right: env(safe-area-inset-right); bottom: env(safe-area-inset-bottom); left: env(safe-area-inset-left);
     width: calc(100% - env(safe-area-inset-left) - env(safe-area-inset-right)); height: calc(100% - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+  /* 使用者 2026-11-06：切到後台再切回來，瀏覽器會退出全螢幕（而且一定要點一下才能再進去）→ 蓋一層「點一下回到全螢幕」 */
+  #refull { position: fixed; inset: 0; z-index: 9; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    background: rgba(13, 11, 20, .82); color: #ffe27a; font: 900 20px/1.4 system-ui, sans-serif; letter-spacing: 3px; text-align: center; -webkit-user-select: none; user-select: none; }
+  #refull.on { display: flex; }
+  #refull .tap { padding: 14px 28px; border: 3px solid #ffd84a; border-radius: 8px; background: #2a1c08; box-shadow: 0 0 18px rgba(255, 216, 74, .6); animation: rf 1.2s ease-in-out infinite; }
+  #refull .no { font-size: 13px; color: #a89cc0; letter-spacing: 1px; padding: 8px 14px; }
+  @keyframes rf { 50% { transform: scale(1.05); box-shadow: 0 0 28px rgba(255, 216, 74, .9); } }
 </style>
 </head>
 <body>
+<div id="refull"><div class="tap">點一下回到全螢幕</div><div class="no">不用了</div></div>
 <iframe id="game" allow="fullscreen; autoplay" title="轉生成星星碎片的我，靠吸收魔物變成最強"></iframe>
 <script>
   // 網址上的開發用參數（?stage=1-4）照樣傳給遊戲
@@ -24,10 +35,19 @@
   f.addEventListener("load", () => f.focus());
   addEventListener("pointerdown", () => f.focus());
   // 遊戲請外框頁開全螢幕（全螢幕由這一頁持有，換場景重新載入 iframe 時不會被退出）
+  const goFull = () => { if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().then(() => screen.orientation?.lock?.("landscape")).catch(() => {}); };
   addEventListener("message", (e) => {
     if (e.origin !== location.origin || e.data?.type !== "zero-hero-fullscreen") return;
-    if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().then(() => screen.orientation?.lock?.("landscape")).catch(() => {});
+    goFull();
   });
+  // 切到後台再回來：原本是全螢幕、現在不是了 → 請玩家點一下（瀏覽器規定要有點擊才能進全螢幕）
+  let wantFull = false;
+  const refull = document.getElementById("refull");
+  const check = () => refull.classList.toggle("on", wantFull && !document.fullscreenElement && document.visibilityState === "visible");
+  document.addEventListener("fullscreenchange", () => { if (document.fullscreenElement) wantFull = true; setTimeout(check, 300); });
+  document.addEventListener("visibilitychange", () => setTimeout(check, 300));
+  refull.querySelector(".tap").addEventListener("pointerdown", (e) => { e.preventDefault(); refull.classList.remove("on"); goFull(); f.focus(); });
+  refull.querySelector(".no").addEventListener("pointerdown", (e) => { e.preventDefault(); wantFull = false; refull.classList.remove("on"); f.focus(); });
 </script>
 </body>
 </html>
