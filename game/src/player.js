@@ -25,6 +25,9 @@ const RUN = 128, ACC_GROUND = 1500, ACC_AIR = 950, GRAV = 1000, MAX_FALL = 430;
 const JUMP_V = -335, JUMP2_V = -295, COYOTE = 0.15;   // 郊狼時間（走出平台邊緣後還能起跳的時間）：使用者 2026-11-05 要好跳一點，0.08 → 0.15 秒
 const DASH_T = 0.19, DASH_V = 345, DASH_CD = 0.32;
 const SKILL_CD = 1.1;
+const ATK_BUF = 0.15;   // 攻擊輸入緩衝（秒）
+// 使用者 2026-11-06 手感：跳到最高點附近（上下速度 < APEX_V）重力減半＝在空中停一下；往下掉重力 ×FALL_K＝下落比上升快、不飄
+const APEX_V = 50, FALL_K = 1.15;
 // 魔力（使用者 2026-11-05：技能改成消耗魔力，冷卻保留）：每次技能 25，每秒回 8；最大魔力基礎 100，星之殘火加上限
 // 使用者 2026-11-05：魔力自然回復降到原本的 10%（8 → 0.8／秒），主要靠連擊補（main.js addCombo：每 10 連擊 +COMBO_MP）
 export const MP_COST = 25, MP_REGEN = 0.8, COMBO_MP = 10;
@@ -201,7 +204,9 @@ export class Player {
       const mt = this.core("meteor");
       if (mt && this.meteorT >= mt) { this.meteorT = 0; world.coreMeteor?.(); }
     }
-    if (input.attack && (this.state === "move" || (this.state === "attack" && this.atk.time >= this.atk.s.cancel))) this.startAttack(world);
+    // 使用者 2026-11-06 手感：攻擊輸入緩衝——快速點一下時剛好還不能接下一段，這一下記住 0.15 秒，能接的時候自動出
+    if (input.attack) this.atkBuf = ATK_BUF; else this.atkBuf = (this.atkBuf ?? 0) - dt;
+    if (this.atkBuf > 0 && (this.state === "move" || (this.state === "attack" && this.atk.time >= this.atk.s.cancel))) { this.atkBuf = input.attack ? ATK_BUF : 0; this.startAttack(world); }
     if ((this.buff.t -= dt) <= 0) Object.assign(this.buff, { atk: 0, spd: 0, move: 0 });
     // 形態被動「黏液再生」：黏液星每秒回復 (0.9＋0.1×級)% 生命（1 級 1%、10 級 1.9%）
     if (this.form === "slime" && this.hp > 0 && this.hp < this.maxHp) { const pr = rank("slime", "p_slime"); if (pr) this.hp = Math.min(this.maxHp, this.hp + this.maxHp * (0.009 + 0.001 * pr) * dt); }
@@ -307,7 +312,8 @@ export class Player {
       const gliding = bat && input.jumpHeld && this.state === "move" && !this.grounded && this.vy > 0;
       const cap = gliding ? (this.kingT > 0 ? 0 : GLIDE_FALL) : MAX_FALL;   // 星王化＋蝠翼星：滑翔不會往下掉
       if (gliding) world.onGlide?.(dt);   // 技能樹「蝙蝠群」
-      this.vy = Math.min(cap, this.vy + g * dt);
+      const g2 = this.state === "move" && !this.grounded && !gliding && !(this.boostT > 0) ? (Math.abs(this.vy) < APEX_V && input.jumpHeld ? g * 0.5 : this.vy > 0 ? g * FALL_K : g) : g;
+      this.vy = Math.min(cap, this.vy + g2 * dt);
     }
     const prevY = this.y;
     // 8b：撞牆、撞天花板（map.js）。身高 24、半寬 7
@@ -315,11 +321,19 @@ export class Player {
     if (nx !== this.x + this.vx * dt && this.state !== "dash") this.vx = 0;
     this.x = Math.max(7, Math.min(geo.w - 7, nx));
     this.y += this.vy * dt;
-    if (this.vy < 0) { const cy = ceilingAt(this.x, prevY, this.y, 24); if (cy !== null) { this.y = cy; this.vy = 0; } }
+    if (this.vy < 0) {
+      let cy = ceilingAt(this.x, prevY, this.y, 24);
+      // 使用者 2026-11-06 手感：撞頭修正——頭只擦到平台邊角（3px 以內），自動往旁邊推開讓你上去，不會整個卡住掉下來
+      if (cy !== null) for (const d of [1, -1, 2, -2, 3, -3]) {
+        if (ceilingAt(this.x + d, prevY, this.y, 24) === null && moveX(this.x, this.x + d, prevY, 24, 7) === this.x + d) { this.x += d; cy = null; break; }
+      }
+      if (cy !== null) { this.y = cy; this.vy = 0; }
+    }
     const wasGrounded = this.grounded;
     const gy = this.vy >= 0 ? groundAt(this.x, prevY, this.y, this.dropT > 0) : null;
     if (gy !== null) {
       if (!wasGrounded && this.vy > 260) this.landT = 0.1;
+      else if (!wasGrounded && this.vy > 150) this.landT = 0.07;   // 使用者 2026-11-06 手感：普通高度落地也壓扁一下（短一點）
       if (!wasGrounded && this.vy > 80) world.land?.(this.x, gy, this.vy > 260);   // 草屑
       this.y = gy;
       this.vy = 0;
@@ -384,6 +398,8 @@ export class Player {
     const a = this.atk, s = a.s, spd = 1 + this.buff.spd;
     a.time += dt * spd;
     this.lastAtk = 0;
+    // 使用者 2026-11-06 手感：還在預備動作（還沒揮出去）時推反方向，可以直接轉過去打背後
+    if (!a.spawned && Math.abs(input.move) > 0.3 && Math.sign(input.move) !== this.face) { this.face = Math.sign(input.move); a.flip = this.face < 0; }
     if (!a.spawned && a.time >= 0) {
       a.spawned = true;
       spawn(s.anim, { x: Math.round(this.x), y: Math.round(this.y), flip: a.flip }, { speed: spd });
