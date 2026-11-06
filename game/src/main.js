@@ -2191,6 +2191,15 @@ if (sessionStorage.getItem(AUTO_KEY)) {
 }
 for (const ev of ["pointerdown", "keydown", "touchstart"]) addEventListener(ev, unlockAudio, { capture: true, passive: true });
 addEventListener("keydown", (e) => { if (!started && (e.code === "Enter" || e.code === "Space")) startOrIntro(); });
+// 使用者 2026-11-06「1-2 與王關剛進去時會卡一下停在一個畫面，然後怪才開始動」：剛進場的前幾格特別慢（第一次畫要配置緩衝區、
+//   瀏覽器還在把程式編譯成快的版本，第一格約平常的 4 倍）。趁載入畫面還蓋著，先在背後把遊戲跑幾格、畫幾次，載入畫面拿掉時已經是順的。
+//   只跑畫面和更新、不算時間（tick 用 0：怪不會先偷跑），跑完把畫面時間歸零
+{
+  const clock0 = sceneClock;
+  for (let i = 0; i < 6; i++) { tick(0); render(); hud(0); }
+  sceneClock = clock0;
+  last = performance.now();
+}
 window.__loadDone?.();   // 第 7 批：載入畫面淡掉
 // 開發用：主控台直接掉寶、加經驗
 Object.assign(window.__game, { dropItem, gainXp, R, toast, gems, coins, minis, refreshStats, world, strikes, trail, altars, get chest() { return chest; } });
