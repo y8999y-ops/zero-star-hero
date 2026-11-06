@@ -1,6 +1,6 @@
 // 比對測試（Unity 這一邊）：操作錄影。用 game/tools/unity-trace-script.json 的同一串按鍵跑 Game，
 // 每一步記下主角、怪、鏡頭的數值，每 frameEvery 步存一張合成好的畫面，寫到 unity/Golden/unity/。
-// 再用 node game/tools/unity-trace-compare.mjs 跟網頁版（node game/tools/unity-trace.mjs）逐步比對。
+// 再用 node game/tools/unity-trace-compare.mjs 跟網頁版（node game/tools/unity-trace-full.mjs，跑真正的 main.js）逐步比對。
 // 執行（不用開編輯器）：Unity.exe -batchmode -nographics -projectPath unity -executeMethod ZeroStar.Tests.TraceTest.Run -quit
 using System;
 using System.Collections.Generic;
@@ -47,18 +47,26 @@ namespace ZeroStar.Tests
                 var root = (OrderedDict)MiniJson.Parse(File.ReadAllText(TraceScript.DefaultPath()));
                 var V = variant != "" ? (OrderedDict)((OrderedDict)root["variants"])[variant] : (OrderedDict)root["starter"];   // 沒選穿搭＝新存檔的初始裝備
                 g.Lv = V.ContainsKey("lv") ? (int)(double)V["lv"] : 1;
+                foreach (var k in g.Equip.Keys.ToList()) g.Equip[k] = null;   // 存檔裡只有腳本給的那幾件
                 var eq = (OrderedDict)V["equip"];
                 foreach (var slot in eq.Order) g.Equip[slot] = SpecItem((OrderedDict)eq[slot]);
                 g.ApplyStats();
+                g.Player.Hp = g.Player.MaxHp;
+                // 存檔：每個形態都有（技能樹點滿）、帶著的形態、互動教學看過沒
+                foreach (var f in new[] { "star", "slime", "bat", "can", "spike" }) g.FormsOwned[f] = 0;
+                g.Carry = root.ContainsKey("carry") ? ((List<object>)root["carry"]).Cast<string>().ToArray() : new[] { "star", "slime", "bat" };
+                g.TipUse = root.ContainsKey("tipUse") && (double)root["tipUse"] != 0;
             }
             var frame = new Frame(Game.W, Game.H);
             var rgba = new byte[Game.W * Game.H * 4];
+            g.StartStage();
+            g.Warm(frame);
             var sb = new StringBuilder();
             var frames = new MemoryStream();
             int si = 0;
             for (int n = 0; n < sc.ticks; n++)
             {
-                while (si < sc.events.Count && sc.events[si].t == n) { var e = sc.events[si++]; if (e.type == "f") g.PendingForm = e.code; else if (e.type == "m") g.Player.Mp = g.Player.MaxMp; else if (e.type == "x") g.GainXp(int.Parse(e.code)); else if (e.type == "i") g.DropItem(g.Player.X + 40 * g.Player.Face, g.Player.Y - 12, int.Parse(e.code)); else if (e.type == "d") g.Input.KeyDown(e.code); else g.Input.KeyUp(e.code); }
+                while (si < sc.events.Count && sc.events[si].t == n) { var e = sc.events[si++]; if (e.type == "f") g.SwitchForm(e.code); else if (e.type == "m") g.Player.Mp = g.Player.MaxMp; else if (e.type == "x") g.GainXp(int.Parse(e.code)); else if (e.type == "i") g.DropItem(g.Player.X + 40 * g.Player.Face, g.Player.Y - 12, int.Parse(e.code)); else if (e.type == "d") g.Input.KeyDown(e.code); else g.Input.KeyUp(e.code); }
                 var stepWatch = System.Diagnostics.Stopwatch.StartNew();
                 bool one = Environment.GetEnvironmentVariable("PROF_TICK") == n.ToString();
                 Dictionary<string, double> saved = null;
@@ -67,13 +75,12 @@ namespace ZeroStar.Tests
                 Prof.On = rng != null ? n >= int.Parse(rng.Split('-')[0]) && n <= int.Parse(rng.Split('-')[1]) : g.Ult.On || ultOnly == null;   // ULT_PROF=1：只量大招期間
                 PixelFX.PfProf.On = Prof.On && rng != null;
                 Prof.Mark(null);
-                g.Tick(Game.STEP);
-                Prof.Mark("邏輯");
-                g.SimMs += 1000 / 60.0;
+                g.RunTimers();
                 frame.Clear();
                 var fr = frame;
                 FxSystem.Probe = Environment.GetEnvironmentVariable("DUMP_TICK") == n.ToString() ? (Action<string>)(k => Debug.Log("PROBE " + k + " " + fr.Color[145 * 384 + 144].ToString("x"))) : null;
-                g.Render(frame);
+                g.Step(frame);
+                g.SimMs += 1000 / 60.0;
                 Prof.Mark(null);
                 frame.Composite(rgba, null, 0.8);
                 g.PostComposite(rgba);
@@ -89,9 +96,10 @@ namespace ZeroStar.Tests
                 if (n > 30 && stepMs > maxMs) { maxMs = stepMs; maxAt = n; }
                 Prof.Mark("合成");
                 var p = g.Player;
-                var row = new List<string> { n.ToString(), F(p.X), F(p.Y), F(p.Vx), F(p.Vy), p.State, F(p.Hp), F(p.Face), p.Grounded ? "1" : "0", p.Pose, F(g.CamX), F(g.CamY), F(g.Fx.Freeze), F(g.Fx.ShakeT), p.Form, F(p.Mp), g.Combo.ToString(), g.Ult.On ? "U" + F(g.Ult.T) : "-", g.Shots.Count.ToString(), g.Enemies.Count.ToString() };
+                var row = new List<string> { n.ToString(), F(p.X), F(p.Y), F(p.Vx), F(p.Vy), p.State, F(p.Hp), F(p.Face), p.Grounded ? "1" : "0", p.Pose, F(g.CamX), F(g.CamY), F(g.Fx.Freeze), F(g.Fx.ShakeT), p.Form, F(p.Mp), g.Combo.ToString(), g.Ult.On ? "U" + F(g.Ult.T) : "-", (g.Director?.Next ?? -1).ToString(), g.Enemies.Count.ToString() };
                 foreach (var e in g.Enemies)
                 {
+                    row.Add(e.Kind[0] + (e.Elite ? "E" : ""));
                     row.Add(F(e.X)); row.Add(F(e.Y)); row.Add(F(e.Vx)); row.Add(F(e.Vy)); row.Add(F(e.Hp)); row.Add(e.Awake ? "1" : "0");
                     var S = e.St; string st = S == null ? "" : (S.Burn > 0 ? "b" : "") + (S.Slime > 0 ? "s" : "") + (S.Shock > 0 ? "s" : "") + (S.Poison > 0 ? "p" : "") + (S.Stuck > 0 ? "s" : "");
                     row.Add(st == "" ? "-" : st);
@@ -108,7 +116,8 @@ namespace ZeroStar.Tests
             }
             string outDir = Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Golden", "unity");
             Directory.CreateDirectory(outDir);
-            string suf = variant != "" ? "-" + variant : "";
+            string tag = System.Text.RegularExpressions.Regex.Replace(Path.GetFileNameWithoutExtension(TraceScript.DefaultPath()), "^unity-trace-script", "");   // unity-trace-script-full.json → 「-full」
+            string suf = tag + (variant != "" ? "-" + variant : "");
             File.WriteAllText(Path.Combine(outDir, $"trace{suf}.txt"), sb.ToString());
             File.WriteAllBytes(Path.Combine(outDir, $"trace-frames{suf}.bin"), frames.ToArray());
             var prof = new StringBuilder();

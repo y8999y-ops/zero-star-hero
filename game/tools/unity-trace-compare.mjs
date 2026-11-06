@@ -1,5 +1,5 @@
 // Unity 轉移的「操作錄影」比對：逐步比較 unity/Golden/web 與 unity/Golden/unity 的 trace.txt（數值）和 trace-frames.bin（畫面）。
-// 先跑 node game/tools/unity-trace.mjs（網頁版）與 Unity 的 ZeroStar.Tests.TraceTest.Run，再跑這個。
+// 先跑 node game/tools/unity-trace-full.mjs（網頁版，跑真正的 main.js）與 Unity 的 ZeroStar.Tests.TraceTest.Run，再跑這個。
 // 數值：每一欄都要完全一樣（小數也是）；有不一樣的就印出第一步、哪一欄。畫面：每張逐像素比對，不一樣的存 diff-trace-<張>.png。
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -8,9 +8,9 @@ import { encodePNG } from "../../pixelfx/tools/lib/png.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const G = join(ROOT, "unity", "Golden");
-const COLS = ["步", "主角x", "主角y", "vx", "vy", "狀態", "血", "面向", "著地", "姿勢", "鏡頭x", "鏡頭y", "停頓", "震動", "形態", "魔力", "連擊", "大招", "技能彈", "怪數"];
-const EC = ["x", "y", "vx", "vy", "血", "醒", "狀態"];
-const name = (i) => (i < COLS.length ? COLS[i] : `怪${Math.floor((i - COLS.length) / 7)}.${EC[(i - COLS.length) % 7]}`);
+const COLS = ["步", "主角x", "主角y", "vx", "vy", "狀態", "血", "面向", "著地", "姿勢", "鏡頭x", "鏡頭y", "停頓", "震動", "形態", "魔力", "連擊", "大招", "關卡事件", "怪數"];
+const EC = ["種類", "x", "y", "vx", "vy", "血", "醒", "狀態"];
+const name = (i) => (i < COLS.length ? COLS[i] : `怪${Math.floor((i - COLS.length) / 8)}.${EC[(i - COLS.length) % 8]}`);
 
 const VAR = process.argv[2] ? "-" + process.argv[2] : "";   // 穿搭：node unity-trace-compare.mjs A
 const A = readFileSync(join(G, "web", `trace${VAR}.txt`), "utf8").trim().split("\n"), B = readFileSync(join(G, "unity", `trace${VAR}.txt`), "utf8").trim().split("\n");

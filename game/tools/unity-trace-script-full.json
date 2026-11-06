@@ -1,0 +1,1240 @@
+{
+ "note": "Unity 轉移的操作錄影：第幾步（每秒 60 步）、d 按下／u 放開、按鍵；f＝換成某個形態；m＝魔力補滿（測大招用）。網頁版與 Unity 版讀同一份。tree：max＝技能樹每個節點都點滿。x＝加經驗；i＝在主角前面掉一件（數字＝保底稀有度）。（後半段是機器人玩到通關時按的鍵）",
+ "ticks": 4600,
+ "frameEvery": 20,
+ "events": [
+  [
+   40,
+   "d",
+   "KeyD"
+  ],
+  [
+   168,
+   "d",
+   "Space"
+  ],
+  [
+   184,
+   "u",
+   "Space"
+  ],
+  [
+   256,
+   "d",
+   "Space"
+  ],
+  [
+   268,
+   "u",
+   "Space"
+  ],
+  [
+   274,
+   "d",
+   "Space"
+  ],
+  [
+   292,
+   "u",
+   "Space"
+  ],
+  [
+   336,
+   "d",
+   "Space"
+  ],
+  [
+   352,
+   "u",
+   "Space"
+  ],
+  [
+   358,
+   "d",
+   "Space"
+  ],
+  [
+   380,
+   "u",
+   "Space"
+  ],
+  [
+   455,
+   "i",
+   "2"
+  ],
+  [
+   458,
+   "x",
+   "400"
+  ],
+  [
+   512,
+   "u",
+   "KeyD"
+  ],
+  [
+   516,
+   "d",
+   "KeyJ"
+  ],
+  [
+   700,
+   "d",
+   "KeyQ"
+  ],
+  [
+   702,
+   "u",
+   "KeyQ"
+  ],
+  [
+   840,
+   "u",
+   "KeyJ"
+  ],
+  [
+   842,
+   "d",
+   "KeyF"
+  ],
+  [
+   912,
+   "u",
+   "KeyF"
+  ],
+  [
+   916,
+   "d",
+   "KeyD"
+  ],
+  [
+   940,
+   "d",
+   "KeyK"
+  ],
+  [
+   942,
+   "u",
+   "KeyK"
+  ],
+  [
+   1030,
+   "d",
+   "Space"
+  ],
+  [
+   1045,
+   "u",
+   "Space"
+  ],
+  [
+   1048,
+   "d",
+   "KeyJ"
+  ],
+  [
+   1060,
+   "u",
+   "KeyJ"
+  ],
+  [
+   1080,
+   "u",
+   "KeyD"
+  ],
+  [
+   1082,
+   "d",
+   "KeyJ"
+  ],
+  [
+   1320,
+   "u",
+   "KeyJ"
+  ],
+  [
+   1325,
+   "d",
+   "KeyA"
+  ],
+  [
+   1332,
+   "u",
+   "KeyA"
+  ],
+  [
+   1334,
+   "d",
+   "KeyK"
+  ],
+  [
+   1336,
+   "u",
+   "KeyK"
+  ],
+  [
+   1350,
+   "d",
+   "KeyD"
+  ],
+  [
+   1390,
+   "u",
+   "KeyD"
+  ],
+  [
+   1392,
+   "d",
+   "KeyJ"
+  ],
+  [
+   1550,
+   "u",
+   "KeyJ"
+  ],
+  [
+   1552,
+   "d",
+   "KeyD"
+  ],
+  [
+   1610,
+   "u",
+   "KeyD"
+  ],
+  [
+   1620,
+   "f",
+   "slime"
+  ],
+  [
+   1630,
+   "d",
+   "KeyJ"
+  ],
+  [
+   1730,
+   "u",
+   "KeyJ"
+  ],
+  [
+   1740,
+   "d",
+   "KeyE"
+  ],
+  [
+   1742,
+   "u",
+   "KeyE"
+  ],
+  [
+   1780,
+   "f",
+   "bat"
+  ],
+  [
+   1790,
+   "d",
+   "KeyJ"
+  ],
+  [
+   1890,
+   "u",
+   "KeyJ"
+  ],
+  [
+   1900,
+   "d",
+   "KeyE"
+  ],
+  [
+   1902,
+   "u",
+   "KeyE"
+  ],
+  [
+   1960,
+   "f",
+   "can"
+  ],
+  [
+   1962,
+   "d",
+   "KeyA"
+  ],
+  [
+   1968,
+   "u",
+   "KeyA"
+  ],
+  [
+   1970,
+   "d",
+   "KeyJ"
+  ],
+  [
+   2070,
+   "u",
+   "KeyJ"
+  ],
+  [
+   2080,
+   "d",
+   "KeyE"
+  ],
+  [
+   2082,
+   "u",
+   "KeyE"
+  ],
+  [
+   2140,
+   "f",
+   "spike"
+  ],
+  [
+   2150,
+   "d",
+   "KeyJ"
+  ],
+  [
+   2250,
+   "u",
+   "KeyJ"
+  ],
+  [
+   2260,
+   "d",
+   "KeyE"
+  ],
+  [
+   2262,
+   "u",
+   "KeyE"
+  ],
+  [
+   2320,
+   "f",
+   "star"
+  ],
+  [
+   2330,
+   "d",
+   "KeyE"
+  ],
+  [
+   2332,
+   "u",
+   "KeyE"
+  ],
+  [
+   2340,
+   "d",
+   "KeyJ"
+  ],
+  [
+   2480,
+   "u",
+   "KeyJ"
+  ],
+  [
+   2490,
+   "d",
+   "KeyD"
+  ],
+  [
+   2530,
+   "f",
+   "bat"
+  ],
+  [
+   2550,
+   "d",
+   "Space"
+  ],
+  [
+   2566,
+   "u",
+   "Space"
+  ],
+  [
+   2570,
+   "d",
+   "Space"
+  ],
+  [
+   2630,
+   "u",
+   "Space"
+  ],
+  [
+   2650,
+   "m",
+   ""
+  ],
+  [
+   2660,
+   "f",
+   "slime"
+  ],
+  [
+   2670,
+   "d",
+   "KeyQ"
+  ],
+  [
+   2672,
+   "u",
+   "KeyQ"
+  ],
+  [
+   2690,
+   "u",
+   "KeyD"
+  ],
+  [
+   2870,
+   "m",
+   ""
+  ],
+  [
+   2880,
+   "f",
+   "can"
+  ],
+  [
+   2915,
+   "d",
+   "KeyQ"
+  ],
+  [
+   2917,
+   "u",
+   "KeyQ"
+  ],
+  [
+   3130,
+   "m",
+   ""
+  ],
+  [
+   3140,
+   "f",
+   "bat"
+  ],
+  [
+   3150,
+   "d",
+   "KeyQ"
+  ],
+  [
+   3152,
+   "u",
+   "KeyQ"
+  ],
+  [
+   3390,
+   "m",
+   ""
+  ],
+  [
+   3400,
+   "f",
+   "spike"
+  ],
+  [
+   3410,
+   "d",
+   "KeyQ"
+  ],
+  [
+   3412,
+   "u",
+   "KeyQ"
+  ],
+  [
+   3670,
+   "d",
+   "KeyD"
+  ],
+  [
+   3684,
+   "d",
+   "Space"
+  ],
+  [
+   3698,
+   "u",
+   "Space"
+  ],
+  [
+   3700,
+   "d",
+   "Space"
+  ],
+  [
+   3710,
+   "u",
+   "Space"
+  ],
+  [
+   3856,
+   "d",
+   "KeyS"
+  ],
+  [
+   3856,
+   "d",
+   "Space"
+  ],
+  [
+   3859,
+   "u",
+   "Space"
+  ],
+  [
+   3864,
+   "u",
+   "KeyS"
+  ],
+  [
+   3907,
+   "u",
+   "KeyD"
+  ],
+  [
+   3912,
+   "d",
+   "KeyF"
+  ],
+  [
+   3913,
+   "d",
+   "KeyD"
+  ],
+  [
+   3914,
+   "d",
+   "KeyJ"
+  ],
+  [
+   3915,
+   "u",
+   "KeyF"
+  ],
+  [
+   3993,
+   "u",
+   "KeyJ"
+  ],
+  [
+   4015,
+   "d",
+   "KeyJ"
+  ],
+  [
+   4042,
+   "u",
+   "KeyJ"
+  ],
+  [
+   4078,
+   "d",
+   "KeyJ"
+  ],
+  [
+   4119,
+   "u",
+   "KeyJ"
+  ],
+  [
+   4140,
+   "d",
+   "KeyJ"
+  ],
+  [
+   4185,
+   "u",
+   "KeyJ"
+  ],
+  [
+   4186,
+   "d",
+   "KeyJ"
+  ],
+  [
+   4187,
+   "u",
+   "KeyJ"
+  ],
+  [
+   4190,
+   "d",
+   "KeyJ"
+  ],
+  [
+   4191,
+   "u",
+   "KeyJ"
+  ],
+  [
+   4229,
+   "d",
+   "KeyJ"
+  ],
+  [
+   4256,
+   "u",
+   "KeyJ"
+  ],
+  [
+   4286,
+   "d",
+   "KeyJ"
+  ],
+  [
+   4303,
+   "u",
+   "KeyJ"
+  ],
+  [
+   4337,
+   "u",
+   "KeyD"
+  ],
+  [
+   4344,
+   "d",
+   "KeyF"
+  ],
+  [
+   4345,
+   "d",
+   "KeyD"
+  ],
+  [
+   4347,
+   "u",
+   "KeyF"
+  ],
+  [
+   4415,
+   "u",
+   "KeyD"
+  ],
+  [
+   4416,
+   "d",
+   "KeyF"
+  ],
+  [
+   4417,
+   "u",
+   "KeyF"
+  ]
+ ],
+ "tree": "max",
+ "variants": {
+  "A": {
+   "lv": 20,
+   "equip": {
+    "weapon": {
+     "main": [
+      "atk",
+      40
+     ],
+     "affixes": [
+      [
+       "crit",
+       1,
+       6
+      ],
+      [
+       "critDmg",
+       1,
+       12
+      ]
+     ],
+     "base": "great2",
+     "rarity": 2,
+     "ilvl": 20,
+     "plus": 20
+    },
+    "head": {
+     "main": [
+      "crit",
+      8
+     ],
+     "affixes": [
+      [
+       "crit",
+       1,
+       6
+      ],
+      [
+       "atkPct",
+       1,
+       10
+      ],
+      [
+       "hp",
+       1,
+       40
+      ],
+      [
+       "def",
+       1,
+       12
+      ]
+     ],
+     "myth": "starking",
+     "rarity": 5,
+     "ilvl": 20
+    },
+    "body": {
+     "main": [
+      "hp",
+      60
+     ],
+     "affixes": [
+      [
+       "crit",
+       1,
+       6
+      ],
+      [
+       "def",
+       2,
+       10
+      ],
+      [
+       "atk",
+       1,
+       9
+      ]
+     ],
+     "base": "body2",
+     "rarity": 3,
+     "ilvl": 20,
+     "set": "meteor"
+    },
+    "hands": {
+     "main": [
+      "atk",
+      8
+     ],
+     "affixes": [
+      [
+       "crit",
+       1,
+       6
+      ],
+      [
+       "critDmg",
+       2,
+       10
+      ],
+      [
+       "atkPct",
+       2,
+       8
+      ]
+     ],
+     "base": "hands2",
+     "rarity": 3,
+     "ilvl": 20,
+     "set": "meteor"
+    },
+    "feet": {
+     "main": [
+      "move",
+      6
+     ],
+     "affixes": [
+      [
+       "crit",
+       1,
+       6
+      ],
+      [
+       "hp",
+       3,
+       20
+      ],
+      [
+       "cdr",
+       1,
+       8
+      ]
+     ],
+     "base": "feet2",
+     "rarity": 3,
+     "ilvl": 20,
+     "set": "meteor"
+    },
+    "acc1": {
+     "main": [
+      "skill",
+      12
+     ],
+     "affixes": [
+      [
+       "crit",
+       1,
+       6
+      ],
+      [
+       "ult",
+       1,
+       22
+      ],
+      [
+       "charge",
+       1,
+       15
+      ]
+     ],
+     "base": "acc3",
+     "rarity": 3,
+     "ilvl": 20,
+     "set": "meteor"
+    },
+    "acc2": {
+     "main": [
+      "atkPct",
+      8
+     ],
+     "affixes": [
+      [
+       "crit",
+       1,
+       6
+      ],
+      [
+       "leech",
+       1,
+       3
+      ],
+      [
+       "mf",
+       2,
+       15
+      ],
+      [
+       "def",
+       3,
+       8
+      ]
+     ],
+     "myth": "fallheart",
+     "rarity": 5,
+     "ilvl": 20
+    }
+   }
+  },
+  "B": {
+   "lv": 30,
+   "equip": {
+    "weapon": {
+     "main": [
+      "atk",
+      30
+     ],
+     "affixes": [
+      [
+       "crit",
+       2,
+       5
+      ],
+      [
+       "atkPct",
+       1,
+       10
+      ]
+     ],
+     "unique": "noisy",
+     "rarity": 4,
+     "ilvl": 30,
+     "plus": 10
+    },
+    "head": {
+     "main": [
+      "atkPct",
+      9
+     ],
+     "affixes": [
+      [
+       "crit",
+       1,
+       6
+      ],
+      [
+       "hp",
+       1,
+       40
+      ],
+      [
+       "def",
+       1,
+       12
+      ],
+      [
+       "leech",
+       1,
+       3
+      ]
+     ],
+     "unique": "hardhat",
+     "rarity": 4,
+     "ilvl": 30
+    },
+    "body": {
+     "main": [
+      "hp",
+      70
+     ],
+     "affixes": [
+      [
+       "leech",
+       1,
+       3
+      ],
+      [
+       "def",
+       2,
+       10
+      ],
+      [
+       "atk",
+       1,
+       9
+      ]
+     ],
+     "base": "body3",
+     "rarity": 3,
+     "ilvl": 30,
+     "set": "feast"
+    },
+    "hands": {
+     "main": [
+      "atk",
+      9
+     ],
+     "affixes": [
+      [
+       "leech",
+       1,
+       3
+      ],
+      [
+       "critDmg",
+       2,
+       10
+      ]
+     ],
+     "base": "hands2",
+     "rarity": 3,
+     "ilvl": 30,
+     "set": "feast"
+    },
+    "feet": {
+     "main": [
+      "move",
+      7
+     ],
+     "affixes": [
+      [
+       "leech",
+       1,
+       3
+      ],
+      [
+       "hp",
+       3,
+       20
+      ]
+     ],
+     "base": "feet3",
+     "rarity": 3,
+     "ilvl": 30,
+     "set": "feast"
+    },
+    "acc1": {
+     "main": [
+      "ult",
+      14
+     ],
+     "affixes": [
+      [
+       "crit",
+       1,
+       6
+      ],
+      [
+       "skill",
+       1,
+       18
+      ],
+      [
+       "charge",
+       1,
+       15
+      ],
+      [
+       "atk",
+       1,
+       9
+      ]
+     ],
+     "unique": "overtime",
+     "rarity": 4,
+     "ilvl": 30
+    },
+    "acc2": {
+     "main": [
+      "leech",
+      2
+     ],
+     "affixes": [
+      [
+       "crit",
+       1,
+       6
+      ],
+      [
+       "hp",
+       1,
+       40
+      ]
+     ],
+     "base": "acc2",
+     "rarity": 3,
+     "ilvl": 30,
+     "set": "feast"
+    }
+   }
+  },
+  "C": {
+   "lv": 15,
+   "equip": {
+    "weapon": {
+     "main": [
+      "atk",
+      30
+     ],
+     "affixes": [
+      [
+       "crit",
+       1,
+       6
+      ]
+     ],
+     "base": "spear2",
+     "rarity": 2,
+     "ilvl": 15,
+     "plus": 30
+    },
+    "head": {
+     "main": [
+      "critDmg",
+      10
+     ],
+     "affixes": [
+      [
+       "charge",
+       1,
+       15
+      ],
+      [
+       "skill",
+       1,
+       18
+      ]
+     ],
+     "base": "head3",
+     "rarity": 3,
+     "ilvl": 15,
+     "set": "reson"
+    },
+    "body": {
+     "main": [
+      "hp",
+      50
+     ],
+     "affixes": [
+      [
+       "charge",
+       1,
+       15
+      ]
+     ],
+     "base": "body2",
+     "rarity": 3,
+     "ilvl": 15,
+     "set": "reson"
+    },
+    "hands": {
+     "main": [
+      "atk",
+      6
+     ],
+     "affixes": [
+      [
+       "charge",
+       1,
+       15
+      ]
+     ],
+     "base": "hands1",
+     "rarity": 3,
+     "ilvl": 15,
+     "set": "reson"
+    },
+    "feet": {
+     "main": [
+      "move",
+      6
+     ],
+     "affixes": [
+      [
+       "crit",
+       1,
+       6
+      ],
+      [
+       "hp",
+       1,
+       40
+      ],
+      [
+       "def",
+       1,
+       12
+      ],
+      [
+       "atkPct",
+       1,
+       10
+      ]
+     ],
+     "unique": "slipper",
+     "rarity": 4,
+     "ilvl": 15
+    },
+    "acc1": {
+     "main": [
+      "charge",
+      10
+     ],
+     "affixes": [
+      [
+       "skill",
+       1,
+       18
+      ]
+     ],
+     "base": "acc1",
+     "rarity": 3,
+     "ilvl": 15,
+     "set": "reson"
+    }
+   }
+  },
+  "D": {
+   "lv": 10,
+   "equip": {
+    "weapon": {
+     "main": [
+      "atk",
+      25
+     ],
+     "affixes": [
+      [
+       "critDmg",
+       1,
+       12
+      ]
+     ],
+     "base": "great1",
+     "rarity": 1,
+     "ilvl": 10,
+     "plus": 50
+    },
+    "body": {
+     "main": [
+      "hp",
+      40
+     ],
+     "affixes": [],
+     "base": "body1",
+     "rarity": 0,
+     "ilvl": 10
+    }
+   }
+  },
+  "E": {
+   "lv": 10,
+   "equip": {
+    "weapon": {
+     "main": [
+      "atk",
+      22
+     ],
+     "affixes": [
+      [
+       "def",
+       1,
+       12
+      ]
+     ],
+     "base": "hammer1",
+     "rarity": 4,
+     "ilvl": 10,
+     "plus": 50
+    },
+    "hands": {
+     "main": [
+      "atk",
+      5
+     ],
+     "affixes": [
+      [
+       "crit",
+       1,
+       6
+      ]
+     ],
+     "base": "hands1",
+     "rarity": 1,
+     "ilvl": 10
+    }
+   }
+  }
+ },
+ "starter": {
+  "lv": 1,
+  "equip": {
+   "weapon": {
+    "main": [
+     "atk",
+     12
+    ],
+    "affixes": [],
+    "base": "sword1",
+    "rarity": 0,
+    "ilvl": 1
+   },
+   "body": {
+    "main": [
+     "hp",
+     30
+    ],
+    "affixes": [],
+    "base": "body1",
+    "rarity": 0,
+    "ilvl": 1
+   }
+  }
+ }
+}

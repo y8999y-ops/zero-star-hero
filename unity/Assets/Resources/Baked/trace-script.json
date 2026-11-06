@@ -1031,5 +1031,30 @@
     }
    }
   }
+ },
+ "starter": {
+  "lv": 1,
+  "equip": {
+   "weapon": {
+    "main": [
+     "atk",
+     12
+    ],
+    "affixes": [],
+    "base": "sword1",
+    "rarity": 0,
+    "ilvl": 1
+   },
+   "body": {
+    "main": [
+     "hp",
+     30
+    ],
+    "affixes": [],
+    "base": "body1",
+    "rarity": 0,
+    "ilvl": 1
+   }
+  }
  }
 }

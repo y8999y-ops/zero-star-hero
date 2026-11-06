@@ -73,7 +73,9 @@ const { FORMS } = await import("../src/forms.js");
 const comboKeys = {};   // 形態 → [{ anim 名稱, 招式 }]
 {
   const anims = {
-    slime: A.slime, slimeWhite: A.slimeWhite, poofSlime: A.poofSlime, brazier: A.brazier, dust: A.dust, spark: A.spark, sparkRed: A.sparkRed, spikeBall: A.spikeBall,
+    // 遊戲裡烘焙好的動畫（assets.js 的 A）全部匯出
+    ...Object.fromEntries(Object.entries(A).filter(([k, v]) => v?.frames).map(([k, v]) => [k, v])),
+    slash0: A.slash[0], slash1: A.slash[1], slash2: A.slash[2],
   };
   for (const [form, F] of Object.entries(FORMS)) {
     comboKeys[form] = BAKED_COMBOS.COMBO_DEF[F.combo].map((s, i) => { const n = `atk:${form}:${i}`; anims[n] = slashAnim(s.mod, form); return n; });
@@ -122,6 +124,13 @@ const comboKeys = {};   // 形態 → [{ anim 名稱, 招式 }]
   w.str("ZIC1").i32(ICON_SIZE).i32(Object.keys(ICONS).length);
   for (const [name, cells] of Object.entries(ICONS)) w.str(name).u32(Uint32Array.from(cells, (c) => (c ? hex(c) >>> 0 : 0)));
   w.save("icons.bytes");
+}
+// ---- 4d. 關卡流程（stages.js：事件、怪物擺放、祭壇、金幣堆、機關）＋寶箱等級
+{
+  const { STAGES } = await import("../src/stage.js");
+  const { CHEST_TIERS } = await import("../src/chest-tiers.js");
+  writeFileSync(join(OUT, "stages.json"), JSON.stringify({ stages: STAGES, chestTiers: CHEST_TIERS }, null, 1));
+  console.log("  stages.json");
 }
 // ---- 5. 比對測試的那串按鍵（輸出的遊戲用 -shot 自動玩時讀這份）
 writeFileSync(join(OUT, "trace-script.json"), readFileSync(join(ROOT, "game", "tools", "unity-trace-script.json")));

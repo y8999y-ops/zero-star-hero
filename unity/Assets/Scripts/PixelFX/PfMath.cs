@@ -75,6 +75,8 @@ namespace PixelFX
         static readonly double[] atanMemo = NewMemo(), hypMemo = NewMemo();
         static double[] NewMemo() { var a = new double[515 * 515]; for (int i = 0; i < a.Length; i++) a[i] = double.NaN; return a; }
         public static double Exp(double x) => Fdlibm.Exp(x);
+        public static double Tan(double x) => Fdlibm.Tan(x);
+        public static double Acos(double x) => Fdlibm.Acos(x);
         public static double Pow(double x, double y) => Fdlibm.Pow(x, y);
         /// JS Math.sign
         public static double Sign(double x) => x > 0 ? 1 : x < 0 ? -1 : x;

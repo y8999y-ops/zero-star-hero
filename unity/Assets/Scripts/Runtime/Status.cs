@@ -69,9 +69,11 @@ namespace ZeroStar
             if (id == "shock") { e.Stun = Math.Max(e.Stun, 0.45); if (ShockBonus) { S.Shock += 1; e.Stun = Math.Max(e.Stun, 1); } }
         }
 
+        public Action<string, Enemy> OnReaction;   // 第一次觸發某種反應時系統解釋（main.js 的 onReaction）
         void React(Enemy e, string kind, int depth)
         {
             var S = e.St; var (x, y, b) = Center(e); double atk = Atk;
+            OnReaction?.Invoke(kind, e);
             switch (kind)
             {
                 case "wildfire":

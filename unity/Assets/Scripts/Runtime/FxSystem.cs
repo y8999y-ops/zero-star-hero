@@ -16,7 +16,7 @@ namespace ZeroStar
             ["fireball"] = PixelFX.Fx.Fireball.Def, ["plasma-explosion"] = PixelFX.Fx.PlasmaExplosion.Def, ["hit-spark"] = PixelFX.Fx.HitSpark.Def,
             ["zap-hit"] = PixelFX.Fx.ZapHit.Def, ["poison-cloud"] = PixelFX.Fx.PoisonCloud.Def, ["acid-splash"] = PixelFX.Fx.AcidSplash.Def,
             ["collect-burst"] = PixelFX.Fx.CollectBurst.Def, ["rune-circle"] = PixelFX.Fx.RuneCircle.Def, ["sunburst"] = PixelFX.Fx.Sunburst.Def,
-            ["ground-slam"] = PixelFX.Fx.GroundSlam.Def, ["star-fall"] = PixelFX.Fx.StarFall.Def, ["level-up"] = PixelFX.Fx.LevelUp.Def,
+            ["ground-slam"] = PixelFX.Fx.GroundSlam.Def, ["star-fall"] = PixelFX.Fx.StarFall.Def, ["level-up"] = PixelFX.Fx.LevelUp.Def, ["poof"] = PixelFX.Fx.Poof.Def, ["splash"] = PixelFX.Fx.Splash.Def, ["treasure-chest"] = PixelFX.Fx.TreasureChest.Def,
         };
 
         /// 載入時把每個即時特效先建一次、跑幾步、畫一次（第一次用到時要編譯程式、建表，會卡一下；先做掉）。

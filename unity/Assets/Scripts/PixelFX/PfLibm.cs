@@ -308,6 +308,126 @@ namespace PixelFX
             }
         }
 
+        // ================================================================ 正切、反餘弦
+        static readonly double[] TT =
+        {
+            3.33333333333334091986e-01, 1.33333333333201242699e-01, 5.39682539762260521377e-02, 2.18694882948595424599e-02,
+            8.86323982359930005737e-03, 3.59207910759131235356e-03, 1.45620945432529025516e-03, 5.88041240820264096874e-04,
+            2.46463134818469906812e-04, 7.81794442939557092300e-05, 7.14072491382608190305e-05, -1.85586374855275456654e-05,
+            2.59073051863633712884e-05,
+        };
+        static double KernelTan(double x, double y, int iy)
+        {
+            const double one = 1.0, pio4 = 7.85398163397448278999e-01, pio4lo = 3.06161699786838301793e-17;
+            double z, r, v, w, s;
+            int hx = Hi(x), ix = hx & 0x7FFFFFFF;
+            if (ix < 0x3E300000)
+            {
+                if ((int)x == 0)
+                {
+                    uint low = Lo(x);
+                    if ((((uint)ix | low) | (uint)(iy + 1)) == 0) return one / Math.Abs(x);
+                    if (iy == 1) return x;
+                    double a0, t0;
+                    z = w = x + y;
+                    z = SetLo(z, 0);
+                    v = y - (z - x);
+                    t0 = a0 = -one / w;
+                    t0 = SetLo(t0, 0);
+                    s = one + t0 * z;
+                    return t0 + a0 * (s + t0 * v);
+                }
+            }
+            if (ix >= 0x3FE59428)
+            {
+                if (hx < 0) { x = -x; y = -y; }
+                z = pio4 - x;
+                w = pio4lo - y;
+                x = z + w;
+                y = 0.0;
+            }
+            z = x * x;
+            w = z * z;
+            r = TT[1] + w * (TT[3] + w * (TT[5] + w * (TT[7] + w * (TT[9] + w * TT[11]))));
+            v = z * (TT[2] + w * (TT[4] + w * (TT[6] + w * (TT[8] + w * (TT[10] + w * TT[12])))));
+            s = z * x;
+            r = y + z * (s * (r + v) + y);
+            r += TT[0] * s;
+            w = x + r;
+            if (ix >= 0x3FE59428)
+            {
+                v = iy;
+                return (1 - ((hx >> 30) & 2)) * (v - 2.0 * (x - (w * w / (w + v) - r)));
+            }
+            if (iy == 1) return w;
+            {
+                double a, t;
+                z = w;
+                z = SetLo(z, 0);
+                v = r - (z - x);
+                t = a = -1.0 / w;
+                t = SetLo(t, 0);
+                s = 1.0 + t * z;
+                return t + a * (s + t * v);
+            }
+        }
+        public static double Tan(double x)
+        {
+            int ix = Hi(x) & 0x7FFFFFFF;
+            if (ix <= 0x3FE921FB) return KernelTan(x, 0.0, 1);
+            if (ix >= 0x7FF00000) return x - x;
+            var y = yBuf ?? (yBuf = new double[2]);
+            int n = RemPio2(x, y);
+            return KernelTan(y[0], y[1], 1 - ((n & 1) << 1));
+        }
+        public static double Acos(double x)
+        {
+            const double one = 1.0, pi = 3.14159265358979311600e+00, pio2_hi = 1.57079632679489655800e+00, pio2_lo = 6.12323399573676603587e-17,
+                pS0 = 1.66666666666666657415e-01, pS1 = -3.25565818622400915405e-01, pS2 = 2.01212532134862925881e-01, pS3 = -4.00555345006794114027e-02,
+                pS4 = 7.91534994289814532176e-04, pS5 = 3.47933107596021167570e-05,
+                qS1 = -2.40339491173441421878e+00, qS2 = 2.02094576023350569471e+00, qS3 = -6.88283971605453293030e-01, qS4 = 7.70381505559019352791e-02;
+            double z, p, q, r, w, s, c, df;
+            int hx = Hi(x), ix = hx & 0x7FFFFFFF;
+            if (ix >= 0x3FF00000)
+            {
+                uint lx = Lo(x);
+                if ((unchecked((uint)(ix - 0x3FF00000)) | lx) == 0) return hx > 0 ? 0.0 : pi + 2.0 * pio2_lo;
+                return double.NaN;
+            }
+            if (ix < 0x3FE00000)
+            {
+                if (ix <= 0x3C600000) return pio2_hi + pio2_lo;
+                z = x * x;
+                p = z * (pS0 + z * (pS1 + z * (pS2 + z * (pS3 + z * (pS4 + z * pS5)))));
+                q = one + z * (qS1 + z * (qS2 + z * (qS3 + z * qS4)));
+                r = p / q;
+                return pio2_hi - (x - (pio2_lo - x * r));
+            }
+            else if (hx < 0)
+            {
+                z = (one + x) * 0.5;
+                p = z * (pS0 + z * (pS1 + z * (pS2 + z * (pS3 + z * (pS4 + z * pS5)))));
+                q = one + z * (qS1 + z * (qS2 + z * (qS3 + z * qS4)));
+                s = Math.Sqrt(z);
+                r = p / q;
+                w = r * s - pio2_lo;
+                return pi - 2.0 * (s + w);
+            }
+            else
+            {
+                z = (one - x) * 0.5;
+                s = Math.Sqrt(z);
+                df = s;
+                df = SetLo(df, 0);
+                c = (z - df * df) / (s + df);
+                p = z * (pS0 + z * (pS1 + z * (pS2 + z * (pS3 + z * (pS4 + z * pS5)))));
+                q = one + z * (qS1 + z * (qS2 + z * (qS3 + z * qS4)));
+                r = p / q;
+                w = r * s + c;
+                return 2.0 * (df + w);
+            }
+        }
+
         // ================================================================ 反正切
         static readonly double[] ATANHI = { 4.63647609000806093515e-01, 7.85398163397448278999e-01, 9.82793723247329054082e-01, 1.57079632679489655800e+00 };
         static readonly double[] ATANLO = { 2.26987774529616870924e-17, 3.06161699786838301793e-17, 1.39033110312309984516e-17, 6.12323399573676603587e-17 };

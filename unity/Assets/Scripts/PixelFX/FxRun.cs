@@ -21,9 +21,12 @@ namespace PixelFX
         public Dictionary<string, string> Str = new Dictionary<string, string>();
         /// 特效要照亮／包住的角色（meta.actor）；沒給而特效需要時用替身角色 Actor.Stock。
         public Actor Actor;
+        /// 其他色階選項（例如寶箱的 "wood"、poof 的 "stars"）；長度跟預設不同時會重新取樣成預設的長度。
+        public Dictionary<string, string[]> Ramps = new Dictionary<string, string[]>();
 
         public FxOptions Set(string key, double v) { Num[key] = v; return this; }
         public FxOptions Set(string key, string v) { Str[key] = v; return this; }
+        public FxOptions Set(string key, string[] ramp) { Ramps[key] = ramp; return this; }
         /// 特效自己的數值選項（預設已合併進來）。
         public double this[string key] => Num[key];
         public int SeedOr0 => Seed ?? 0;
@@ -42,6 +45,8 @@ namespace PixelFX
             foreach (var kv in o.Num) r.Num[kv.Key] = kv.Value;
             foreach (var kv in def.Str) r.Str[kv.Key] = kv.Value;
             foreach (var kv in o.Str) r.Str[kv.Key] = kv.Value;
+            foreach (var kv in def.Ramps) r.Ramps[kv.Key] = kv.Value;
+            foreach (var kv in o.Ramps) r.Ramps[kv.Key] = def.Ramps.TryGetValue(kv.Key, out var d0) ? FitTo(kv.Value, d0) : kv.Value;
             return r;
         }
         static string[] FitTo(string[] given, string[] def)

@@ -9,6 +9,9 @@ export const hitTune = { k: 1 };
 try { Object.assign(vol, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch {}
 
 let ctx = null, master, sfxBus, musicBus, noiseBuf = null;
+// 聲音自己的亂數（音高、雜訊的小變化）：不跟遊戲共用 Math.random，聲音放不放不會改到怪物、掉寶的亂數（Unity 版的比對測試要兩邊亂數順序一樣）
+let aSeed = 0x2f6b1d3;
+const arnd = () => { aSeed = (aSeed + 0x6d2b79f5) | 0; let t = aSeed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 const waves = {};
 export function unlock() {
   try {
@@ -48,10 +51,10 @@ function noise() {
   if (noiseBuf) return noiseBuf;
   noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
   const d = noiseBuf.getChannelData(0);
-  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  for (let i = 0; i < d.length; i++) d[i] = arnd() * 2 - 1;
   return noiseBuf;
 }
-const rnd = (k = 0.04) => 1 + (Math.random() - 0.5) * 2 * k;
+const rnd = (k = 0.04) => 1 + (arnd() - 0.5) * 2 * k;
 
 /**
  * 一個音：{ wave: "sq25"|"sq12"|"sq50"|"tri"|"saw"|"sine", f0, f1（滑到的音高）, dur, at（起音秒）, vol, vib: [速度, 深度], arp: [[秒, 倍數]...], lp（低通） }
@@ -87,7 +90,7 @@ function hiss(o, bus = sfxBus, t = ctx.currentTime) {
   g.gain.exponentialRampToValueAtTime(v, t + at);
   g.gain.exponentialRampToValueAtTime(0.0001, t + o.dur);
   src.connect(f).connect(g).connect(bus);
-  src.start(t, Math.random() * 0.5); src.stop(t + o.dur + 0.02);
+  src.start(t, arnd() * 0.5); src.stop(t + o.dur + 0.02);
   return { src, g };
 }
 

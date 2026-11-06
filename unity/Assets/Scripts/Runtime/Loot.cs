@@ -149,10 +149,10 @@ namespace ZeroStar
         }
     }
 
-    /// 金幣（main.js 的 coins）：先噴出去，再被吸過來
+    /// 金幣（main.js 的 coins）：先噴出去，再被吸過來。still＝高處擺好的一堆（主角靠近才吸）；lay＝寶箱噴出來的（落地躺著，靠近才吸）
     public class Coins
     {
-        public class Coin { public double X, Y, Vx, Vy, T; public bool Got; }
+        public class Coin { public double X, Y, Vx, Vy, T; public bool Got, Still, Lay; public int Type; }
         public readonly List<Coin> List = new List<Coin>();
         static uint P(char ch) => ch == 'k' ? Col.Hex("#3a1e08") : ch == 'h' ? Col.Hex("#fff2a8") : ch == 'g' ? Col.Hex("#ffc83a") : ch == 'G' ? Col.Hex("#c07c18") : Col.Hex("#6e3c10");
         static readonly uint[][][] FRAMES = new[]
@@ -168,13 +168,42 @@ namespace ZeroStar
         {
             for (int i = 0; i < n; i++) { double vx = (Rnd.Next() - 0.5) * 160, vy = -120 - Rnd.Next() * 140; List.Add(new Coin { X = x, Y = y, Vx = vx, Vy = vy }); }
         }
+        /// main.js 的 lootPhysics：落地彈跳；躺在地上時主角靠近才開始吸。回傳 true＝撿到
+        public static bool LootPhysics(Coin c, double dt, Player player, GameMap map)
+        {
+            c.T += dt;
+            const double m = 30;
+            if (c.Lay)
+            {
+                c.Vy += 700 * dt;
+                double py = c.Y + 2;
+                c.X = map.MoveX(c.X, c.X + c.Vx * dt, c.Y + 2, 4, 3);
+                c.Y += c.Vy * dt;
+                double? gy = c.Vy >= 0 ? map.GroundAt(c.X, py, c.Y + 2) : null;
+                if (gy != null) { c.Y = gy.Value - 2; c.Vy *= -0.4; c.Vx *= 0.55; if (Math.Abs(c.Vy) < 30) c.Vy = 0; }
+                if (c.T > 0.5 && Math.Abs(player.X - c.X) < m && Math.Abs(player.Y - 10 - c.Y) < m) { c.Lay = false; c.T = 0.45; }
+                return false;
+            }
+            double dx = player.X - c.X, dy = player.Y - 12 - c.Y, d = Pf.Hypot(dx, dy); if (d == 0) d = 1; double s2 = 120 + (c.T - 0.45) * 900;
+            c.X += (dx / d) * s2 * dt;
+            c.Y += (dy / d) * s2 * dt;
+            if (d < 10) { c.Got = true; return true; }
+            return false;
+        }
         /// 撿到幾枚
         public int Update(double dt, Player player, GameMap map)
         {
             int got = 0;
             foreach (var c in List)
             {
+                if (c.Lay) { if (LootPhysics(c, dt, player, map)) got++; continue; }
                 c.T += dt;
+                if (c.Still)
+                {
+                    const double m = 34;
+                    if (Math.Abs(player.X - c.X) < m && Math.Abs(player.Y - 12 - c.Y) < m) { c.Still = false; c.T = 0.45; }
+                    continue;
+                }
                 if (c.T < 0.45)
                 {
                     c.Vy += 700 * dt;
@@ -195,12 +224,12 @@ namespace ZeroStar
             List.RemoveAll(c => c.Got);
             return got;
         }
-        public void Draw(Frame f)
+        public void Draw(Frame f, double time)
         {
             foreach (var c in List)
             {
                 var spr = FRAMES[(int)Math.Floor(c.T * 10 + c.X * 0.1) & 3]; int w = spr[0].Length;
-                int x = (int)Pf.Round(c.X) - f.Ox - (w >> 1), y = (int)Pf.Round(c.Y) - f.Oy - 3;
+                int x = (int)Pf.Round(c.X) - f.Ox - (w >> 1), y = (int)Pf.Round(c.Y + (c.Still ? Pf.Sin(time * 4 + c.X) * 1.5 : 0)) - f.Oy - 3;
                 for (int j = 0; j < spr.Length; j++) for (int i = 0; i < spr[j].Length; i++)
                 {
                     uint col = spr[j][i]; int px = x + i, py = y + j;
@@ -208,6 +237,39 @@ namespace ZeroStar
                 }
                 int lx = x + (w >> 1), ly = y + 3;
                 if (lx >= 0 && ly >= 0 && lx < f.W && ly < f.H) f.Light[ly * f.W + lx] = LIGHT;
+            }
+        }
+    }
+
+    /// 寶石（寶箱噴出來的，main.js 的 gems）：5×5，左上亮右下暗、一顆高光、外框用最暗那階
+    public static class Gems
+    {
+        public class Type { public string Name; public int Val; public string[] G; public uint[] C; }
+        public static readonly Type[] TYPES = new[]
+        {
+            new Type { Name = "紅寶石", Val = 30, G = new[] { "#2a0612", "#6e0f2a", "#b81c3c", "#f0405a", "#ff8a96", "#ffd2d6" } },
+            new Type { Name = "翡翠", Val = 20, G = new[] { "#06200f", "#0f4a26", "#1a8040", "#34c060", "#8af0a0", "#d8ffe0" } },
+            new Type { Name = "藍寶石", Val = 25, G = new[] { "#0a1030", "#142a70", "#2050c0", "#3a8cf0", "#8ccaff", "#dcf0ff" } },
+            new Type { Name = "紫水晶", Val = 50, G = new[] { "#1a0a2a", "#3e1466", "#6a28a8", "#a050e0", "#d09cff", "#f0e0ff" } },
+        }.Select(t => { t.C = t.G.Select(Col.Hex).ToArray(); return t; }).ToArray();
+        static readonly string[] ART = { ".4554.", "5w5432", "443321", ".3221.", "..21.." };
+        static bool At(int i, int j) => j >= 0 && j < ART.Length && i >= 0 && i < ART[j].Length && ART[j][i] != '.';
+        public static void Draw(Frame f, List<Coins.Coin> gems, double time)
+        {
+            foreach (var g in gems)
+            {
+                var T = TYPES[g.Type]; int x = (int)Pf.Round(g.X) - f.Ox - 3, y = (int)Pf.Round(g.Y) - f.Oy - 3;
+                for (int j = -1; j <= 5; j++) for (int i = -1; i <= 6; i++)
+                {
+                    int px = x + i, py = y + j;
+                    if (px < 0 || py < 0 || px >= f.W || py >= f.H) continue;
+                    if (At(i, j)) f.Color[py * f.W + px] = ART[j][i] == 'w' ? 0xffffffffu : T.C[ART[j][i] - '0'];
+                    else if (At(i + 1, j) || At(i - 1, j) || At(i, j + 1) || At(i, j - 1)) f.Color[py * f.W + px] = T.C[0];
+                }
+                double tw = Pf.Sin(time * 5 + g.X * 0.7);
+                if (tw > 0.92) foreach (var (dx, dy) in new[] { (0, 0), (1, 0), (-1, 0), (0, 1), (0, -1) }) { int px = x + 1 + dx, py = y + dy; if (px >= 0 && py >= 0 && px < f.W && py < f.H) f.Color[py * f.W + px] = 0xffffffffu; }
+                int lx = x + 2, ly = y + 2;
+                if (lx >= 0 && ly >= 0 && lx < f.W && ly < f.H) f.Light[ly * f.W + lx] = T.C[4];
             }
         }
     }

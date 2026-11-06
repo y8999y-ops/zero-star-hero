@@ -2125,6 +2125,9 @@ function loop(now) {
 }
 requestAnimationFrame(loop);
 // 開發用效能測試：直接跑 n 幀（不受瀏覽器節流影響），回傳每幀平均毫秒數
+// Unity 轉移的比對測試（game/tools/unity-trace.mjs）用：照主迴圈的規則跑一步（含慢動作）、畫一格、更新提示計時；直接換形態。平常不會呼叫
+window.__game.step = () => { tick(slowT > 0 ? STEP * 0.35 : STEP); if (!inv.open) slowT -= STEP; render(); hud(STEP); return img.data; };
+window.__game.switchForm = (id) => switchForm(id);
 window.__game.bench = (n = 300) => {
   const t0 = performance.now();
   for (let i = 0; i < n; i++) { tick(STEP); render(); hud(STEP); }   // hud 也跑：系統訊息的計時在這裡

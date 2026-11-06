@@ -22,7 +22,7 @@ namespace ZeroStar
         }
     }
 
-    public class Game : IWorld
+    public partial class Game : IWorld
     {
         public static int W = 384;
         public const int H = 216;
@@ -85,27 +85,44 @@ namespace ZeroStar
             Player.Hp = Player.MaxHp;
             SpawnLive("level-up", Pf.Round(Player.X), Pf.Round(Player.Y), new FxOptions { Light = 0.45, Seed = Lv });
             SceneLight.AddFlash(Player.X, Player.Y - 12, 90, 3, 0.8, "#ffd84a");
-            OnSay?.Invoke($"升級！Lv {Lv}　生命全滿");
+            Say.Unshift($"升級！Lv {Lv}　生命全滿", 2.2);
         }
         /// 在 (x, y) 掉一件東西。minR＝保底稀有度
-        public void DropItem(double x, double y, int minR = 0, int? ilvl = null, int? rarity = null)
+        public void DropItem(double x, double y, int minR = 0, int? ilvl = null, int? rarity = null, double? dir = null)
         {
             int r = rarity ?? Items.RollRarity(Player.S.Mf, minR);
             var item = Items.MakeItem(ilvl ?? IlvlNow(), r);
-            Drops.Add(item, x, y);
-            if (item.Rarity == Items.LEGEND) { SceneLight.AddFlash(x, y, 110, 4, 1, "#ff8a2a"); Fx.HitStop(0.12); Fx.Shake(0.4, 3); }
-            else if (item.Rarity == Items.EPIC) { SceneLight.AddFlash(x, y, 90, 3, 0.6, "#b878ff"); Fx.Shake(0.25, 2); Fx.HitStop(0.06); }
+            Drops.Add(item, x, y, dir);
+            if (item.Rarity == Items.LEGEND)
+            {
+                // 傳說：時間變慢、畫面一閃
+                SlowT = 0.9;
+                SceneLight.AddFlash(x, y, 110, 4, 1, "#ff8a2a"); Fx.HitStop(0.12); Fx.Shake(0.4, 3);
+                OnScreenFlash?.Invoke();
+                Say.Unshift("系統：……等等，那個橘色的光是怎樣？！", 2.6);
+            }
+            else if (item.Rarity == Items.EPIC)
+            {
+                SceneLight.AddFlash(x, y, 90, 3, 0.6, "#b878ff"); Fx.Shake(0.25, 2); Fx.HitStop(0.06);
+                if (!SeenSet) { SeenSet = true; Say.Unshift("系統：紫色的光……套裝！同一套穿 2 件、4 件都有效果。", 3); }
+            }
             else if (item.Rarity == Items.RARE) Fx.Shake(0.15, 2);
         }
+        public Action OnScreenFlash;
         /// 撿起來（背包滿了回傳 false；魔物核要按住吸收）
         bool PickUp(Drops.Drop d)
         {
             if (d.Item.Kind == "formcore") return false;
             var it = d.Item;
-            if (Inv.Count >= Items.BAG_SIZE) return false;
+            if (Inv.Count >= Items.BAG_SIZE)
+            {
+                if (!d.Warned) { d.Warned = true; Say.Show("系統：背包滿了！打開右上角的【背包】整理一下。", 2.5, "bag"); }
+                return false;
+            }
             it.New = true;
             Inv.Add(it);
-            if (it.Kind == "junk" && Rnd.Next() < 0.4) OnSay?.Invoke(Items.JUNK.First(j => j.id == it.Junk).say);
+            if (it.Kind == "junk") QuestProgress("junk");
+            if (it.Kind == "junk" && Rnd.Next() < 0.4) Say.Push(Items.JUNK.First(j => j.id == it.Junk).say, 2.4);
             Sfx(it.Rarity >= Items.RARE ? "rare" : "pickup");
             if (it.Rarity >= Items.RARE) SpawnLive("collect-burst", Pf.Round(Player.X), Pf.Round(Player.Y) - 10, new FxOptions { Palette = it.Rarity == Items.LEGEND ? Col.PAL["ember"] : new[] { "#1e1206", "#4a2c08", "#86520c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff" }, Light = 0.4 });
             OnPickup?.Invoke(it);
@@ -136,7 +153,7 @@ namespace ZeroStar
             absorbHp = Player.Hp;
             foreach (var d in cores) if (d != near && d.Hold != 0) d.Hold = Math.Max(0, d.Hold - dt * 3);
             if (near == null) return;
-            if (hit && near.Hold > 0) { near.Hold = 0; Sfx("close"); OnSay?.Invoke("系統：被打斷了！核掉回地上了。"); return; }
+            if (hit && near.Hold > 0) { near.Hold = 0; Sfx("close"); Say.Show("系統：被打斷了！核掉回地上了。", 1.4); return; }
             if (Input.Absorb && !Ult.On)
             {
                 near.Hold = Math.Min(1, near.Hold + dt / ABSORB_T);
@@ -149,14 +166,26 @@ namespace ZeroStar
         {
             bool unlocked = !FormsOwned.ContainsKey(it.Form);
             if (unlocked) FormsOwned[it.Form] = 0; else FormsOwned[it.Form]++;
+            After(0, () => QuestProgress("core"));
             Sfx("absorb");
             SpawnLive("collect-burst", Pf.Round(Player.X), Pf.Round(Player.Y) - 12, new FxOptions { Palette = FORM_BURST[it.Form], Light = 0.7 });
             SpawnLive("collect-burst", Pf.Round(Player.X), Pf.Round(Player.Y) - 12, new FxOptions { Palette = FORM_BURST[it.Form], Light = 0.4, Seed = 7 }, 0.7);
             SceneLight.AddFlash(Player.X, Player.Y - 12, 120, 4, 0.9, FORM_COLOR[it.Form]);
             Fx.Shake(0.18, 2.5);
-            OnSay?.Invoke(unlocked ? $"系統：吸收了{FORM_NAME[it.Form]}的靈核！新形態「{FORM_NAME[it.Form]}」。" : $"靈核 +1（{FORM_NAME[it.Form]}）");
+            if (unlocked)
+            {
+                bool carried = Array.IndexOf(Carry, it.Form) >= 0;
+                Say.Show($"系統：吸收了{FORM_NAME[it.Form]}的靈核！新形態「{FORM_NAME[it.Form]}」。" + (carried ? (IsTouch ? "點右邊的【形態】就能變身。" : "按【1】～【3】就能變身。") : "已經帶滿 3 個了，不在戰鬥中時打開技能樹的【形態】頁就能換。"), 3.4, "forms");
+                Say.Unshift($"系統：你把{(it.Form == "slime" ? "史萊姆" : "垃圾桶")}的靈核吃掉了？不對，是吸收。好吧，差不多。", 2.8);
+            }
+            else
+            {
+                OnFeed?.Invoke($"靈核 +1（{FORM_NAME[it.Form]}）");
+                if (!SeenCoreTip) { SeenCoreTip = true; Say.Push("系統：重複的靈核也有用——在左上的【技能樹】用它點技能，兩顆還能換一次屬性。", 3.4); }
+            }
         }
-        public void ApplyStats() => Player.SetStats(Items.ComputeStats(Equip, Lv));
+        public Action<string> OnFeed;
+        public void ApplyStats() { var s = Items.ComputeStats(Equip, Lv); s.MaxMp = 100 + MpBonus; Player.SetStats(s); }
         Item MythOn(string id) { foreach (var it in Equip.Values) if (it?.Myth == id) return it; return null; }
         // 裝備效果的物件
         public class Strike { public double X, Y, T, Mult = 0.8; public Enemy E; public bool Done; }
@@ -165,7 +194,12 @@ namespace ZeroStar
         HashSet<Enemy> comet;
         double noisyT = 4, combatT, idleT; int boomDepth;
         static readonly (string line, string stat)[] NOISY = { ("系統（星核）：拜託你認真打好嗎。給你攻擊 +30%。", "atk"), ("系統（星核）：太慢了啦！攻速 +30%，快點！", "spd"), ("系統（星核）：跑起來！移速 +30%！", "move"), ("系統（星核）：……我不想講話。攻擊 +30%，自己看著辦。", "atk") };
-        public Action<string> OnSay;   // 系統的話（介面在階段 4）
+        public Action<string> OnSay;   // 開發用的提示（不在網頁版的台詞排隊裡）
+        static readonly Dictionary<string, string[]> MYTH_LORE = new Dictionary<string, string[]>
+        {
+            ["starking"] = new[] { "王冠內側刻著一行小字：「給最亮的那一顆」。", "你聽見王冠裡有人在數數：一、二、三……數到第九就停了。九顆星星？", "星王沒有死。祂只是碎成了很多很多片——其中一片，正戴著祂的王冠。" },
+            ["fallheart"] = new[] { "一顆還在跳動的星星碎片。摸起來是溫的。", "它跳動的節奏，跟你切換形態的節奏一模一樣。", "這是星王的心。祂把心留給了下一顆星星——也就是你。" },
+        };
         static readonly string[] LAVA = { "#14060a", "#380a10", "#6e1210", "#ac2410", "#e8501a", "#ff8c2a", "#ffd25a" };
 
         /// 傳說：很吵的星核（每 10 秒吐槽＋隨機增益）、通宵委託單（戰鬥越久傷害越高）
@@ -178,7 +212,7 @@ namespace ZeroStar
                 Player.BuffAtk = 0; Player.BuffSpd = 0; Player.BuffMove = 0;
                 if (stat == "atk") Player.BuffAtk = 0.3; else if (stat == "spd") Player.BuffSpd = 0.3; else Player.BuffMove = 0.3;
                 Player.BuffT = Player.Core("noisy") != 0 ? Player.Core("noisy") : 5;
-                OnSay?.Invoke(line);
+                Say.Unshift(line, 2.4);
             }
             bool fighting = Enemies.Exists(e => !e.Dead && e.Kind != "gold" && Math.Abs(e.X - Player.X) < 220 && Math.Abs(e.Y - Player.Y) < 140);
             idleT = fighting ? 0 : idleT + dt;
@@ -240,7 +274,9 @@ namespace ZeroStar
                 int after = Items.AwakenStage(it);
                 if (after > before)
                 {
-                    OnSay?.Invoke($"{it.Name} 覺醒到第 {after} 階！");
+                    var M = Items.MYTHS.First(x => x.id == it.Myth);
+                    Say.Show($"{M.name} 覺醒到第 {after} 階！", 2.6);
+                    Say.Push("系統：" + MYTH_LORE[it.Myth][after - 1], 4);
                     SceneLight.AddFlash(Player.X, Player.Y - 14, 120, 4, 0.6, "#fff0a0"); Fx.Shake(0.3, 3); Sfx("levelup");
                     SpawnLive("level-up", Pf.Round(Player.X), Pf.Round(Player.Y), new FxOptions { Light = 0.55, Seed = after * 7, Palette = new[] { "#2a1405", "#5c3008", "#9a5a0e", "#d48e18", "#f5b92c", "#ffde5e", "#fff4bc", "#ffffff" } }.Set("text", "AWAKEN!"));
                     ApplyStats();
@@ -291,39 +327,39 @@ namespace ZeroStar
         // ---- 即時特效（pixelfx 的特效翻成 C#，跟烘焙動畫放在同一個清單）
         public FxRun SpawnLive(string name, double x, double y, FxOptions o, double speed = 1, bool back = false) => Fx.SpawnLive(name, x, y, o, speed, back);
         public Action<string> OnSfx;
-        public (double x, double y) Checkpoint;
 
-        /// 1-1 的出生點與第一段的怪（stage.js 的 STAGE_1_1）
-        public static readonly (double x, double y) START = (84, -40);
-        public static readonly (string k, double x, double y, bool deep)[] SPAWNS =
-        {
-            ("slime", 1140, 384, true), ("slime", 1720, 384, false), ("slime", 1770, 384, false), ("slime", 1820, 384, false),
-        };
+        public readonly string StageId;
+        /// 新存檔的初始裝備（save.js 載入時一定會做一份：亂數照網頁版的順序先取掉）
+        public readonly (Item core, Item shell) Fresh;
 
+        /// 照 main.js 載入關卡的順序建立（亂數的順序要一樣）。建好之後呼叫 StartStage() 才開始（擺怪、開場台詞）
         public Game(string stage = "1-1")
         {
+            StageId = stage;
             Enemy.ResetStatics();
             SceneLight.Reset();
-            Status = new Status(this) { Allow = new HashSet<string> { "burn", "slime" } };
+            Fresh = Items.StarterGear();
+            Status = new Status(this) { Allow = stage == "1-1" ? new HashSet<string> { "burn", "slime" } : null };   // 1-1 只有燃燒和黏液
             Ult = new Ult(this);
             FxSystem.WarmUp();
-            SceneLight.GlobalLv = 0;   // 1-1 只有燃燒和黏液（main.js 同一個設定）
+            SceneLight.GlobalLv = 0;
             Data = Baked.Level(stage);
             Art = new LevelArt(Data);
             Map = new GameMap(Data.W, Data.H, Data.Solids, Data.Platforms);
+            InitStage(stage);
             var combos = JsonUtility.FromJson<ComboDef>(Baked.Text("combos"));
-            Player = new Player(START.x, START.y, combos) { RankFn = Rank };
-            Checkpoint = (START.x, 0);
+            Player = new Player(StageD.StartX, StageD.StartY, combos) { RankFn = Rank };
+            Equip["weapon"] = Fresh.core; Equip["body"] = Fresh.shell;
+            ApplyStats();
+            Player.Hp = Player.MaxHp;
             CamY = Math.Max(0, Data.H - H);
+            InitStageObjects();   // 場景物件、機關（載入時取亂數的在這裡）
             var brazier = Baked.Anim("brazier");
             foreach (var t in Data.Torches) Fx.Spawn(brazier, t.x, t.y, back: true, keep: true).Update(Rnd.Next() * 3);
-            foreach (var sp in SPAWNS)
-            {
-                var e = new Enemy(sp.k, sp.x, sp.y) { X0 = sp.x, DeepSleep = sp.deep, Core = sp.deep ? "slime" : null };   // 1-1：睡著的那隻必掉史萊姆核
-                Enemies.Add(e);
-            }
-            SnapCam();
+            if (PortalX != null) Fx.Spawn(Baked.Anim("portal"), PortalX.Value, PortalY, back: true, keep: true);
         }
+        /// 場景物件（props、scenery、hazards、features）：搬好之後在這裡建立
+        partial void InitStageObjects();
 
         // ---- world
         public Enemy NearestEnemy(double x, double y, double range, int dir = 0)
@@ -341,6 +377,11 @@ namespace ZeroStar
         public int HitArea(Box box, Func<Roll> dmg, double dir, HitOpts o)
         {
             int n = 0;
+            var bt = (box.X0, box.X1, box.Y0, box.Y1);
+            Props.Hit(bt, dir);
+            Features.Hit(bt);
+            Scenery.Hit(bt, dir);
+            Hazards.Hit(bt);
             foreach (var e in Enemies.ToArray()) if (!e.Dead && box.Overlaps(e.HitBox()))
             {
                 var r = dmg(); bool poisoned = e.St != null && e.St.Poison > 0;
@@ -355,6 +396,10 @@ namespace ZeroStar
         public int HitOnce(Box box, HashSet<Enemy> hit, Func<Roll> dmg, double dir, HitOpts o)
         {
             int n = 0;
+            var bt = (box.X0, box.X1, box.Y0, box.Y1);
+            Props.Hit(bt, dir);
+            Features.Hit(bt);
+            Scenery.Hit(bt, dir);
             foreach (var e in Enemies.ToArray()) if (!e.Dead && !hit.Contains(e) && box.Overlaps(e.HitBox())) { hit.Add(e); var r = dmg(); e.Hit(r, dir, o, this); OnCritHit(e, r); n++; }
             if (n > 0) { AddCombo(n); Fx.HitStop(0.05); Fx.Shake(0.15, 2); }
             return n;
@@ -395,6 +440,7 @@ namespace ZeroStar
             if (s.Form == "slime")
             {
                 if (Rank("slime", "g_bounce") != 0) SpawnShotlet(x, y, s.Dir, "slime", 0, 0.6, 0.3);
+                if (Rank("slime", "g_ground") != 0) Hazards.AddTemp("goo", Pf.Round(x), Map.FloorAt(x, y - 8), 40, 3);
                 if (Rank("slime", "g_split") != 0) foreach (double vy in new[] { -140.0, 0, 140 }) SpawnShotlet(x, y, vy != 0 ? s.Dir : -s.Dir, "slime", vy, 0.5, 0.28);
             }
         }
@@ -445,9 +491,9 @@ namespace ZeroStar
         }
         public double NoManaT;
         public void NoMana() { Sfx("close"); NoManaT = 0.6; }
-        void SwitchForm(string id)
+        public void SwitchForm(string id)
         {
-            if (id == null || id == Player.Form) return;
+            if (id == null || id == Player.Form || !FormsOwned.ContainsKey(id) || Ult.On) return;
             if (sceneClock < formCdUntil) { Sfx("close"); return; }
             formCdUntil = sceneClock + FORM_CD;
             Sfx("form");
@@ -467,18 +513,49 @@ namespace ZeroStar
             SpawnLive("collect-burst", Pf.Round(Player.X), Pf.Round(Player.Y) - 12, new FxOptions { Palette = FORM_BURST[id], Light = 0.4 });
             SceneLight.AddFlash(Player.X, Player.Y - 12, 60, 2, 0.3, FORM_COLOR[id]);
         }
-        public void Land(double x, double y, bool hard) { Sfx("land"); Combat.Dust("land", x, y, hard); }
+        public void Land(double x, double y, bool hard) { Sfx("land"); Combat.Dust("land", x, y, hard); Props.Landing(x, y, hard); Scenery.Landing(x, y, hard); }
         public void Dust(double x, double y, int n) { Fx.Spawn(Baked.Anim("dust"), Pf.Round(x), Pf.Round(y), Rnd.Next() < 0.5, speed: 1.8); }
         public void DropCoins(double x, double y, int n) { CoinList.Drop(x, y, n); }
+        static readonly Dictionary<string, string> CORE_FROM = new Dictionary<string, string> { ["slime"] = "slime", ["bat"] = "bat", ["trash"] = "can", ["hog"] = "spike" };
+        /// forms.js 的 coreChance：還沒有這個形態時比較容易掉
+        (string id, double p) CoreChance(string kind)
+        {
+            if (!CORE_FROM.TryGetValue(kind, out var id)) return (null, 0);
+            bool owned = FormsOwned.ContainsKey(id);
+            double b = kind == "trash" ? (owned ? 0.12 : 0.3) : kind == "hog" ? (owned ? 0.08 : 0.2) : owned ? 0.03 : 0.08;
+            return (id, b);
+        }
+        public int PityLegend;
+        /// 傳說保底：菁英 0.5%，每隻沒掉傳說的菁英 +0.5%
+        bool EliteLegend()
+        {
+            if (Rnd.Next() < 0.005 * (1 + PityLegend)) { PityLegend = 0; return true; }
+            PityLegend++;
+            return false;
+        }
         public void OnKill(Enemy e)
         {
             Kills++;
             if (e.SqT > 0) Fx.HitStop(0.08);   // 直接打死的停久一點
+            bool lastOne = Director?.Lock != null && Director.Wave >= Director.Waves.Count && Alive(Director.Lock) == 0;
+            if (e.Elite || lastOne) { Fx.HitStop(0.11); SlowT = Math.Max(SlowT, 0.45); }
             MythKill();
-            GainXp(KILL_XP.TryGetValue(e.Kind, out var kx) ? kx : 5);
+            QuestProgress("kill");
+            if (Kills == 30) Say.Show("系統：……三十隻了。你真的只是一塊碎片嗎？");
+            if (Kills == 100) Say.Show("系統：好啦，我承認你有一點點厲害。");
+            if (e.Kind == "gold") Say.Show("系統：金幣史萊姆！今晚加菜！");
+            GainXp((KILL_XP.TryGetValue(e.Kind, out var kx) ? kx : 5) * (e.Elite ? 4 : 1));
+            var (coreId, coreP) = CoreChance(e.Kind);
             if (e.Core != null) { var bb = e.Box(); Drops.Add(Items.MakeCore(e.Core), e.X, (bb.y0 + bb.y1) / 2, 1); }   // 關卡指定必掉
+            else if (coreId != null && !StageD.Paced && Rnd.Next() < (e.Elite ? Math.Min(1, coreP * 4) : coreP)) { var bb = e.Box(); Drops.Add(Items.MakeCore(coreId), e.X, (bb.y0 + bb.y1) / 2); }
             var b = e.Box(); double cy = (b.y0 + b.y1) / 2;
-            if (Rnd.Next() < (DROP_RATE.TryGetValue(e.Kind, out var dr) ? dr : 0.1) * (1 + Player.S.Mf / 200)) { int il = IlvlNow(0); DropItem(e.X, cy, 0, il); }
+            if (e.Elite || Rnd.Next() < (DROP_RATE.TryGetValue(e.Kind, out var dr) ? dr : 0.1) * (1 + Player.S.Mf / 200))
+            {
+                int minR = e.Kind == "gold" || e.Elite ? Items.FINE : 0;
+                if (e.Elite && EliteLegend()) { int il = IlvlNow(1); DropItem(e.X, cy, minR, il, Items.LEGEND); }
+                else if (e.Elite && Rnd.Next() < 0.03) { int il = IlvlNow(1); DropItem(e.X, cy, minR, il, Items.EPIC); }
+                else { int il = IlvlNow(e.Kind == "trash" || e.Elite ? 1 : 0); DropItem(e.X, cy, minR, il); }
+            }
             // 傳說「爆炸頭礦工帽」：擊殺時 25% 爆炸，會連鎖（最多 6 次）
             if (Player.Has("hardhat") && boomDepth < 6 && Rnd.Next() * 100 < 25)
             {
@@ -499,6 +576,8 @@ namespace ZeroStar
                 foreach (var e in Enemies) if (!e.Dead && Math.Abs(e.X - Player.X) < 44 && Math.Abs(e.Y - Player.Y) < 40) { e.Vx = (e.X >= Player.X ? 1 : -1) * 260; e.Vy = -160; e.Stun = Math.Max(e.Stun, 0.5); }
                 SceneLight.AddFlash(Player.X, Player.Y - 12, 60, 2, 0.25, "#b4f890");
             }
+            Combo = 0;
+            if (Player.Hp <= 0) PlayerDied();
         }
         public void Sfx(string name) { OnSfx?.Invoke(name); }
 
@@ -513,6 +592,7 @@ namespace ZeroStar
             var v = ViewRect(); double gy = Map.FloorAt(Player.X, Math.Max(0, Player.Y));
             camLand = Player.Grounded ? (double?)null : gy; camRefY = gy; lookX = Player.Face * 36;
             CamX = Math.Max(-v.x0, Math.Min(Data.W - v.x0 - v.w, Player.X - W / 2.0));
+            if (Director?.Lock != null) CamX = Math.Max(Director.Lock.Value.l - v.x0, Math.Min(Director.Lock.Value.r - v.x0 - v.w, CamX));
             if (Data.H > H) CamY = Math.Max(-v.y0, Math.Min(Data.H - v.y0 - v.h, gy - H * 0.62));
         }
         double LookAhead(double dt, double dist) { lookX += (Player.Face * dist - lookX) * Math.Min(1, 2.2 * dt); return lookX; }
@@ -527,6 +607,7 @@ namespace ZeroStar
             var v = ViewRect();
             CamX = DeadFollow(CamX + W / 2.0, Player.X + LookAhead(dt, 36), 14, 5, dt) - W / 2.0;
             CamX = Math.Max(-v.x0, Math.Min(Data.W - v.x0 - v.w, CamX));
+            if (Director?.Lock != null) CamX = Math.Max(Director.Lock.Value.l - v.x0, Math.Min(Director.Lock.Value.r - v.x0 - v.w, CamX));
             if (Data.H > H)
             {
                 if (camLand != null && Player.Grounded) camLand = null;
@@ -559,17 +640,37 @@ namespace ZeroStar
             }
         }
 
-        public double DeadT;
-        /// 一步（固定 1/60 秒）
+        /// 主迴圈的一步（main.js 的 loop：慢動作時世界走 0.35 倍）＋畫一格＋提示計時
+        public void Step(Frame frame)
+        {
+            Tick(SlowT > 0 ? STEP * 0.35 : STEP);
+            SlowT -= STEP;
+            Render(frame);
+            Hud(STEP);
+        }
+        /// main.js 的 hud(dt)：系統台詞的計時
+        public void Hud(double dt) { Say.Hud(dt); }
+        /// 載入畫面還蓋著的時候先跑幾格（main.js 載入完的暖機：tick(0)、畫、hud(0) 六次，畫面時間歸零）
+        public void Warm(Frame frame)
+        {
+            double c0 = sceneClock;
+            for (int i = 0; i < 6; i++) { Tick(0); Render(frame); Hud(0); }
+            sceneClock = c0;
+        }
+        public double LowHpK = 1, LowHpPhase = 0.99, LowHpPulse;
+        /// 一步（固定 1/60 秒；慢動作時比較短）
         public void Tick(double dt)
         {
-            RunTimers();
             Input.Tick(dt);
             if (Fx.ShakeT > 0) Fx.ShakeT -= dt;
             if (Fx.Freeze > 0) { Fx.Freeze -= dt; return; }
+            if (!Started) return;
             Combat.Update(dt);
             SceneLight.Update(dt);
             Status.Update(dt);
+            UpdateStageObjectsEarly(dt);   // 元素場景物件、死亡碎片
+            LowHpK = Player.Hp > 0 && !(Player.HideT > 0) ? Player.Hp / Player.MaxHp : 1;
+            if (LowHpK < 0.3) { LowHpPhase += dt * (1.2 + 1.2 * (1 - LowHpK / 0.3)); if (LowHpPhase >= 1) { LowHpPhase -= 1; Sfx("heart"); } LowHpPulse = HeartBeat(LowHpPhase); } else { LowHpPhase = 0.99; LowHpPulse = 0; }
             if (NoManaT > 0) NoManaT -= dt;
             // 大招進行中：世界停住，只有主角、特效和鏡頭在動
             if (Ult.On)
@@ -579,13 +680,15 @@ namespace ZeroStar
                 Enemies.RemoveAll(e => e.Dead);
                 Fx.Update(dt);
                 FollowCam(dt);
+                Say.Update();
                 return;
             }
             if (PendingForm != null) { SwitchForm(PendingForm); PendingForm = null; }
             ultCd -= dt;
             bool ultReady = Player.Mp >= Ult.ULT_MP && !Ult.On && ultCd <= 0;
+            if (!ultTipped && ultReady && Kills >= 3 && (StageId != "1-1" || (Director?.UltOK ?? false))) { ultTipped = true; Teach("ult"); Say.Push("系統：" + (IsTouch ? "魔力夠了就能放大招！按【大招】，讓牠們見識一下星星的厲害。" : "魔力夠了就能放大招！按【Q】，讓牠們見識一下星星的厲害。"), 2.6, "ult"); }
             if (Input.Ult && !ultReady && !Ult.On) { Input.Consume("ult"); if (Player.Mp < Ult.ULT_MP) NoMana(); }
-            if (Input.Ult && ultReady && Player.State != "hurt" && Player.Hp > 0)
+            if (Input.Ult && ultReady && Player.State != "hurt")
             {
                 Input.Consume("ult");
                 Player.Mp -= Ult.ULT_MP; ultCd = 1;
@@ -593,32 +696,56 @@ namespace ZeroStar
                 if (Player.Set4("reson")) Player.ResonT = 10;   // 星辰共鳴 4 件
                 // 星王之冠：星王化（8 秒，覺醒 2 階 12 秒；3 階退回一半的大招魔力）
                 var crown = MythOn("starking");
-                if (crown != null) { int st = Items.AwakenStage(crown); Player.KingT = st >= 2 ? 12 : 8; if (st >= 3) Player.Mp = Math.Min(Player.MaxMp, Player.Mp + Ult.ULT_MP / 2); OnSay?.Invoke("星王化！"); }
+                if (crown != null) { int st = Items.AwakenStage(crown); Player.KingT = st >= 2 ? 12 : 8; if (st >= 3) Player.Mp = Math.Min(Player.MaxMp, Player.Mp + Ult.ULT_MP / 2); Say.Show("星王化！", 1.6); }
                 Sfx("ultCharge");
                 return;
             }
-            if (Player.Hp <= 0)
-            {
-                // 階段 1 的簡化：倒下 1 秒後從檢查點重來
-                if ((DeadT += dt) > 1) { DeadT = 0; Player.Respawn(Checkpoint.x, Checkpoint.y); SnapCam(); }
-            }
-            else Player.Update(dt, this);
+            UseInput();
+            Player.Update(dt, this);
+            UpdateStageObjectsPlayer(dt);   // 草叢、木箱（props）、小生物（scenery）
             UpdateUniques(dt);
+            UpdateChest(dt);
+            UpdateGems(dt);
             Drops.Update(dt, Player, 16, Map, PickUp);
             UpdateAbsorb(dt);
-            if (Player.Grounded && Player.X > Checkpoint.x + 200 && Player.Hp > 0) Checkpoint = (Player.X, Player.Y - 1);
+            StatTime += dt;
+            { var v = ViewRect(); Director?.Update(dt, Player, CamX + v.x0, v.w); }
+            // 戰鬥區封鎖：主角出不去
+            if (Director?.Lock != null) Player.X = Math.Max(Director.Lock.Value.l + 10, Math.Min(Director.Lock.Value.r - 10, Player.X));
             foreach (var e in Enemies)
             {
                 if (e.Dead) continue;
                 e.Update(dt, Player, this);
-                if (e.K.Dmg > 0 && e.Stun <= 0 && Player.Hp > 0 && e.HitBox().Overlaps(new Box(Player.X - 8, Player.X + 8, Player.Y - 22, Player.Y)) && Player.Hurt(e.K.Dmg, e.X, this))
+                bool rolling = e.Hog == "roll";   // 刺蝟滾過來比較痛；撞到人就停下來展開
+                if (e.K.Dmg > 0 && (e.Stun <= 0 || rolling) && e.HitBox().Overlaps(new Box(Player.X - 8, Player.X + 8, Player.Y - 22, Player.Y)) && Player.Hurt(rolling ? e.K.RollDmg : e.K.Dmg, e.X, this))
                 {
                     e.Vx = (e.X >= Player.X ? 1 : -1) * 120;
                     e.Stun = 0.4;
+                    if (rolling) e.RollHit = true;
                 }
             }
             Separate(dt);
             UpdateCoreFx(dt);
+            UpdateAltars();
+            UpdateStageObjectsLate(dt);   // 形態機關（features）
+            foreach (var e in Enemies)
+            {
+                if (e.Dead) continue;
+                var lk = Director?.Lock;
+                bool inLock = lk != null && (StageD.ArenaInfo == null || (e.X > lk.Value.l && e.X < lk.Value.r && e.Y > StageD.ArenaInfo.Floor - 220));
+                if (inLock && (e.X < lk.Value.l + 12 || e.X > lk.Value.r - 12))
+                {
+                    e.Xp = Math.Max(lk.Value.l + 12, Math.Min(lk.Value.r - 12, e.X));
+                    if (e.Kind == "gold") e.HopDir = -e.HopDir;
+                }
+                // 金幣史萊姆 10 秒沒抓到就逃走
+                if (e.Kind == "gold" && e.AwakeT > 10)
+                {
+                    e.Dead_ = true;
+                    Fx.Spawn(Baked.Anim("poofGold"), Pf.Round(e.X), Pf.Round(e.Y));
+                    Say.Unshift("系統：金幣史萊姆逃走了……我的晚餐……", 2.5);
+                }
+            }
             Enemies.RemoveAll(e => e.Dead);
             // 技能彈：直線飛，撞到怪或地形就爆開（範圍傷害、擊飛、沾元素）
             for (int si = 0; si < Shots.Count; si++)   // 跟 JS 一樣：迴圈中途加進來的小彈（彈跳、分裂）同一步也會處理
@@ -628,7 +755,7 @@ namespace ZeroStar
                 if (s.Vy != 0) s.Y = Math.Min(Map.FloorAt(s.X, s.Y) - 6, s.Y + s.Vy * dt);
                 s.Life -= dt;
                 s.Fx.Options.X = Pf.Round(s.X); s.Fx.Options.Y = Pf.Round(s.Y);
-                bool hit = s.Life <= 0 || Map.SolidAt(s.X, s.Y);
+                bool hit = s.Life <= 0 || Features.ShotAt(s.X, s.Y, s.Form) || Map.SolidAt(s.X, s.Y);
                 if (!hit) foreach (var e in Enemies.ToArray()) if (!e.Dead && e != s.Skip && e.HitBox().Overlaps(new Box(s.X - 8, s.X + 8, s.Y - 8, s.Y + 8)))
                 {
                     // 技能樹「貫穿」（星星）：穿過第一隻，打到第二隻才爆
@@ -693,12 +820,19 @@ namespace ZeroStar
             Fx.Update(dt);
             if ((ComboT -= dt) <= 0 && Combo != 0) Combo = 0;
             FollowCam(dt);
+            Say.Update();
+        }
+        /// lowhpfx.js 的 beat：心跳（咚、咚）
+        static double HeartBeat(double phase)
+        {
+            double p1 = phase < 0.5 ? Pf.Exp(-phase * 14) : 0, p2 = phase > 0.18 && phase < 0.7 ? 0.6 * Pf.Exp(-(phase - 0.18) * 14) : 0;
+            return Math.Min(1, p1 + p2);
         }
 
         /// 合成之後（大招落地的黑白衝擊定格）
         public void PostComposite(byte[] rgba) => Ult.PostProcess(rgba);
 
-        /// 畫一格（main.js 的 render 子集），結果在 frame 裡（還沒合成）
+        /// 畫一格（main.js 的 render），結果在 frame 裡（還沒合成）
         public void Render(Frame frame)
         {
             var (sx, sy) = Fx.ShakeOffset();
@@ -708,8 +842,12 @@ namespace ZeroStar
             sceneClock += 1 / 60.0;
             var lights = Art.SceneLights(CamX, W, sceneClock);
             lights.Add(new LightSrc(Player.X, Player.Y - 10, 64, 1.6, "#ffcf6a"));
+            foreach (var e in Enemies) if (e.Elite && !e.Dead) lights.Add(new LightSrc(e.X, e.Y - 10, 36, 1.2, "#ff4a3a"));
             foreach (var s in Shots) lights.Add(new LightSrc(s.X, s.Y, 64, 3, (SHOT_PAL.ContainsKey(s.Form) ? SHOT_PAL[s.Form] : SHOT_PAL["star"]).light));
+            foreach (var d in Drops.List) if (d.Landed && d.Item.Rarity >= Items.RARE) lights.Add(new LightSrc(d.X, d.Y - 10, d.Item.Rarity == Items.LEGEND ? 48 : 30, 2, Items.RARITY[d.Item.Rarity].Color));
             Ult.Lights(lights);
+            StageLights(lights);   // props、scenery、features
+            foreach (var a in Altars) lights.Add(a.Lit ? new LightSrc(a.X, a.Y - 18, 70, 2.4, "#ffd060") : new LightSrc(a.X, a.Y - 14, 26, 0.8, "#7488aa"));
             Prof.Mark(null);
             var lv = SceneLight.Compute(frame, lights);
             Prof.Mark("光源");
@@ -717,6 +855,11 @@ namespace ZeroStar
             Prof.Mark("場景");
             Art.DrawAtmosphere(frame, sceneClock);
             Prof.Mark("大氣");
+            foreach (var a in Altars) if (Math.Abs(a.X - CamX - W / 2.0) < W) DrawAltar(frame, a);
+            DrawStageObjects(frame, lv);   // features、props、scenery、hazards
+            if (UseT != null) DrawBang(frame, UseT.X, UseT.Top);
+            if (Chest != null && !Chest.Opened && Math.Abs(Chest.X - CamX - W / 2.0) < W) DrawChestSolid(frame);
+            Prof.Mark("場景物件");
             if (!Ult.On) Fx.Draw(frame, true);
             Drops.Draw(frame, sceneClock);
             foreach (var d in Drops.List) if (d.Item.Kind == "formcore" && d.Hold > 0 && d.HasCenter) CoreArt.DrawBeams(frame, d.Cx, d.Cy, Player.X, Player.Y - 12, sceneClock, d.Item.Form, d.Hold);
@@ -731,11 +874,13 @@ namespace ZeroStar
             foreach (var e in Enemies) if (e.DizzyT > 0 && !e.Dead) CoreFx.DrawDizzy(frame, e.X, e.Box().y0 - 4, sceneClock);
             if (Player.Shield > 0) SetFx.DrawShield(frame, Player.X, Player.Y - 12, Player.Shield / (Player.MaxHp * 0.2), sceneClock);
             if (Player.ResonT > 0) SetFx.DrawReson(frame, Player.X, Player.Y - 12, sceneClock);
-            CoinList.Draw(frame);
+            CoinList.Draw(frame, StatTime);
+            Gems.Draw(frame, GemList, StatTime);
             Prof.Mark("怪");
             if (Ult.On) { Ult.DimScene(frame); Prof.Mark("暗場"); Fx.Draw(frame, true); Prof.Mark("背景特效"); }   // 大招：先畫怪再暗場，法陣這些背景特效畫在暗場之後才會亮
             if (Player.KingT > 0) SetFx.DrawKingBack(frame, Player.X, Player.Y - 12, sceneClock);   // 星王化：光芒在主角後面
-            if (Player.Hp > 0) Player.Draw(frame);
+            Player.Draw(frame);
+            DrawDeathFx(frame);
             if (Player.KingT > 0) SetFx.DrawKingFront(frame, Player.X, Player.Y - 12, sceneClock);
             Prof.Mark("主角");
             Fx.Draw(frame, false);
@@ -745,11 +890,23 @@ namespace ZeroStar
             Prof.Mark("戰鬥小特效");
             Ult.Draw(frame);
             Prof.Mark("大招畫");
+            DrawLowHp(frame);
+            if (Director?.Lock != null) DrawBarrier(frame, Director.Lock.Value);
             Art.DrawForeground(frame);
             Combat.DrawNumbers(frame, ViewRect());
             Prof.Mark("前景");
             Ult.DrawCutIn(frame);
             Prof.Mark("特寫帶");
         }
+        // ---- 場景物件的畫法、光（props.js、scenery.js、hazards.js、features.js、altar-art.js、objglow.js、deathfx.js、lowhpfx.js、寶箱）：搬好之後接上
+        partial void StageLights(List<LightSrc> lights);
+        partial void DrawAltar(Frame frame, Altar a);
+        partial void DrawStageObjects(Frame frame, float[] lv);
+        partial void DrawChestSolid(Frame frame);
+        partial void DrawDeathFx(Frame frame);
+        partial void DrawLowHp(Frame frame);
+        partial void UpdateStageObjectsEarly(double dt);
+        partial void UpdateStageObjectsPlayer(double dt);
+        partial void UpdateStageObjectsLate(double dt);
     }
 }

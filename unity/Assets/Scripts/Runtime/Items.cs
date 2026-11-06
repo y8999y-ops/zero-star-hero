@@ -34,6 +34,7 @@ namespace ZeroStar
             new RarityDef { Id = "myth", Name = "神話", Color = "#fff0a0", Weight = 0, Sub0 = 4, Sub1 = 4, Mult = 1.5, Scrap = 30, Coin = 200 },
         };
         public const int COMMON = 0, FINE = 1, RARE = 2, EPIC = 3, LEGEND = 4, MYTH = 5;
+        public static int RarityOf(string name) => Array.IndexOf(new[] { "common", "fine", "rare", "epic", "legend", "myth" }, name);
 
         // ---- 屬性（14 種，順序跟網頁版一樣：抽副屬性時照這個順序）
         public class StatDef { public string Id, Name; public bool Pct, Neg; public int Dec; public double[][] T; public double MainV; }

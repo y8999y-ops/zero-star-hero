@@ -58,7 +58,7 @@ namespace ZeroStar
         public void Hit(Enemy e, double mult, double dir, HitOpts o) { if (e.Dead) return; e.Hit(G.Player.RollDmg(mult * (1 + G.Player.S.Ult / 100) * G.UltPassive()), dir, o, G); G.AddCombo(1); }
         /// 大招只打看得到的範圍
         public (double l, double r, double top) View() { var v = Game.ViewRect(); return (G.CamX + v.x0, G.CamX + v.x0 + v.w, G.CamY + v.y0); }
-        public void Puddle(double x, double y) { }   // 黏液灘（hazards.js）還沒搬
+        public void Puddle(double x, double y) { G.Hazards.AddTemp("goo", Pf.Round(x), y, 44, 6); }   // 黏液灘
         public void Heal(double k) { G.Player.Hp = Math.Min(G.Player.MaxHp, G.Player.Hp + G.Player.MaxHp * k); }
         public void Dust(double x, double y) { G.Dust(x, y, 6); G.Sfx("ultHit"); }
         /// 衝擊波掃到的怪：每隻只打一次

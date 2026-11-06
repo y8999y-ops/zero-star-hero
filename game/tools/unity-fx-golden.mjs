@@ -32,6 +32,9 @@ const FX = {
   "ground-slam": "impacts/ground-slam.js",
   "star-fall": "arcane/star-fall.js",
   "level-up": "ui/level-up.js",
+  poof: "spawn/poof.js",
+  splash: "water/splash.js",
+  "treasure-chest": "../../../game/fx/loot/treasure-chest.js",
 };
 
 const STAR_BOOM = ["#3a1608", "#6e3a0c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"];
@@ -49,6 +52,18 @@ const CASES = [
 CASES.push(
   { name: "level-up", fx: "level-up", opts: { light: 0.45, seed: 3 }, speed: 1 },
   { name: "level-up-awaken", fx: "level-up", opts: { light: 0.55, seed: 14, text: "AWAKEN!", palette: ["#2a1405", "#5c3008", "#9a5a0e", "#d48e18", "#f5b92c", "#ffde5e", "#fff4bc", "#ffffff"] }, speed: 1 },
+);
+// 第 3a 批：props 的 poof、scenery 的 splash、main.js chestOpts(tier) 的寶箱
+const CHEST_TIERS = (await import("../src/chest-tiers.js")).CHEST_TIERS;
+const chestOpts = (tier) => { const T = CHEST_TIERS[tier]; return { tier, wood: T.wood, palette: T.palette, coins: 0, gems: 0, light: 0.3 + tier * 0.08 }; };
+CASES.push(
+  { name: "poof-crate", fx: "poof", opts: { light: 0.2, seed: 42, palette: ["#1a1420", "#3a3040", "#5e5466", "#857a8a", "#aaa0ac", "#d0c8d0"] }, speed: 1.8 },
+  { name: "poof", fx: "poof", opts: {}, speed: 1 },
+  { name: "splash-land", fx: "splash", opts: { stone: false, light: 0.2, seed: 57 }, speed: 2.2 },
+  { name: "splash", fx: "splash", opts: {}, speed: 1 },
+  ...[0, 1, 2, 3].map((tier) => ({ name: "chest-" + tier, fx: "treasure-chest", opts: { seed: 3, ...chestOpts(tier) }, speed: 1 })),
+  { name: "chest-loot", fx: "treasure-chest", opts: { tier: 2, light: 0.5 }, speed: 1 },
+  { name: "chest-loot3", fx: "treasure-chest", opts: { tier: 3, coins: 8, gems: 6, seed: 9 }, speed: 1 },
 );
 // 第二批：預設選項，加上金色色階 light 0.5 seed 11 速度 1.2；迴圈的第 60 步 stop()
 const ONLY = (process.env.FX_ONLY ?? "").split(",").filter(Boolean);

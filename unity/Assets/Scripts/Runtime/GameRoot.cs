@@ -37,11 +37,14 @@ namespace ZeroStar
               for (int i = 0; i < 40; i++) { var it = Items.MakeItem(1 + i * 2, i % 6); Items.Compare(it, eq, 10); } Items.ComputeStats(eq, 10); Rnd.R = saved; }
             game = new Game();
             game.OnSay = msg => { sayText = msg; sayT = 2.6f; };
+            game.Say.OnShow = (msg, sec, focus) => { sayText = msg; sayT = (float)(sec + msg.Length * 0.035); };
+            foreach (var f in game.Carry) game.FormsOwned[f] = 0;   // 開發用：形態全部都有（存檔、技能樹畫面在階段 4、5）
             game.OnPickup = it => { sayText = "撿到：" + it.Name; sayT = 1.6f; };
             if (shotDir != null && TraceScript.Load(TraceScript.DefaultPath()).tree == "max") game.MaxTree();
-            if (shotDir == null) { var (c, sh) = Items.StarterGear(); game.Equip["weapon"] = c; game.Equip["body"] = sh; game.ApplyStats(); }   // 新存檔的初始裝備（存檔在階段 5）
             screen.Tick += OnTick;
-            screen.Draw += f => game.Render(f);
+            game.StartStage();
+            game.Warm(screen.Frame);
+            screen.Draw += f => { game.Render(f); game.Hud(Game.STEP); };
             screen.PostComposite += d => game.PostComposite(d);
 #if UNITY_ANDROID || UNITY_IOS
             game.Vibrate = () => Handheld.Vibrate();   // 大招落地震一下（手機）
@@ -90,12 +93,14 @@ namespace ZeroStar
         {
             if (shotDir != null)
             {
-                while (si < script.Count && script[si].t == tickN) { var e = script[si++]; if (e.type == "f") game.PendingForm = e.code; else if (e.type == "m") game.Player.Mp = game.Player.MaxMp; else if (e.type == "x") game.GainXp(int.Parse(e.code)); else if (e.type == "i") game.DropItem(game.Player.X + 40 * game.Player.Face, game.Player.Y - 12, int.Parse(e.code)); else if (e.type == "d") game.Input.KeyDown(e.code); else game.Input.KeyUp(e.code); }
+                while (si < script.Count && script[si].t == tickN) { var e = script[si++]; if (e.type == "f") game.SwitchForm(e.code); else if (e.type == "m") game.Player.Mp = game.Player.MaxMp; else if (e.type == "x") game.GainXp(int.Parse(e.code)); else if (e.type == "i") game.DropItem(game.Player.X + 40 * game.Player.Face, game.Player.Y - 12, int.Parse(e.code)); else if (e.type == "d") game.Input.KeyDown(e.code); else game.Input.KeyUp(e.code); }
                 if (shotNo < shotAt.Length && tickN == shotAt[shotNo]) { ScreenCapture.CaptureScreenshot(Path.Combine(shotDir, $"play-{shotNo}.png")); shotNo++; }
                 if (tickN % 30 == 0) Debug.Log($"[Perf] 第 {tickN} 步{(game.Ult.On ? "（大招）" : "")}：{screen.Fps:F0} fps，平均 {screen.AvgMs:F2} ms，最慢 {screen.MaxMs:F2} ms");
                 if (shotNo >= shotAt.Length && tickN > shotAt[shotAt.Length - 1] + 20) Application.Quit();
             }
-            game.Tick(dt);
+            game.RunTimers();
+            game.Tick(game.SlowT > 0 ? dt * 0.35 : dt);   // 慢動作（傳說掉落、打倒菁英）
+            game.SlowT -= dt;
             game.SimMs += 1000 / 60.0;
             tickN++;
         }
@@ -233,7 +238,7 @@ namespace ZeroStar
     {
         public int ticks, frameEvery; public string tree;
         public List<(int t, string type, string code)> events = new List<(int, string, string)>();
-        public static string DefaultPath() => Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "game", "tools", "unity-trace-script.json"));
+        public static string DefaultPath() => Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "game", "tools", Environment.GetEnvironmentVariable("TRACE_SCRIPT") ?? "unity-trace-script.json"));
         public static TraceScript Load(string path)
         {
             var s = new TraceScript();
