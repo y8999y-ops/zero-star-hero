@@ -1,4 +1,5 @@
 // 遊戲主程式：第一章的關卡（1-1～1-3）、碎星鎮。網址加 ?endless 是無限出怪的測試模式，?stage=1-2 直接進那一關。
+import { openWorldMap } from "./worldmap.js";
 import { playOpen } from "./ui-trans.js";
 import { setNum, bump } from "./bump.js";
 import { createFrame, composite, hex, PAL } from "../../pixelfx/src/core/index.js";
@@ -961,7 +962,7 @@ function townArrive() {
 function townTick(dt) {
   updateLight(dt);
   // 使用者 2026-11-05 回報：打完王回城鎮方向鍵不能動——看門狗：busy／對話中是真，但畫面上其實沒有對話框、視窗、背包開著，超過 1.5 秒就解除
-  const shown = !$("dlg").classList.contains("hidden") || isWinOpen() || inv.open;
+  const shown = !$("dlg").classList.contains("hidden") || isWinOpen() || inv.open || !!$("worldWin");
   if ((busy || dialog.open) && !shown) { stuckT += dt; if (stuckT > 1.5) { console.warn("城鎮操作卡住，自動解除", { busy, dialog: dialog.open }); busy = false; dialog.open = false; stuckT = 0; } } else stuckT = 0;
   if (!dialog.open && !busy) {
     // 城鎮不能戰鬥：攻擊鍵＝對話，技能、大招不能用
@@ -1046,14 +1047,12 @@ async function interact(n) {
   } finally { busy = false; }
 }
 // 右邊的路標：選要去的地方（公會任務在外面做，回來再交付）
+window.__game.travel = () => travel();   // 開發用：直接打開選關地圖
 async function travel() {
-  const NOTE = { "1-1": "狂化魔物", "1-2": "垃圾桶怪很多", "1-3": "蝙蝠群、菁英", "1-4": "王：大胃王史萊姆" };
+  const NOTE = { "1-1": "主角掉下來的地方，系統教你怎麼打", "1-2": "垃圾桶怪很多", "1-3": "蝙蝠群、菁英", "1-4": "王：大胃王史萊姆" };
   if (!profile.quests.active.length && profile.guild.registered) await talk("系統", ["……你沒接公會任務喔。打怪是可以，但沒有人會付錢給你。"]);
-  const v = await ask("路標", "「往 墜星之谷 →」要去哪裡？", [
-    ...unlocked().reverse().map((id) => [`${id} ${LAYOUTS[id].name}（${NOTE[id]}）${profile.cleared[id] ? "" : "　NEW"}`, "stage:" + id]),
-    ["無限討伐（打到手痠為止）", "endless"],
-    ["先不出發", null],
-  ]);
+  // 使用者 2026-11-06：選地圖要有地圖介面與圖片，不能是文字 → 墜星之谷的像素地圖（worldmap.js）
+  const v = await openWorldMap({ profile, unlocked: unlocked(), layouts: LAYOUTS, notes: NOTE, sfx });
   if (v?.startsWith?.("stage:")) goScene("stage", v.slice(6));
   else if (v === "endless") goScene("endless");
 }

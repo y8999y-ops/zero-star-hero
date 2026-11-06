@@ -1029,3 +1029,29 @@ body.lock-dash #btnDash, body.lock-skill #btnSkill, body.lock-skill #pcSkill, bo
   60% { transform: scale(1.06); filter: brightness(1.4) drop-shadow(0 0 6px #ffe066); }
   100% { transform: scale(1); filter: none; }
 }
+
+/* ---- 使用者 2026-11-06：選關世界地圖「墜星之谷」（worldmap.js）：像素地圖＋選中地點時的資訊卡（真實關卡縮圖） ---- */
+#worldWin { z-index: 6; }
+.wm-box { width: auto !important; height: auto !important; max-width: 98%; max-height: 98%; padding-bottom: 2px; }
+.wm-box .win-head { gap: 10px; padding-bottom: 4px; }
+.wm-tip { font-size: 12px; color: var(--dim, #a89cc0); margin-right: auto; }
+.wm-wrap { position: relative; line-height: 0; }
+.wm-cv { display: block; width: min(900px, 92vw, calc((100vh - 96px) * 16 / 9)); aspect-ratio: 16 / 9; image-rendering: pixelated; cursor: pointer; border: 2px solid #1a1226; }
+.wm-card { position: absolute; top: 6px; right: 6px; width: min(36%, 250px); display: flex; flex-direction: column; gap: 4px; padding: 6px; line-height: 1.3;
+  background: rgba(12, 9, 26, .9); border: 2px solid rgba(255, 231, 160, .55); box-shadow: 0 0 0 2px #0a0812, 0 4px 0 rgba(0, 0, 0, .35); }
+.wm-card.left { right: auto; left: 6px; }
+.wm-card.hidden { display: none; }
+.wm-card.pop { animation: wmPop .22s ease-out; }
+@keyframes wmPop { from { transform: translateY(6px) scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
+.wm-thumb { display: block; width: 100%; aspect-ratio: 232 / 157; object-fit: cover; image-rendering: pixelated; border: 2px solid #2a2040; }
+.wm-fog { display: block; width: 100%; aspect-ratio: 116 / 78; border: 2px solid #2a2040; image-rendering: pixelated; }
+.wm-name { font-size: 15px; font-weight: 700; color: #fff2c8; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.wm-name b { color: #ffd84a; }
+.wm-name em { font-style: normal; font-size: 11px; padding: 0 5px; border-radius: 2px; }
+.wm-name em.ok { background: #2a6a3a; color: #c8ffd0; }
+.wm-name em.new { background: #c8861a; color: #fff6d0; animation: wmBlink 1s steps(2) infinite; }
+@keyframes wmBlink { 50% { filter: brightness(1.4); } }
+.wm-note { font-size: 12px; color: #c8bedc; }
+.wm-go { align-self: stretch; height: 34px; font-size: 14px; }
+body.touch .wm-cv { width: min(92vw, calc((100vh - 70px) * 16 / 9)); }
+body.touch .wm-card { width: min(40%, 230px); }
