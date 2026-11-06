@@ -35,7 +35,7 @@ const OUT = join(ROOT, "unity", "Golden", "web");
 mkdirSync(OUT, { recursive: true });
 
 const { createFrame, clearFrame, composite } = await import("../../pixelfx/src/core/index.js");
-const { tickInput } = await import("../src/input.js");
+const { tickInput, input, consume } = await import("../src/input.js");
 const { Player } = await import("../src/player.js");
 const { Enemy } = await import("../src/enemies.js");
 const { POSES } = await import("../src/star.js");
@@ -55,6 +55,8 @@ const { flash } = await import("../src/light.js");
 const { ELEM, setStatusContext, updateStatus, drawBolts, setStatusAllow } = await import("../src/status.js");
 const { FORMS } = await import("../src/forms.js");
 const { COMBO_MP } = await import("../src/player.js");
+const { ult, ULT_MP, ULT_MULT, startUlt, updateUlt, ultLights, dimScene, drawUlt, drawCutIn, postUlt, bindUltHooks } = await import("../src/ult.js");
+const { global: globalLight } = await import("../src/light.js");
 const SC = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "unity-trace-script.json"), "utf8"));
 const SCRIPT = SC.events.slice().sort((a, b) => a[0] - b[0]), TICKS = SC.ticks, FRAME_EVERY = SC.frameEvery;
 
@@ -106,6 +108,26 @@ function switchForm(id) {
 }
 setStatusContext({ enemies, atk: () => player.stats.atk });
 setStatusAllow(["burn", "slime"]);   // 1-1 只有燃燒和黏液（main.js 同一個設定）
+let ultCd = 0;
+const ultHooks = {
+  wave(x0, x1, tx) {
+    let n = 0;
+    for (const e of enemies) {
+      if (e.dead || ult.hitSet.has(e) || e.x < x0 || e.x > x1 || Math.abs(e.y - (ult.fy ?? e.y)) > 130) continue;
+      ult.hitSet.add(e);
+      e.hit(player.roll(ULT_MULT * (1 + player.stats.ult / 100) * 1), e.x < tx ? -1 : 1, { launch: true, push: 4 }, world);
+      n++;
+    }
+    if (n) addCombo(n);
+  },
+  dust: (x, y) => { world.dust(x, y, 6); },
+  enemies: () => enemies.filter((e) => !e.dead),
+  hit(e, mult, dir, opts) { if (e.dead) return; e.hit(player.roll(mult * (1 + player.stats.ult / 100) * 1), dir, opts, world); addCombo(1); },
+  view: () => { const v = viewRect(); return { l: camX + v.x0, r: camX + v.x0 + v.w, top: camY + v.y0 }; },
+  puddle: () => {},   // 黏液灘（hazards.js）兩邊都還沒搬
+  heal: (k) => { player.hp = Math.min(player.maxHp, player.hp + player.maxHp * k); },
+};
+bindUltHooks(ultHooks);
 const world = {
   nearestEnemy(x, y, range, dir = 0) {
     let best = null, bd = range;
@@ -189,7 +211,18 @@ function tick(dt) {
   updateCombatFx(dt);
   updateLight(dt);
   updateStatus(dt, enemies);
+  if (ult.on) {
+    updateUlt(dt, player, ultHooks);
+    for (let i = enemies.length - 1; i >= 0; i--) if (enemies[i].dead) enemies.splice(i, 1);
+    updateFx(dt);
+    followCam(dt);
+    return;
+  }
   if (pendingForm) { switchForm(pendingForm); pendingForm = null; }
+  ultCd -= dt;
+  const ultReady = player.mp >= ULT_MP && !ult.on && ultCd <= 0;
+  if (input.ult && !ultReady && !ult.on) consume("ult");
+  if (input.ult && ultReady && player.state !== "hurt") { consume("ult"); player.mp -= ULT_MP; ultCd = 1; startUlt(player, null); return; }
   player.update(dt, world);
   for (const e of enemies) {
     if (e.dead) continue;
@@ -243,16 +276,18 @@ function render() {
   const lights = L.sceneLights(camX, W, sceneClock);
   lights.push({ x: player.x, y: player.y - 10, r: 64, lv: 1.6, col: "#ffcf6a" });
   for (const s of shots) lights.push({ x: s.x, y: s.y, r: 64, lv: 3, col: (SHOT_PAL[s.form] ?? SHOT_PAL.star).light });
+  ultLights(lights);
   const lv = computeLight(frame, lights);
   L.drawLevel(frame, lv);
   PROBE("1");
   L.drawAtmosphere(frame, sceneClock);
   PROBE("2");
-  drawFx(frame, "back");
+  if (!ult.on) drawFx(frame, "back");
   PROBE("3");
   for (const e of enemies) e.draw(frame);
   PROBE("4");
   drawBolts(frame);
+  if (ult.on) { dimScene(frame); drawFx(frame, "back"); }
   PROBE("5");
   player.draw(frame);
   PROBE("6");
@@ -260,12 +295,15 @@ function render() {
   PROBE("7");
   fxState.form = player.form;
   drawCombatFx(frame);
+  drawUlt(frame);
   PROBE("8");
   L.drawForeground(frame);
   PROBE("9");
   drawDamageNumbers(frame);
+  drawCutIn(frame);
   PROBE("10");
   composite(frame, img, null, 0.8);
+  postUlt(img);
 }
 
 // ---- 跑
@@ -277,14 +315,14 @@ const lines = [], frames = [];
 snapCam();
 let si = 0;
 for (let n = 0; n < TICKS; n++) {
-  while (si < SCRIPT.length && SCRIPT[si][0] === n) { const [, type, code] = SCRIPT[si++]; if (type === "f") pendingForm = code; else ev(type === "d" ? "keydown" : "keyup", code); }
+  while (si < SCRIPT.length && SCRIPT[si][0] === n) { const [, type, code] = SCRIPT[si++]; if (type === "f") pendingForm = code; else if (type === "m") player.mp = player.maxMp; else ev(type === "d" ? "keydown" : "keyup", code); }
   runTimers();
   curTick = n;
   tick(STEP);
   simMs += 1000 / 60;
   render();
   const p = player;
-  const row = [n, p.x, p.y, p.vx, p.vy, p.state, p.hp, p.face, p.grounded ? 1 : 0, poseName.get(p.pose) ?? "?", camX, camY, juice.freeze, juice.shakeT, p.form, p.mp, stats.combo, shots.length, enemies.length];
+  const row = [n, p.x, p.y, p.vx, p.vy, p.state, p.hp, p.face, p.grounded ? 1 : 0, poseName.get(p.pose) ?? "?", camX, camY, juice.freeze, juice.shakeT, p.form, p.mp, stats.combo, ult.on ? "U" + ult.t : "-", shots.length, enemies.length];
   for (const e of enemies) { const S = e.st ?? {}; row.push(e.x, e.y, e.vx, e.vy, e.hp, e.awake ? 1 : 0, ["burn", "slime", "shock", "poison", "stuck"].map((k) => (S[k] > 0 ? k[0] : "")).join("") || "-"); }
   lines.push(row.map(f).join(" "));
   if (n % FRAME_EVERY === 0) frames.push(Buffer.from(img.buffer.slice(0)));

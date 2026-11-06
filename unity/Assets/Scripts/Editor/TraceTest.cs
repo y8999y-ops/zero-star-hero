@@ -33,7 +33,7 @@ namespace ZeroStar.Tests
             int si = 0;
             for (int n = 0; n < sc.ticks; n++)
             {
-                while (si < sc.events.Count && sc.events[si].t == n) { var e = sc.events[si++]; if (e.type == "f") g.PendingForm = e.code; else if (e.type == "d") g.Input.KeyDown(e.code); else g.Input.KeyUp(e.code); }
+                while (si < sc.events.Count && sc.events[si].t == n) { var e = sc.events[si++]; if (e.type == "f") g.PendingForm = e.code; else if (e.type == "m") g.Player.Mp = g.Player.MaxMp; else if (e.type == "d") g.Input.KeyDown(e.code); else g.Input.KeyUp(e.code); }
                 Prof.Mark(null);
                 g.Tick(Game.STEP);
                 Prof.Mark("邏輯");
@@ -44,9 +44,10 @@ namespace ZeroStar.Tests
                 g.Render(frame);
                 Prof.Mark(null);
                 frame.Composite(rgba, null, 0.8);
+                g.PostComposite(rgba);
                 Prof.Mark("合成");
                 var p = g.Player;
-                var row = new List<string> { n.ToString(), F(p.X), F(p.Y), F(p.Vx), F(p.Vy), p.State, F(p.Hp), F(p.Face), p.Grounded ? "1" : "0", p.Pose, F(g.CamX), F(g.CamY), F(g.Fx.Freeze), F(g.Fx.ShakeT), p.Form, F(p.Mp), g.Combo.ToString(), g.Shots.Count.ToString(), g.Enemies.Count.ToString() };
+                var row = new List<string> { n.ToString(), F(p.X), F(p.Y), F(p.Vx), F(p.Vy), p.State, F(p.Hp), F(p.Face), p.Grounded ? "1" : "0", p.Pose, F(g.CamX), F(g.CamY), F(g.Fx.Freeze), F(g.Fx.ShakeT), p.Form, F(p.Mp), g.Combo.ToString(), g.Ult.On ? "U" + F(g.Ult.T) : "-", g.Shots.Count.ToString(), g.Enemies.Count.ToString() };
                 foreach (var e in g.Enemies)
                 {
                     row.Add(F(e.X)); row.Add(F(e.Y)); row.Add(F(e.Vx)); row.Add(F(e.Vy)); row.Add(F(e.Hp)); row.Add(e.Awake ? "1" : "0");

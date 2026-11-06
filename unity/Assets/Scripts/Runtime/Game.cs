@@ -43,6 +43,10 @@ namespace ZeroStar
         double? camRefY, camLand;
         public int Kills, Coins, Combo; public double ComboT;
         public readonly Status Status;
+        public readonly Ult Ult;
+        double ultCd;
+        public Action Vibrate;
+        public double UltPassive() => Player.Form == "star" ? 1 + 0.04 * 0 : 1;
         public readonly List<Shot> Shots = new List<Shot>();
         public class Shot { public double X, Y, Dir, Vy, Life, Mult = 1; public string Form; public bool Small, Done; public FxRun Fx; }
         const double COMBO_T = 4.4, FORM_CD = 1;
@@ -99,7 +103,9 @@ namespace ZeroStar
         {
             Enemy.ResetStatics();
             SceneLight.Reset();
-            Status = new Status(this) { Allow = new HashSet<string> { "burn", "slime" } };   // 1-1 只有燃燒和黏液（main.js 同一個設定）
+            Status = new Status(this) { Allow = new HashSet<string> { "burn", "slime" } };
+            Ult = new Ult(this);
+            SceneLight.GlobalLv = 0;   // 1-1 只有燃燒和黏液（main.js 同一個設定）
             Data = Baked.Level(stage);
             Art = new LevelArt(Data);
             Map = new GameMap(Data.W, Data.H, Data.Solids, Data.Platforms);
@@ -144,7 +150,7 @@ namespace ZeroStar
             return n;
         }
         /// 連擊：每滿 10 下給 10 魔力
-        void AddCombo(int n)
+        public void AddCombo(int n)
         {
             int gain = (int)(Math.Floor((Combo + n) / 10.0) - Math.Floor(Combo / 10.0));
             if (gain > 0 && Player.Mp < Player.MaxMp) Player.Mp = Math.Min(Player.MaxMp, Player.Mp + gain * Player.COMBO_MP);
@@ -247,7 +253,28 @@ namespace ZeroStar
             SceneLight.Update(dt);
             Status.Update(dt);
             if (NoManaT > 0) NoManaT -= dt;
+            // 大招進行中：世界停住，只有主角、特效和鏡頭在動
+            if (Ult.On)
+            {
+                Ult.Update(dt, Player);
+                SceneLight.GlobalLv = Ult.GlobalLv;
+                Enemies.RemoveAll(e => e.Dead);
+                Fx.Update(dt);
+                FollowCam(dt);
+                return;
+            }
             if (PendingForm != null) { SwitchForm(PendingForm); PendingForm = null; }
+            ultCd -= dt;
+            bool ultReady = Player.Mp >= Ult.ULT_MP && !Ult.On && ultCd <= 0;
+            if (Input.Ult && !ultReady && !Ult.On) { Input.Consume("ult"); if (Player.Mp < Ult.ULT_MP) NoMana(); }
+            if (Input.Ult && ultReady && Player.State != "hurt" && Player.Hp > 0)
+            {
+                Input.Consume("ult");
+                Player.Mp -= Ult.ULT_MP; ultCd = 1;
+                Ult.Start(Player);
+                Sfx("ultCharge");
+                return;
+            }
             if (Player.Hp <= 0)
             {
                 // 階段 1 的簡化：倒下 1 秒後從檢查點重來
@@ -297,6 +324,9 @@ namespace ZeroStar
             FollowCam(dt);
         }
 
+        /// 合成之後（大招落地的黑白衝擊定格）
+        public void PostComposite(byte[] rgba) => Ult.PostProcess(rgba);
+
         /// 畫一格（main.js 的 render 子集），結果在 frame 裡（還沒合成）
         public void Render(Frame frame)
         {
@@ -308,6 +338,7 @@ namespace ZeroStar
             var lights = Art.SceneLights(CamX, W, sceneClock);
             lights.Add(new LightSrc(Player.X, Player.Y - 10, 64, 1.6, "#ffcf6a"));
             foreach (var s in Shots) lights.Add(new LightSrc(s.X, s.Y, 64, 3, (SHOT_PAL.ContainsKey(s.Form) ? SHOT_PAL[s.Form] : SHOT_PAL["star"]).light));
+            Ult.Lights(lights);
             Prof.Mark(null);
             var lv = SceneLight.Compute(frame, lights);
             Prof.Mark("光源");
@@ -315,16 +346,19 @@ namespace ZeroStar
             Prof.Mark("場景");
             Art.DrawAtmosphere(frame, sceneClock);
             Prof.Mark("大氣");
-            Fx.Draw(frame, true);
+            if (!Ult.On) Fx.Draw(frame, true);
             foreach (var e in Enemies) e.Draw(frame, Fx, SimMs);
             Status.DrawBolts(frame);
+            if (Ult.On) { Ult.DimScene(frame); Fx.Draw(frame, true); }   // 大招：先畫怪再暗場，法陣這些背景特效畫在暗場之後才會亮
             if (Player.Hp > 0) Player.Draw(frame);
             Fx.Draw(frame, false);
             Combat.Form = Player.Form;
             Combat.Draw(frame);
+            Ult.Draw(frame);
             Prof.Mark("角色特效");
             Art.DrawForeground(frame);
             Combat.DrawNumbers(frame, ViewRect());
+            Ult.DrawCutIn(frame);
             Prof.Mark("前景");
         }
     }

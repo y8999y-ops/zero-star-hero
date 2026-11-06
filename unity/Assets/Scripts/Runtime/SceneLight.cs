@@ -38,11 +38,20 @@ namespace ZeroStar
             for (int i = flashes.Count - 1; i >= 0; i--) if (flashes[i].Ttl <= 0) flashes.RemoveAt(i);
         }
 
+        /// 整個畫面一起變亮（大招），0～1，每格由外面設定
+        public static double GlobalLv; public static string GlobalCol = "#fff0c0";
         public static float[] Compute(Frame frame, List<LightSrc> list)
         {
             int W = frame.W, H = frame.H, n = W * H;
             if (Buf.Length < n) { Buf = new float[n]; Tr = new float[n]; Tg = new float[n]; Tb = new float[n]; }
-            Array.Clear(Buf, 0, n); Array.Clear(Tr, 0, n); Array.Clear(Tg, 0, n); Array.Clear(Tb, 0, n);
+            double g = GlobalLv;
+            if (g > 0)
+            {
+                var gc = RgbOf(GlobalCol);
+                float fb = (float)(g * 4), fr = (float)(gc[0] * g * 3), fg = (float)(gc[1] * g * 3), fbl = (float)(gc[2] * g * 3);
+                for (int i = 0; i < n; i++) { Buf[i] = fb; Tr[i] = fr; Tg[i] = fg; Tb[i] = fbl; }
+            }
+            else { Array.Clear(Buf, 0, n); Array.Clear(Tr, 0, n); Array.Clear(Tg, 0, n); Array.Clear(Tb, 0, n); }
             var all = new List<LightSrc>(list);
             foreach (var f in flashes)
             {

@@ -54,6 +54,7 @@ class W {
     if (Array.isArray(v)) v.forEach((q, i) => names.push([`${k}#${i}`, q]));
     else names.push([k, v]);
   }
+  names.push(["portrait", { eyes: "squint", look: 1, core: 2 }]);   // 大招特寫帶的臉（ult.js 的 PORTRAIT）
   const w = new W();
   const forms = ["star", "slime", "bat", "can", "spike"];
   w.str("ZHR1").i32(names.length * forms.length);

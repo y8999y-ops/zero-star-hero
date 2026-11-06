@@ -8,9 +8,9 @@ import { encodePNG } from "../../pixelfx/tools/lib/png.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const G = join(ROOT, "unity", "Golden");
-const COLS = ["步", "主角x", "主角y", "vx", "vy", "狀態", "血", "面向", "著地", "姿勢", "鏡頭x", "鏡頭y", "停頓", "震動", "怪數"];
-const EC = ["x", "y", "vx", "vy", "血", "醒"];
-const name = (i) => (i < COLS.length ? COLS[i] : `怪${Math.floor((i - COLS.length) / 6)}.${EC[(i - COLS.length) % 6]}`);
+const COLS = ["步", "主角x", "主角y", "vx", "vy", "狀態", "血", "面向", "著地", "姿勢", "鏡頭x", "鏡頭y", "停頓", "震動", "形態", "魔力", "連擊", "大招", "技能彈", "怪數"];
+const EC = ["x", "y", "vx", "vy", "血", "醒", "狀態"];
+const name = (i) => (i < COLS.length ? COLS[i] : `怪${Math.floor((i - COLS.length) / 7)}.${EC[(i - COLS.length) % 7]}`);
 
 const A = readFileSync(join(G, "web", "trace.txt"), "utf8").trim().split("\n"), B = readFileSync(join(G, "unity", "trace.txt"), "utf8").trim().split("\n");
 let bad = 0;
@@ -20,7 +20,9 @@ for (let n = 0; n < Math.min(A.length, B.length); n++) {
   const diff = [];
   for (let i = 0; i < Math.max(a.length, b.length); i++) {
     const x = a[i], y = b[i];
-    const same = x === y || (x !== undefined && y !== undefined && !isNaN(+x) && !isNaN(+y) && +x === +y);
+    const num = (v) => (v !== undefined && /^U/.test(v) ? v.slice(1) : v);   // 大招欄「U時間」
+    const nx = num(x), ny = num(y);
+    const same = x === y || (nx !== undefined && ny !== undefined && !isNaN(+nx) && !isNaN(+ny) && +nx === +ny && (x[0] === "U") === (y[0] === "U"));
     if (!same) diff.push(`${name(i)}：網頁 ${x}、Unity ${y}`);
   }
   if (diff.length) {

@@ -24,6 +24,8 @@ namespace ZeroStar
         public event Action<Frame> Draw;
         /// 畫布大小改了（螢幕比例變了）
         public event Action<int> Resized;
+        /// 合成之後再改像素（大招的黑白定格）
+        public event Action<byte[]> PostComposite;
 
         Texture2D tex;
         byte[] rgba;
@@ -75,6 +77,7 @@ namespace ZeroStar
             Frame.Clear();
             Draw?.Invoke(Frame);
             Frame.Composite(rgba, null, 0.8);
+            PostComposite?.Invoke(rgba);
             perfMs += watch.Elapsed.TotalMilliseconds; perfN++;
             if ((perfT += Time.unscaledDeltaTime) >= 0.5) { AvgMs = perfMs / perfN; Fps = perfN / perfT; perfMs = 0; perfN = 0; perfT = 0; }
             // 沒畫到的地方（透明）在網頁上會露出黑底：這裡直接補成不透明

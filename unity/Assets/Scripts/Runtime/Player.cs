@@ -56,6 +56,7 @@ namespace ZeroStar
         static readonly uint[] GHOST = { Col.Hex("#8ae8ff"), Col.Hex("#4ab0d8"), Col.Hex("#2a6ea0"), Col.Hex("#1c3e6a") };
 
         public double X, Y, Vx, Vy, Face = 1, Coyote, DropT, T, LastAtk = 9, DashCd, SkillCd, Hp = 100, MaxHp = 100, Mp = 100, MaxMp = 100;
+        public double HideT;   // 大招（尖刺星）期間主角藏起來
         public double Invuln, Flash, LandT, RunDist, Clock, GhostAcc, TurnT, LastFace, AtkBuf, StepAcc, HurtK = 1;
         public bool Grounded, AirDash = true, CritNext;
         public int Jumps, Step;
@@ -102,6 +103,7 @@ namespace ZeroStar
         {
             var input = w.Input; var map = w.Map;
             Clock += dt;
+            if (HideT > 0) { HideT -= dt; Vx = Vy = 0; ghosts.Clear(); return; }
             T += dt;
             LastAtk += dt;
             DashCd -= dt;
@@ -427,11 +429,19 @@ namespace ZeroStar
 
         public void Draw(Frame frame)
         {
+            if (HideT > 0) return;
             foreach (var g in ghosts) HeroArt.Paint(frame, g.X, g.Y, HeroArt.Pose(Form, g.Q), g.Flip, GHOST[Math.Min(GHOST.Length - 1, (int)Math.Floor((g.Age / 0.22) * GHOST.Length))]);
-            if (Invuln > 0 && State != "dash" && (long)Math.Floor(Clock * 20) % 2 == 0) return;
+            if (Invuln > 0 && State != "dash" && State != "ult" && (long)Math.Floor(Clock * 20) % 2 == 0) return;
             if (State == "spikeball") { Blit.Draw(frame, Baked.Anim("spikeBall"), T, X, Y, Face < 0); return; }   // 尖刺星：縮成刺球
             HeroArt.Paint(frame, X, Y, HeroArt.Pose(Form, Pose), DrawFlip(), Flash > 0 ? WHITE : 0);
         }
+
+        /// 大招期間：位置由大招控制，這裡只換姿勢
+        public void UltPose(string q, double dt)
+        {
+            State = "ult"; Atk_ = null; Vx = Vy = 0; Clock += dt; Pose = q;
+        }
+        public void EndUlt() { State = "move"; Grounded = true; Invuln = Math.Max(Invuln, 0.5); }
 
         /// 重生（階段 1 的簡化：回到檢查點、補滿血）
         public void Respawn(double x, double y)
