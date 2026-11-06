@@ -188,7 +188,7 @@ function put(frame, x, y, c, glow = 0) {
 // ---- 使用者 2026-11-06：元素狀態要「纏」在敵人身上（像燃燒的史萊姆），不是在頭上顯示。
 //   參考 pixelfx status/burning、status/poisoned、lightning/electrified（特效沿著角色輪廓長出來）——只學做法：
 //   敵人畫上去之前先記下那一塊畫面（statusSnap），畫完比對就知道哪些像素是牠的身體（遮罩），
-//   再從遮罩找出輪廓（上緣、側邊、下緣）：火、電、毒、黏液都沿著輪廓畫，身體本身也染色。
+//   再從遮罩找出輪廓（上緣、側邊、下緣）：火、電、毒、黏液都沿著輪廓畫（使用者 2026-11-06：純粒子，身體不染色）。
 //   在瀏覽器裡看三輪調的（node 草稿載不進怪物圖）
 const ANY = ["burn", "poison", "slime", "stuck", "shock", "wet", "oil"];
 const MARGIN = 12;   // 遮罩往碰撞框外多看幾格（圖比碰撞框大）
@@ -202,11 +202,7 @@ export function statusSnap(frame, e) {
   for (let y = 0; y < h; y++) px.set(frame.color.subarray((y0 + y) * frame.w + x0, (y0 + y) * frame.w + x1), y * w);
   return { x0, y0, w, h, px };
 }
-const mixC = (c, d, a) => {
-  const r = (c & 255) * (1 - a) + (d & 255) * a, g = ((c >>> 8) & 255) * (1 - a) + ((d >>> 8) & 255) * a, bl = ((c >>> 16) & 255) * (1 - a) + ((d >>> 16) & 255) * a;
-  return (0xff000000 | (bl << 16) | (g << 8) | r) >>> 0;
-};
-const SMOKE = P("#4a4250"), POIS_DEEP = P("#8a2ab0"), VEIN = P("#2a0838");
+const SMOKE = P("#4a4250"), DRIP_EDGE = P("#0c0a14"), DRIP_HI = P("#ffffff");
 
 /** 畫一隻敵人身上的狀態（在敵人之後呼叫）。snap＝statusSnap() 在敵人畫上去之前拍的那塊畫面 */
 export function drawStatus(frame, e, snap) {
@@ -230,65 +226,65 @@ export function drawStatus(frame, e, snap) {
   }
   const hgt = Math.max(1, bot - top + 1);
   const P2 = (x, y, c, glow = 0) => put(frame, x + x0 + frame.ox, y + y0 + frame.oy, c, glow);
-  const tint = (fn) => { for (let y = top; y <= bot; y++) for (let x = 0; x < w; x++) if (m[y * w + x]) { const i = (y0 + y) * W + x0 + x, r = fn(x, y, (bot - y) / hgt); if (r) C[i] = mixC(C[i], r[0], r[1]); } };
-  const lightAt = (x, y, c) => { const X = x + x0, Y = y + y0; if (X >= 0 && Y >= 0 && X < W && Y < frame.h) L[Y * W + X] = c; };
   const pick = (list, k, salt) => (list.length ? list[Math.floor(hash(k, salt + sd) * list.length) % list.length] : null);
 
+  // ---- 使用者 2026-11-06「元素效果要純粒子」：身體一律不變色，只用粒子表現——
+  //   泡到東西（黏液、潮濕、油汙、毒）＝從身體下緣、側邊一滴一滴往下滴；燃燒＝火苗沿輪廓往上舔＋火星；帶電＝閃電沿輪廓竄、橫跨身體
+  // drip：從輪廓上挑一個點，拉長 → 斷掉 → 往下掉，落地前消失。life＝一輪幾秒，len＝拉多長，cols＝[亮, 中, 暗]
+  // 第 2 輪：從身體兩側（往外一格）滴下來，一路落到腳下的地面再濺開——原本從下緣滴，馬上就掉進地面看不到
+  const drip = (list, k, salt, life, len, cols, glowIt = false) => {
+    const cyc = Math.floor((t + k * life * 0.37) / life), p = ((t + k * life * 0.37) % life) / life, q = pick(list, k + cyc * 5, salt);
+    if (!q) return;
+    const front = q.front, out = q[0] < w / 2 ? -1 : 1, x = front ? q[0] : q[0] + out, y0 = q[1];
+    // 第 3 輪：水滴放大（原本一顆像素看不到）——掛著＝一條細線＋末端 2×2 的珠；掉下來＝2×3 的水滴形，右下暗一階
+    // 第 4 輪：3 高 2 寬、外面一圈暗邊、一顆白色高光（在怪物身上、暗背景上都看得到）
+    const bead = (bx, by) => {
+      for (const [dx, dy] of [[0, -2], [-1, -1], [2, -1], [-1, 0], [2, 0], [-1, 1], [2, 1], [0, 2], [1, 2]]) P2(bx + dx, by + dy, DRIP_EDGE);
+      P2(bx, by - 1, cols[1]); P2(bx + 1, by - 1, cols[0], glowIt); P2(bx, by, cols[0], glowIt); P2(bx + 1, by, cols[1]); P2(bx, by + 1, cols[1]); P2(bx + 1, by + 1, cols[2]);
+      P2(bx, by - 1, DRIP_HI);
+    };
+    if (p < 0.4) {   // 掛在身上、慢慢拉長
+      const L = Math.max(1, Math.round((p / 0.4) * len));
+      for (let j = 0; j < L; j++) P2(x, y0 + j, cols[1]);
+      bead(x, y0 + L);
+    } else {         // 斷掉、往下掉（越掉越快），掉到腳下濺開
+      const f = (p - 0.4) / 0.6, fy = Math.min(bot, y0 + len + f * f * (bot - y0 + 6));
+      if (fy < bot - 1) bead(x, fy);
+      else { P2(x - 1, bot, cols[0]); P2(x + 1, bot, cols[0]); P2(x - 2, bot - 1, cols[1]); P2(x + 2, bot - 1, cols[1]); P2(x - 3, bot - 2, cols[2]); P2(x + 3, bot - 2, cols[2]); }
+    }
+  };
+  // 一半從兩側滴下來，一半從身體正面（下半身）往下流
+  const lower = sides.filter(([, y]) => (bot - y) / hgt < 0.75), fronts = [];
+  for (let k = 0; k < 6; k++) { const yy = Math.round(top + hgt * (0.45 + 0.08 * k)), xs = []; for (let x = 0; x < w; x++) if (at(x, yy) && at(x - 2, yy) && at(x + 3, yy)) xs.push(x); if (xs.length) { const q = [xs[Math.floor(hash(k, sd + 7) * xs.length)], yy]; q.front = true; fronts.push(q); } }
+  const drips = [...(lower.length ? lower : sides).filter((_, i) => i % 3 === 0), ...fronts];
   if (S.oil > 0) {
-    // 油汙：整隻蒙上一層黑油，彩虹油光斜斜地流過身體，兩條黑油從下緣往下滴、腳邊一小灘
-    tint((x, y) => { const k = (((x + y * 0.6 - t * 18) % 13) + 13) % 13, sh = k < 1.6; return [sh ? OIL_P[3 + (Math.floor(t * 3) % 2)] : OIL_P[0], sh ? 0.7 : 0.42]; });
-    for (let k = 0; k < 2; k++) { const q = pick(bots, k, 51), p = (t * 0.45 + k * 0.5) % 1; if (!q) continue; for (let j = 0; j < 1 + p * 4; j++) P2(q[0], q[1] + 1 + j, j > p * 4 - 1 ? OIL_P[2] : OIL_P[0]); }
+    // 油汙：黑油從下緣一條條慢慢滴，滴下去的油珠上有一點彩虹光；腳邊一小灘
+    for (let k = 0; k < 4; k++) drip(drips, k, 51, 1.6, 4, [OIL_P[k % 2 ? 3 : 4], OIL_P[2], OIL_P[1]]);
     for (let x = -4; x <= 4; x++) put(frame, e.x + x, e.box().y1, Math.abs(x) === 4 ? OIL_P[1] : x === -1 ? OIL_P[4] : OIL_P[0]);
   }
   if (S.wet > 0) {
-    // 潮濕：身體偏藍，上緣一點一點的白色反光（慢慢移動），水滴從下緣滴下去
-    tint(() => [WET_P[1], 0.24]);
-    for (const [x, y] of tops) if ((x + Math.floor(t * 6)) % 5 === 0) P2(x, y, WET_P[3]);
-    for (let k = 0; k < 3; k++) {
-      const q = pick(bots, k + Math.floor(t * 1.1 + k * 0.33) * 3, 61), p = (t * 1.1 + k * 0.33) % 1; if (!q) continue;
-      const dy = Math.round(p * 10); P2(q[0], q[1] + 1 + dy, WET_P[2]); P2(q[0], q[1] + 2 + dy, WET_P[1]); if (dy < 2) P2(q[0], q[1] + 1, WET_P[3]);
-    }
+    // 潮濕：水珠從下緣、兩側滴下來（白點＋淺藍＋藍）
+    for (let k = 0; k < 5; k++) drip(drips, k, 61, 0.9, 2, [WET_P[3], WET_P[2], WET_P[1]]);
   }
   if (S.slime > 0 || S.stuck > 0) {
-    // 黏液：整隻包一層半透明的黃綠黏液，上緣厚一格（蓋過輪廓、有亮點），三條黏液從下緣拉長、斷掉、滴下去
-    tint(() => [GOO_P[1], 0.34]);
-    for (const [x, y] of tops) { P2(x, y - 1, GOO_P[0]); P2(x, y, (x + sd) % 6 === 0 ? GOO_P[3] : GOO_P[2]); }
-    for (const [x, y] of sides) if ((y + sd) % 3 === 0) P2(x, y, GOO_P[1]);
-    for (let k = 0; k < 3; k++) {
-      const q = pick(bots, k, 71), p = (t * 0.6 + k * 0.33 + hash(sd, k)) % 1; if (!q) continue;
-      const len = Math.min(4, Math.floor(p * 7));
-      for (let j = 1; j <= len; j++) P2(q[0], q[1] + j, j === len ? GOO_P[2] : GOO_P[1]);
-      if (p > 0.6) { const fy = q[1] + 5 + (p - 0.6) * 22; P2(q[0], fy, GOO_P[2]); P2(q[0], fy + 1, GOO_P[1]); }
-    }
+    // 黏液：黃綠色的黏液從下緣拉得很長才斷掉，兩側也掛幾條
+    for (let k = 0; k < 5; k++) drip(drips, k, 71, 1.4, 5, [GOO_P[2], GOO_P[1], GOO_P[0]], true);
     if (S.stuck > 0) for (let k = 0; k < 3; k++) { const q = pick(edges, Math.floor(t * 14) + k * 7, 81); if (q) P2(q[0], q[1], VOLT_P[3], 1); }
   }
   if (S.poison > 0) {
-    // 毒：綠色從腳往上一波一波漫上來（波頭最亮），身上暗紫色的血管紋，上緣冒毒泡、破掉，下緣滴毒汗
-    const wave = (t * 0.7) % 1.25;
-    // 第 2 輪：毒改成紫色（綠色魔物上綠色看不出來），波頭亮黃綠；血管紋改成 3 條短短的斜線（原本滿身雜點）
-    // 第 3 輪：紫色再重（原本疊在綠色上變成灰），波頭以下是深紫、以上淡紫
-    tint((x, y, r) => { const d = wave - r; if (d < 0) return [TOX_P[3], 0.3]; if (d < 0.1) return [TOX_P[2], 0.65]; return [POIS_DEEP, 0.66]; });
-    for (let k = 0; k < 3; k++) {
-      const q = pick(edges.filter(([, y]) => (bot - y) / hgt < 0.7), k, 97); if (!q) continue;
-      const dir = q[0] < w / 2 ? 1 : -1;
-      for (let j = 0; j < 5; j++) { const x = q[0] + dir * (j + 1), y = q[1] - (j >> 1); if (at(x, y)) P2(x, y, VEIN); }
-    }
+    // 毒：紫綠色的毒液往下滴，頭頂冒毒泡（圈圈往上飄、破掉），旁邊飄幾顆小毒霧點
+    for (let k = 0; k < 4; k++) drip(drips, k, 95, 1.2, 3, [TOX_P[2], TOX_P[1], TOX_P[3]], true);
     for (let k = 0; k < 3; k++) {
       const life = 1.1, cyc = Math.floor((t + k * 0.37) / life), p = ((t + k * 0.37) % life) / life, q = pick(tops, k + cyc * 3, 91); if (!q) continue;
-      const bx = q[0], by = q[1] - 1 - p * 7;
-      if (p < 0.8) { P2(bx, by, TOX_P[2], 1); P2(bx + 1, by, TOX_P[1]); P2(bx, by - 1, TOX_P[1]); P2(bx + 1, by - 1, TOX_P[0]); }
+      const bx = q[0], by = q[1] - 1 - p * 9;
+      if (p < 0.8) { P2(bx, by, TOX_P[2], 1); P2(bx + 1, by, TOX_P[1]); P2(bx, by - 1, TOX_P[1]); P2(bx + 1, by - 1, TOX_P[3]); }
       else { P2(bx - 1, by, TOX_P[2], 1); P2(bx + 2, by, TOX_P[2], 1); P2(bx, by - 2, TOX_P[1]); }
     }
-    for (let k = 0; k < 2; k++) { const q = pick(bots, k, 95), p = (t * 0.8 + k * 0.5) % 1; if (q) P2(q[0], q[1] + 1 + p * 6, TOX_P[1]); }
+    for (let k = 0; k < 3; k++) { const p = (t * 0.5 + k * 0.33) % 1, q = pick(edges, k, 96 + Math.floor(t * 0.5 + k * 0.33)); if (q) P2(q[0] + Math.sin(p * 6 + k) * 4, q[1] - p * 10, p < 0.5 ? TOX_P[3] : TOX_P[1]); }
   }
   if (S.burn > 0) {
-    // 燃燒：火苗從輪廓上好幾個點往上舔（上緣多、側邊少），身體下半部被燒得偏橘紅、一閃一閃，
-    //   每 0.6 秒整隻閃一下（白→橘），上面飄火星和細煙。大火：火苗更多更高
-    const flare = t % 0.6 < 0.07, big = !!S.big;
-    // 第 2 輪：身體染得更明顯——下半部一階一階變橘紅（不是雜點），上半部帶一點暗紅
-    tint((x, y, r) => (flare ? [FIRE_P[3], 0.6] : r < 0.22 ? [FIRE_P[1], 0.62] : r < 0.45 ? [FIRE_P[1], 0.4] : [FIRE_P[0], 0.3]));
-    if (flare) for (let y = top; y <= bot; y++) for (let x = 0; x < w; x++) if (m[y * w + x]) lightAt(x, y, FIRE_P[1]);
-    const slot = Math.floor(t * 3);
+    // 燃燒：火苗從輪廓上好幾個點往上舔（上緣多、側邊少），上面飄火星和細煙。大火：火苗更多更高（身體不染色）
+    const big = !!S.big, slot = Math.floor(t * 3);
     const roots = [...tops.filter(([x]) => hash(x + slot * 7, sd) < (big ? 0.5 : 0.32)), ...sides.filter(([x, y]) => (bot - y) / hgt > 0.3 && hash(y + slot * 5, x + sd) < (big ? 0.25 : 0.12))];
     for (const [x, y] of roots) {
       const flick = Math.floor(t * 14 + hash(x, y) * 9) % 4, hh = 3 + flick + (big ? 4 : 0) + Math.round(hash(y, x + sd) * 2);
@@ -296,35 +292,38 @@ export function drawStatus(frame, e, snap) {
       for (let j = 0; j < hh; j++) {
         const q = j / hh, c = q < 0.3 ? FIRE_P[1] : q < 0.7 ? FIRE_P[2] : FIRE_P[3], X = x + (q > 0.5 ? sway : 0);
         P2(X, y - j, c, 1);
-        if (j < (big ? 3 : 2)) P2(X + 1, y - j, j === 0 ? FIRE_P[0] : FIRE_P[1], 1);   // 第 2 輪：火苗底部 2 格寬，比較飽
+        if (j < (big ? 3 : 2)) P2(X + 1, y - j, j === 0 ? FIRE_P[0] : FIRE_P[1], 1);
       }
     }
-    for (let k = 0; k < 5; k++) {
+    for (let k = 0; k < 6; k++) {
       const life = 0.9, cyc = Math.floor((t + k * 0.19) / life), p = ((t + k * 0.19) % life) / life, q = pick(tops, k + cyc * 5, 31); if (!q) continue;
       const x = q[0] + Math.sin(p * 7 + k) * 2, y = q[1] - 4 - p * 16;
-      if (k < 3) P2(x, y, p < 0.5 ? FIRE_P[3] : FIRE_P[2], 1);
+      if (k < 4) P2(x, y, p < 0.5 ? FIRE_P[3] : FIRE_P[2], 1);
       else if (p > 0.3) P2(x, y - 4, SMOKE);
     }
   }
   if (S.shock > 0) {
-    // 帶電：電沿著輪廓亂竄（白芯青光），偶爾一條電弧橫跨身體，每 0.5 秒電一下整隻變成發亮的電光剪影，噴兩顆火花
-    const jolt = t % 0.5 < 0.05, f = Math.floor(t * 14);
-    if (jolt) { tint(() => [VOLT_P[2], 0.75]); for (const [x, y] of edges) lightAt(x, y, VOLT_P[1]); }
+    // 感電：閃電沿著輪廓竄（白芯青光）、常常一條鋸齒閃電橫跨身體、往外劈出一小段，噴火花（身體不變色）
+    const f = Math.floor(t * 14);
     for (const [x, y] of edges) {
       const r = hash(x * 7 + f, y * 3 + sd);
-      if (r < 0.16) P2(x, y, VOLT_P[3], 1);
-      else if (r < 0.3) P2(x, y, VOLT_P[1], 1);
+      if (r < 0.12) P2(x, y, VOLT_P[3], 1);
+      else if (r < 0.22) P2(x, y, VOLT_P[1], 1);
     }
-    if (f % 3 === 0 && edges.length > 4) {
-      const a = edges[Math.floor(hash(f, sd) * edges.length)], z = edges[Math.floor(hash(sd, f) * edges.length)], n = 6;
+    const bolt = (a, z, n, jag) => {
       let lx = a[0], ly = a[1];
       for (let s2 = 1; s2 <= n; s2++) {
-        const q = s2 / n, x = a[0] + (z[0] - a[0]) * q, y = a[1] + (z[1] - a[1]) * q + (s2 < n ? (hash(f + s2, 3) - 0.5) * 6 : 0), st2 = Math.max(1, Math.abs(x - lx), Math.abs(y - ly));
-        for (let k = 0; k <= st2; k++) P2(lx + ((x - lx) * k) / st2, ly + ((y - ly) * k) / st2, VOLT_P[3], 1);
+        const q = s2 / n, x = a[0] + (z[0] - a[0]) * q + (s2 < n ? (hash(f + s2, 9) - 0.5) * jag : 0), y = a[1] + (z[1] - a[1]) * q + (s2 < n ? (hash(f + s2, 3) - 0.5) * jag : 0), st2 = Math.max(1, Math.abs(x - lx), Math.abs(y - ly));
+        for (let k = 0; k <= st2; k++) { const X = lx + ((x - lx) * k) / st2, Y = ly + ((y - ly) * k) / st2; P2(X, Y, VOLT_P[3], 1); P2(X, Y - 1, VOLT_P[1], 1); }
         lx = x; ly = y;
       }
+    };
+    if (edges.length > 4) bolt(edges[Math.floor(hash(f, sd) * edges.length)], edges[Math.floor(hash(sd, f) * edges.length)], 6, 6);
+    if (edges.length > 4 && f % 3 === 0) {   // 往外劈出去的一小段
+      const a = edges[Math.floor(hash(f, sd + 5) * edges.length)], cx0 = w / 2, cy0 = (top + bot) / 2, dx = a[0] - cx0, dy = a[1] - cy0, d = Math.hypot(dx, dy) || 1;
+      bolt(a, [a[0] + (dx / d) * 9, a[1] + (dy / d) * 9], 3, 4);
     }
-    for (let k = 0; k < 2; k++) { const q = pick(edges, f + k * 11, 41), p = (t * 5 + k * 0.5) % 1; if (q) P2(q[0] + (k ? 1 : -1) * p * 6, q[1] - p * 4 + p * p * 6, VOLT_P[2], 1); }
+    for (let k = 0; k < 3; k++) { const q = pick(edges, f + k * 11, 41), p = (t * 5 + k * 0.33) % 1; if (q) P2(q[0] + (k ? 1 : -1) * p * 7, q[1] - p * 5 + p * p * 8, VOLT_P[2], 1); }
   }
 }
 /** 畫電流連鎖的閃線（折線，0.22 秒） */
