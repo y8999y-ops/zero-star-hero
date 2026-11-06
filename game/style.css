@@ -1072,3 +1072,39 @@ body.touch .wm-card { width: min(40%, 230px); }
 #hud #hudMenu #btnBag:active, #hud #hudMenu #btnTree:active, #hud #hudMenu #btnMap:active { transform: translateY(1px); filter: brightness(1.3) drop-shadow(0 2px 0 rgba(0, 0, 0, .75)); }
 /* 使用者 2026-11-06：魔力條中間那條大招刻度線取消 */
 #mpMark { display: none !important; }
+/* ---- 使用者 2026-11-06：吸收魔物核 —— 站到核旁邊時額外亮出「吸收」鍵（按住 1 秒），核上方一行提示；獲得新形態的大字；新形態格發光 */
+.btn.absorb { display: none; width: 64px; height: 64px; right: 110px; bottom: 96px; border-radius: 50%;
+  background: center / 70% no-repeat, radial-gradient(circle, #3a2a10 0 55%, #1a1206 56% 100%); box-shadow: 0 0 0 3px #ffd84a, 0 0 0 5px #3a1a06, 0 0 16px 4px rgba(255, 216, 74, .7);
+  animation: absorbReady 0.9s ease-in-out infinite; }
+.btn.absorb b { position: absolute; left: 0; right: 0; bottom: -18px; font-size: 12px; color: #ffe27a; text-shadow: 0 1px 0 #000, 0 0 4px #000; letter-spacing: 2px; }
+.btn.absorb.on { animation: none; transform: scale(.94); box-shadow: 0 0 0 3px #fff6c4, 0 0 0 5px #3a1a06, 0 0 26px 8px rgba(255, 230, 120, .95); }
+body.absorbnear .btn.absorb { display: block; }
+body.touch .btn.absorb { width: var(--B); height: var(--B); right: calc(var(--A) + 8px); bottom: calc(var(--B) + 22px); }
+@keyframes absorbReady { 50% { box-shadow: 0 0 0 3px #fff2a0, 0 0 0 5px #3a1a06, 0 0 24px 8px rgba(255, 216, 74, .95); transform: scale(1.06); } }
+#absorbTip { position: absolute; z-index: 3; transform: translate(-50%, -100%); pointer-events: none; font-size: 13px; font-weight: 700; color: #fff2c8; white-space: nowrap;
+  text-shadow: 0 1px 0 #000, 0 0 4px #000, 0 0 8px rgba(0, 0, 0, .8); animation: absorbTipBob 1.2s ease-in-out infinite; }
+#absorbTip.hidden, #absorbTip.holding { display: none; }
+#absorbTip kbd { display: inline-block; padding: 0 5px; margin: 0 2px; border: 2px solid #ffd84a; border-radius: 3px; color: #ffe27a; font: inherit; background: rgba(0, 0, 0, .5); }
+#absorbTip .tc, body.touch #absorbTip .pc { display: none; }
+body.touch #absorbTip .tc { display: inline; }
+@keyframes absorbTipBob { 50% { margin-top: -3px; } }
+#formBanner { position: absolute; left: 50%; top: 34%; z-index: 7; transform: translate(-50%, -50%) scale(.6); opacity: 0; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+#formBanner canvas { width: 120px; height: 102px; image-rendering: pixelated; filter: drop-shadow(0 0 12px var(--fc)) drop-shadow(0 0 4px #fff); }
+#formBanner .fb-sub { font-size: 16px; font-weight: 700; letter-spacing: 6px; color: #fff2c8; text-shadow: 0 2px 0 #000; }
+#formBanner .fb-name { font-size: 38px; font-weight: 900; letter-spacing: 8px; text-shadow: 0 3px 0 #000, 0 0 16px var(--fc), 0 0 30px var(--fc); }
+#formBanner::before { content: ""; position: absolute; left: 50%; top: 40%; width: 360px; height: 360px; margin: -180px 0 0 -180px; z-index: -1; border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 255, 255, .22) 0 6deg, transparent 6deg 22deg); -webkit-mask: radial-gradient(circle, #000 20%, transparent 70%); mask: radial-gradient(circle, #000 20%, transparent 70%); animation: fbSpin 6s linear infinite; }
+#formBanner.show { animation: fbIn 2.4s ease-out both; }
+@keyframes fbIn { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.4); } 12% { opacity: 1; transform: translate(-50%, -50%) scale(1.12); } 20% { transform: translate(-50%, -50%) scale(1); } 82% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.04); } }
+@keyframes fbSpin { to { transform: rotate(360deg); } }
+.fslot.fresh { animation: freshSlot 0.9s ease-in-out infinite; }
+@keyframes freshSlot { 50% { filter: brightness(1.5) drop-shadow(0 0 8px #ffe066); transform: scale(1.08); } }
+/* 技能樹上方：魔物核 2 顆換 1 點 */
+.tree-head .tcores { display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; font-size: 13px; color: #e8ddff; }
+.tree-head .tcores > .ico { width: 20px; height: 20px; }
+.tree-head .tcores b { color: #ffe27a; }
+.ibtn.mini2 { height: 26px; font-size: 11px; padding: 0 6px; }
+.ibtn.mini2 .ico { width: 14px; height: 14px; }
+/* 使用者 2026-11-06：主線完成的系統訊息——浮在視窗、對話上面，不被調暗 */
+#sys.imp { z-index: 9; }
+body.talking #sys.imp { opacity: 1 !important; }

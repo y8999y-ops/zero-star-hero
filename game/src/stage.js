@@ -13,7 +13,7 @@ export const STAGE_1_1 = {
   hazards: [],
   altars: [{ x: 1440, y: 384 }, { x: 2820, y: 384 }],
   spawns: [
-    { k: "slime", x: 1230, y: 384 },                                                          // 段 4：一隻睡著的
+    { k: "slime", x: 1230, y: 384, core: "slime" },                                           // 段 4：一隻睡著的（必掉史萊姆核，教吸收）
     { k: "slime", x: 1720, y: 384 }, { k: "slime", x: 1770, y: 384 }, { k: "slime", x: 1820, y: 384 },   // 段 6：連擊
     { k: "bat", x: 2020, y: 310 }, { k: "bat", x: 2070, y: 316 },                             // 段 7：閃避
     { k: "slime", x: 2270, y: 384 }, { k: "slime", x: 2286, y: 384 }, { k: "slime", x: 2302, y: 384 }, { k: "slime", x: 2318, y: 384 }, { k: "slime", x: 2334, y: 384 },   // 段 8：擠成一團
@@ -27,8 +27,9 @@ export const STAGE_1_1 = {
     { x: 320, tip: { touch: "前面有個小台階。左手【往上快滑】——跳。", key: "前面有個小台階。【空白鍵】或【↑】——跳。" } },
     { x: 690, tip: { touch: "這個太高了。跳起來之後，在空中再滑一次——二段跳。別問我星星為什麼會二段跳。", key: "這個太高了。跳起來之後在空中再按一次——二段跳。別問我星星為什麼會二段跳。" } },
     { x: 1030, tip: { touch: "前面那隻史萊姆還在睡，深淵最弱的魔物。按住右下角的【攻擊】，會自己打出三連段。我設計的。", key: "前面那隻史萊姆還在睡，深淵最弱的魔物。按住【滑鼠左鍵】，會自己打出三連段。我設計的。", focus: "atk" } },
-    { x: 1250, quiet: true, say: "系統：看到了嗎？打倒的魔物會變成光，被你吸進來。這就是你變強的方法——吸收。" },
-    { x: 1270, quiet: true, say: "系統：前面那個是星之祭壇。走過去點亮它——死掉的話會從這裡重來。" },   // 怎麼按：第一次站到旁邊時 main.js 會教（tipUse）
+    // 使用者 2026-11-06：這隻必掉核——教「按住吸收鍵」；核還沒吸之前，下一段（祭壇）先不講
+    { x: 1250, quiet: true, tip: { touch: "牠掉了一顆核——魔物的力量。站過去，按住右下亮起來的【吸收】。這就是你變強的方法。", key: "牠掉了一顆核——魔物的力量。站過去，按住【F】吸收。這就是你變強的方法。" } },
+    { x: 1270, quiet: true, waitCore: true, say: "系統：前面那個是星之祭壇。走過去點亮它——死掉的話會從這裡重來。" },   // 怎麼按：第一次站到旁邊時 main.js 會教（tipUse）
     { x: 1500, say: "系統：前面三隻。按住攻擊不要停——連擊每滿 10 下，魔力 +10。" },
     { x: 1850, quiet: true, teach: "dash", tip: { touch: "上面有翅膀的聲音——蝙蝠會俯衝。按【閃避】閃開，閃的那一瞬間不會受傷。", key: "上面有翅膀的聲音——蝙蝠會俯衝。按【滑鼠右鍵】衝刺閃開，閃的那一瞬間不會受傷。", focus: "dash" } },
     { x: 2090, quiet: true, teach: "skill", tip: { touch: "一整團擠在一起，一隻一隻打太慢了。用【技能】——星屑彈打中會爆炸，一整群一起送走。", key: "一整團擠在一起，一隻一隻打太慢了。按【E】放星屑彈——打中會爆炸，一整群一起送走。", focus: "skill" } },
@@ -153,7 +154,7 @@ export class Director {
     // 8b（使用者 2026-11-05：不要隱形牆和遭遇戰，參考 Ori）：怪物一開始就擺在地圖上。
     // 有 spawns 的關卡照 spawns 擺；還沒重新設計的舊關卡，把原本每個事件的波次攤開，擺在事件位置前面一段路上。
     // 重生規則 2：打死就不見，重進關卡才會再出現（重進＝重新載入頁面，自然又是一整批）。
-    if (stage.spawns) for (const sp of stage.spawns) api.spawnEnemy(sp.k, sp.x, sp.y);
+    if (stage.spawns) for (const sp of stage.spawns) { const e = api.spawnEnemy(sp.k, sp.x, sp.y); if (e && sp.core) e.core = sp.core; }
     else for (const ev of stage.events) {
       if (!ev.waves || ev.lock) continue;
       const all = ev.waves.flat();
@@ -184,7 +185,7 @@ export class Director {
     // 使用者 2026-11-06：一段一段來——系統上一句還沒講完就先等；quiet＝還要等前面幾段（擺在這個位置以前）醒著的怪清掉才講（最多等 8 秒）
     const reached = ev && player.x >= ev.x && (ev.y == null || player.y >= ev.y);   // 10 批：y＝要在這個高度以下才算（王房在屋頂底下）
     if (!reached) this.waitT = 0;
-    else if ((this.waitT = (this.waitT ?? 0) + dt) < 8 && ((ev.quiet && this.api.busy?.(player.x, player.y, ev.x)) || (this.stage.paced && this.api.talking?.()))) { /* 等一下 */ }
+    else if ((this.waitT = (this.waitT ?? 0) + dt) < 8 && ((ev.quiet && this.api.busy?.(player.x, player.y, ev.x)) || (ev.waitCore && this.api.coreLeft?.()) || (this.stage.paced && this.api.talking?.()))) { /* 等一下 */ }
     else {
       this.next++; this.waitT = 0;
       if (this.stage.paced && (ev.say || ev.tip)) this.api.cut?.();

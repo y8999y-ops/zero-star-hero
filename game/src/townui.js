@@ -10,7 +10,7 @@ import { isCore, subStep, coreTier, coreOf, CORES } from "./items.js";
 import { SLOTS, RARITY, AFFIXES, rerollAffix, maxPlus, enhanceRate, enhanceCost, enhanceUp, fmtStat, mainValue } from "./items.js";
 import { uiFx } from "./ui-fx.js";
 import { TREES, PATHS, rank as treeRank, canBuy, buy, refund, freePts, pathSpent, CAP_NEED } from "./skilltree.js";
-import { FORMS } from "./forms.js";
+import { FORMS, CORE_STAT, CORE_COST } from "./forms.js";
 import * as parryFx from "../../pixelfx/src/fx/impacts/parry.js";
 import * as burstFx from "../../pixelfx/src/fx/pickups/collect-burst.js";
 import * as questFx from "../../pixelfx/src/fx/ui/quest-complete.js";
@@ -340,6 +340,17 @@ export function openTree(form) {
     // 使用者 2026-11-05「技能點要往下翻才能點」：左邊技能樹、右邊說明＋投入鍵，同一個畫面不用捲；點已選的節點再點一下＝直接投入
     const wrap = h("div", "tree-wrap"), left = h("div", "tree-left");
     const head = h("div", "tree-head", `<span class="tpts">${ico("star")}<b>${freePts(id)}</b> 點</span>`);
+    // 使用者 2026-11-06：魔物核 2 顆換 1 點——那個形態的技能點，或那種核的屬性
+    const cs = CORE_STAT[id];
+    if (cs) {
+      const f = P.forms.owned[id], have = f.cores ?? 0, row = h("span", "tcores", `${ico("core_" + id)}<b>${have}</b> 顆核`);
+      const ok = have >= CORE_COST;
+      const b1 = ibtn("star", `技能點（${CORE_COST} 顆）`, () => { if ((f.cores ?? 0) < CORE_COST) return msg("核不夠", false); f.cores -= CORE_COST; f.pts = (f.pts ?? 0) + 1; ctx.sfx("pickup"); msg("技能點 +1"); ctx.onTree?.(); ctx.afterChange?.(); render(); }, "plain mini2");
+      const b2 = ibtn(cs.id === "hp" ? "st_hp" : cs.id === "def" ? "st_def" : "st_crit", `${cs.label}（${CORE_COST} 顆）`, () => { if ((f.cores ?? 0) < CORE_COST) return msg("核不夠", false); f.cores -= CORE_COST; P.coreBonus[cs.id] = Number(((P.coreBonus[cs.id] ?? 0) + cs.v).toFixed(2)); ctx.sfx("pickup"); msg(cs.label); ctx.onTree?.(); ctx.afterChange?.(); render(); }, "plain mini2");
+      if (!ok) { b1.classList.add("off"); b2.classList.add("off"); }
+      row.append(b1, b2);
+      head.appendChild(row);
+    }
     if (ctx.inTown) head.appendChild(ibtn("dice", "洗點", () => { refund(id); sel = null; ctx.sfx("ui"); msg("點數全部拿回來了"); ctx.onTree?.(); render(); }, "plain"));
     left.appendChild(head);
     const grid = h("div", "tree-grid");

@@ -1,5 +1,6 @@
 // 遊戲主程式：第一章的關卡（1-1～1-3）、碎星鎮。網址加 ?endless 是無限出怪的測試模式，?stage=1-2 直接進那一關。
 import { openWorldMap } from "./worldmap.js";
+import { drawAbsorbBeams } from "./coreart.js";
 import { drawAlert } from "./alertfx.js";
 import { playOpen } from "./ui-trans.js";
 import { setNum, bump } from "./bump.js";
@@ -31,7 +32,7 @@ import { CHEST_TIERS } from "./chest-tiers.js";
 import * as collectBurst from "../../pixelfx/src/fx/pickups/collect-burst.js";
 import { createFx } from "../../pixelfx/src/core/index.js";
 import { load, save, BAG_SIZE } from "./save.js";
-import { computeStats, compare, xpNeed, MAX_LV } from "./stats.js";
+import { computeStats, compare, xpNeed, MAX_LV, setStatBonus } from "./stats.js";
 import { makeItem, rollRarity, R, RARITY, JUNK, MYTHS, AWAKEN, awakenStage } from "./items.js";
 import { Drops, feed } from "./loot.js";
 import { createInventory } from "./inventory.js";
@@ -41,7 +42,7 @@ import { playIntro } from "./intro.js";
 import { questEvent, refreshBoard, rewardText, sysActive } from "./quests.js";
 import { initTownUI, openQuests, openForge, openInn, isWinOpen, MEALS, questLook, openTree } from "./townui.js";
 import { installUiArt, iconURL, setAttackIcon, medal, MEDAL_SIZE } from "./ui-art.js";
-import { FORMS, CARRY_MAX, coreChance, absorbCore, makeCore } from "./forms.js";
+import { FORMS, CARRY_MAX, coreChance, absorbCore, makeCore, CORE_COST } from "./forms.js";
 import { bindForms, rank, freePts } from "./skilltree.js";
 import { createFrame as makeFrame } from "../../pixelfx/src/core/index.js";
 import { paintStar, POSES } from "./star.js";
@@ -161,6 +162,8 @@ function statsNow() {
   if (m) m.apply(s);
   return s;
 }
+profile.coreBonus ??= {};
+setStatBonus(profile.coreBonus);   // 使用者 2026-11-06：魔物核換來的基礎屬性
 function refreshStats() {
   player.setStats(statsNow());
   save(profile);
@@ -222,7 +225,7 @@ function dropItem(x, y, minR = 0, opts = {}) {
 
 /** 撿起來。背包滿了回傳 false。 */
 function pickUp(d) {
-  if (d.item.kind === "formcore") return absorb(d.item);
+  if (d.item.kind === "formcore") return false;   // 使用者 2026-11-06：魔物核不會碰到就吸——要按住吸收鍵（updateAbsorb）
   const it = d.item, better = compare(it, profile.equip, profile.lv)?.better;
   // 自動拆解：關／只拆純垃圾／純垃圾和普通
   const auto = profile.auto === 1 ? it.kind === "junk" : profile.auto === 2 ? it.kind === "junk" || it.rarity <= R.common : false;
@@ -262,15 +265,21 @@ function absorb(it) {
   const F = FORMS[it.form], res = absorbCore(profile.forms, it.form);
   setTimeout(() => questProgress("core"), 0);
   sfx("absorb");
-  spawn(collectBurst, { x: Math.round(player.x), y: Math.round(player.y) - 12, palette: FORM_BURST[it.form], light: 0.5 });
-  flash(player.x, player.y - 12, 80, 3, 0.6, F.color);
+  // 吸收完成：核衝進身體，炸開一圈形態顏色的光（比撿東西大很多）
+  spawn(collectBurst, { x: Math.round(player.x), y: Math.round(player.y) - 12, palette: FORM_BURST[it.form], light: 0.7 });
+  spawn(collectBurst, { x: Math.round(player.x), y: Math.round(player.y) - 12, palette: FORM_BURST[it.form], light: 0.4, seed: 7 }, { speed: 0.7 });
+  flash(player.x, player.y - 12, 120, 4, 0.9, F.color);
+  shake(0.18, 2.5);
   if (res.unlocked) {
+    formBanner(it.form);
+    profile.forms.fresh = it.form;   // 形態格一直發光，直到第一次切換過去
     toast(`系統：吸收了${F.name}的核！新形態「${F.name}」。${profile.forms.carry.includes(it.form) ? tipFor("點右邊的【形態】就能變身。", "按【1】～【3】就能變身。") : "已經帶滿 3 個了，回城鎮再換。"}`, 3.4, "forms");
     sayQueue.unshift([`系統：你把${F.from === "slime" ? "史萊姆" : "垃圾桶"}的核吃掉了？不對，是吸收。好吧，差不多。`, 2.8]);
   } else {
-    // 重複的核：那個形態 +1 技能點
-    feed({ name: it.name, icon: it.icon, rarity: 3 }, `${F.name} 技能點 +1（${freePts(it.form)}）`);
-    if (!profile.seenTreeTip) { profile.seenTreeTip = 1; sayQueue.push(["系統：重複的核會變成技能點。點左上的【技能樹】把它花掉。", 3]); }
+    // 重複的核：存起來，2 顆換 1 點（技能點或屬性，在技能樹視窗上方換）
+    const have = profile.forms.owned[it.form].cores ?? 0;
+    feed({ name: it.name, icon: it.icon, rarity: 3 }, `核 +1（${have} 顆${have >= CORE_COST ? "，可以換點數了" : ""}）`);
+    if (!profile.seenCoreTip) { profile.seenCoreTip = 1; sayQueue.push(["系統：重複的核存起來了。兩顆換一點——技能點或屬性，在左上的【技能樹】換。", 3.4]); }
   }
   save(profile);
   buildFormHud();
@@ -278,6 +287,7 @@ function absorb(it) {
 }
 function switchForm(id) {
   if (!id || id === player.form || !profile.forms.owned[id] || ult.on) return;
+  if (profile.forms.fresh === id) { delete profile.forms.fresh; setTimeout(buildFormHud, 0); }
   sfx("form");
   const prevForm = player.form;
   profile.forms.cur = id;
@@ -317,11 +327,58 @@ function teach(k) {
 }
 // 右上角的形態按鈕（電腦也能點）：每格畫一個小星星，目前的形態有亮框
 const formHud = document.getElementById("forms");
+// ---- 使用者 2026-11-06：吸收魔物核——站到核旁邊，額外亮出一顆「吸收」鍵（電腦按住 F），按住 1 秒吸收。
+//   按著的時候核浮起來、光環往內收、幾道光拉到主角身上；戰鬥中也能吸，但被打到就中斷（核掉回地上，要重按）
+const ABSORB_T = 1;
+let absorbHp = null, absorbTick = 0;
+function updateAbsorb(dt) {
+  const cores = drops.list.filter((d) => d.item.kind === "formcore" && d.landed && d.t > 0.45 && !d.got);
+  let near = null;
+  for (const d of cores) if (Math.abs(d.x - player.x) < 26 && Math.abs(d.y - player.y) < 30 && (!near || Math.abs(d.x - player.x) < Math.abs(near.x - player.x))) near = d;
+  const show = !!near && !TOWN && !dialog.open;
+  if (document.body.classList.contains("absorbnear") !== show) {
+    document.body.classList.toggle("absorbnear", show);
+    if (show) { $("btnAbsorb").style.backgroundImage = `url(${iconURL(near.item.icon, 3)}), radial-gradient(circle, #3a2a10 0 55%, #1a1206 56% 100%)`; sfx("chime"); }
+  }
+  const hit = absorbHp !== null && player.hp < absorbHp;
+  absorbHp = player.hp;
+  for (const d of cores) if (d !== near && d.hold) d.hold = Math.max(0, d.hold - dt * 3);
+  const tip = $("absorbTip");
+  if (!show) { tip.classList.add("hidden"); return; }
+  // 提示：核的上方一行字（電腦：按住 F；手機：按住右下的吸收鍵）
+  const k = canvas.clientWidth / W;
+  tip.classList.remove("hidden");
+  tip.style.left = canvas.offsetLeft + (near.x - camX) * k + "px";
+  tip.style.top = canvas.offsetTop + (near.y - 40 - camY) * k + "px";
+  if (hit && near.hold > 0) { near.hold = 0; sfx("close"); toast("系統：被打斷了！核掉回地上了。", 1.4); return; }
+  if (input.absorb && !ult.on && !introOn) {
+    near.hold = Math.min(1, (near.hold ?? 0) + dt / ABSORB_T);
+    if ((absorbTick += dt) > 0.22) { absorbTick = 0; sfx("ui"); }
+    if (near.hold >= 1) { near.got = true; document.body.classList.remove("absorbnear"); tip.classList.add("hidden"); absorb(near.item); }
+  } else near.hold = Math.max(0, (near.hold ?? 0) - dt * 3);
+  tip.classList.toggle("holding", (near.hold ?? 0) > 0);
+}
+/** 獲得新形態：畫面中間跳出大字（形態圖示＋名字），約 2.2 秒 */
+function formBanner(id) {
+  const el = $("formBanner"), F = FORMS[id];
+  const f = makeFrame(40, 34), c = document.createElement("canvas"), im = new ImageData(40, 34);
+  c.width = 40; c.height = 34;
+  paintStar(f, 20, 31, POSES.stand, false, { glow: 0, form: id });
+  composite(f, im.data, null);
+  c.getContext("2d").putImageData(im, 0, 0);
+  el.innerHTML = `<div class="fb-sub">新形態</div><div class="fb-name" style="color:${F.color}">${F.name}</div>`;
+  el.prepend(c);
+  el.style.setProperty("--fc", F.color);
+  el.classList.remove("show"); void el.offsetWidth; el.classList.add("show");
+  clearTimeout(formBanner.t);
+  formBanner.t = setTimeout(() => el.classList.remove("show"), 2400);
+  sfx("levelup");
+}
 function buildFormHud() {
   formHud.innerHTML = "";
   profile.forms.carry.forEach((id, i) => {
     const b = document.createElement("button");
-    b.className = "fslot" + (id === player.form ? " on" : "");
+    b.className = "fslot" + (id === player.form ? " on" : "") + (profile.forms.fresh === id ? " fresh" : "");
     b.title = `${FORMS[id].name}（${i + 1}）`;
     const f = makeFrame(40, 34), c = document.createElement("canvas");
     c.width = 40; c.height = 34;
@@ -610,9 +667,11 @@ const stageApi = {
     e.x0 = x;   // 擺放的位置（1-1 的 quiet 用來分「前面幾段的怪」）
     enemies.push(e);
     if (started) world.dust(e.x, e.k.fly ? e.y + 8 : e.y, 4);
+    return e;
   },
   say: (msg, sec, focus) => sayQueue.push([msg, sec, focus]),
   // 使用者 2026-11-06：1-1 一段一段來——附近還有醒著的怪就先不講下一段
+  coreLeft: () => drops.list.some((d) => d.item.kind === "formcore" && !d.got),   // 地上還有沒吸的核（1-1：吸完才講祭壇）
   busy: (x, y, before) => enemies.some((e) => !e.dead && e.awake && e.kind !== "gold" && (e.x0 ?? e.x) < before && Math.abs(e.x - x) < 220 && Math.abs(e.y - y) < 120),
   // 系統還在講（上一句至少要給 sysMin 秒看完）；cut＝看完了就直接換下一句，不用等它自己消失
   talking: () => sayQueue.length > 0 || (sysT > 0.3 && sysAge < sysMin),
@@ -738,7 +797,8 @@ const world = {
     chargeUlt(2);
     // 使用者 2026-11-06：1-1（paced）一次只教一件事，不掉魔物核——形態從 1-2 開始
     const [coreId, coreP] = coreChance(e.kind, profile.forms);
-    if (coreId && !STAGE.paced && Math.random() < (e.elite ? Math.min(1, coreP * 4) : coreP)) { const b = e.box(); drops.add(makeCore(coreId), e.x, (b.y0 + b.y1) / 2); }
+    if (e.core) { const b = e.box(); drops.add(makeCore(e.core), e.x, (b.y0 + b.y1) / 2, 1); }   // 關卡指定必掉（1-1 教吸收那隻）
+    else if (coreId && !STAGE.paced && Math.random() < (e.elite ? Math.min(1, coreP * 4) : coreP)) { const b = e.box(); drops.add(makeCore(coreId), e.x, (b.y0 + b.y1) / 2); }
     const b = e.box(), cy = (b.y0 + b.y1) / 2;
     if (e.elite || Math.random() < (DROP_RATE[e.kind] ?? 0.1) * (1 + s.mf / 200)) dropItem(e.x, cy, e.kind === "gold" || e.elite ? R.fine : 0, e.elite && eliteLegend() ? { rarity: R.legend, ilvl: ilvlNow(1) } : e.elite && Math.random() < 0.03 ? { rarity: R.epic, ilvl: ilvlNow(1) } : { ilvl: ilvlNow(e.kind === "trash" || e.elite ? 1 : 0) });
     // 擊殺爆炸（只剩傳說「爆炸頭安全帽」有；詞綴已取消）：會連鎖，最多連 6 次
@@ -899,12 +959,19 @@ function grant(r) {
   if (r.xp) gainXp(r.xp);
   save(profile);
 }
-function questProgress(ev, d) {
-  const r = questEvent(profile, ev, d);
+/** inDialog：正在跟 NPC 對話時，主線完成不排進右上的系統訊息（會排在別句後面、晚很久才出來），改成回傳台詞讓對話當場講 */
+function questProgress(ev, d, inDialog = false) {
+  const r = questEvent(profile, ev, d), lines = [];
   for (const q of r.guild) sayQueue.push([`系統：公會任務「${q.title}」完成！回公會找波波交付。`, 2.6]);
-  for (const q of r.sys) { grant(q.reward); sayQueue.push([`系統：主線「${q.title}」完成。${q.say}（${rewardText(q.reward)}）`, 3.6]); sfx("chime"); }
+  for (const q of r.sys) {
+    grant(q.reward); sfx("chime");
+    const line = `主線「${q.title}」完成。${q.say}（${rewardText(q.reward)}）`;
+    if (inDialog) lines.push(line);
+    else sayQueue.unshift(["系統：" + line, 3.6]);   // 使用者 2026-11-06：主線完成插到最前面，馬上講
+  }
   renderTracker();
   save(profile);
+  return lines;
 }
 const trackEl = $("qtrack");
 function renderTracker() {
@@ -1014,6 +1081,7 @@ function townTick(dt) {
     prevAtk = atk;
   } else { player.vx = 0; prevAtk = true; }
   drops.update(dt, player, 16, pickUp);
+  if (!TOWN) updateAbsorb(dt);
   updateFx(dt);
   const v = viewRect();
   camX = deadFollow(camX + W / 2, player.x + lookAhead(dt, 30), 14, 5, dt) - W / 2;   // 使用者 2026-11-05：鏡頭太晃 → 死區＋轉身慢慢滑
@@ -1101,7 +1169,9 @@ async function guild(name) {
     if (guideStep() === 0) profile.tguide = 1;
     save(profile, true);
   }
-  questProgress("tick");
+  // 使用者 2026-11-06：主線完成（例如登記冒險者）當場由系統講，不要等關掉視窗才跳出來
+  const done = questProgress("tick", null, true);
+  if (done.length) await talk("系統", done);
   const before = rankOf(G.done);
   const firstBoard = guideAt(1);
   if (firstBoard) await talk(name, ["任務都貼在任務板上，想接幾張都可以。", "不過一次只能追蹤一個——點任務右邊的星星，它就會顯示在你的頭像下面。", "做完再回來找我交付喔。"]);
@@ -1351,7 +1421,8 @@ function tick(dt) {
   tickInput(dt);
   if (juice.shakeT > 0) juice.shakeT -= dt;
   if (juice.freeze > 0) { juice.freeze -= dt; return; }   // 命中停頓：整個世界停住
-  if (!started || inv.open || introOn || isWinOpen() || mapView?.open) return;
+  // 使用者 2026-11-06「主線完成的提示要等我跳出頁面才跳出來」：視窗開著時遊戲暫停，但系統的話照樣播
+  if (!started || inv.open || introOn || isWinOpen() || mapView?.open) { if (started && !introOn) updateSay(STEP); return; }
   updateCombatFx(dt);
   if (TOWN) { townTick(dt); return; }
 
@@ -1398,6 +1469,7 @@ function tick(dt) {
   updateChest(dt);
   updateGems(dt);
   drops.update(dt, player, 16, pickUp);
+  if (!TOWN) updateAbsorb(dt);
   if (ENDLESS) spawnEnemies(dt);
   else {
     stats.time += dt;
@@ -1616,6 +1688,7 @@ function render() {
   // 大招時：先畫怪再暗場，法陣這些背景特效畫在暗場之後才會亮
   if (!ult.on) drawFx(frame, "back");
   drops.draw(frame);
+  for (const d of drops.list) if (d.item.kind === "formcore" && d.hold > 0 && d.cx !== undefined) drawAbsorbBeams(frame, d.cx, d.cy, player.x, player.y - 12, sceneClock, d.item.form, d.hold);
   for (const e of enemies) e.draw(frame);
   drawBolts(frame);
   for (const w of waves) drawWave(frame, w);
@@ -1739,6 +1812,7 @@ function toast(msg, sec = 3, focus = null, icon = null) {
     sysEl.classList.remove("glitch");
     void sysEl.offsetWidth;
     sysEl.classList.add("on", "glitch", "typing");
+    sysEl.classList.toggle("imp", text.startsWith("主線「"));   // 主線完成：浮在視窗、對話上面，不被調暗
     sysGhost.innerHTML = keyChips(text);   // 隱形的整句先撐開大小，打字時框不會一直變寬
     sysTyping = typewriter(sysText, shown, 1320, "sine");
     stopSysFace?.(); stopSysFace = playFace(sysFaceCv, moodOf(text));
@@ -1761,7 +1835,9 @@ function toast(msg, sec = 3, focus = null, icon = null) {
 const sayQueue = [];
 function updateSay() {
   // 1-1（paced）：上一句看完（sysMin）就換下一句，不用等它整個消失
-  if ((toastT <= 0.2 || (STAGE.paced && sysT > 0 && sysAge >= sysMin)) && sayQueue.length) { const [m, s, f] = sayQueue.shift(); toast(m, s, f); }
+  // 主線完成不等前一句講完，馬上插進來（使用者 2026-11-06）
+  const urgent = sayQueue[0]?.[0]?.startsWith("系統：主線「") && !sysEl.classList.contains("imp");
+  if ((urgent || toastT <= 0.2 || (STAGE.paced && sysT > 0 && sysAge >= sysMin)) && sayQueue.length) { const [m, s, f] = sayQueue.shift(); toast(m, s, f); }
 }
 const escHtml = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
 /** 【攻擊】→ 按鍵小方塊 */

@@ -6,6 +6,7 @@ import { RARITY, R, colorOf } from "./items.js";
 import { groundAt, LEVEL_W, WALL } from "./level.js";
 import { moveX } from "./map.js";
 import { iconURL } from "./ui-art.js";
+import { drawCore } from "./coreart.js";
 
 const OUTLINE = hex("#1a1424") >>> 0;
 // 每個圖示轉成 frame 用的顏色（0 = 透明）
@@ -53,6 +54,8 @@ export class Drops {
 
   draw(frame) {
     for (const d of this.list) {
+      // 使用者 2026-11-06：魔物核自己畫（大顆的結晶球＋光＋繞著轉的光點），不是一般的小圖示
+      if (d.item.kind === "formcore") { [d.cx, d.cy] = drawCore(frame, d.x, d.y, this.clock + d.x * 0.01, d.item.form, d.hold ?? 0); continue; }
       const r = d.item.rarity, bob = d.landed ? Math.round(Math.sin(this.clock * 3 + d.x) * 1.5) : 0;
       const x = Math.round(d.x), y = Math.round(d.y);
       if (BEAM[r] && d.landed) beam(frame, x, y - 4, BEAM[r], this.clock + d.x * 0.1);

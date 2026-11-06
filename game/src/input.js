@@ -1,7 +1,7 @@
 // 輸入：鍵盤＋觸控，統一成同一組狀態。
 // move: -1..1；attack: 按住中；jump / drop / dash / skill: 這一幀剛按下（讀完要用 consume 清掉）
 
-export const input = { move: 0, attack: false, jumpHeld: false, jump: false, drop: false, dash: false, skill: false, ult: false, form: false, form1: false, form2: false, form3: false, down: false };
+export const input = { move: 0, attack: false, absorb: false, jumpHeld: false, jump: false, drop: false, dash: false, skill: false, ult: false, form: false, form1: false, form2: false, form3: false, down: false };
 
 const pressed = { jump: 0, drop: 0, dash: 0, skill: 0, ult: 0, form: 0, form1: 0, form2: 0, form3: 0 };
 // 按下的瞬間如果角色剛好動不了，保留一小段時間（輸入緩衝），手感會比較跟手
@@ -15,6 +15,7 @@ export function tickInput(dt) {
   }
   input.move = clampMove(keyMove() + touch.move);
   input.attack = keys.attack || keys.mouse || touch.attack;
+  input.absorb = keys.absorb || touch.absorb;   // 使用者 2026-11-06：吸收魔物核＝按住吸收鍵（電腦 F）
   input.down = keys.down;
 }
 /** 這個動作已經用掉了，清除緩衝。 */
@@ -22,10 +23,10 @@ export const consume = (k) => { pressed[k] = 0; input[k] = false; };
 const clampMove = (v) => Math.max(-1, Math.min(1, v));
 
 // ---- 鍵盤
-const keys = { left: false, right: false, down: false, attack: false, mouse: false };
+const keys = { left: false, right: false, down: false, attack: false, mouse: false, absorb: false };
 const MAP = {
   KeyA: "left", ArrowLeft: "left", KeyD: "right", ArrowRight: "right", KeyS: "down", ArrowDown: "down",
-  KeyJ: "attack", KeyX: "attack",
+  KeyJ: "attack", KeyX: "attack", KeyF: "absorb",
 };
 const keyMove = () => (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
 addEventListener("keydown", (e) => {
@@ -60,10 +61,10 @@ addEventListener("mousedown", (e) => {
 });
 addEventListener("contextmenu", (e) => onField(e.target) && e.preventDefault());   // 右鍵＝衝刺，不跳出選單
 addEventListener("mouseup", (e) => { if (e.button === 0) keys.mouse = false; });
-addEventListener("blur", () => { for (const k in keys) keys[k] = false; touch.attack = false; touch.move = 0; });
+addEventListener("blur", () => { for (const k in keys) keys[k] = false; touch.attack = false; touch.absorb = false; touch.move = 0; });
 
 // ---- 觸控
-const touch = { move: 0, attack: false };
+const touch = { move: 0, attack: false, absorb: false };
 const DEAD = 10;        // 拖動多少 px 才開始走
 const FULL = 38;        // 拖動多少 px 算全速
 const FOLLOW = 60;      // 手指拖超過這個距離，搖桿中心跟著手指走（浮動搖桿）
@@ -128,11 +129,11 @@ export function initTouch() {
     btn.addEventListener("pointerdown", (e) => {
       try { btn.setPointerCapture(e.pointerId); } catch {}
       btn.classList.add("on");
-      if (k === "attack") touch.attack = true;
+      if (k === "attack" || k === "absorb") touch[k] = true;
       else press(k);
       navigator.vibrate?.(8);
     });
-    const up = () => { btn.classList.remove("on"); if (k === "attack") touch.attack = false; };
+    const up = () => { btn.classList.remove("on"); if (k === "attack" || k === "absorb") touch[k] = false; };
     btn.addEventListener("pointerup", up);
     btn.addEventListener("pointercancel", up);
     btn.addEventListener("lostpointercapture", up);
@@ -141,7 +142,7 @@ export function initTouch() {
 }
 /** 對話打開時呼叫：放開所有觸控（按著的攻擊鍵、搖桿），不然對話結束後第一次按會沒反應、按鈕一直亮著 */
 export function releaseTouch() {
-  touch.attack = false;
+  touch.attack = false; touch.absorb = false;
   touch.move = 0;
   for (const b of document.querySelectorAll(".btn.on")) b.classList.remove("on");
   document.getElementById("stickBase")?.classList.remove("on");

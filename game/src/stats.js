@@ -6,6 +6,9 @@ export const MAX_LV = 100;
 /** 升到下一級需要的經驗。 */
 export const xpNeed = (lv) => Math.round(24 + lv * 16 + lv * lv * 1.2);
 
+// 使用者 2026-11-06：魔物核換來的基礎屬性（main.js 開始時把 profile.coreBonus 交進來，同一個物件，換了馬上算進去）
+let BONUS = {};
+export const setStatBonus = (b) => (BONUS = b ?? {});
 export function computeStats(equip, lv) {
   const sum = {};
   const uniques = new Set();
@@ -21,20 +24,20 @@ export function computeStats(equip, lv) {
   if (sets.meteor >= 2) sum.crit = (sum.crit ?? 0) + 8;
   if (sets.reson >= 2) sum.charge = (sum.charge ?? 0) + 15;
   if (sets.feast >= 2) sum.leech = (sum.leech ?? 0) + 2;
-  const g = (k) => sum[k] ?? 0;
+  const g = (k) => sum[k] ?? 0, B = (k) => BONUS[k] ?? 0;
   return {
     uniques,
     sets,
     core: coreOf(equip.weapon),   // 8a：星核的核心效果 { id, tier, x }
     // 攻擊 ＝（角色每級 +0.3 ＋ 星核、星爪等固定攻擊）×（1＋攻擊%）
-    atk: Math.round((0.3 * (lv - 1) + g("atk")) * (1 + g("atkPct") / 100)),
-    maxHp: Math.round((100 + 3 * (lv - 1) + g("hp")) * (1 + g("hpPct") / 100)),
-    def: g("def"),
+    atk: Math.round((0.3 * (lv - 1) + g("atk") + B("atk")) * (1 + g("atkPct") / 100)),
+    maxHp: Math.round((100 + 3 * (lv - 1) + g("hp") + B("hp")) * (1 + g("hpPct") / 100)),
+    def: g("def") + B("def"),
     crit: g("crit"),
-    critDmg: 10 + g("critDmg"),
+    critDmg: Number((10 + g("critDmg") + B("critDmg")).toFixed(1)),
     skill: g("skill"),
     ult: g("ult"),
-    charge: g("charge"),
+    charge: Number((g("charge") + B("charge")).toFixed(1)),
     cdr: Math.min(40, g("cdr")),
     leech: Number(g("leech").toFixed(1)),
     move: g("move"),

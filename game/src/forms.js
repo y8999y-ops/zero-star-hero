@@ -34,7 +34,15 @@ export function migrateForms(forms) {
   return forms;
 }
 
-/** 吸收一顆核。回傳 { unlocked, point }：第一顆解鎖形態，之後每顆＋1 技能點。 */
+// 使用者 2026-11-06：重複的核先存起來（f.cores），每 2 顆換 1 點：那個形態的技能點，或那種核對應的屬性（技能樹視窗上方換）
+//   攻擊 +1、回能效率 +0.2% 先留給之後新魔物的核
+export const CORE_COST = 2;
+export const CORE_STAT = {
+  slime: { id: "hp", v: 2, label: "生命 +2" },
+  can: { id: "def", v: 1, label: "防禦 +1" },
+  bat: { id: "critDmg", v: 0.5, label: "暴擊傷害 +0.5%" },
+};
+/** 吸收一顆核。回傳 { unlocked, core }：第一顆解鎖形態，之後每顆存起來（2 顆換 1 點）。 */
 export function absorbCore(forms, id) {
   const f = forms.owned[id];
   if (!f) {
@@ -42,8 +50,8 @@ export function absorbCore(forms, id) {
     if (forms.carry.length < CARRY_MAX) forms.carry.push(id);
     return { unlocked: true, point: false };
   }
-  f.pts = (f.pts ?? 0) + 1;
-  return { unlocked: false, point: true, pts: f.pts };
+  f.cores = (f.cores ?? 0) + 1;
+  return { unlocked: false, core: true, cores: f.cores };
 }
 
 /** 魔物核這個「掉落物」（不進背包，撿到就吸收） */
