@@ -110,7 +110,7 @@ export function openWorldMap({ profile, unlocked, layouts, notes, sfx, thumbs = 
     if (!alive) return;
     const list = ORDER.filter((id) => st.nodes[id].open);
     if (e.code === "Escape") close(null);
-    else if (e.code === "Enter" || e.code === "Space") go(st.sel);
+    else if (e.code === "Enter" || e.code === "Space" || e.code === "KeyF") go(st.sel);
     else if (e.code === "ArrowRight" || e.code === "KeyD" || e.code === "ArrowLeft" || e.code === "KeyA") {
       const k = list.indexOf(st.sel), d = e.code === "ArrowRight" || e.code === "KeyD" ? 1 : -1;
       select(list[(k + d + list.length) % list.length]);

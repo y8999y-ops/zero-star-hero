@@ -472,7 +472,7 @@ function drawChestSolid(frame) {
 }
 function makeChest(x, tier, y = FLOOR) { return { x: Math.round(x), y, tier, opened: false, t: 0, fx: createFx(treasureChest, { x: Math.round(x), y, ...chestOpts(tier) }) }; }
 let chest = ENDLESS || TOWN || STAGE_ID === "1-4" ? null : makeChest(STAGE.exitX - 120, STAGE_CHEST[STAGE_ID] ?? 0, floorAt(STAGE.exitX - 120, (STAGE.exitY || FLOOR) - 8));
-let prevUseAtk = false, useT = null, useKind = "";
+let prevUseAtk = false, prevUseKey = false, fLock = false, useT = null, useKind = "";
 /** 可以開箱嗎：站在旁邊、在地上、沒有在打仗 */
 // 8b：怪物擺滿整張地圖，改成「附近 160 以內沒有活的怪」就能開（不用清光整關）
 const canOpenChest = () => !!chest && !chest.opened && Math.abs(player.x - chest.x) < 24 && Math.abs(player.y - chest.y) < 20 && player.grounded && !director?.lock && !enemies.some((e) => !e.dead && e.kind !== "gold" && Math.abs(e.x - chest.x) < 160 && Math.abs(e.y - chest.y) < 80);
@@ -505,7 +505,8 @@ function updateChest(dt) {
   }
 }
 // ---- 互動鍵（使用者 2026-11-05）：傳送門、星之祭壇、寶箱、星之殘火、化石核、保險箱、碑文，都要站在旁邊按互動鍵才觸發。
-// 互動鍵＝攻擊鍵：旁邊有東西可以用時，攻擊鍵換成門／手／寶箱的圖示並發亮，頭上冒「！」；按下去用掉、不出拳。
+// 手機：互動鍵＝攻擊鍵：旁邊有東西可以用時，攻擊鍵換成門／手／寶箱的圖示並發亮，頭上冒「！」；按下去用掉、不出拳。
+// 電腦（使用者 2026-11-06「統一為按 F 互動」）：互動一律按 F（跟吸收同一顆），攻擊鍵照常出拳
 function findUse() {
   if (!player.grounded || (player.hideT ?? 0) > 0 || ult.on) return null;
   const c = [];
@@ -520,18 +521,21 @@ function findUse() {
 }
 /** 在 player.update 之前攔截攻擊鍵：剛按下那一下用掉旁邊的東西，旁邊有東西時不出拳 */
 function useInput() {
-  const atk = input.attack;
+  const atk = input.attack, key = input.absorb;
   useT = findUse();
   const kind = useT?.kind ?? "";
   if (kind !== useKind) {
     for (const k of ["chest", "door", "hand"]) document.body.classList.toggle(k + "near", k === kind);
     useKind = kind;
     // 第一次遇到可以互動的東西：教一次怎麼用（記在存檔，之後不再講）
-    if (kind && !profile.tipUse) { profile.tipUse = 1; sayQueue.unshift([isTouch ? "系統：站在旁邊時右下角的鍵會換圖示、發亮——按一下就能用。門、祭壇、撿東西都一樣。" : "系統：站在旁邊時按【滑鼠左鍵】就能用。門、祭壇、撿東西都一樣——頭上有「！」的就是。", 3.6]); }
+    if (kind && !profile.tipUse) { profile.tipUse = 1; sayQueue.unshift([isTouch ? "系統：站在旁邊時右下角的鍵會換圖示、發亮——按一下就能用。門、祭壇、撿東西都一樣。" : "系統：站在旁邊時按【F】就能用。門、祭壇、寶箱都一樣——頭上有「！」的就是。", 3.6]); }
   }
-  if (useT && atk && !prevUseAtk) { input.attack = false; useT.go(); useT = null; }
-  else if (useT) input.attack = false;
-  prevUseAtk = atk;
+  if (isTouch) {
+    if (useT && atk && !prevUseAtk) { input.attack = false; useT.go(); useT = null; }
+    else if (useT) input.attack = false;
+  } else if (useT && key && !prevUseKey) { useT.go(); useT = null; fLock = true; }
+  if (fLock) { if (key) input.absorb = false; else fLock = false; }   // 按 F 用掉東西：放開前不算吸收
+  prevUseAtk = atk; prevUseKey = key;
 }
 
 // ---- 可以撿的金幣和寶石（寶箱噴出來的）：先彈跳落地，主角走過去才吸過來
@@ -1137,8 +1141,8 @@ function townTick(dt) {
   const shown = !$("dlg").classList.contains("hidden") || isWinOpen() || inv.open || !!$("worldWin");
   if ((busy || dialog.open) && !shown) { stuckT += dt; if (stuckT > 1.5) { console.warn("城鎮操作卡住，自動解除", { busy, dialog: dialog.open }); busy = false; dialog.open = false; stuckT = 0; } } else stuckT = 0;
   if (!dialog.open && !busy) {
-    // 城鎮不能戰鬥：攻擊鍵＝對話，技能、大招不能用
-    const atk = input.attack;
+    // 城鎮不能戰鬥：對話＝手機的攻擊鍵、電腦的 F；技能、大招不能用
+    const atk = isTouch ? input.attack : input.absorb;
     input.attack = false;
     consume("skill"); consume("ult");
     player.update(dt, world);

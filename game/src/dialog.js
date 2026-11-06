@@ -191,5 +191,5 @@ box.addEventListener("pointerdown", (e) => { if (!e.target.closest("button")) ne
 addEventListener("keydown", (e) => {
   if (!dialog.open) return;
   if (pick && /^Digit[1-9]$/.test(e.code)) { if (optEl.querySelector(".wait")) { next(); e.preventDefault(); return; } choosePick(+e.code.slice(5) - 1); e.preventDefault(); return; }
-  if (["Space", "KeyJ", "Enter", "KeyX", "KeyZ"].includes(e.code)) { next(); e.preventDefault(); }
+  if (["KeyF", "Space", "KeyJ", "Enter", "KeyX", "KeyZ"].includes(e.code)) { next(); e.preventDefault(); }   // F＝互動鍵（使用者 2026-11-06），也能翻下一句
 }, true);
