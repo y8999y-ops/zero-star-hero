@@ -331,62 +331,55 @@ export function openInn({ rest }) {
 }
 
 // ================= 形態（使用者 2026-11-06「另外做一個專門切換形態的介面」） =================
-/** 形態視窗：上面一排「帶在身上」的 3 格，下面每個已經吸收的形態一張卡（全身像、名字、連段、技能、說明）。
- *  點卡片上的【變身】＝馬上切過去（要帶在身上）；在城鎮可以【帶上】／【放下】，換帶哪 3 個（冒險中不能換） */
-export function openForms() {
+/** 「形態」分頁（在技能樹視窗裡，第一頁）：上面帶在身上的 3 格，下面每個形態一張卡。
+ *  使用者 2026-11-06：這一頁只能換帶哪幾個（城鎮裡【帶上】／【放下】），不能在這裡變身 */
+function carryPage(body, render) {
   const P = ctx.profile, F = P.forms;
-  const page = (body) => {
-    const cur = ctx.curForm?.(), owned = Object.keys(FORMS).filter((id) => F.owned[id]);
-    const top = h("div", "fm-carry", `<div class="fm-ttl">帶在身上 <em>${F.carry.length}/${CARRY_MAX}</em>${ctx.inTown ? "" : '<small>（回城鎮才能換帶哪幾個）</small>'}</div>`);
-    const row = h("div", "fm-slots");
-    for (let i = 0; i < CARRY_MAX; i++) {
-      const id = F.carry[i], s = h("div", "fm-slot" + (id === cur ? " on" : "") + (id ? "" : " empty"));
-      if (id) { s.appendChild(ctx.portrait(id, 1)); s.appendChild(h("b", "", `${i + 1}`)); s.style.setProperty("--fc", FORMS[id].color); }
-      else s.innerHTML = "<i>空</i>";
-      row.appendChild(s);
-    }
-    top.appendChild(row);
-    body.appendChild(top);
-    const grid = h("div", "fm-grid");
-    for (const id of owned) {
-      const D = FORMS[id], carried = F.carry.includes(id), card = h("div", "fm-card" + (id === cur ? " on" : "") + (carried ? " carried" : ""));
-      card.style.setProperty("--fc", D.color);
-      const pic = h("div", "fm-pic"); pic.appendChild(ctx.portrait(id, 2)); card.appendChild(pic);
-      card.appendChild(h("div", "fm-info", `<div class="fm-name">${D.name}${id === cur ? '<span class="fm-tag">目前</span>' : carried ? '<span class="fm-tag dim">帶著</span>' : ""}</div><div class="fm-desc">${D.desc}</div>`));
-      const btns = h("div", "fm-btns");
-      if (carried && id !== cur) btns.appendChild(ibtn(id === "star" ? "star" : "core_" + id, "變身", () => {
-        if (!ctx.switchForm(id)) { ctx.sfx("close"); return msg("現在不能變身", false); }
-        msg(`變成${D.name}了`); render();
-      }));
-      if (ctx.inTown) {
-        if (carried) {
-          const b = ibtn("close", "放下", () => {
-            if (id === cur) return msg("正在用的形態不能放下", false);
-            if (F.carry.length <= 1) return msg("至少要帶一個", false);
-            F.carry.splice(F.carry.indexOf(id), 1); ctx.sfx("ui"); ctx.onCarry?.(); render();
-          }, "plain");
-          if (id === cur) b.classList.add("off");
-          btns.appendChild(b);
-        } else {
-          const b = ibtn("check", "帶上", () => {
-            if (F.carry.length >= CARRY_MAX) return msg(`最多帶 ${CARRY_MAX} 個，先放下一個`, false);
-            F.carry.push(id); ctx.sfx("pickup"); ctx.onCarry?.(); msg(`帶上${D.name}`); render();
-          }, "plain");
-          if (F.carry.length >= CARRY_MAX) b.classList.add("off");
-          btns.appendChild(b);
-        }
+  const cur = ctx.curForm?.(), owned = Object.keys(FORMS).filter((id) => F.owned[id]);
+  const top = h("div", "fm-carry", `<div class="fm-ttl">帶在身上 <em>${F.carry.length}/${CARRY_MAX}</em>${ctx.inTown ? "" : '<small>（回城鎮才能換帶哪幾個）</small>'}</div>`);
+  const row = h("div", "fm-slots");
+  for (let i = 0; i < CARRY_MAX; i++) {
+    const id = F.carry[i], s = h("div", "fm-slot" + (id === cur ? " on" : "") + (id ? "" : " empty"));
+    if (id) { s.appendChild(ctx.portrait(id, 1)); s.appendChild(h("b", "", `${i + 1}`)); s.style.setProperty("--fc", FORMS[id].color); }
+    else s.innerHTML = "<i>空</i>";
+    row.appendChild(s);
+  }
+  top.appendChild(row);
+  body.appendChild(top);
+  const grid = h("div", "fm-grid");
+  for (const id of owned) {
+    const D = FORMS[id], carried = F.carry.includes(id), card = h("div", "fm-card" + (id === cur ? " on" : "") + (carried ? " carried" : ""));
+    card.style.setProperty("--fc", D.color);
+    const pic = h("div", "fm-pic"); pic.appendChild(ctx.portrait(id, 2)); card.appendChild(pic);
+    card.appendChild(h("div", "fm-info", `<div class="fm-name">${D.name}${id === cur ? '<span class="fm-tag">目前</span>' : carried ? '<span class="fm-tag dim">帶著</span>' : ""}</div><div class="fm-desc">${D.desc}</div>`));
+    const btns = h("div", "fm-btns");
+    if (ctx.inTown) {
+      if (carried) {
+        const b = ibtn("close", "放下", () => {
+          if (id === cur) return msg("正在用的形態不能放下", false);
+          if (F.carry.length <= 1) return msg("至少要帶一個", false);
+          F.carry.splice(F.carry.indexOf(id), 1); ctx.sfx("ui"); ctx.onCarry?.(); render();
+        }, "plain");
+        if (id === cur) b.classList.add("off");
+        btns.appendChild(b);
+      } else {
+        const b = ibtn("check", "帶上", () => {
+          if (F.carry.length >= CARRY_MAX) return msg(`最多帶 ${CARRY_MAX} 個，先放下一個`, false);
+          F.carry.push(id); ctx.sfx("pickup"); ctx.onCarry?.(); msg(`帶上${D.name}`); render();
+        }, "plain");
+        if (F.carry.length >= CARRY_MAX) b.classList.add("off");
+        btns.appendChild(b);
       }
-      card.appendChild(btns);
-      grid.appendChild(card);
     }
-    body.appendChild(grid);
-  };
-  return show("形態", "sys", "star", [{ id: "forms", label: "形態", icon: "star", render: page }]);
+    card.appendChild(btns);
+    grid.appendChild(card);
+  }
+  body.appendChild(grid);
 }
 
 // ================= 形態技能樹（第 4 批） =================
 /** 技能樹視窗：每個形態一頁；三條路線一欄一欄往下，最終節點在最下面。點節點看說明、投入點數。城鎮裡可以洗點。 */
-export function openTree(form) {
+export function openTree(form, tab) {
   const P = ctx.profile, owned = Object.keys(FORMS).filter((id) => P.forms.owned[id]);
   let sel = null;
   const page = (id) => (body) => {
@@ -406,30 +399,18 @@ export function openTree(form) {
       head.appendChild(row);
     }
     if (ctx.inTown) head.appendChild(ibtn("dice", "洗點", () => { refund(id); sel = null; ctx.sfx("ui"); msg("點數全部拿回來了"); ctx.onTree?.(); render(); }, "plain"));
-    // 使用者 2026-11-06「能直接從系統介面切換目前的三個形態」：每一頁上面一顆「切換成這個形態」，目前的形態顯示「目前形態」
-    if (ctx.switchForm) {
-      const cur = ctx.curForm?.() === id;
-      const sw = ibtn(cur ? "check" : id === "star" ? "star" : "core_" + id, cur ? "目前形態" : `切換成${FORMS[id].name}`, () => {
-        if (ctx.curForm?.() === id) return;
-        if (!ctx.switchForm(id)) { ctx.sfx("close"); return msg("現在不能切換", false); }
-        msg(`切換成${FORMS[id].name}`); render();
-      }, cur ? "plain off" : "");
-      sw.classList.add("tswitch");
-      head.prepend(sw);
-    }
     left.appendChild(head);
-    // 使用者 2026-11-06：形態被動（只有這個形態時有效，最高 10 級，越後面越貴）放在三條路線上面
-    const pn = TREES[id].find((x) => x.path === 4);
-    if (pn) {
-      const pr = treeRank(id, pn.id), prow = h("div", "tree-pas");
-      prow.appendChild(nodeEl(id, pn));
-      prow.appendChild(h("div", "tp-txt", `<b>形態被動・${pn.name}</b><span>${pn.desc(Math.max(1, pr))}</span><small>${pr >= pn.max ? "已滿級" : `下一級 ${costOf(pn, pr)} 點`}</small>`));
-      left.appendChild(prow);
-    }
     const grid = h("div", "tree-grid");
     for (let p = 0; p < 3; p++) {
       const col = h("div", "tree-col", `<div class="tree-path">${PATHS[p]}<em>${pathSpent(id, p)}</em></div>`);
       for (const n of TREES[id].filter((x) => x.path === p)) col.appendChild(nodeEl(id, n));
+      grid.appendChild(col);
+    }
+    // 使用者 2026-11-06：形態被動＝路線旁邊一顆節點（只有這個形態時有效，最高 10 級、越後面越貴），點它右邊看說明
+    const pn = TREES[id].find((x) => x.path === 4);
+    if (pn) {
+      const col = h("div", "tree-col pas", `<div class="tree-path">被動</div>`);
+      col.appendChild(nodeEl(id, pn));
       grid.appendChild(col);
     }
     left.appendChild(grid);
@@ -471,6 +452,7 @@ export function openTree(form) {
     el.addEventListener("click", (e) => { e.stopPropagation(); if (sel === n.id && canBuy(id, n.id)) return invest(id, n); sel = n.id; ctx.sfx("ui"); render(); });
     return el;
   }
-  const tabs = owned.map((id) => ({ id, label: FORMS[id].name, icon: id === "star" ? "star" : "core_" + id, render: page(id) }));
-  return show("形態技能樹", "sys", "star", tabs, form && owned.includes(form) ? form : owned[0]);
+  const tabs = [{ id: "carry", label: "形態", icon: "core_slime", render: (body) => carryPage(body, render) },
+    ...owned.map((id) => ({ id, label: FORMS[id].name, icon: id === "star" ? "star" : "core_" + id, render: page(id) }))];
+  return show("形態技能樹", "sys", "star", tabs, tab === "carry" ? "carry" : form && owned.includes(form) ? form : owned[0]);
 }

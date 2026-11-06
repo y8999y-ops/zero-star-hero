@@ -40,7 +40,7 @@ import { playFace, moodOf } from "./system-face.js";
 import { startTitle } from "./title.js";
 import { playIntro } from "./intro.js";
 import { questEvent, refreshBoard, rewardText, sysActive, isReady } from "./quests.js";
-import { initTownUI, openQuests, openForge, openInn, isWinOpen, MEALS, questLook, openTree, openForms } from "./townui.js";
+import { initTownUI, openQuests, openForge, openInn, isWinOpen, MEALS, questLook, openTree } from "./townui.js";
 import { installUiArt, iconURL, setAttackIcon, medal, MEDAL_SIZE } from "./ui-art.js";
 import { FORMS, CARRY_MAX, coreChance, absorbCore, makeCore, CORE_COST } from "./forms.js";
 import { bindForms, rank, freePts } from "./skilltree.js";
@@ -273,7 +273,7 @@ function absorb(it) {
   if (res.unlocked) {
     formBanner(it.form);
     profile.forms.fresh = it.form;   // 形態格一直發光，直到第一次切換過去
-    toast(`系統：吸收了${F.name}的核！新形態「${F.name}」。${profile.forms.carry.includes(it.form) ? tipFor("點右邊的【形態】就能變身。", "按【1】～【3】就能變身。") : "已經帶滿 3 個了，回城鎮打開選單的【形態】再換。"}`, 3.4, "forms");
+    toast(`系統：吸收了${F.name}的核！新形態「${F.name}」。${profile.forms.carry.includes(it.form) ? tipFor("點右邊的【形態】就能變身。", "按【1】～【3】就能變身。") : "已經帶滿 3 個了，回城鎮打開技能樹的【形態】頁再換。"}`, 3.4, "forms");
     sayQueue.unshift([`系統：你把${F.from === "slime" ? "史萊姆" : "垃圾桶"}的核吃掉了？不對，是吸收。好吧，差不多。`, 2.8]);
   } else {
     // 重複的核：存起來，2 顆換 1 點（技能點或屬性，在技能樹視窗上方換）
@@ -287,8 +287,15 @@ function absorb(it) {
 }
 /** 形態被動「星之光輝」：星星時大招傷害 +4%／級 */
 const ultPassive = () => (player.form === "star" ? 1 + 0.04 * rank("star", "p_star") : 1);
+// 使用者 2026-11-06：變身有 1 秒冷卻（形態欄變暗、一條光從下往上填滿＝好了）
+const FORM_CD = 1;
+let formCdUntil = 0;
 function switchForm(id) {
   if (!id || id === player.form || !profile.forms.owned[id] || ult.on) return;
+  if (sceneClock < formCdUntil) { sfx("close"); return; }
+  formCdUntil = sceneClock + FORM_CD;
+  formHud.classList.remove("cd"); void formHud.offsetWidth; formHud.classList.add("cd");
+  clearTimeout(switchForm.t); switchForm.t = setTimeout(() => formHud.classList.remove("cd"), FORM_CD * 1000);
   if (profile.forms.fresh === id) { delete profile.forms.fresh; setTimeout(buildFormHud, 0); }
   sfx("form");
   const prevForm = player.form;
@@ -1025,7 +1032,6 @@ initTownUI({
     c.getContext("2d").putImageData(im, 0, 0);
     return c;
   },
-  switchForm: (id) => { switchForm(id); buildFormHud(); return player.form === id; },
 });
 trackEl.addEventListener("click", (e) => { e.stopPropagation(); if (started && !dialog.open && !busy) openQuests(false, profile.quests.tracked?.length ? "guild" : "sys"); });
 renderTracker();
@@ -1035,11 +1041,8 @@ $("btnQuest").addEventListener("click", (e) => { e.stopPropagation(); if (starte
 $("btnTree").style.backgroundImage = `url(${iconURL("star", 2)})`;
 const openTreeNow = () => { if (started && !dialog.open && !busy && !isWinOpen() && !inv.open) { sfx("ui"); openTree(player.form); } };
 $("btnTree").addEventListener("click", (e) => { e.stopPropagation(); openTreeNow(); });
-// 使用者 2026-11-06：專門切換形態的視窗（選單裡的【形態】、G 鍵）
-const openFormsNow = () => { if (started && !dialog.open && !busy && !isWinOpen() && !inv.open) { sfx("ui"); openForms(); } };
-$("btnForms").style.backgroundImage = `url(${iconURL("core_slime", 2)})`;
-$("btnForms").addEventListener("click", (e) => { e.stopPropagation(); openFormsNow(); });
-addEventListener("keydown", (e) => { if (e.code === "KeyG" && !e.repeat) openFormsNow(); });
+// 使用者 2026-11-06：「形態」頁併進技能樹視窗（第一個分頁，只能換帶哪幾個，不能在這裡變身）；G 鍵直接開到那一頁
+addEventListener("keydown", (e) => { if (e.code === "KeyG" && !e.repeat && started && !dialog.open && !busy && !isWinOpen() && !inv.open) { sfx("ui"); openTree(player.form, "carry"); } });
 addEventListener("keydown", (e) => { if (e.code === "KeyT") openTreeNow(); });
 // ---- 使用者 2026-11-06：城鎮各功能的引導，一次只引導一件事：波波（登記）→ 任務板 → 岩叔的工坊 → 菇媽的旅館 → 路標（世界地圖）
 //   profile.tguide：0 找波波、1 任務板、2 工坊、3 旅館、4 路標、5 講完了。要去的地方頭上跳一個「!」；第一次打開那個視窗時主要按鈕閃一下
