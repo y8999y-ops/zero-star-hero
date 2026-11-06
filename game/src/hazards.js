@@ -39,7 +39,9 @@ export function createHazards({ stage, floor, torches = [], puddles = [], items 
     for (const h of list) { h.shakeT = Math.max(0, h.shakeT - dt); if (h.fireT > 0) h.fireT -= dt; if (h.type === "oil" && h.spill < 1) h.spill = Math.min(1, h.spill + dt * 2.5); }
     if ((tickT -= dt) > 0) return;
     tickT = 0.25;
-    const ground = enemies.filter((e) => !e.dead && !e.k?.fly);
+    // 使用者 2026-11-06「1-2、王關剛進去時史萊姆臉上白白的，然後怪才同時開始動」：怪擺在火把、毒垃圾堆上，一進場就被燒、被毒
+    //   （白白的是受擊閃白），被打到就全部醒來追人。還沒醒的怪（在原地待著）不吃地上的東西，醒了才會
+    const ground = enemies.filter((e) => !e.dead && !e.k?.fly && e.awake);
     for (const e of ground) {
       for (const p of puddles) if (Math.abs(e.x - p.x) < p.w / 2 && Math.abs(e.y - p.y) < 6 && !e.st?.wet) applyStatus(e, "wet");
       for (const t of torches) if (Math.abs(e.x - (t.x ?? t)) < 9 && Math.abs(e.y - (t.y ?? floor)) < 10) applyStatus(e, "burn");
