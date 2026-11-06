@@ -8,7 +8,7 @@ import * as hitSpark from "../../pixelfx/src/fx/impacts/hit-spark.js";
 // 特效補強 7：一次打死一群時，死亡煙霧疊成一大片、把主角和怪都蓋住 → 煙播快一點（1.5 倍）；0.35 秒內、70px 內已經冒過兩團，後面的改成往上噴的小火花
 //   （草稿 game/tools/drafts/poofcrowd.mjs：6 隻同時死，被蓋住的像素最高 4022 → 1988、1.3 秒 → 0.9 秒散完；試過收集光爆，4 個白圓環疊在一起像泡泡，不用）
 let recentPoofs = [];
-const POOF_SPARK = { slime: ["#0b2f2b", "#12594a", "#1f8f4f", "#47c752", "#a6f06a", "#f0ffd2", "#ffffff"], gold: ["#4a2e06", "#8c5a0c", "#d49a14", "#ffd23a", "#fff09a", "#ffffff", "#ffffff"], bat: ["#1f1629", "#382645", "#5b3f66", "#866089", "#b88fb0", "#e8cfe0", "#ffffff"], trash: ["#1f272c", "#313d42", "#485a5c", "#667a78", "#8ea29c", "#c4d4cc", "#ffffff"] };
+const POOF_SPARK = { hog: ["#1a0c06", "#4a2814", "#965a2e", "#c4864a", "#f0c890", "#fff4dc", "#ffffff"], slime: ["#0b2f2b", "#12594a", "#1f8f4f", "#47c752", "#a6f06a", "#f0ffd2", "#ffffff"], gold: ["#4a2e06", "#8c5a0c", "#d49a14", "#ffd23a", "#fff09a", "#ffffff", "#ffffff"], bat: ["#1f1629", "#382645", "#5b3f66", "#866089", "#b88fb0", "#e8cfe0", "#ffffff"], trash: ["#1f272c", "#313d42", "#485a5c", "#667a78", "#8ea29c", "#c4d4cc", "#ffffff"] };
 import { flash } from "./light.js";
 import { blitScaled } from "./bake.js";
 // 使用者 2026-11-06 打擊感：被打的那一下壓扁（變寬變矮）→ 彈回來拉長一點 → 回原狀；命中停頓的時候被打的那隻原地左右抖
@@ -28,12 +28,17 @@ const KINDS = {
   gold: { anim: A.slimeGold, white: A.slimeWhite, hp: 60, dmg: 0, w: 15, h: 22, coins: [14, 20], poof: A.poofGold },
   bat: { anim: A.bat, white: A.batWhite, hp: 22, dmg: 7, w: 10, h: 9, coins: [1, 2], fly: true, poof: A.poofBat },
   // 自製敵人：慢慢走過來，靠近就蓄力撲咬
+  // 第二章：刺蝟——走過來，靠近就蹲低、刺豎起來（預兆）→ 縮成刺球滾過來 → 展開、頭暈一下（破綻）
+  hog: { anim: A.hogWalk, white: A.hogWhite, curl: A.hogCurl, roll: A.hogRoll, whiteCurl: A.hogWhiteCurl, whiteRoll: A.hogWhiteRoll, hp: 40, dmg: 7, rollDmg: 14, w: 10, h: 14, coins: [2, 4], poof: A.poofHog },
   trash: { anim: A.trashWalk, white: A.trashWhite, bite: A.trashBite, whiteBite: A.trashWhiteBite, hp: 70, dmg: 5, biteDmg: 13, w: 11, h: 30, coins: [3, 6], poof: A.poofTrash },
 };
 // 菁英：紅色、血 3～4 倍、比較痛、比較快；行為跟原本的一樣（kind 用 base）
 KINDS.slimeE = { ...KINDS.slime, anim: A.slimeElite, hp: 130, dmg: 12, coins: [6, 10], base: "slime", elite: true };
 KINDS.batE = { ...KINDS.bat, anim: A.batElite, hp: 80, dmg: 11, coins: [5, 8], base: "bat", elite: true };
+KINDS.hogE = { ...KINDS.hog, anim: A.hogEliteWalk, curl: A.hogEliteCurl, roll: A.hogEliteRoll, hp: 140, dmg: 11, rollDmg: 22, coins: [8, 12], base: "hog", elite: true };
 KINDS.trashE = { ...KINDS.trash, anim: A.trashEliteWalk, bite: A.trashEliteBite, hp: 220, dmg: 8, biteDmg: 20, coins: [10, 16], base: "trash", elite: true };
+// 刺蝟的節奏（秒）：縮球 0.5（hedgehog.js 的 curl：0～0.22 豎刺、0.22～0.5 捲起來）、滾、展開 0.4、頭暈
+const HOG_CURL = 0.5, HOG_ROLL = 1.3, HOG_UNCURL = 0.4, HOG_DAZE = 0.8, HOG_ROLL_V = 205;
 // 垃圾桶怪咬人的節奏（秒，對應 trash-can.js 的 bite 動畫：0.8 秒一輪）
 const BITE_LUNGE = 0.3, BITE_HIT0 = 0.38, BITE_HIT1 = 0.48, BITE_END = 0.8;
 
@@ -61,6 +66,7 @@ export class Enemy {
     dt *= slowOf(this);   // 黏液：動作、移動都變慢
     this.flash -= dt;
     if (this.sqT > 0) this.sqT -= dt;
+    if (this.markT > 0) this.markT -= dt;
     const stunned = this.stun > 0;
     this.stun -= dt;
     if (!stunned) this.t += dt;   // 硬直時動畫停住
@@ -111,6 +117,36 @@ export class Enemy {
       this.y += this.vy * dt;
       this.y = Math.min(floorAt(this.x, this.y - 12) - 12, Math.max(12, this.y));   // 8b：不鑽進地裡
       if (Math.abs(this.vx) > 10) this.face = Math.sign(this.vx);
+    } else if (this.kind === "hog") {
+      this.hogCd = (this.hogCd ?? 0.6) - dt;
+      const st = this.hog ?? "walk";
+      this.hogT = (this.hogT ?? 0) + (stunned && st !== "roll" ? 0 : dt);
+      if (st === "walk") {
+        if (!stunned) {
+          this.face = toward;
+          this.vx = toward * 40 * (this.elite ? 1.3 : 1);
+          if (Math.abs(player.x - this.x) < 120 && Math.abs(player.y - this.y) < 34 && this.hogCd <= 0) { this.hog = "curl"; this.hogT = 0; this.vx = 0; this.rollDir = toward; }
+        } else this.vx *= 1 - 4 * dt;
+      } else if (st === "curl") {
+        this.vx *= 1 - 12 * dt;
+        if (this.hogT >= HOG_CURL) { this.hog = "roll"; this.hogT = 0; this.rollHit = false; sfx("dash"); world.dust?.(this.x - this.rollDir * 6, this.y, 5); }
+      } else if (st === "roll") {
+        // 滾：一直往同一個方向，撞牆彈回來（刺球不會被打停）
+        this.vx = this.rollDir * HOG_ROLL_V * (this.elite ? 1.2 : 1);
+        this.face = this.rollDir;
+        if ((this.dustT = (this.dustT ?? 0) - dt) <= 0) { this.dustT = 0.2; world.stepDust?.(this.x - this.rollDir * 5, this.y); }
+        if (this.hogT >= HOG_ROLL * (this.elite ? 1.3 : 1) || this.rollHit) { this.hog = "uncurl"; this.hogT = 0; }
+      } else if (st === "uncurl") {
+        this.vx *= 1 - 6 * dt;
+        if (this.hogT >= HOG_UNCURL) { this.hog = "daze"; this.hogT = 0; }
+      } else if (st === "daze") {
+        this.vx *= 1 - 10 * dt;
+        if (this.hogT >= HOG_DAZE) { this.hog = "walk"; this.hogT = 0; this.hogCd = 1.6 + rand(this.clock, 11) * 0.8; }
+      }
+      this.vy += GRAV * dt;
+      const vx0 = this.vx;
+      this.land(dt);
+      if (st === "roll" && Math.sign(this.vx) !== Math.sign(vx0)) { this.rollDir = -this.rollDir; this.world?.dust?.(this.x, this.y, 4); }   // 撞牆：反彈
     } else if (this.kind === "trash") {
       this.biteCd = (this.biteCd ?? 1) - dt;
       if (this.biting) {
@@ -163,16 +199,21 @@ export class Enemy {
 
   /** 受到攻擊。roll 是 { dmg, crit }（主角算好的），或單純的數字。 */
   hit(roll, dir, { launch = false, push = 2, elem = null, fling = false } = {}, world) {
-    const { dmg, crit } = typeof roll === "number" ? { dmg: roll, crit: false } : roll;
+    const { dmg: dmg0, crit, mark } = typeof roll === "number" ? { dmg: roll, crit: false } : roll;
+    const dmg = dmg0 * (this.markT > 0 ? 1.1 : 1);   // 尖刺星「破綻」：被標記的多受 10% 傷害
+    if (crit && mark) this.markT = 3;
     // 星核「沉重」：被打飛的這隻，0.4 秒內撞到別的敵人時對方也受傷（main.js 判斷）
     if (fling) { this.flungT = 0.4; this.flungDmg = dmg * 0.5; this.flungHit = new Set([this]); }
-    const d = Math.max(1, Math.round(dmg * (0.9 + Math.random() * 0.2)));
+    const rolling = this.hog === "roll";   // 刺蝟滾的時候：刺擋掉一半傷害、打不停、不會被擊飛
+    const d = Math.max(1, Math.round(dmg * (0.9 + Math.random() * 0.2) * (rolling ? 0.5 : this.hog === "daze" ? 1.3 : 1)));
     this.hp -= d;
     this.flash = 0.07;
     this.sqT = SQ_T;
-    this.stun = this.kind === "gold" ? 0.1 : 0.3;
-    this.vx = dir * push * (this.k.fly ? 55 : 42);
-    if (launch || crit) { this.vy = this.k.fly ? -120 : -230; this.flungUp = !this.k.fly; }
+    if (!rolling) {
+      this.stun = this.kind === "gold" ? 0.1 : 0.3;
+      this.vx = dir * push * (this.k.fly ? 55 : 42);
+      if (launch || crit) { this.vy = this.k.fly ? -120 : -230; this.flungUp = !this.k.fly; }
+    }
     const b = this.box(), cy = Math.round((b.y0 + b.y1) / 2);
     // 重擊：最後一段／擊飛、爆擊、推得遠的（技能、衝撞）。輕擊的光和火花都收小
     const heavy = launch || crit || push >= 3;
@@ -221,7 +262,13 @@ export class Enemy {
     }
     if (juice.freeze > 0 && this.flash > 0) jx = Math.floor(performance.now() / 34) % 2 ? 1 : -1;   // 停頓中原地抖
     // 受擊閃白
-    if (this.biting) blitScaled(frame, this.flash > 0 ? this.k.whiteBite : this.k.bite, this.biteT, this.x + jx, this.y, this.face < 0, sx, sy);
+    if (this.kind === "hog" && this.hog && this.hog !== "walk") {
+      // 刺蝟：縮球（往前播）、滾、展開（倒著播縮球）、頭暈（停在剛展開的那格，左右晃）
+      const w = this.flash > 0, st = this.hog;
+      const [an, tt] = st === "curl" ? [w ? this.k.whiteCurl : this.k.curl, this.hogT] : st === "roll" ? [w ? this.k.whiteRoll : this.k.roll, this.hogT] : st === "uncurl" ? [w ? this.k.whiteCurl : this.k.curl, Math.max(0, HOG_CURL - this.hogT * (HOG_CURL / HOG_UNCURL))] : [w ? this.k.white : this.k.anim, 0];
+      blitScaled(frame, an, Math.min(tt, an.duration - 0.01), this.x + jx + (st === "daze" ? Math.round(Math.sin(this.clock * 18)) : 0), this.y, this.face < 0, sx, sy);
+    }
+    else if (this.biting) blitScaled(frame, this.flash > 0 ? this.k.whiteBite : this.k.bite, this.biteT, this.x + jx, this.y, this.face < 0, sx, sy);
     else blitScaled(frame, this.flash > 0 ? this.k.white : this.k.anim, this.t, this.x + jx, this.y, this.face < 0, sx, sy);
     drawStatus(frame, this, snap);
     if (this.alertT !== undefined && this.alertT < ALERT_T && !this.dead) drawAlert(frame, this.x, this.box().y0 - 3, this.alertT, this.elite);

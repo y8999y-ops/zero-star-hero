@@ -7,7 +7,7 @@
 import { LAYOUTS, STAGE_ORDER } from "./stages.js";
 
 export const GUILD_MAX = Infinity;   // 使用者 2026-11-06：接取沒有上限（追蹤一次只能一個，townui.js）
-const ENEMY_NAME = { slime: "狂化史萊姆", bat: "蝙蝠", trash: "垃圾桶怪", elite: "菁英（紅色）魔物" };
+const ENEMY_NAME = { slime: "狂化史萊姆", bat: "蝙蝠", trash: "垃圾桶怪", hog: "刺蝟", elite: "菁英（紅色）魔物" };
 // 各關會出現的魔物（決定討伐任務能出哪些）
 const STAGE_ENEMIES = { "1-1": ["slime", "bat", "trash"], "1-2": ["slime", "trash", "elite"], "1-3": ["bat", "elite", "trash"], "1-4": ["slime"] };
 

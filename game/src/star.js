@@ -23,7 +23,10 @@ const GLASS = ["#d08a1c", "#f5c040", "#ffe27a", "#fff4b8", "#ffffff"].map(C);
 const FORM_RAMPS = {
   slime: ["#16602e", "#2fa040", "#62d84e", "#b4f890", "#ffffff"].map(C),   // 第 3 輪：照 pixelfx 史萊姆調亮、對比拉開
   bat: ["#4a2a6e", "#6e44a0", "#9a72d0", "#d4bcf4", "#ffffff"].map(C),
+  // 尖刺星（第二章，刺蝟的靈核）：琥珀色的身體（刺蝟的暖褐＋星星的金），五個角變長變尖、頭上和兩側長出小刺
+  spike: ["#6a3010", "#a85a1c", "#e09a3a", "#ffd890", "#ffffff"].map(C),
 };
+const QUILL = ["#3a1a08", "#7a4018", "#c88a48", "#f8dca8"].map(C);   // 刺：深褐根部 → 米色尖端
 // 蝠翼星：兩個側角換成蝙蝠翅膀（翼膜＋指骨＋下緣扇形缺口），頭頂兩隻小耳朵
 const MEMBRANE = ["#3e2462", "#5c388c", "#8058b8"].map(C), BONE = C("#26143c");
 const METAL = ["#2e3440", "#4a5468", "#6e7a90", "#9aa6ba", "#d0d8e6", "#ffffff"].map(C);
@@ -150,7 +153,7 @@ function build(q) {
       // 底邊寬 6，尖端寬隨長度變細，但最細 3 格，不會變成細線；尖端多一點圓頭。
       const bx = mx(4.5), by = 8.5, tx = mx(1.5) + dx, ty = 8.5 + dy;
       const len = Math.hypot(tx - bx, ty - by) || 1, ux = (tx - bx) / len, uy = (ty - by) / len, nx = -uy, ny = ux;
-      const hb = 3, ht = Math.max(1.5, 2.2 - (len - 3) * 0.08);
+      const hb = 3, ht = q.form === "spike" ? Math.max(0.7, 1.4 - (len - 3) * 0.08) : Math.max(1.5, 2.2 - (len - 3) * 0.08);
       pts = [[bx + nx * hb, by + ny * hb], [bx - nx * hb, by - ny * hb], [tx + nx * ht, ty + ny * ht], [tx - nx * ht, ty - ny * ht],
         [tx + ux * 0.9 + nx * ht * 0.5, ty + uy * 0.9 + ny * ht * 0.5], [tx + ux * 0.9 - nx * ht * 0.5, ty + uy * 0.9 - ny * ht * 0.5],
         ...ARM_BASE.map(([x, y]) => [mx(x), y])];
@@ -190,6 +193,11 @@ function build(q) {
     // 翅膀的指尖位移：角的 dx 是「往臉朝的方向」，左翼（後）往外是 -x，右翼（前）往外是 +x。把位移換成「往外」的量。
     wing(-1, [-(q.hb?.[0] ?? 0), q.hb?.[1] ?? 0]);
     wing(1, [q.hf?.[0] ?? 0, q.hf?.[1] ?? 0]);
+  } else if (q.form === "spike") {
+    // 尖刺星：兩個側角一直是伸長的尖爪（往外 2、往上 1）
+    const hb = q.hb ?? [0, 0], hf = q.hf ?? [0, 0];
+    arm(-1, [hb[0] - 2, hb[1] - 1]);
+    arm(1, [hf[0] + 2, hf[1] - 1]);
   } else {
     arm(-1, q.hb ?? [0, 0]);
     arm(1, q.hf ?? [0, 0]);
@@ -349,6 +357,20 @@ function build(q) {
     for (const [X, Y] of tipPx) px[Y][X] = G[3];   // 指尖的爪：亮一階（第 2 輪：第 1 輪用白色像雜點）
     // 頭頂兩隻小耳朵（尖的，外側暗、內側亮）
     for (const [x, y, k] of [[11, 0, 1], [11, -1, 1], [12, 0, 2], [17, 0, 1], [17, -1, 1], [16, 0, 2]]) putX(x, y, G[k], true);
+  }
+  if (q.form === "spike") {
+    // 頭頂一排往後梳的刺冠（像刺蝟）：每根 2 格寬的三角，根部暗、尖端亮；腰的兩側各一根短刺
+    // 第 2 輪：第 1 輪是 1 格的細線＋零散的點，看起來像閃光不像刺 → 加粗、集中在頭上
+    const spikeAt = (pts) => pts.forEach(([x, y, k]) => { if (!onBody(x, y)) putX(x, y, QUILL[k], true); });
+    spikeAt([[13, -1, 1], [14, -1, 2], [15, -1, 1], [13, -2, 2], [14, -2, 2], [14, -3, 3], [14, -4, 3]]);   // 頭頂中間（最高）
+    // 第 3 輪：每根刺改成 2～3 格寬的三角（第 2 輪 1～2 格看起來像觸角）
+    const side = [[10, 2, 1], [9, 2, 1], [10, 1, 1], [9, 1, 2], [8, 1, 2], [9, 0, 2], [8, 0, 2], [8, -1, 3], [7, -1, 3]];
+    spikeAt(side);                                                       // 頭左（往外上）
+    spikeAt(side.map(([x, y, k]) => [28 - x, y, Math.max(1, k - (k > 1 ? 1 : 0))]));   // 頭右（鏡像；背光暗一階）
+    if (!back) {
+      spikeAt([[5, 14, 1], [5, 15, 1], [4, 14, 2], [4, 15, 2], [3, 15, 3], [3, 16, 3]]);                  // 腰左
+      spikeAt([[23, 14, 1], [23, 15, 1], [24, 14, 1], [24, 15, 2], [25, 15, 2], [25, 16, 2]]);            // 腰右
+    }
   }
   if (q.form === "can") {
     // 下半身套著鐵罐：每一列左亮右暗的縱向亮帶，上緣凸紋一亮一暗，底下暗一階；肚子的光、眼睛、領巾不蓋

@@ -16,6 +16,7 @@ export const CORE_PAL = {
   bat: ["#160c24", "#2e1a4a", "#5c388c", "#8058b8", "#b48ae8", "#e2d0ff", "#ffffff"],
   can: ["#0e1626", "#203048", "#3a5a80", "#5a8ab8", "#8ac0e8", "#d0ecff", "#ffffff"],
   star: ["#1e1206", "#4a2c08", "#86520c", "#c48412", "#f0b424", "#ffe066", "#ffffff"],
+  spike: ["#2a1206", "#6a3010", "#a85a1c", "#e09a3a", "#ffd890", "#fff2d0", "#ffffff"],
 };
 const PX = Object.fromEntries(Object.entries(CORE_PAL).map(([k, v]) => [k, v.map(P)]));
 const RGB = (c) => [c & 255, (c >>> 8) & 255, (c >>> 16) & 255];
@@ -25,6 +26,7 @@ const EMBLEM = {
   can: ["..aaa..", ".abbba.", "abbabba", "abaaaba", "abbabba", ".abbba.", "..aaa.."],
   bat: ["a.....a", "aa...aa", "abaaaba", "abbabba", ".aabaa.", "...a...", "......."],
   star: ["...a...", "..aba..", "aabbbaa", ".abbba.", ".ab.ba.", "a.....a", "......."],
+  spike: ["a..a..a", ".aabaa.", ".abbba.", "aabbbaa", ".abbba.", ".aabaa.", "a..a..a"],
 };
 
 function put(frame, x, y, c) {

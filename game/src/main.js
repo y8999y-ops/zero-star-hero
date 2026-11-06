@@ -181,8 +181,8 @@ const inv = createInventory(profile, { onChange: refreshStats });
 window.__game = { player, enemies, stats, profile, drops, inv, get director() { return director; }, get camX() { return camX; }, get camY() { return camY; }, get view() { return viewRect(); }, get zoom() { return zoom; }, lightStyle };   // 開發用：在主控台檢查狀態
 
 // 每種敵人的經驗值、掉寶率
-const KILL_XP = { slime: 5, bat: 5, trash: 12, gold: 20 };
-const DROP_RATE = { slime: 0.1, bat: 0.1, trash: 0.35, gold: 1 };
+const KILL_XP = { slime: 5, bat: 5, trash: 12, gold: 20, hog: 9 };
+const DROP_RATE = { slime: 0.1, bat: 0.1, trash: 0.35, gold: 1, hog: 0.2 };
 const ilvlNow = (bonus = 0) => profile.lv + bonus + Math.floor(Math.random() * 2);
 
 function gainXp(n) {
@@ -263,6 +263,7 @@ const FORM_BURST = {
   slime: ["#0c2010", "#1a4a20", "#2a8a3a", "#4cc04a", "#8ee86a", "#d4ffb0", "#ffffff"],
   bat: ["#160c24", "#2e1a4a", "#5c388c", "#8058b8", "#b48ae8", "#e2d0ff", "#ffffff"],
   can: ["#14161c", "#2a2e38", "#4a5468", "#6e7a90", "#9aa6ba", "#d0d8e6", "#ffffff"],
+  spike: ["#2a1206", "#6a3010", "#a85a1c", "#e09a3a", "#ffd890", "#fff2d0", "#ffffff"],
 };
 function absorb(it) {
   const F = FORMS[it.form], res = absorbCore(profile.forms, it.form);
@@ -311,6 +312,7 @@ function switchForm(id) {
   if (id === "can" && rank("can", "c_dent")) player.dentT = 3;
   heartBurst(prevForm);
   if (id === "bat" && rank("bat", "b_night")) player.nightT = 3;
+  if (id === "spike" && rank("spike", "k_curl")) player.curlT = 3;
   player.invuln = Math.max(player.invuln, 0.15);
   spawn(collectBurst, { x: Math.round(player.x), y: Math.round(player.y) - 12, palette: FORM_BURST[id], light: 0.4 });
   flash(player.x, player.y - 12, 60, 2, 0.3, FORMS[id].color);
@@ -774,6 +776,20 @@ const world = {
     for (const e of enemies) if (!e.dead && !hit.has(e) && overlaps(box, e.box())) { hit.add(e); const r = dmg(); e.hit(r, dir, opts, world, box); onCritHit(e, r); n++; }
     if (n) { addCombo(n); chargeUlt(n * 0.8); hitStop(0.05); shake(0.15, 2); }
     return n;
+  },
+  // 尖刺星「散刺」：刺球衝刺結束時往四周爆一圈刺（範圍 48、攻擊力 120%）
+  spikeBurst(x, y) {
+    spawn(A.spark, { x: Math.round(x), y: Math.round(y) });
+    flash(x, y, 70, 2.5, 0.25, "#ffd890");
+    sfx("hitH");
+    world.hitArea({ x0: x - 48, x1: x + 48, y0: y - 40, y1: y + 18 }, () => player.roll(1.2 * player.skillMul()), player.face, { push: 3 });
+  },
+  // 尖刺星「反刺」：被打時，打你的怪被刺一下（攻擊力 80%）
+  thorns(fromX, y) {
+    const e = world.nearestEnemy(fromX, y, 40);
+    if (!e) return;
+    e.hit(player.roll(0.8), e.x >= player.x ? 1 : -1, { push: 2 }, world);
+    spawn(A.spark, { x: Math.round(e.x), y: Math.round(y - 12) });
   },
   // 形態技能的投射物：星星＝金色星屑彈，黏液星＝綠色黏液彈（爆開範圍大、推得遠）
   spawnFireball(x, y, dir, form = "star", vy = 0) {
@@ -1333,8 +1349,8 @@ function mythKill() {
 function heartBurst(from) {
   const it = mythOn("fallheart");
   if (!it) return;
-  const st = awakenStage(it), r = st >= 2 ? 60 : 40, mult = st >= 3 ? 1.6 : 0.8, el = ELEM[from];
-  const pal = { burn: ["#4a1712", "#c9281f", "#f2561d", "#ff8a2a", "#ffc23d", "#ffe26b", "#fff3a6", "#ffffff"], slime: PAL.poison, shock: ["#0c2a60", "#1e64b0", "#3ab8f0", "#9af0ff", "#f0ffff", "#ffffff"], poison: ["#1a0a2a", "#3e1466", "#6a28a8", "#8ae040", "#e8ff70", "#ffffff"] }[el];
+  const st = awakenStage(it), r = st >= 2 ? 60 : 40, mult = st >= 3 ? 1.6 : 0.8, el = ELEM[from] ?? null;
+  const pal = { burn: ["#4a1712", "#c9281f", "#f2561d", "#ff8a2a", "#ffc23d", "#ffe26b", "#fff3a6", "#ffffff"], slime: PAL.poison, shock: ["#0c2a60", "#1e64b0", "#3ab8f0", "#9af0ff", "#f0ffff", "#ffffff"], poison: ["#1a0a2a", "#3e1466", "#6a28a8", "#8ae040", "#e8ff70", "#ffffff"] }[el] ?? PAL.gold;
   spawn(explosion, { x: Math.round(player.x), y: Math.round(player.y - 10), palette: pal, accent: pal, light: 0.6, seed: (Math.random() * 99) | 0 }, { speed: 1.6 });
   flash(player.x, player.y - 10, r * 2, 3, 0.3, pal[4]);
   world.hitArea({ x0: player.x - r, x1: player.x + r, y0: player.y - r, y1: player.y + 10 }, () => player.roll(mult), player.face, { push: 3, elem: el });
@@ -1434,6 +1450,7 @@ bindUltHooks(ultHooks);
 window.__game.ultFull = () => (player.mp = player.maxMp);
 window.__game.addCombo = (n) => addCombo(n);   // 開發用：測連擊補魔力
 window.__game.giveCore = (id) => absorb(makeCore(id));
+window.__game.spawn = (kind, dx = 80) => stageApi.spawnEnemy(kind, player.x + dx);   // 開發用：在主角前面放一隻怪
 function addCombo(n) {
   // 使用者 2026-11-05：連擊每滿 10 下給 COMBO_MP 魔力（自然回復只剩 10%，魔力主要靠打出來）
   const gain = Math.floor((stats.combo + n) / 10) - Math.floor(stats.combo / 10);
@@ -1555,10 +1572,12 @@ function tick(dt) {
   for (const e of enemies) {
     if (e.dead) continue;
     e.update(dt, player, world);
-    if (e.k.dmg && e.stun <= 0 && overlaps(e.box(), { x0: player.x - 8, x1: player.x + 8, y0: player.y - 22, y1: player.y }) && player.hurt(e.k.dmg, e.x, world)) {
+    const rolling = e.hog === "roll";   // 刺蝟滾過來比較痛；撞到人就停下來展開
+    if (e.k.dmg && (e.stun <= 0 || rolling) && overlaps(e.box(), { x0: player.x - 8, x1: player.x + 8, y0: player.y - 22, y1: player.y }) && player.hurt(rolling ? e.k.rollDmg : e.k.dmg, e.x, world)) {
       // 撞到人之後自己也彈開，不會黏在主角身上
       e.vx = (e.x >= player.x ? 1 : -1) * 120;
       e.stun = 0.4;
+      if (rolling) e.rollHit = true;
     }
   }
   separate(dt);

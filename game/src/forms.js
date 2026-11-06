@@ -6,6 +6,7 @@ export const FORMS = {
   star: { name: "星星", combo: "sword", skill: "stardust", skillName: "星屑彈", color: "#ffd84a", desc: "均衡的連段。技能：星屑彈，直線射出、打中會爆開。" },
   slime: { name: "黏液星", combo: "spear", skill: "goo", skillName: "黏液彈", color: "#7ee86a", from: "slime", desc: "角甩出去很遠。技能：黏液彈，爆開範圍大、把怪推開。" },
   bat: { name: "蝠翼星", combo: "dagger", skill: "flight", skillName: "蝠翼飛行", color: "#b48ae8", from: "bat", desc: "快速連續抓擊，空中攻擊時停得更久、按住跳可以滑翔。技能：蝠翼飛行，往前上方飛一小段，撞到的怪都會受傷。" },
+  spike: { name: "尖刺星", combo: "rapier", skill: "spikeball", skillName: "刺球衝刺", color: "#e09a3a", from: "hog", desc: "快速連續突刺，暴擊率高（+8%）。技能：刺球衝刺，縮成刺球往前滾，路上的怪每隻刺一次，滾的時候不會受傷。" },
   can: { name: "鐵罐星", combo: "hammer", skill: "charge", skillName: "蓋子衝撞", color: "#9aa6ba", from: "trash", desc: "慢、重、全部擊飛。技能：蓋子衝撞，往前衝，衝的時候不會受傷。" },
 };
 export const FORM_IDS = Object.keys(FORMS);
@@ -18,7 +19,7 @@ export function coreChance(enemyKind, forms) {
   const id = FORM_IDS.find((f) => FORMS[f].from === enemyKind);
   if (!id) return [null, 0];
   const owned = !!forms.owned[id];
-  const base = enemyKind === "trash" ? (owned ? 0.12 : 0.3) : owned ? 0.03 : 0.08;
+  const base = enemyKind === "trash" ? (owned ? 0.12 : 0.3) : enemyKind === "hog" ? (owned ? 0.08 : 0.2) : owned ? 0.03 : 0.08;
   return [id, base];
 }
 
@@ -41,6 +42,7 @@ export const CORE_STAT = {
   slime: { id: "hp", v: 2, label: "生命 +2" },
   can: { id: "def", v: 1, label: "防禦 +1" },
   bat: { id: "critDmg", v: 0.5, label: "暴擊傷害 +0.5%" },
+  spike: { id: "crit", v: 0.3, label: "暴擊率 +0.3%" },
 };
 // 使用者 2026-11-06「核就是技能點，統一名稱取一個新的」：魔物核和技能點合併叫「靈核」——重複吸收的核直接就是那個形態的 1 顆靈核（技能樹用它來點），
 //   不再 2 顆換 1 點；技能樹上方另外可以用 2 顆靈核換一次屬性（CORE_STAT）

@@ -2,6 +2,7 @@
 // 外型用 PixelFX 的骨架角色（posed），攻擊動作直接借用近戰特效的 act。
 import { hex } from "../../pixelfx/src/core/index.js";
 import { paintStar, POSES } from "./star.js";
+import { blit } from "./bake.js";
 import * as swordSlash from "../../pixelfx/src/fx/melee/sword-slash.js";
 import * as doubleSlash from "../../pixelfx/src/fx/melee/double-slash.js";
 import * as spinSlash from "../../pixelfx/src/fx/melee/spin-slash.js";
@@ -55,6 +56,13 @@ const COMBO_DEF = {
     { mod: thrust, wind: 0.25, cancel: 0.16, end: 0.32, dmg: [1.25], reach: 92, back: 0 },
     { mod: spearSweep, wind: 0.35, cancel: 0.3, end: 0.5, dmg: [2.1], reach: 84, back: 70, launch: true },
   ],
+  // 尖刺星（第二章）：細劍式的快速突刺，三下短刺＋一下長刺擊飛
+  rapier: [
+    { mod: thrust, wind: 0.18, cancel: 0.11, end: 0.22, dmg: [0.8], reach: 64, back: 0 },
+    { mod: thrust, wind: 0.16, cancel: 0.11, end: 0.22, dmg: [0.8], reach: 64, back: 0 },
+    { mod: thrust, wind: 0.16, cancel: 0.11, end: 0.22, dmg: [0.85], reach: 66, back: 0 },
+    { mod: thrust, wind: 0.32, cancel: 0.28, end: 0.42, dmg: [1.9], reach: 80, back: 0, launch: true },
+  ],
   // 大錘：一下砸地，全部擊飛
   hammer: [
     { mod: hammerSmash, wind: 0.4, cancel: 0.42, end: 0.62, dmg: [2.5], reach: 74, back: 36, launch: true, big: true },
@@ -74,6 +82,7 @@ function comboFor(key, form = "star") {
   return comboCache[ck];
 }
 const CHARGE_T = 0.3, CHARGE_V = 330;   // 鐵罐星的蓋子衝撞
+const SPIKE_T = 0.42, SPIKE_V = 310;     // 尖刺星的刺球衝刺
 const FLY_T = 0.34, FLY_VX = 290, FLY_VY = -170;   // 蝠翼星的蝠翼飛行：往前上方飛
 const GLIDE_FALL = 90;                            // 蝠翼星按住跳：慢慢滑翔
 
@@ -121,10 +130,12 @@ export class Player {
   /** 一下攻擊的傷害：攻擊力 × 倍率，再算暴擊（暴擊時 ×（1＋暴擊傷害%））。force 是必定暴擊。
    *  吸血：傷害的 leech% 回復生命，每秒最多回最大生命的 5%（leechBudget）。 */
   roll(mult, force = false) {
-    const s = this.stats, crit = force || Math.random() * 100 < s.crit;
+    // 尖刺星：暴擊率 +8%（形態本身）＋尖端（技能樹 +3%／級）＋形態被動「刺蝟本能」（+1%／級）；銳利：暴擊傷害 +25%
+    const s = this.stats, spk = this.form === "spike", critK = s.crit + (spk ? 8 + 3 * rank("spike", "k_tip") + rank("spike", "p_spike") : 0);
+    const crit = force || Math.random() * 100 < critK;
     // 星核：晨光（生命 80% 以上）、暗影（閃避後 2 秒）
     const coreMul = (this.hp >= this.maxHp * 0.8 ? 1 + this.core("dawn") / 100 : 1) * (this.shadowT > 0 ? 1 + this.core("shadow") / 100 : 1);
-    const dmg = s.atk * mult * (1 + this.buff.atk) * this.dmgMul * formMul(this.formLv) * (crit ? 1 + s.critDmg / 100 : 1) * (this.kingT > 0 ? 1.2 : 1) * coreMul;
+    const dmg = s.atk * mult * (1 + this.buff.atk) * this.dmgMul * formMul(this.formLv) * (crit ? 1 + (s.critDmg + (spk && rank("spike", "k_sharp") ? 25 : 0)) / 100 : 1) * (this.kingT > 0 ? 1.2 : 1) * coreMul;
     if (s.leech > 0 && this.hp > 0) {
       // 夜宴 4 件：生命低於 30% 吸血加倍；生命滿了，多吸的變成護盾（最多最大生命的 20%）
       const feast = this.set4("feast"), k = feast && this.hp < this.maxHp * 0.3 ? 2 : 1;
@@ -134,7 +145,7 @@ export class Player {
       this.hp = Math.min(this.maxHp, this.hp + h);
       if (feast && over > 0) this.shield = Math.min(this.maxHp * 0.2, (this.shield ?? 0) + over);
     }
-    return { dmg, crit };
+    return { dmg, crit, mark: spk && rank("spike", "k_mark") > 0 };
   }
 
   /** 技能傷害倍率：技能傷害% ×（星辰共鳴 4 件：大招後 10 秒 +25%） */
@@ -150,6 +161,7 @@ export class Player {
     if (this.kingT > 0) this.kingT -= dt;   // 星王化（神話「星王之冠」）
     if (this.lightT > 0) this.lightT -= dt;
     if (this.filmT > 0) this.filmT -= dt;
+    if (this.curlT > 0) this.curlT -= dt;
     if (this.dentT > 0) this.dentT -= dt;
     if (this.nightT > 0) this.nightT -= dt;
     if (this.shadowT > 0) this.shadowT -= dt;
@@ -226,7 +238,13 @@ export class Player {
         // 技能樹：加長（鐵罐星衝撞 +12%／級）、遠飛（蝠翼星飛行 +12%／級）、二段飛
         this.chargeDur = CHARGE_T * (1 + 0.12 * rank("can", "c_long"));
         this.flyDur = FLY_T * (1 + 0.12 * rank("bat", "b_far"));
-        if (FORMS[this.form].skill === "charge") { this.state = "charge"; this.t = 0; this.chargeHit = new Set(); this.truck = new Set(); this.invuln = Math.max(this.invuln, this.chargeDur + 0.05); }
+        if (FORMS[this.form].skill === "spikeball") {
+          this.state = "spikeball"; this.t = 0; this.chargeHit = new Set(); this.spikeBounce = 0;
+          this.spikeDur = SPIKE_T * (1 + 0.12 * rank("spike", "k_long"));
+          this.invuln = Math.max(this.invuln, this.spikeDur + 0.05); sfx("dash");
+          if (this.doubleT > 0) this.doubleT = 0; else this.doubleReady = !!rank("spike", "k_double");
+        }
+        else if (FORMS[this.form].skill === "charge") { this.state = "charge"; this.t = 0; this.chargeHit = new Set(); this.truck = new Set(); this.invuln = Math.max(this.invuln, this.chargeDur + 0.05); }
         else if (FORMS[this.form].skill === "flight") {
           this.state = "fly"; this.t = 0; this.chargeHit = new Set(); this.grounded = false; this.invuln = Math.max(this.invuln, this.flyDur + 0.05); sfx("dash");
           if (this.doubleT > 0) this.doubleT = 0; else this.doubleReady = !!rank("bat", "b_double");
@@ -255,6 +273,20 @@ export class Player {
         if (this.truck?.size) { for (const e of this.truck) if (!e.dead) e.hit(this.roll(1.2 * this.skillMul()), this.face, { launch: true, push: 6, elem: "shock" }, world); this.truck.clear(); }
         if (rank("can", "c_brake")) world.groundSlam?.(this.x, this.y, 46, 1.2);   // 急停震地
       }
+    } else if (this.state === "spikeball") {
+      // 尖刺星：縮成刺球往前滾，路上的怪每隻刺一次；撞牆彈回來一次
+      this.vx = this.face * SPIKE_V;
+      this.ghostAcc += dt;
+      if (this.ghostAcc > 1 / 24) { this.ghostAcc = 0; world.stepDust?.(this.x - this.face * 5, this.y); }
+      world.hitOnce({ x0: this.x - 13, x1: this.x + 13, y0: this.y - 24, y1: this.y + 2 }, this.chargeHit, () => this.roll(1.7 * this.skillMul()), this.face, { push: 3 });
+      if (this.t >= this.spikeDur) {
+        this.state = "move"; this.vx *= 0.3;
+        // 技能樹：散刺（結束時往四周爆一圈刺）、連滾（刺中 3 隻以上退一半冷卻）
+        if (rank("spike", "k_shed")) world.spikeBurst?.(this.x, this.y - 10);
+        if (rank("spike", "k_refund") && this.chargeHit.size >= 3) this.skillCd *= 0.5;
+        if (this.kingT > 0) this.skillCd = Math.min(this.skillCd, 0.15);   // 星王化＋尖刺星：刺球衝刺沒有冷卻
+        if (this.doubleReady) { this.doubleReady = false; this.doubleT = 1.2; }   // 滾滾滾：1.2 秒內可以再滾一次
+      }
     } else if (this.state === "fly") {
       // 蝠翼星：往前上方飛，越飛越平；路上的怪每隻打一次。飛完可以再跳一次。
       this.vx = this.face * FLY_VX;
@@ -272,7 +304,7 @@ export class Player {
     }
 
     // ---- 水平移動
-    if (this.state !== "dash" && this.state !== "hurt" && this.state !== "charge" && this.state !== "fly") {
+    if (this.state !== "dash" && this.state !== "hurt" && this.state !== "charge" && this.state !== "fly" && this.state !== "spikeball") {
       const target = input.move * RUN * (1 + this.stats.move / 100 + this.buff.move + (this.lightT > 0 ? 0.2 : 0) + (this.nightT > 0 ? 0.3 : 0) + (this.form === "bat" ? 0.02 * rank("bat", "p_bat") : 0)) * ctl;   // 形態被動「夜翼」：移速 +2%／級
       const acc = (this.grounded ? ACC_GROUND : ACC_AIR) * dt;
       this.vx += Math.max(-acc, Math.min(acc, target - this.vx));
@@ -318,6 +350,7 @@ export class Player {
     const prevY = this.y;
     // 8b：撞牆、撞天花板（map.js）。身高 24、半寬 7
     const nx = moveX(this.x, this.x + this.vx * dt, this.y, 24, 7);
+    if (nx !== this.x + this.vx * dt && this.state === "spikeball" && !this.spikeBounce) { this.spikeBounce = 1; this.face = -this.face; world.dust?.(this.x, this.y, 4); }   // 刺球撞牆彈回來
     if (nx !== this.x + this.vx * dt && this.state !== "dash") this.vx = 0;
     this.x = Math.max(7, Math.min(geo.w - 7, nx));
     this.y += this.vy * dt;
@@ -443,7 +476,8 @@ export class Player {
     const def = this.stats.def * (this.dentT > 0 ? 1.5 : 1) * (this.hp < this.maxHp * 0.4 ? 1 + this.core("rock") / 100 : 1);   // 凹痕記憶：防禦 +50%；星核「巨岩」
     // 星核「鈍光」：一定機率讓攻擊你的敵人暈 1 秒
     if (this.core("dull") && Math.random() * 100 < this.core("dull")) world.coreStun?.(fromX, this.y);
-    dmg = Math.max(1, Math.round(dmg * (1 - reduction(def)) * (this.filmT > 0 ? 0.75 : 1)));   // 黏液護膜：-25%
+    dmg = Math.max(1, Math.round(dmg * (1 - reduction(def)) * (this.filmT > 0 ? 0.75 : 1) * (this.curlT > 0 ? 0.75 : 1)));   // 黏液護膜、縮成一團：-25%
+    if (this.form === "spike" && rank("spike", "k_thorn")) world.thorns?.(fromX, this.y);   // 反刺：打你的怪被刺一下
     // 鐵皮（鐵罐星）：攻擊中被打不會中斷，只扣血
     if (this.form === "can" && this.state === "attack" && rank("can", "c_iron")) {
       this.hp = Math.max(0, this.hp - dmg); this.invuln = 0.4; this.flash = 0.08; sfx("hurt"); world.onPlayerHurt?.(dmg);
@@ -486,7 +520,7 @@ export class Player {
   poseNow() {
     switch (this.state) {
       case "attack": return this.attackPose();
-      case "dash": case "charge": return POSES.dash;
+      case "dash": case "charge": case "spikeball": return POSES.dash;
       case "fly": return POSES.jump;
       case "cast": return POSES.cast;
       case "hurt": return POSES.hurt;
@@ -528,6 +562,7 @@ export class Player {
     // 閃避殘影：用實色剪影，越舊顏色越暗（不用半透明）
     for (const g of this.ghosts) paintStar(frame, g.x, g.y, g.q, g.flip, { form: this.form, tint: GHOST[Math.min(GHOST.length - 1, Math.floor((g.age / 0.22) * GHOST.length))] });
     if (this.invuln > 0 && this.state !== "dash" && this.state !== "ult" && Math.floor(this.clock * 20) % 2 === 0) return;
+    if (this.state === "spikeball") { blit(frame, A.spikeBall, this.t, this.x, this.y, this.face < 0); return; }   // 尖刺星：縮成刺球
     paintStar(frame, this.x, this.y, this.pose, this.drawFlip(), { tint: this.flash > 0 ? WHITE : 0, form: this.form });
   }
 }

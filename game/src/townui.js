@@ -32,7 +32,7 @@ for (const m of Object.values(MEALS)) m.desc = m.buff[1];
 export const rerollCost = (it) => ({ scrap: 6 + it.rarity * 3, coins: 40 + it.rarity * 40 });
 
 // ---- 任務的短標題＋圖示（從任務資料算，不用長句子）
-const ENEMY = { slime: "史萊姆", bat: "蝙蝠", trash: "垃圾桶怪", elite: "菁英魔物" };
+const ENEMY = { slime: "史萊姆", bat: "蝙蝠", trash: "垃圾桶怪", hog: "刺蝟", elite: "菁英魔物" };
 export function questLook(q) {
   if (q.kind === "kill") return { icon: "q_kill", label: `${ENEMY[q.enemy]}` };
   if (q.kind === "junk") return { icon: "q_junk", label: "撿垃圾" };
