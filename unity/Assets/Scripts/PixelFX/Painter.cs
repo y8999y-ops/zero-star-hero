@@ -19,16 +19,37 @@ namespace PixelFX
         public Frame Clear() { Array.Clear(Color, 0, Color.Length); Array.Clear(Light, 0, Light.Length); return this; }
 
         /// Color 疊在背景上再加光，輸出 RGBA 位元組。bg：null＝透明。照 fx.js 的 composite。
+        /// 畫面切成幾條同時算（每個像素各算各的，結果跟一條一條算完全一樣）。
         public byte[] Composite(byte[] o = null, uint? bg = null, double lightK = 1)
         {
             int n = W * H; o = o ?? new byte[n * 4];
-            for (int i = 0; i < n; i++)
+            const int BANDS = 8;
+            int per = (H + BANDS - 1) / BANDS;
+            var outp = o;
+            System.Threading.Tasks.Parallel.For(0, BANDS, k =>
+            {
+                int a = k * per * W, b = Math.Min(n, (k + 1) * per * W);
+                if (a < b) CompositeRange(outp, a, b, bg, lightK);
+            });
+            return o;
+        }
+        void CompositeRange(byte[] o, int from, int to, uint? bg, double lightK)
+        {
+            for (int i = from; i < to; i++)
             {
                 uint c = Color[i], l = Light[i] & 0xffffff;
-                double r, g, b, a;
                 uint ca = c >> 24;
-                if (ca == 255) { r = c & 255; g = (c >> 8) & 255; b = (c >> 16) & 255; a = 255; }
-                else if (bg == null) { r = c & 255; g = (c >> 8) & 255; b = (c >> 16) & 255; a = ca; }
+                int j = i * 4;
+                if (ca == 255)
+                {
+                    // 最常見：不透明。沒有光直接複製；有光＝加上去（上限 255）再四捨五入（剛好 .5 取偶數）
+                    if (l == 0) { o[j] = (byte)c; o[j + 1] = (byte)(c >> 8); o[j + 2] = (byte)(c >> 16); o[j + 3] = 255; continue; }
+                    o[j] = AddRound(c & 255, (l & 255) * lightK); o[j + 1] = AddRound((c >> 8) & 255, ((l >> 8) & 255) * lightK);
+                    o[j + 2] = AddRound((c >> 16) & 255, ((l >> 16) & 255) * lightK); o[j + 3] = 255;
+                    continue;
+                }
+                double r, g, b, a;
+                if (bg == null) { r = c & 255; g = (c >> 8) & 255; b = (c >> 16) & 255; a = ca; }
                 else
                 {
                     uint k = bg.Value; double f = ca / 255.0;
@@ -46,10 +67,15 @@ namespace PixelFX
                     }
                     else { r = Math.Min(255, r + lr); g = Math.Min(255, g + lg); b = Math.Min(255, b + lb); }
                 }
-                int j = i * 4;
                 o[j] = Clamp8(r); o[j + 1] = Clamp8(g); o[j + 2] = Clamp8(b); o[j + 3] = Clamp8(a);
             }
-            return o;
+        }
+        static byte AddRound(uint v0, double add)
+        {
+            double v = v0 + add;
+            if (v >= 255) return 255;
+            int f = (int)v; double d = v - f;
+            return (byte)(d > 0.5 ? f + 1 : d < 0.5 ? f : (f & 1) == 0 ? f : f + 1);
         }
         /// 跟網頁 Uint8ClampedArray 一樣：夾在 0～255，四捨五入、剛好 .5 取偶數。
         static byte Clamp8(double v) => v <= 0 || double.IsNaN(v) ? (byte)0 : v >= 255 ? (byte)255 : (byte)Math.Round(v, MidpointRounding.ToEven);

@@ -1,6 +1,6 @@
-# Unity 轉移計劃（草案 v0.2，2026-11-06）
+# Unity 轉移計劃（v0.3，2026-11-06）
 
-> 狀態：討論中，還沒開始動工。標「待決定」的地方要等使用者選。
+> 狀態：進行中（階段 1 做完，等使用者試玩確認）。標「待決定」的地方要等使用者選。
 
 ## 0. 已決定（2026-11-06 使用者）
 
@@ -23,7 +23,25 @@
     2. Unity 執行 `PixelFX.Tests.Golden.Run`
     3. `node game/tools/unity-compare.mjs`
   - 輸出 Windows 版：Unity 執行 `ZeroStar.EditorTools.BuildTools.BuildWindows`。
-- 下一步：階段 1（1-1 第一段試玩）。
+- **階段 1 程式完成（2026-11-06），等使用者在電腦和手機上試玩**
+  - 搬法：
+    - 「載入時算好的東西」從網頁版直接匯出成資料：`node game/tools/unity-export.mjs` → `unity/Assets/Resources/Baked/`。
+      內容：1-1 的遊玩層與各圖層、光源、地形；主角每個姿勢（五形態）；烘焙好的動畫（史萊姆、火把、煙、火花、星星三連段的招式）；連段數值。
+      網頁版的 `level.js` 為此多了一個 `BAKED_LEVEL()`（網頁版不會用到）。匯出的場景資料跟瀏覽器裡算的逐位元一樣（雜湊比對過）。
+    - 每一格要做的事翻成 C#（`unity/Assets/Scripts/Runtime/`）：
+      地形碰撞（map.js）、光影（light.js）、場景畫法（level.js 的 drawLevel／前景／大氣）、主角（player.js 的移動、跳、二段跳、郊狼時間、穿平台、閃避、攻擊緩衝、三連段、自動瞄準、受傷）、
+      史萊姆（enemies.js）、戰鬥小特效與跳字（combatfx.js）、發現主角的「!」（alertfx.js）、命中停頓與震動（fx.js）、鏡頭（main.js 的 followCam）、按鍵與觸控（input.js）。
+    - 畫面照網頁版：寬度跟著螢幕比例（320～480），放大 1.38 倍、四周裁掉，看得到的範圍往下移 8 格。
+  - 比對測試（操作錄影）：同一串按鍵（`game/tools/unity-trace-script.json`，25 秒：走、跳、掉坑、二段跳上高台、打睡著的史萊姆到死、閃避、打三隻）
+    網頁版和 Unity 各跑一次：**1500 步的數值每一欄完全一樣、75 張畫面每個像素完全一樣**。故意改一個數字、一個像素，都抓得到。
+    1. `node game/tools/unity-trace.mjs`（網頁版，用真正的 player.js、enemies.js、level.js）
+    2. Unity 執行 `ZeroStar.Tests.TraceTest.Run`（選單「零星工具／比對測試：操作錄影」）
+    3. `node game/tools/unity-trace-compare.mjs`
+  - 效能（筆電，編輯器 Mono）：每格 10.2 ms → 優化後 2.8 ms（場景、光源、合成切成 8 條同時算；結果仍逐像素一樣）。Windows 版實測 60 fps。
+  - 輸出：`BuildWindows`、`BuildAndroid`（IL2CPP、ARM64、橫向，`unity/Builds/Android/ZeroStar.apk`）。遊戲右上角顯示 fps 和每格毫秒數。
+  - 還沒搬（之後的階段）：技能、大招、其他形態、元素狀態（第三下的燃燒）、道具與草叢（props、scenery）、蝙蝠和其他怪、教學台詞、祭壇、寶箱、金幣、音效、正式介面。
+    血條、魔力條、手機按鈕是暫時版（OnGUI）。倒下 1 秒後從最後站過的地方重來（暫時）。
+- 下一步：使用者試玩階段 1，確認手感；之後進階段 2（戰鬥完整）。
 
 ## 1. 現況盤點
 

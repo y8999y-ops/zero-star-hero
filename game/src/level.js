@@ -313,3 +313,9 @@ export function sceneLights(camX, W, time) {
   return list;
 }
 
+
+/** Unity 轉移用（game/tools/unity-export.mjs）：把載入時烘好的場景資料交出去。網頁版不會用到。 */
+export const BAKED_LEVEL = () => ({
+  PF, PFE, CRYSTAL_LIGHTS, PROP_LIGHTS, BIG_CRYSTALS, UP_FAR, UP_MID, UH, PIN, TALL,
+  layers: { back: ART["valley/back"], far: layerArt("far"), mid: layerArt("mid"), near: layerArt("near"), fg: ART["valley/fg"] },
+});

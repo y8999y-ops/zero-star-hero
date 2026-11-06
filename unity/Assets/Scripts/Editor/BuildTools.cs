@@ -1,8 +1,11 @@
 // 建場景、輸出遊戲（不用開編輯器也能跑）：
 //   Unity.exe -batchmode -projectPath unity -executeMethod ZeroStar.EditorTools.BuildTools.BuildWindows -quit
-// 也可以在編輯器選單「零星工具／輸出 Windows 版」。
+//   Unity.exe -batchmode -projectPath unity -executeMethod ZeroStar.EditorTools.BuildTools.BuildAndroid -quit
+// 也可以在編輯器選單「零星工具／輸出 Windows 版」「零星工具／輸出 Android 版」。
+// 遊戲本身不用在場景裡擺東西：開任何場景都會自動建立 GameRoot（Runtime/GameRoot.cs）。
 using System.IO;
 using UnityEditor;
+using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 
@@ -10,38 +13,66 @@ namespace ZeroStar.EditorTools
 {
     public static class BuildTools
     {
-        const string DEMO = "Assets/Scenes/CanvasDemo.unity";
+        const string MAIN = "Assets/Scenes/Main.unity";
 
-        [MenuItem("零星工具/建立示範場景")]
-        public static void MakeDemoScene()
+        [MenuItem("零星工具/建立主場景")]
+        public static void MakeScene()
         {
             Directory.CreateDirectory("Assets/Scenes");
             var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
-            EditorSceneManager.SaveScene(scene, DEMO);
-            EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(DEMO, true) };
+            EditorSceneManager.SaveScene(scene, MAIN);
+            EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(MAIN, true) };
             AssetDatabase.SaveAssets();
-            Debug.Log("[Build] 示範場景：" + DEMO);
+            Debug.Log("[Build] 主場景：" + MAIN);
+        }
+
+        static void Common()
+        {
+            if (!File.Exists(MAIN)) MakeScene();
+            PlayerSettings.companyName = "y8999y";
+            PlayerSettings.productName = "轉生成星星碎片的我";
+        }
+        static void Report(BuildReport r)
+        {
+            Debug.Log($"[Build] 結果：{r.summary.result}，{r.summary.totalSize / 1024 / 1024} MB，{r.summary.totalTime}，輸出：{r.summary.outputPath}");
+            if (r.summary.result != BuildResult.Succeeded) EditorApplication.Exit(1);
         }
 
         [MenuItem("零星工具/輸出 Windows 版")]
         public static void BuildWindows()
         {
-            if (!File.Exists(DEMO)) MakeDemoScene();
-            PlayerSettings.companyName = "y8999y";
-            PlayerSettings.productName = "轉生成星星碎片的我";
+            Common();
             PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
             PlayerSettings.defaultScreenWidth = 1152;
             PlayerSettings.defaultScreenHeight = 648;
             PlayerSettings.resizableWindow = true;
-            var r = BuildPipeline.BuildPlayer(new BuildPlayerOptions
+            Report(BuildPipeline.BuildPlayer(new BuildPlayerOptions
             {
-                scenes = new[] { DEMO },
-                locationPathName = "Builds/Windows/ZeroStar.exe",
-                target = BuildTarget.StandaloneWindows64,
-                options = BuildOptions.None,
-            });
-            Debug.Log($"[Build] 結果：{r.summary.result}，{r.summary.totalSize / 1024 / 1024} MB，{r.summary.totalTime}");
-            if (r.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded) EditorApplication.Exit(1);
+                scenes = new[] { MAIN }, locationPathName = "Builds/Windows/ZeroStar.exe", target = BuildTarget.StandaloneWindows64, options = BuildOptions.None,
+            }));
+        }
+
+        [MenuItem("零星工具/輸出 Android 版")]
+        public static void BuildAndroid()
+        {
+            Common();
+            PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Android, "com.y8999y.zerostar");
+            PlayerSettings.bundleVersion = "0.1.0";
+            PlayerSettings.Android.bundleVersionCode = 1;
+            PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26;
+            PlayerSettings.SetScriptingBackend(UnityEditor.Build.NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
+            PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
+            PlayerSettings.defaultInterfaceOrientation = UIOrientation.LandscapeLeft;
+            PlayerSettings.allowedAutorotateToLandscapeLeft = true;
+            PlayerSettings.allowedAutorotateToLandscapeRight = true;
+            PlayerSettings.allowedAutorotateToPortrait = false;
+            PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
+            PlayerSettings.Android.renderOutsideSafeArea = true;
+            EditorUserBuildSettings.buildAppBundle = false;
+            Report(BuildPipeline.BuildPlayer(new BuildPlayerOptions
+            {
+                scenes = new[] { MAIN }, locationPathName = "Builds/Android/ZeroStar.apk", target = BuildTarget.Android, options = BuildOptions.None,
+            }));
         }
     }
 }
