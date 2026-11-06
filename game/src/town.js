@@ -10,7 +10,8 @@
 //   - 前景：比主角近的深色草叢和小蘑菇（遮擋物，增加景深）
 // 圖層（視差）：星空（0）→ 遠景坑底（0.12）→ 中景坑壁住家（0.35）→ 街道與店（1）→ 前景（1.3）。
 // 光：窗戶、碎片路燈、爐火、公會的碎片、坑底的大星星都是光源（light.js），把牆和地面照成暖色（柔和）。
-import { hex } from "../../pixelfx/src/core/index.js";
+import { hex, createFx } from "../../pixelfx/src/core/index.js";
+import * as townRain from "./fx-town-rain.js";
 import { tintOf } from "./light.js";
 import { FLOOR, H } from "./level.js";
 import { paintNpc } from "./npcs.js";
@@ -161,9 +162,33 @@ const DAY_SKY = [[74, 138, 216], [104, 164, 228], [146, 194, 238], [190, 220, 24
 const DUSK_SKY = [[58, 48, 120], [128, 72, 140], [214, 104, 120], [250, 150, 96], [255, 196, 120]];
 const ramp = (st, f) => { const k = Math.max(0, Math.min(st.length - 1.001, f * (st.length - 1))), i = Math.floor(k), t = k - i; return st[i].map((v, j) => v + (st[i + 1][j] - v) * t); };
 
+// ---- 天氣（使用者 2026-11-06「也加入天氣變化如雨天」）：晴、陰、雨。照真實時間每 3 分鐘可能換一次（換的時候 25 秒慢慢轉），
+//   陰天：天空蓋一層灰雲、星星看不到、整個鎮暗一點；雨天：再暗一點偏藍，四層深度的雨絲（fx-town-rain.js）落地濺水花，沒有螢火蟲
+const WX_SLOT = 180, WX_FADE = 25, WX_PICK = ["clear", "clear", "cloudy", "rain", "clear", "rain", "cloudy", "clear", "clear", "rain"];
+const wxAt = (slot) => WX_PICK[Math.floor(rnd(slot, 97) * WX_PICK.length)];
+let wxOverride = null;
+/** 開發用：固定天氣 "clear" / "cloudy" / "rain"，null＝照真實時間 */
+export const setWeather = (w) => (wxOverride = w);
+export function weatherInfo() {
+  if (wxOverride) return { kind: wxOverride, rain: wxOverride === "rain" ? 1 : 0, cloud: wxOverride === "clear" ? 0 : 1 };
+  const now = Date.now() / 1000, slot = Math.floor(now / WX_SLOT), k = Math.min(1, (now - slot * WX_SLOT) / WX_FADE), a = wxAt(slot - 1), b = wxAt(slot);
+  const v = (w, x) => (w === x ? 1 : 0), lerp = (x, y) => x + (y - x) * k;
+  return { kind: b, rain: lerp(v(a, "rain"), v(b, "rain")), cloud: lerp(a === "clear" ? 0 : 1, b === "clear" ? 0 : 1) };
+}
+const RAIN = [0, 1, 2].map(() => createFx(townRain, { x: 0, y: FLOOR, density: 1 }));
+let rainT = null;
+/** 雨（在主角、居民之後，前景之前畫）。雨絲固定在世界上（每 332 格一塊接起來），走路時不會跟著畫面跑 */
+export function drawTownWeather(frame, time) {
+  const { rain } = weatherInfo(), dt = rainT === null ? 0 : Math.max(0, Math.min(0.1, time - rainT));
+  rainT = time;
+  if (rain < 0.03) return;
+  const base = Math.floor((frame.ox | 0) / 332) * 332 + 166;
+  RAIN.forEach((fx, k) => { fx.update(dt); fx.options.x = base + k * 332; fx.options.y = FLOOR + 1; fx.options.density = rain; fx.draw(frame); });
+}
+
 /** 鎮上的固定光源 */
 export function townLights(time) {
-  const dl = 1 - 0.75 * dayInfo().d;   // 白天燈光變弱
+  const dl = 1 - 0.75 * dayInfo().d * (1 - 0.5 * weatherInfo().cloud);   // 白天燈光變弱（陰天、雨天沒那麼弱）
   const list = LIGHTS.map(([x, y, r, lv, col]) => ({ x, y, r: r + (r > 50 ? Math.floor(time * 6) % 2 : 0), lv: lv * dl, col }));
   list.push({ x: 106, y: 128, r: 110, lv: 1.6 * dl, par: 0.12, col: "#ffd27a" });   // 坑底的大星星（遠景圖左邊那顆）
   return list;
@@ -179,15 +204,33 @@ export function drawTown(frame, lv, time) {
   const W = frame.w, cx = frame.ox | 0, cy = frame.oy | 0, out = frame.color, LB = frame.light, [TR, TG, TB] = tintOf();
   const of = Math.floor(cx * 0.12), om = Math.floor(cx * 0.35), os = Math.floor(cx * 0.04), SKYP = NIGHT.px;
   NIGHT.update(skyT === null ? 0 : Math.max(0, Math.min(0.1, time - skyT)));
-  const { d: DAY, dusk: DUSK } = dayInfo();
+  const { d: DAY0, dusk: DUSK0 } = dayInfo(), { rain: RAINK, cloud: CLOUD } = weatherInfo();
+  // 陰天、雨天：白天沒那麼亮、看不到夕陽；整個鎮再壓暗一點（雨天偏藍）
+  const DAY = DAY0 * (1 - 0.45 * CLOUD), DUSK = DUSK0 * (1 - 0.8 * CLOUD), dim = 1 - 0.12 * CLOUD - 0.08 * RAINK;
   // 白天把場景調亮：每個顏色 ×(1＋0.75×白天)＋一點暖色；日落時再偏橘
   // 第 2 輪：原本 ×1.75 太亮（白的地方爆掉、紫色石頭變粉彩）→ 只亮 30% 左右，藍色少加一點（夜景偏紫，白天要往暖、往中性色拉）
   const mR = 1 + 0.32 * DAY + 0.2 * DUSK, mG = 1 + 0.3 * DAY + 0.02 * DUSK, mB = 1 + 0.1 * DAY - 0.12 * DUSK, aR = 12 * DAY + 8 * DUSK, aG = 11 * DAY, aB = 2 * DAY;
-  const lift = DAY + DUSK < 0.01 ? (v) => v : (v) => (0xff000000 | (Math.min(255, ((v >>> 16) & 255) * mB + aB) << 16) | (Math.min(255, ((v >>> 8) & 255) * mG + aG) << 8) | Math.min(255, (v & 255) * mR + aR)) >>> 0;
+  const kR = mR * dim * (1 - 0.06 * RAINK), kG = mG * dim, kB = mB * dim * (1 + 0.04 * RAINK);
+  const lift = DAY + DUSK + CLOUD < 0.01 ? (v) => v : (v) => (0xff000000 | (Math.min(255, ((v >>> 16) & 255) * kB + aB) << 16) | (Math.min(255, ((v >>> 8) & 255) * kG + aG) << 8) | Math.min(255, (v & 255) * kR + aR)) >>> 0;
   const skyRow = [];   // 每一列白天／日落的天空顏色
-  for (let y = 0; y < H; y++) { const f = y / (H * 0.62), a = ramp(DAY_SKY, f), b = ramp(DUSK_SKY, f), w = DUSK / Math.max(0.01, DAY + DUSK); skyRow.push(a.map((v, j) => v + (b[j] - v) * w)); }
-  const skyMix = Math.min(1, DAY + DUSK);
-  const daySky = (v, wy) => { if (skyMix < 0.01) return v; const c = skyRow[Math.max(0, Math.min(H - 1, wy))], k = skyMix; return (0xff000000 | (Math.round((((v >>> 16) & 255) * (1 - k)) + c[2] * k) << 16) | (Math.round((((v >>> 8) & 255) * (1 - k)) + c[1] * k) << 8) | Math.round(((v & 255) * (1 - k)) + c[0] * k)) >>> 0; };
+  // 雲：白天灰白、晚上深灰藍（上面暗一點），蓋在天空上
+  const cloudCol = (f) => { const day = [150 - 30 * (1 - f), 160 - 30 * (1 - f), 176 - 26 * (1 - f)], night = [34, 36, 52]; return day.map((v, j) => night[j] + (v - night[j]) * DAY0); };
+  for (let y = 0; y < H; y++) {
+    const f = y / (H * 0.62), a = ramp(DAY_SKY, f), b = ramp(DUSK_SKY, f), w = DUSK / Math.max(0.01, DAY + DUSK), c = cloudCol(Math.min(1, f));
+    const clear = a.map((v, j) => v + (b[j] - v) * w), sk = Math.min(1, DAY + DUSK);
+    // 先算晴天的顏色（白天藍天 or 夜空保留），再往雲的顏色拉 CLOUD×0.85
+    skyRow.push({ clear, sk, cloud: c });
+  }
+  const skyMix = 1;
+  const daySky = (v, wy) => {
+    const R = skyRow[Math.max(0, Math.min(H - 1, wy))];
+    if (R.sk < 0.01 && CLOUD < 0.01) return v;
+    let r = v & 255, g = (v >>> 8) & 255, b = (v >>> 16) & 255;
+    r += (R.clear[0] - r) * R.sk; g += (R.clear[1] - g) * R.sk; b += (R.clear[2] - b) * R.sk;
+    const ck = CLOUD * 0.85;
+    r += (R.cloud[0] - r) * ck; g += (R.cloud[1] - g) * ck; b += (R.cloud[2] - b) * ck;
+    return (0xff000000 | (Math.round(b) << 16) | (Math.round(g) << 8) | Math.round(r)) >>> 0;
+  };
   skyT = time;
   if (skyMask.length !== W * frame.h) skyMask = new Uint8Array(W * frame.h);
   skyMask.fill(0);
@@ -219,7 +262,7 @@ export function drawTown(frame, lv, time) {
   // 螢火蟲
   for (let n = 0; n < 26; n++) {
     const fx = Math.round(rnd(n, 41) * TOWN_W + Math.sin(time * 0.6 + n) * 14) - cx, fy = Math.round(118 + rnd(n, 42) * 58 + Math.sin(time * 0.9 + n * 2) * 6) - cy;
-    const on = (0.5 + 0.5 * Math.sin(time * 2.2 + n * 1.7)) * (1 - DAY);   // 螢火蟲只在晚上
+    const on = (0.5 + 0.5 * Math.sin(time * 2.2 + n * 1.7)) * (1 - DAY0) * (1 - RAINK);   // 螢火蟲只在晚上、沒下雨的時候
     if (on < 0.15 || fx < 0 || fy < 0 || fx >= W || fy >= frame.h) continue;
     out[fy * W + fx] = 0xffa0f4d4;
     for (let y = -4; y <= 4; y++) for (let x = -4; x <= 4; x++) { const f = 1 - Math.hypot(x, y) / 4.5; if (f > 0) add(fx + x, fy + y, 200, 255, 140, f * f * on * 0.5); }

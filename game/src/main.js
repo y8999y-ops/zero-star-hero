@@ -12,7 +12,7 @@ import { input, tickInput, initTouch, consume } from "./input.js";
 import { drawLevel, drawForeground, drawAtmosphere, sceneLights, lightStyle, LEVEL_W, FLOOR, H, TORCHES, TORCH_POS, WALL, geo, MAP_H } from "./level.js";
 import { initMap, flatMap, groundAt, floorAt, solidAt, moveX, surfaceRuns, setSolid } from "./map.js";
 import { drawPlug } from "./feature-art.js";
-import { TOWN_W, NPCS, townLights, drawTown, drawTownNpcs, drawTownFg, nearby, setDayPhase } from "./town.js";
+import { TOWN_W, NPCS, townLights, drawTown, drawTownNpcs, drawTownFg, nearby, setDayPhase, setWeather, drawTownWeather } from "./town.js";
 import { talk, ask, dialog, typewriter } from "./dialog.js";
 import * as frogFx from "../../pixelfx/src/fx/critters/frog.js";
 import { computeLight, flash, updateLight } from "./light.js";
@@ -273,7 +273,7 @@ function absorb(it) {
   if (res.unlocked) {
     formBanner(it.form);
     profile.forms.fresh = it.form;   // 形態格一直發光，直到第一次切換過去
-    toast(`系統：吸收了${F.name}的核！新形態「${F.name}」。${profile.forms.carry.includes(it.form) ? tipFor("點右邊的【形態】就能變身。", "按【1】～【3】就能變身。") : "已經帶滿 3 個了，回城鎮打開技能樹的【形態】頁再換。"}`, 3.4, "forms");
+    toast(`系統：吸收了${F.name}的核！新形態「${F.name}」。${profile.forms.carry.includes(it.form) ? tipFor("點右邊的【形態】就能變身。", "按【1】～【3】就能變身。") : "已經帶滿 3 個了，不在戰鬥中時打開技能樹的【形態】頁就能換。"}`, 3.4, "forms");
     sayQueue.unshift([`系統：你把${F.from === "slime" ? "史萊姆" : "垃圾桶"}的核吃掉了？不對，是吸收。好吧，差不多。`, 2.8]);
   } else {
     // 重複的核：存起來，2 顆換 1 點（技能點或屬性，在技能樹視窗上方換）
@@ -591,7 +591,8 @@ if (STAGE_ID === "1-1" && !TOWN && !ENDLESS) setStatusAllow(["burn", "slime"]);
 // 元素場景物件（第 3 批）：黏液池、油桶、廚餘堆、漏電管線；水窪＝潮濕、火盆＝燃燒
 const hazards = createHazards({ stage: TOWN || ENDLESS ? "" : STAGE_ID, floor: FLOOR, torches: TOWN ? [] : TORCH_POS, puddles: TOWN ? [] : scenery.puddles, items: BARE ? (STAGE.hazards ?? []) : null });
 window.__game.hazards = hazards;
-window.__game.day = setDayPhase;   // 開發用：__game.day(0.25)＝中午、0.5＝日落、0.75＝半夜、null＝照真實時間
+window.__game.day = setDayPhase;
+window.__game.weather = setWeather;   // 開發用：__game.weather("rain" / "cloudy" / "clear" / null)   // 開發用：__game.day(0.25)＝中午、0.5＝日落、0.75＝半夜、null＝照真實時間
 // 10 批：水窪不要疊在元素物件、祭壇、機關上
 {
   const busy = [...hazards.list.map((h) => [h.x, h.y]), ...altars.map((a) => [a.x, a.y]), ...(STAGE.features ?? []).map((f) => [f.x, f.y])];
@@ -1023,6 +1024,7 @@ initTownUI({
   inTown: TOWN,
   onTree: () => { save(profile); buildFormHud(); },
   curForm: () => player.form,
+  inCombat: () => !TOWN && inCombat,
   onCarry: () => { save(profile); buildFormHud(); },
   // 形態的全身像（canvas），k＝放大倍數（CSS 放大，像素不糊）
   portrait: (id, k = 1) => {
@@ -1744,7 +1746,7 @@ function render() {
   drawCombatFx(frame);
   drawUlt(frame);
   if (!TOWN) drawLowHp(frame, lowHp.k, lowHp.pulse, zoom, viewRect().y0 - (H - H / zoom) / 2);
-  if (TOWN) drawTownFg(frame);
+  if (TOWN) { drawTownWeather(frame, sceneClock); drawTownFg(frame); }
   if (director?.lock) drawBarrier(director.lock);
   if (!TOWN) drawForeground(frame);
   drawDamageNumbers(frame);   // 跳字畫在最上面，不會被前景擋住

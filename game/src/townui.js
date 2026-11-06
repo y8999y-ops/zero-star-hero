@@ -335,7 +335,9 @@ export function openInn({ rest }) {
 function carryPage(body, render) {
   const P = ctx.profile, F = P.forms;
   const cur = ctx.curForm?.(), owned = Object.keys(FORMS).filter((id) => F.owned[id]);
-  const top = h("div", "fm-carry", `<div class="fm-ttl">帶在身上 <em>${F.carry.length}/${CARRY_MAX}</em>${ctx.inTown ? "" : '<small>（回城鎮才能換帶哪幾個）</small>'}</div>`);
+  // 使用者 2026-11-06：不用回城鎮，戰鬥狀態以外都能換帶哪幾個
+  const canEdit = !ctx.inCombat?.();
+  const top = h("div", "fm-carry", `<div class="fm-ttl">帶在身上 <em>${F.carry.length}/${CARRY_MAX}</em>${canEdit ? "" : '<small>（戰鬥中不能換，先脫離戰鬥）</small>'}</div>`);
   const row = h("div", "fm-slots");
   for (let i = 0; i < CARRY_MAX; i++) {
     const id = F.carry[i], s = h("div", "fm-slot" + (id === cur ? " on" : "") + (id ? "" : " empty"));
@@ -352,7 +354,7 @@ function carryPage(body, render) {
     const pic = h("div", "fm-pic"); pic.appendChild(ctx.portrait(id, 2)); card.appendChild(pic);
     card.appendChild(h("div", "fm-info", `<div class="fm-name">${D.name}${id === cur ? '<span class="fm-tag">目前</span>' : carried ? '<span class="fm-tag dim">帶著</span>' : ""}</div><div class="fm-desc">${D.desc}</div>`));
     const btns = h("div", "fm-btns");
-    if (ctx.inTown) {
+    if (canEdit) {
       if (carried) {
         const b = ibtn("close", "放下", () => {
           if (id === cur) return msg("正在用的形態不能放下", false);

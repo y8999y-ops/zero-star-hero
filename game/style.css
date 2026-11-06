@@ -1168,3 +1168,9 @@ body.playing #hud #hudMenu #btnForms { display: flex !important; }
 #forms.cd .fslot { filter: grayscale(.6) brightness(.7); }
 #forms.cd .fslot::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(255, 226, 122, .35), rgba(255, 226, 122, .35)) bottom / 100% 0 no-repeat; animation: formCd 1s linear forwards; pointer-events: none; }
 @keyframes formCd { to { background-size: 100% 100%; } }
+/* 使用者 2026-11-06：升級的經驗條改到畫面最下面，長長一條綠色（玩的時候一直顯示） */
+#xpBar { position: absolute; left: 0; right: 0; bottom: 0; width: auto; height: 6px; border: 0; border-image: none; padding: 0; background: rgba(8, 14, 10, .7); box-shadow: 0 -1px 0 rgba(0, 0, 0, .6); z-index: 3; pointer-events: none; opacity: 0; transform: none; transition: opacity .3s; }
+body.playing #xpBar { opacity: 1; }
+#xpBar .xp-fill { height: 100%; background: linear-gradient(#c8ffb0 0 1px, #5ad05a 1px 4px, #2a8a3a 4px); box-shadow: 0 0 6px rgba(120, 240, 110, .55); }
+#xpBar span { right: 6px; top: auto; bottom: 7px; font-size: 11px; line-height: 12px; color: #c8ffb0; text-shadow: 0 1px 0 #000, 0 0 3px #000; opacity: 0; transition: opacity .3s; }
+#xpBar.show span { opacity: 1; }
