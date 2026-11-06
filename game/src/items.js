@@ -98,20 +98,20 @@ export const BASES = {
 // 純垃圾：不能穿，只能拆解。撿到時系統會吐槽。
 export const JUNK = [
   { id: "fishbone", name: "魚骨頭", icon: "fishbone", say: "系統：一根魚骨頭。你的收集魂在燃燒呢。" },
-  { id: "bottle", name: "寶特瓶", icon: "bottle", say: "系統：寶特瓶。記得回收，勇者也要做環保。" },
+  { id: "bottle", name: "空藥水瓶", icon: "bottle", say: "系統：空的藥水瓶。記得回收，冒險者也要做環保。" },
   { id: "sock", name: "破襪子", icon: "sock", say: "系統：破襪子……只有一隻。另一隻呢？" },
-  { id: "chopsticks", name: "斷掉的免洗筷", icon: "chopsticks", say: "系統：免洗筷，斷的。完美的垃圾。" },
-  { id: "bento", name: "過期的便當", icon: "bento", say: "系統：過期三天的便當。不准吃。" },
+  { id: "chopsticks", name: "斷掉的練習魔杖", icon: "chopsticks", say: "系統：魔杖，斷的。……練習用的那種。完美的垃圾。" },
+  { id: "bento", name: "發霉的乾糧", icon: "bento", say: "系統：過期三天的乾糧。不准吃。" },
 ];
 /** 一般掉落裡純垃圾的比例 */
 export const JUNK_CHANCE = 0.35;
 
 // 傳說：固定底材＋獨特效果（效果本身寫在 player.js / main.js，用 unique id 判斷）。目前進度不會掉（第 6 批改版）。
 export const UNIQUES = {
-  slipper: { kind: "feet", name: "前任勇者的拖鞋", icon: "leg_slipper", text: "閃避後的下一擊必定暴擊；閃避距離 +50%", lore: "前任勇者逃跑時掉的。跑得很快。" },
-  overtime: { kind: "acc", name: "加班證明", icon: "leg_overtime", text: "戰鬥越久傷害越高：每 10 秒 +5%，上限 +100%，戰鬥結束歸零", lore: "上面蓋著「已讀不回」的章。" },
+  slipper: { kind: "feet", name: "前任冒險者的草鞋", icon: "leg_slipper", text: "閃避後的下一擊必定暴擊；閃避距離 +50%", lore: "前任冒險者逃跑時掉的。跑得很快。" },
+  overtime: { kind: "acc", name: "通宵委託單", icon: "leg_overtime", text: "戰鬥越久傷害越高：每 10 秒 +5%，上限 +100%，戰鬥結束歸零", lore: "公會的通宵委託單。上面蓋著「明天再說」的章。" },
   noisy: { kind: "weapon", name: "很吵的星核", icon: "leg_noisy", atk: 18, text: "", lore: "「拜託你認真打好嗎。」" },   // 效果改成星核的核心效果（CORES.noisy）
-  hardhat: { kind: "head", name: "爆炸頭安全帽", icon: "leg_hardhat", text: "擊殺時 25% 機率爆炸", lore: "工地主任的遺物。施工中，請勿靠近。" },
+  hardhat: { kind: "head", name: "爆炸頭礦工帽", icon: "leg_hardhat", text: "擊殺時 25% 機率爆炸", lore: "矮人礦工頭的遺物。坑道施工中，請勿靠近。" },
 };
 
 // ---- 神話（第 6 批，docs/裝備系統企劃.md 第 8 章）：效果隨目前的形態改變；穿著累積擊殺會覺醒（3 階），每一階解鎖一段星王的故事
@@ -142,7 +142,8 @@ export const SET_IDS = Object.keys(SETS);
 const SET_KIND_NAME = { weapon: "核", head: "冠", body: "殼", hands: "爪", feet: "靴", acc: "碎片" };
 
 // 隨機名字：稀有以上叫「○○之＋短名」
-const RARE_NAMES = ["社畜", "加班狂", "外送員", "失眠者", "禿頭勇者", "深淵", "午夜", "墜星", "打工仔", "流星", "前男友", "房東", "末班車", "便利商店"];
+// 使用者 2026-11-06：上班族／現代梗改成異世界風格
+const RARE_NAMES = ["苦工哥布林", "夜班守衛", "送信鳥人", "失眠貓頭鷹", "禿頭魔像", "谷底", "午夜", "墜星", "見習生", "流星", "被甩的骷髏", "收租蘑菇", "末班馬車", "路邊雜貨攤"];
 
 const pick = (a, r = Math.random) => a[Math.floor(r() * a.length)];
 const randIn = (a, b, dec = 0) => { const k = 10 ** dec; return Math.round((a + Math.random() * (b - a)) * k) / k; };

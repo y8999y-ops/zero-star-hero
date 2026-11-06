@@ -485,19 +485,23 @@ const DRAW = {
     p.px(13, 4, "k");
   },
   bottle(p) {
-    p.art(5, 1, [
-      ".rR..",
-      ".tT..",
-      ".tT..",
-      "ttTT.",
-      "twtTu",
-      "tttTu",
-      "rrrRq",
-      "rwrRq",
-      "tttTu",
-      "tttTu",
-      "ttTTu",
-      "Tuuuu",
+    // 空藥水瓶（使用者 2026-11-06：寶特瓶改成異世界的空藥水瓶）：軟木塞、瓶頸、圓肚。
+    //   空的＝裡面是透出去的暗灰（不上藥水色），玻璃邊淡青、左上兩道白反光；瓶底剩一小灘綠色殘渣
+    p.art(2, 1, [
+      ".....bbB....",
+      ".....lbB....",
+      "....tttT....",
+      ".....tdT....",
+      ".....tdT....",
+      "...ttdddT...",
+      "..tdddddTT..",
+      ".tdwddddddT.",
+      ".twdddddddT.",
+      ".twdddddddT.",
+      ".tdddddddTT.",
+      ".tddddddddT.",
+      "..TdEeEEdT..",
+      "...TTTTTT...",
     ]);
   },
   sock(p) {
@@ -517,19 +521,25 @@ const DRAW = {
     ]);
   },
   chopsticks(p) {
-    p.band(12, 1, 11, ["l", "b"]);
-    p.band(14, 3, 10, ["l", "b"]);
-    p.px(13, 1, "B"); p.px(14, 3, "B");
+    // 斷掉的練習魔杖（取代免洗筷）：45° 木杖斷成兩截、明顯錯開（下半截往左下掉）；斷口是淺色木刺；上半截頂端藍寶石
+    p.art(11, 1, [".cc", "cwC", "cCn"]);
+    p.band(11, 4, 4, ["l", "b"]);
+    p.art(7, 7, ["yy"]);
+    p.art(5, 9, ["yl", ".lb"]);
+    p.band(4, 11, 4, ["l", "b"]);
   },
   bento(p) {
+    // 發霉的乾糧（取代便當）：一條圓頂長麵包（頂亮、側暗、底最暗），頂上三道深色割紋；灰綠色毛毛的霉斑
     p.art(1, 3, [
-      "..EE.....eE...",
-      ".OOOOOOOOOOOO.",
-      "OyyyyeeyyrryyO",
-      "OyyyyeeyyrRyyO",
-      "OyyyyyyyybbbyO",
-      "OyyyyyyyybBbyO",
-      "QQQQQQQQQQQQQQ",
+      "....llllll....",
+      "..llllllllll..",
+      ".llBllBllBllb.",
+      "lllBbllBEelBbb",
+      "llllllllEmlbbb",
+      "lYeelllllllbbB",
+      "bbemEbbbbbbbBB",
+      "Bbbmbbbbbbbbbj",
+      ".BBBBBBBBBBBj.",
     ]);
   },
   scrap(p) {
