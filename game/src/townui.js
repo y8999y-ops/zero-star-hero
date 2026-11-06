@@ -170,8 +170,7 @@ export function openQuests(atGuild = false, tab = "guild") {
     const prev = [0, 3, 8, 15, 25, 40, 60].filter((n) => n <= G.done).pop() ?? 0;
     const head = h("div", "rankbar");
     head.innerHTML = `<div class="rank">${ico("guild", "big")}<b>${rank}</b></div>
-      <div class="rankp">${next ? bar(G.done - prev, next[1] - prev) : bar(1, 1)}<small>${next ? `下一級 ${next[0]}` : "最高級"}</small></div>
-      <div class="slots"><small>進行中 ${Q.active.length}</small></div>`;
+      <div class="rankp">${next ? bar(G.done - prev, next[1] - prev) : bar(1, 1)}<small>${next ? `下一級 ${next[0]}` : "最高級"}</small></div>`;   // 使用者 2026-11-06：不寫進行中的數量
     body.appendChild(head);
     if (!Q.active.length && !atGuild) body.appendChild(say("系統", "還沒接任務。去公會找波波。"));
     for (const q of Q.active) body.appendChild(card(q, false));
