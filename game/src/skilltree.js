@@ -49,17 +49,17 @@ export const TREES = {
     { id: "b_night", path: 2, max: 1, cost: 2, icon: "n_b_night", name: "夜行", desc: () => "切換成蝠翼星後 3 秒內，移速 +30%、衝刺冷卻 -30%" },
     { id: "b_swarm", path: 3, max: 1, cost: 3, icon: "n_b_swarm", name: "蝙蝠群", desc: () => "滑翔時放出 3 隻小蝙蝠，自動去咬附近的敵人" },
   ],
-  // 尖刺星（第二章）：暴擊路線。圖示先借現有的，之後重畫
+  // 尖刺星（第二章）：暴擊路線
   spike: [
-    { id: "k_long", path: 0, max: 3, cost: 1, icon: "n_c_long", name: "長滾", desc: (r) => `刺球衝刺距離 +${12 * r}%` },
-    { id: "k_shed", path: 0, max: 1, cost: 2, icon: "n_c_brake", name: "散刺", desc: () => "刺球衝刺結束時，往四周爆出一圈刺" },
-    { id: "k_refund", path: 0, max: 1, cost: 2, icon: "n_b_double", name: "連滾", desc: () => "一次刺球衝刺刺中 3 隻以上，冷卻退一半" },
-    { id: "k_tip", path: 1, max: 3, cost: 1, icon: "st_crit", name: "尖端", desc: (r) => `暴擊率 +${3 * r}%` },
-    { id: "k_mark", path: 1, max: 1, cost: 2, icon: "n_s_edge", name: "破綻", desc: () => "暴擊打中的敵人 3 秒內多受 10% 傷害" },
-    { id: "k_sharp", path: 1, max: 1, cost: 2, icon: "n_b_claw", name: "銳利", desc: () => "暴擊傷害 +25%" },
-    { id: "k_thorn", path: 2, max: 1, cost: 2, icon: "n_g_spring", name: "反刺", desc: () => "被打時，打你的怪被刺一下（攻擊力 80%）" },
-    { id: "k_curl", path: 2, max: 1, cost: 2, icon: "n_c_dent", name: "縮成一團", desc: () => "切換成尖刺星後 3 秒內，受到的傷害 -25%" },
-    { id: "k_double", path: 3, max: 1, cost: 3, icon: "n_b_double", name: "滾滾滾", desc: () => "刺球衝刺完 1.2 秒內可以再滾一次（不用等冷卻、不花魔力）" },
+    { id: "k_long", path: 0, max: 3, cost: 1, icon: "n_k_long", name: "長滾", desc: (r) => `刺球衝刺距離 +${12 * r}%` },
+    { id: "k_shed", path: 0, max: 1, cost: 2, icon: "n_k_shed", name: "散刺", desc: () => "刺球衝刺結束時，往四周爆出一圈刺" },
+    { id: "k_refund", path: 0, max: 1, cost: 2, icon: "n_k_refund", name: "連滾", desc: () => "一次刺球衝刺刺中 3 隻以上，冷卻退一半" },
+    { id: "k_tip", path: 1, max: 3, cost: 1, icon: "n_k_tip", name: "尖端", desc: (r) => `暴擊率 +${3 * r}%` },
+    { id: "k_mark", path: 1, max: 1, cost: 2, icon: "n_k_mark", name: "破綻", desc: () => "暴擊打中的敵人 3 秒內多受 10% 傷害" },
+    { id: "k_sharp", path: 1, max: 1, cost: 2, icon: "n_k_sharp", name: "銳利", desc: () => "暴擊傷害 +25%" },
+    { id: "k_thorn", path: 2, max: 1, cost: 2, icon: "n_k_thorn", name: "反刺", desc: () => "被打時，打你的怪被刺一下（攻擊力 80%）" },
+    { id: "k_curl", path: 2, max: 1, cost: 2, icon: "n_k_curl", name: "縮成一團", desc: () => "切換成尖刺星後 3 秒內，受到的傷害 -25%" },
+    { id: "k_double", path: 3, max: 1, cost: 3, icon: "n_k_double", name: "滾滾滾", desc: () => "刺球衝刺完 1.2 秒內可以再滾一次（不用等冷卻、不花魔力）" },
   ],
 };
 // 使用者 2026-11-06：每個形態一個「形態被動」（路線 4，在樹的最上面）——只有變成那個形態時有效，最高 10 級，越後面越貴（點滿 22 點），

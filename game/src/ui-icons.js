@@ -436,6 +436,80 @@ export const ICON_DEFS = {
   ] },
 };
 
+
+// ---- 尖刺星的技能樹圖示（第二章，使用者 2026-11-06；照 pixelfx skill 畫→看→修）：用小產生器畫刺球、尖針、盾，風格跟其他形態的節點一致
+//   刺球＝褐色（brown 階：左上亮、右下暗）＋米色刺尖（cream），尖針＝米色→白，標記＝紅，盾＝銀，循環箭頭＝青
+const KG = (W, H) => Array.from({ length: H }, () => Array(W).fill("."));
+const KR = (g) => g.map((r) => r.join(""));
+const kset = (g, x, y, c) => { x = Math.round(x); y = Math.round(y); if (g[y] && x >= 0 && x < g[0].length) g[y][x] = c; };
+function kball(g, cx, cy, r, ns, rot = 0, len = 2.2) {
+  for (let i = 0; i < ns; i++) {
+    const a = rot + (i / ns) * Math.PI * 2, c = Math.cos(a), sn = Math.sin(a);
+    for (let k = 0; k <= len; k += 0.5) kset(g, cx + c * (r + k), cy + sn * (r + k), k >= len - 0.6 ? "A" : k > 0.8 ? "B" : "w");
+  }
+  for (let y = Math.floor(cy - r); y <= Math.ceil(cy + r); y++) for (let x = Math.floor(cx - r); x <= Math.ceil(cx + r); x++) {
+    const dx = x - cx, dy = y - cy, d = Math.hypot(dx, dy); if (d > r + 0.3) continue;
+    const l = (-dx - dy) / (r * 1.4);
+    kset(g, x, y, l > 0.45 ? "u" : l > 0.05 ? "v" : l > -0.4 ? "w" : "x");
+  }
+}
+function kneedle(g, x0, y0, x1, y1) {   // 2 格寬的尖針：根部褐、往尖端變米色、尖端白
+  const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+  for (let i = 0; i <= n; i++) {
+    const u = i / n, x = x0 + ((x1 - x0) * i) / n, y = y0 + ((y1 - y0) * i) / n;
+    kset(g, x, y, u > 0.85 ? "A" : u > 0.55 ? "B" : u > 0.3 ? "v" : "w");
+    if (u < 0.75) kset(g, x + 1, y, u > 0.4 ? "C" : "x");
+  }
+}
+// 三角形的刺：根部 (x0, y0) 寬 w，尖端 (x1, y1)；朝左上那半亮（米色）、另一半暗（褐），尖端白
+function kspike(g, x0, y0, x1, y1, w) {
+  const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2), ux = (x1 - x0), uy = (y1 - y0), L = Math.hypot(ux, uy), px = -uy / L, py = ux / L;
+  const litSide = px * -0.6 + py * -0.8 > 0 ? 1 : -1;
+  for (let i = 0; i <= n; i++) {
+    const u = i / n, hw = w * (1 - u);
+    for (let q = -hw; q <= hw; q += 0.4) {
+      const x = x0 + ux * u + px * q, y = y0 + uy * u + py * q, lit = q * litSide > 0;
+      kset(g, x, y, u > 0.82 ? "A" : lit ? (u > 0.45 ? "B" : "u") : (u > 0.45 ? "v" : "x"));
+    }
+  }
+}
+const KICON = {
+  // 長滾：刺球往右滾，後面三條速度線
+  n_k_long: () => { const g = KG(14, 12); kball(g, 9, 6, 3.4, 8, 0.3); for (const [y, l] of [[3, 3], [6, 5], [9, 3]]) for (let x = 0; x < l; x++) kset(g, x, y, x === l - 1 ? "b" : "c"); return g; },
+  // 散刺：小球、八根長刺往外爆
+  n_k_shed: () => { const g = KG(14, 14); kball(g, 6.5, 6.5, 2.6, 8, 0.39, 3.8); for (const [x, y] of [[1, 1], [12, 1], [1, 12], [12, 12]]) kset(g, x, y, "H"); return g; },
+  // 連滾：刺球＋右下一個青色的循環箭頭（冷卻退回來）
+  // 第 3 輪：循環箭頭在 16 格裡怎麼畫都糊（第 1 輪像掛勾、第 2 輪像一坨）→ 改成右下一個青色小時鐘（冷卻），指針指著一半
+  n_k_refund: () => {
+    const g = KG(14, 14); kball(g, 5, 5, 3, 7, 0.2, 1.8);
+    for (let y = 6; y <= 13; y++) for (let x = 6; x <= 13; x++) { const d = Math.hypot(x - 9.5, y - 9.5); if (d <= 3.9) kset(g, x, y, d > 2.9 ? (x + y < 19 ? "q" : "s") : "s"); }
+    for (const [x, y] of [[9, 7], [9, 8], [9, 9], [10, 9], [11, 9]]) kset(g, x, y, "p");   // 指針（12 點和 3 點：過了一半）
+    return g;
+  },
+  // 尖端：一根往右上的大尖針，針尖一顆金色十字閃光
+  // 第 2 輪：改成一根粗的三角形刺（第 1 輪細針＋閃光像魔杖）
+  n_k_tip: () => { const g = KG(14, 14); kspike(g, 2.5, 11.5, 11, 3, 3.6); for (const [x, y] of [[12, 0], [12, 1], [12, 3], [11, 2], [13, 2]]) kset(g, x, y, "H"); kset(g, 12, 2, "G"); return g; },
+  // 破綻：紅色準星，中間一根刺
+  n_k_mark: () => { const g = KG(14, 14); for (let a = 0; a < Math.PI * 2; a += 0.1) kset(g, 6.5 + Math.cos(a) * 5.5, 6.5 + Math.sin(a) * 5.5, a > 3.6 && a < 5.6 ? "f" : "g"); for (let k = 0; k < 3; k++) { kset(g, 6.5, k, "g"); kset(g, 6.5, 13 - k, "h"); kset(g, k, 6.5, "g"); kset(g, 13 - k, 6.5, "h"); } for (const [x, y] of [[6, 6], [7, 6], [6, 7], [7, 7]]) kset(g, x, y, "A"); for (const [x, y] of [[5, 6], [8, 7], [6, 5], [7, 8]]) kset(g, x, y, "f"); return g; },   // 第 2 輪：中間改成白色破綻點（第 1 輪斜針像禁止標誌）
+  // 銳利：兩根交叉的尖針，交叉點一顆白閃光
+  // 第 2 輪：兩根交叉的三角形刺（第 1 輪細棍像筷子）
+  n_k_sharp: () => { const g = KG(14, 14); kspike(g, 1.5, 12.5, 11.5, 1.5, 2.6); kspike(g, 12, 12.5, 2, 1.5, 2.6); kset(g, 6.5, 7, "A"); return g; },
+  // 反刺：銀色盾牌，左右上三邊伸出刺
+  n_k_thorn: () => {
+    const g = KG(14, 14);
+    // 第 2 輪：盾縮小一圈，刺改成三角形、往外伸 3 格（第 1 輪刺太小看不到）
+    kspike(g, 3, 4.5, 0, 2.5, 1.6); kspike(g, 11, 4.5, 14, 2.5, 1.6); kspike(g, 3, 9, 0, 11, 1.4); kspike(g, 11, 9, 14, 11, 1.4); kspike(g, 7, 3, 7, 0, 1.6);
+    for (let y = 3; y <= 13; y++) { const w = y < 9 ? 4 : 4 - (y - 8); for (let x = 7 - w; x < 7 + w; x++) kset(g, x, y, y === 3 || x === 7 - w ? "a" : x >= 7 + w - 2 || y >= 12 ? "c" : "b"); }
+    for (let y = 5; y <= 10; y++) kset(g, 6.5, y, "d");
+    return g;
+  },
+  // 縮成一團：刺球（刺短、密）前面一片小銀盾
+  n_k_curl: () => { const g = KG(14, 13); kball(g, 6, 6, 4.2, 12, 0, 1.4); for (let y = 6; y <= 12; y++) { const w = y < 10 ? 2 : 2 - (y - 9); for (let x = 11 - w; x <= 11 + w; x++) kset(g, x, y, x <= 11 - w + 1 ? "a" : "c"); } return g; },
+  // 滾滾滾：一大一小兩顆刺球（後面那顆是殘影，暗一階）
+  n_k_double: () => { const g = KG(14, 12); kball(g, 3.5, 7, 2.4, 6, 0.5, 1.6); for (let y = 0; y < 12; y++) for (let x = 0; x < 7; x++) if (g[y][x] !== ".") g[y][x] = g[y][x] === "A" || g[y][x] === "B" ? "C" : "x"; kball(g, 9.5, 5.5, 3.2, 8, 0.2); return g; },
+};
+for (const [k, f] of Object.entries(KICON)) ICON_DEFS[k] = { ox: 1, oy: 1, rows: KR(f()) };
+
 const N = 16;
 const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 // 色階：每個字母一個顏色，同一列是同一個色系（亮→暗）；外框用該色系最暗的一階

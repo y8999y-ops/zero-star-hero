@@ -357,4 +357,152 @@ function moonPos(U, H) {
   return { x: v.l + (v.r - v.l) * 0.72, y: v.top - 24 + 64 * k, a: Math.min(1, k * 1.5) * a };
 }
 
-export const FORM_ULTS = { slime, can, bat };
+
+// =====================================================================================
+// 尖刺星「千針風暴」（第二章，使用者 2026-11-06）
+//   縮成一顆巨大的刺球升到半空、越轉越快 → 往畫面裡每一隻怪連發尖針（沒對到怪的插進地上）→
+//   整顆砸回地面，一道尖刺從落點往兩邊一路冒出來，把全部的怪刺飛。
+//   參考（只學做法）：pixelfx ice/ice-spikes（刺往兩邊一波冒出來、左亮右暗兩面、尖端閃光、最後白一下碎掉）、
+//   nature/thorns（刺的根部噴土）、critters 的刺蝟刺球（本專案 fx/forest/hedgehog.js）。
+// =====================================================================================
+const AMB = ramp(["#2a1206", "#6a3010", "#a85a1c", "#e09a3a", "#ffd890", "#fff2d0", "#ffffff"]), AMB_LIGHT = rgb("#ffb050");
+const SP = { rise: 0.5, cut0: 0.45, cut1: 0.9, ball: 0.9, fire0: 1.1, fire1: 2.0, drop: 2.05, slam: 2.2, end: 2.9, R: 13, HIGH: 64, MAXN: 16 };
+const spike = {
+  name: "千針風暴", dur: SP.end, cut: [SP.cut0, SP.cut1],
+  start(U, player, kit, H) {
+    U.side = player.face; U.x0 = player.x; U.y0 = player.y; U.fy = kit.floorAt(player.x, player.y - 8);
+    U.cx = player.x; U.cy = player.y - 12; U.needles = []; U.stuck = []; U.spikes = []; U.cnt = new Map(); U.vol = 0; U.slammed = false; U.spin = 0;
+  },
+  update(U, dt, player, kit, H) {
+    const t = U.t, P = kit.POSES;
+    U.spin += dt * (t < SP.fire0 ? 6 : t < SP.fire1 ? 16 : 24);
+    if (t < SP.ball) { player.ultPose(t < SP.rise ? P.charge : P.rise, dt); return; }
+    // 刺球：升到半空（主角藏起來，換成刺球）
+    if (t < SP.slam) player.hideT = 0.1;
+    if (t < SP.drop) U.cy = U.y0 - 12 - (SP.HIGH - 12) * outCubic(clamp01((t - SP.ball) / 0.25));
+    else U.cy = U.y0 - SP.HIGH + (SP.HIGH - SP.R) * clamp01((t - SP.drop) / (SP.slam - SP.drop)) ** 2;   // 往下砸：越掉越快
+    // 連發尖針：每 0.07 秒一輪，每隻怪一根（對準），再加兩根亂射的
+    if (t >= SP.fire0 && t < SP.fire1 && t - SP.fire0 >= U.vol * 0.07) {
+      U.vol++;
+      if (U.vol % 3 === 1) kit.sfx("swing", "spike");
+      const foes = H.enemies().filter((e) => Math.abs(e.x - U.cx) < 230 && Math.abs(e.y - U.cy) < 170);
+      for (const e of foes) {
+        const tx = e.x + (rnd(U.vol, e.x) - 0.5) * 8, ty = e.y - 8, dx = tx - U.cx, dy = ty - U.cy, d = Math.hypot(dx, dy) || 1;
+        U.needles.push({ x: U.cx + (dx / d) * SP.R, y: U.cy + (dy / d) * SP.R, vx: (dx / d) * 560, vy: (dy / d) * 560, e, life: d / 560 + 0.02 });
+      }
+      for (let k = 0; k < 2; k++) {
+        const a = Math.PI * (0.15 + 0.7 * rnd(U.vol, k + 9)), v = 520;
+        U.needles.push({ x: U.cx, y: U.cy, vx: Math.cos(a) * v * (rnd(U.vol, k) < 0.5 ? -1 : 1), vy: Math.sin(a) * v, e: null, life: 0.6 });
+      }
+    }
+    // 尖針飛行：對準的針到了就刺；亂射的插進地上
+    for (const n of U.needles) {
+      n.life -= dt; n.x += n.vx * dt; n.y += n.vy * dt;
+      if (n.e && n.life <= 0 && !n.done) {
+        n.done = true;
+        if (!n.e.dead) { const c = (U.cnt.get(n.e) ?? 0) + 1; U.cnt.set(n.e, c); H.hit(n.e, c <= SP.MAXN ? 0.35 : 0.05, n.vx > 0 ? 1 : -1, { push: 0.4 }); }
+      } else if (!n.e && !n.done) {
+        const gy = kit.floorAt(n.x, n.y - 4);
+        if (n.y >= gy) { n.done = true; U.stuck.push({ x: n.x, y: gy, a: Math.atan2(n.vy, n.vx), t }); }
+        else if (n.life <= 0) n.done = true;
+      }
+    }
+    U.needles = U.needles.filter((n) => !n.done);
+    // 砸地：一道尖刺從落點往兩邊冒出來，全部擊飛
+    if (t >= SP.slam && !U.slammed) {
+      U.slammed = true; U.cy = U.fy - SP.R;
+      kit.shake(0.5, 4); kit.hitStop(0.1); kit.sfx("ultHit");
+      kit.flash(U.cx, U.fy - 10, 160, 4, 0.8, "#ffd890");
+      H.dust(U.cx, U.fy);
+      const [l, r] = kit.bounds?.() ?? [U.cx - 240, U.cx + 240];
+      // 第 2 輪：一叢一叢（每叢一根大的＋兩旁小的），叢跟叢之間留空；中間最高、往外越來越矮（第 1 輪一樣高、排成柵欄）
+      for (let cxk = -210; cxk <= 210; cxk += 30) {
+        const far = Math.abs(cxk) / 210, base = 34 - far * 20;
+        for (const [ox, hk, wk] of [[0, 1, 1], [-6, 0.55, 0.7], [6, 0.45, 0.65], [-11, 0.3, 0.5]]) {
+          const dx = cxk + ox + (rnd(cxk, ox + 3) - 0.5) * 6, x = U.cx + dx; if (x < l - 20 || x > r + 20) continue;
+          const gy = kit.floorAt(x, U.fy - 16); if (Math.abs(gy - U.fy) > 40) continue;
+          U.spikes.push({ x, y: gy, h: base * hk * (0.85 + rnd(cxk, ox) * 0.3), w: (3 + (1 - far) * 2) * wk + 1, lean: (dx > 0 ? 1 : -1) * (0.1 + rnd(cxk, ox + 7) * 0.3) * (ox ? 1.6 : 1), t0: t + Math.abs(dx) / 700 + (ox ? 0.03 : 0) });
+        }
+      }
+      for (const e of H.enemies()) if (Math.abs(e.x - U.cx) < 230 && Math.abs(e.y - U.fy) < 90) H.hit(e, 3.5, e.x < U.cx ? -1 : 1, { launch: true, push: 4 });
+    }
+    if (t >= SP.slam) { player.hideT = 0; player.x = U.cx; player.y = U.fy; player.face = U.side; player.ultPose(P.finish, dt); }
+  },
+  dim(U) { const t = U.t; return t < 0.35 ? (t / 0.35) * 1.1 : t < SP.slam + 0.2 ? 1.1 : 1.1 - clamp01((t - SP.slam - 0.2) / 0.5) * 1.1; },
+  lights(U, list) {
+    if (U.t >= SP.ball && U.t < SP.slam) list.push({ x: U.cx, y: U.cy, r: 70, lv: 1.2, col: "#ffb050" });
+    if (U.slammed && U.t < SP.slam + 0.4) list.push({ x: U.cx, y: U.fy - 10, r: 140, lv: 1.6 * (1 - (U.t - SP.slam) / 0.4), col: "#ffd890" });
+  },
+  draw(P, U) {
+    const t = U.t;
+    // ---- 刺球在地上的影子（越高越小、越淡）
+    if (t >= SP.ball && t < SP.slam) { const hgt = clamp01((U.fy - U.cy) / SP.HIGH), rx = 14 - 6 * hgt; for (let x = -rx; x <= rx; x++) if (dith(U.cx + x, U.fy, 0.6 - 0.35 * hgt)) P.blend(U.cx + x, U.fy - 1, AMB[0], 0.8); }
+    // ---- 刺球
+    if (t >= SP.ball && t < SP.slam + 0.05) {
+      const grow = outCubic(clamp01((t - SP.ball) / 0.2)), R = SP.R * (0.5 + 0.5 * grow), firing = t >= SP.fire0 && t < SP.fire1;
+      const N = 14, len = R * (0.7 + (firing ? 0.25 * (0.5 + 0.5 * Math.sin(t * 40)) : 0));
+      // 刺（先畫，球身蓋在根部）：三角形，左上那一面亮、右下暗，尖端亮米色
+      for (let i = 0; i < N; i++) {
+        const a = U.spin + (i / N) * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a), lit = -ca * 0.6 - sa * 0.8 > 0;
+        for (let s = 0; s <= len; s += 0.5) {
+          const u = s / len, w = (1 - u) * 2.4;
+          for (let q = -w; q <= w; q += 0.5) {
+            const x = U.cx + ca * (R - 1 + s) - sa * q, y = U.cy + sa * (R - 1 + s) + ca * q;
+            P.blend(x, y, u > 0.8 ? AMB[5] : q < 0 === lit ? AMB[lit ? 4 : 3] : AMB[lit ? 3 : 1], 1);
+          }
+        }
+      }
+      // 球身：左上亮、右下暗、外圈深；中間一顆金色星光（尖刺星的核）
+      for (let y = -R; y <= R; y++) for (let x = -R; x <= R; x++) {
+        const d = Math.hypot(x, y); if (d > R) continue;
+        const l = (-x - y) / (R * 1.4);
+        P.blend(U.cx + x, U.cy + y, d > R - 1.5 ? AMB[0] : l > 0.45 ? AMB[4] : l > 0.1 ? AMB[3] : l > -0.3 ? AMB[2] : AMB[1], 1);   // 第 3 輪：外圈加粗、亮面多一階（第 2 輪像太陽）
+      }
+      const pulse = 2 + Math.round(Math.sin(t * 20));
+      for (let k = -pulse; k <= pulse; k++) { P.blend(U.cx + k, U.cy, AMB[Math.abs(k) < 2 ? 6 : 5], 1); P.blend(U.cx, U.cy + k, AMB[Math.abs(k) < 2 ? 6 : 5], 1); P.glow(U.cx + k, U.cy, AMB_LIGHT, 0.5); }
+      // 轉的速度線：外面一圈斷斷續續的弧
+      if (firing) for (let i = 0; i < 18; i++) { if (i % 3 === 0) continue; const a = -U.spin * 0.5 + i * 0.35, rr = R + len + 3; P.blend(U.cx + Math.cos(a) * rr, U.cy + Math.sin(a) * rr, AMB[4], 0.55); }
+    }
+    // ---- 尖針：白色針尖、亮琥珀針身、暗尾，針尖發光
+    for (const n of U.needles) {
+      const v = Math.hypot(n.vx, n.vy) || 1, ux = n.vx / v, uy = n.vy / v;
+      // 第 2 輪：加粗成 2 格、拉長到 14（第 1 輪 1 格細線在畫面上幾乎看不到）
+      for (let s = 0; s < 14; s++) {
+        const x = n.x - ux * s, y = n.y - uy * s, c = s === 0 ? AMB[6] : s < 5 ? AMB[5] : s < 10 ? AMB[4] : AMB[2];
+        P.blend(x, y, c, s < 10 ? 1 : 0.6);
+        if (s > 0 && s < 11) P.blend(x - uy, y + ux, s < 6 ? AMB[4] : AMB[3], s < 10 ? 1 : 0.5);
+      }
+      P.glow(n.x, n.y, AMB_LIGHT, 0.8);
+    }
+    // ---- 插在地上的針：慢慢淡掉
+    for (const s0 of U.stuck) {
+      const age = t - s0.t, a = 1 - clamp01((age - 0.5) / 0.4); if (a <= 0) continue;
+      const ux = Math.cos(s0.a), uy = Math.sin(s0.a);
+      for (let k = 1; k < 7; k++) { const x = s0.x - ux * k, y = s0.y - uy * k; if (dith(x, y, a)) P.blend(x, y, k < 3 ? AMB[2] : AMB[4], 1); }
+    }
+    // ---- 地上冒出來的尖刺：從落點往兩邊一波一波冒出來，左亮右暗，冒到頂時尖端閃一下，最後縮回地裡
+    for (const k of U.spikes) {
+      const age = t - k.t0; if (age < 0) continue;
+      const up = age < 0.12 ? outCubic(age / 0.12) * 1.12 : age < 0.2 ? 1.12 - 0.12 * ((age - 0.12) / 0.08) : 1;
+      const sink = clamp01((age - 0.4) / 0.25), h = k.h * up * (1 - sink); if (h < 1) continue;
+      for (let j = 0; j <= h; j++) {
+        const u = j / k.h, w = k.w * (1 - j / Math.max(1, h)), cx = k.x + k.lean * j;
+        const wf = age > 0.34 && age < 0.4;   // 第 3 輪：縮回去之前全部白一下（ice-spikes 的白色定格）
+        for (let q = -w; q <= w; q += 0.5) P.blend(cx + q, k.y - j, wf ? AMB[6] : u > 0.85 && age < 0.25 ? AMB[6] : q < -w * 0.2 ? AMB[4] : q < w * 0.4 ? AMB[3] : AMB[1], 1);
+        P.blend(cx - w - 0.5, k.y - j, AMB[0], 1); P.blend(cx + w + 0.5, k.y - j, AMB[0], 1);
+      }
+      if (age < 0.25) P.glow(k.x + k.lean * h, k.y - h, AMB_LIGHT, 1 - age / 0.25);
+      // 根部噴土（兩三顆往外彈的小點）
+      if (age < 0.3) for (let d = 0; d < 3; d++) { const s = d % 2 ? 1 : -1, px = k.x + s * (3 + age * 40 * (1 + d * 0.4)), py = k.y - 2 - age * 30 + age * age * 160; P.blend(px, py, AMB[1], 1 - age / 0.3); }
+    }
+    // ---- 砸地的光圈：一圈往外擴的扁橢圓（網點淡出）
+    if (U.slammed) {
+      const age = t - SP.slam; if (age < 0.35) {
+        const rx = 20 + age * 520, ry = rx * 0.18, a = 1 - age / 0.35;
+        for (let i = 0; i < 160; i++) { const g = (i / 160) * Math.PI * 2, x = U.cx + Math.cos(g) * rx, y = U.fy - 2 + Math.sin(g) * ry; if (dith(x, y, a)) P.blend(x, y, AMB[5], 1); }
+      }
+    }
+  },
+};
+
+export const FORM_ULTS = { slime, can, bat, spike };
