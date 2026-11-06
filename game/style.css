@@ -1059,3 +1059,10 @@ body.touch .wm-card { width: min(40%, 230px); }
 .guide-pulse { animation: guidePulse .8s ease-in-out 5; position: relative; z-index: 2; }
 @keyframes guidePulse { 0%, 100% { filter: none; box-shadow: none; } 50% { filter: brightness(1.35); box-shadow: 0 0 0 2px #ffe066, 0 0 12px 3px rgba(255, 216, 74, .8); } }
 #qtrack .sys .main { font-style: normal; font-size: 10px; padding: 0 3px; margin-right: 3px; background: #c8861a; color: #fff6d0; border-radius: 2px; }
+/* 使用者 2026-11-06：首頁三顆按鈕一樣大；開始鍵不顯示目前進度（關卡名） */
+#startName { display: none !important; }
+#startBtn.tbig, .tmenu .tsmall { box-sizing: border-box; width: 232px; min-width: 0; height: 56px; padding: 0 22px; display: flex; align-items: center; justify-content: center; font-size: 19px; letter-spacing: 4px;
+  border: 16px solid transparent; }
+#startBtn.tbig { border-image: var(--plate-main) 16 fill / 16px; padding-left: 40px; }
+.tmenu .tsmall { border-image: var(--plate) 12 fill / 16px; }
+@media (max-height: 420px) { #startBtn.tbig, .tmenu .tsmall { width: 206px; height: 48px; font-size: 17px; } }
