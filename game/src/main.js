@@ -12,7 +12,7 @@ import { input, tickInput, initTouch, consume } from "./input.js";
 import { drawLevel, drawForeground, drawAtmosphere, sceneLights, lightStyle, LEVEL_W, FLOOR, H, TORCHES, TORCH_POS, WALL, geo, MAP_H } from "./level.js";
 import { initMap, flatMap, groundAt, floorAt, solidAt, moveX, surfaceRuns, setSolid } from "./map.js";
 import { drawPlug } from "./feature-art.js";
-import { TOWN_W, NPCS, townLights, drawTown, drawTownNpcs, drawTownFg, nearby } from "./town.js";
+import { TOWN_W, NPCS, townLights, drawTown, drawTownNpcs, drawTownFg, nearby, setDayPhase } from "./town.js";
 import { talk, ask, dialog, typewriter } from "./dialog.js";
 import * as frogFx from "../../pixelfx/src/fx/critters/frog.js";
 import { computeLight, flash, updateLight } from "./light.js";
@@ -591,6 +591,7 @@ if (STAGE_ID === "1-1" && !TOWN && !ENDLESS) setStatusAllow(["burn", "slime"]);
 // 元素場景物件（第 3 批）：黏液池、油桶、廚餘堆、漏電管線；水窪＝潮濕、火盆＝燃燒
 const hazards = createHazards({ stage: TOWN || ENDLESS ? "" : STAGE_ID, floor: FLOOR, torches: TOWN ? [] : TORCH_POS, puddles: TOWN ? [] : scenery.puddles, items: BARE ? (STAGE.hazards ?? []) : null });
 window.__game.hazards = hazards;
+window.__game.day = setDayPhase;   // 開發用：__game.day(0.25)＝中午、0.5＝日落、0.75＝半夜、null＝照真實時間
 // 10 批：水窪不要疊在元素物件、祭壇、機關上
 {
   const busy = [...hazards.list.map((h) => [h.x, h.y]), ...altars.map((a) => [a.x, a.y]), ...(STAGE.features ?? []).map((f) => [f.x, f.y])];
@@ -1240,9 +1241,8 @@ async function inn(name) {
     await talk(name, ["哎呀，新面孔～我是菇媽。", "累了就來睡一晚，血會回滿，公會的任務板也會換一批新的喔。", "出門前吃一道料理，會有加成～"]);
     guideNext("系統：最後，鎮子最右邊的路標。準備好了就去那裡選要去哪。");
   }
-  const v = await ask(name, "哎呀，歡迎光臨～要休息還是吃點東西？", [["休息、料理", "open"], ["聊天", "chat"], ["不用了", null]]);
-  if (v === "chat") return talk(name, [INN_CHAT[Math.floor(Math.random() * INN_CHAT.length)]]);
-  if (v !== "open") return;
+  // 使用者 2026-11-06：跟公會一樣，講完話直接跳旅館介面，不用再選選項（聊天的話改成有時候當招呼講）
+  else await talk(name, [Math.random() < 0.4 ? INN_CHAT[Math.floor(Math.random() * INN_CHAT.length)] : "哎呀，歡迎光臨～要休息還是吃點東西？"]);
   if (firstInn) guideFlash();   // 第一次打開：「睡一晚」閃一下
   await openInn({
     rest: async () => {

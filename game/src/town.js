@@ -144,10 +144,28 @@ function build() {
 }
 build();
 
+// ---- 白天與晚上（使用者 2026-11-06「城鎮中加入白天與夜晚」）
+//   用真實時間算：一整天 8 分鐘（白天 4 分、晚上 4 分），日出、日落各約 30 秒慢慢轉。換場景、重新整理都接得上。
+//   白天：天空換成藍天（地平線偏暖）、星星和流星淡掉、整個鎮變亮變暖、窗戶和路燈的光變弱、螢火蟲不出來；
+//   日出日落：地平線一片橘粉色。
+const DAY_LEN = 480, TAU = Math.PI * 2;
+let dayOverride = null;
+/** 開發用：固定在某個時間（0～1，0＝日出、0.25＝中午、0.5＝日落、0.75＝半夜；null＝照真實時間） */
+export const setDayPhase = (p) => (dayOverride = p);
+export function dayInfo() {
+  const p = dayOverride ?? (Date.now() / 1000 / DAY_LEN) % 1;
+  const d = Math.max(0, Math.min(1, 0.5 + Math.sin(p * TAU) * 2.5));
+  return { p, d, dusk: 1 - Math.abs(2 * d - 1) };
+}
+const DAY_SKY = [[74, 138, 216], [104, 164, 228], [146, 194, 238], [190, 220, 242], [232, 226, 206]];   // 天頂 → 地平線
+const DUSK_SKY = [[58, 48, 120], [128, 72, 140], [214, 104, 120], [250, 150, 96], [255, 196, 120]];
+const ramp = (st, f) => { const k = Math.max(0, Math.min(st.length - 1.001, f * (st.length - 1))), i = Math.floor(k), t = k - i; return st[i].map((v, j) => v + (st[i + 1][j] - v) * t); };
+
 /** 鎮上的固定光源 */
 export function townLights(time) {
-  const list = LIGHTS.map(([x, y, r, lv, col]) => ({ x, y, r: r + (r > 50 ? Math.floor(time * 6) % 2 : 0), lv, col }));
-  list.push({ x: 106, y: 128, r: 110, lv: 1.6, par: 0.12, col: "#ffd27a" });   // 坑底的大星星（遠景圖左邊那顆）
+  const dl = 1 - 0.75 * dayInfo().d;   // 白天燈光變弱
+  const list = LIGHTS.map(([x, y, r, lv, col]) => ({ x, y, r: r + (r > 50 ? Math.floor(time * 6) % 2 : 0), lv: lv * dl, col }));
+  list.push({ x: 106, y: 128, r: 110, lv: 1.6 * dl, par: 0.12, col: "#ffd27a" });   // 坑底的大星星（遠景圖左邊那顆）
   return list;
 }
 
@@ -161,38 +179,47 @@ export function drawTown(frame, lv, time) {
   const W = frame.w, cx = frame.ox | 0, cy = frame.oy | 0, out = frame.color, LB = frame.light, [TR, TG, TB] = tintOf();
   const of = Math.floor(cx * 0.12), om = Math.floor(cx * 0.35), os = Math.floor(cx * 0.04), SKYP = NIGHT.px;
   NIGHT.update(skyT === null ? 0 : Math.max(0, Math.min(0.1, time - skyT)));
+  const { d: DAY, dusk: DUSK } = dayInfo();
+  // 白天把場景調亮：每個顏色 ×(1＋0.75×白天)＋一點暖色；日落時再偏橘
+  // 第 2 輪：原本 ×1.75 太亮（白的地方爆掉、紫色石頭變粉彩）→ 只亮 30% 左右，藍色少加一點（夜景偏紫，白天要往暖、往中性色拉）
+  const mR = 1 + 0.32 * DAY + 0.2 * DUSK, mG = 1 + 0.3 * DAY + 0.02 * DUSK, mB = 1 + 0.1 * DAY - 0.12 * DUSK, aR = 12 * DAY + 8 * DUSK, aG = 11 * DAY, aB = 2 * DAY;
+  const lift = DAY + DUSK < 0.01 ? (v) => v : (v) => (0xff000000 | (Math.min(255, ((v >>> 16) & 255) * mB + aB) << 16) | (Math.min(255, ((v >>> 8) & 255) * mG + aG) << 8) | Math.min(255, (v & 255) * mR + aR)) >>> 0;
+  const skyRow = [];   // 每一列白天／日落的天空顏色
+  for (let y = 0; y < H; y++) { const f = y / (H * 0.62), a = ramp(DAY_SKY, f), b = ramp(DUSK_SKY, f), w = DUSK / Math.max(0.01, DAY + DUSK); skyRow.push(a.map((v, j) => v + (b[j] - v) * w)); }
+  const skyMix = Math.min(1, DAY + DUSK);
+  const daySky = (v, wy) => { if (skyMix < 0.01) return v; const c = skyRow[Math.max(0, Math.min(H - 1, wy))], k = skyMix; return (0xff000000 | (Math.round((((v >>> 16) & 255) * (1 - k)) + c[2] * k) << 16) | (Math.round((((v >>> 8) & 255) * (1 - k)) + c[1] * k) << 8) | Math.round(((v & 255) * (1 - k)) + c[0] * k)) >>> 0; };
   skyT = time;
   if (skyMask.length !== W * frame.h) skyMask = new Uint8Array(W * frame.h);
   skyMask.fill(0);
   for (let y = 0; y < H; y++) {
     const wy = y + cy, row = y * W;
     const sky = SKY[Math.max(0, Math.min(SKY.length - 1, Math.floor(wy / 13)))];
-    if (wy < 0 || wy >= H) { out.fill(wy < 0 ? SKYP[0] : sky, row, row + W); continue; }
+    if (wy < 0 || wy >= H) { out.fill(wy < 0 ? daySky(SKYP[0], 0) : lift(sky), row, row + W); continue; }
     const sy = Math.min(STARSKY_H - 1, wy);
     for (let x = 0; x < W; x++) {
       const i = row + x, gx = x + cx;
       let v = gx >= 0 && gx < TOWN_W ? MAIN[wy * TOWN_W + gx] : 0;
       if (v) {
-        out[i] = v;
+        out[i] = lift(v);
         if (lv[i] > 0.02 && !EMIT[wy * TOWN_W + gx]) LB[i] = 0xff000000 | (Math.min(255, TB[i] * 0.9) << 16) | (Math.min(255, TG[i] * 0.9) << 8) | Math.min(255, TR[i] * 0.9);
         continue;
       }
       const bg = MID[wy * MID_W + wrap(x + om, MID_W)] || FAR[wy * FAR_W + wrap(x + of, FAR_W)];
-      if (bg) out[i] = bg;
-      else { out[i] = SKYP[sy * STARSKY_W + wrap(x + os, STARSKY_W)]; skyMask[i] = 1; }
+      if (bg) out[i] = lift(bg);
+      else { out[i] = daySky(SKYP[sy * STARSKY_W + wrap(x + os, STARSKY_W)], wy); skyMask[i] = 1; }
     }
   }
   const add = (x, y, r, g, b, k) => { if (x < 0 || y < 0 || x >= W || y >= frame.h) return; const i = y * W + x, d = LB[i]; LB[i] = 0xff000000 | (Math.min(255, ((d >>> 16) & 255) + b * k) << 16) | (Math.min(255, ((d >>> 8) & 255) + g * k) << 8) | Math.min(255, (d & 255) + r * k); };
   // 坑底大星星的光柱（往上，柔和）
   const bx = 106 - of;
   for (let y = 0; y < 66 - cy; y++) for (let x = -16; x <= 16; x++) {
-    const k = (1 - Math.abs(x) / 17) ** 2 * (y / 66) * (0.6 + 0.15 * Math.sin(time * 1.3));
+    const k = (1 - Math.abs(x) / 17) ** 2 * (y / 66) * (0.6 + 0.15 * Math.sin(time * 1.3)) * (1 - 0.7 * DAY);
     add(bx + x, y, 255, 210, 120, k * 0.35);
   }
   // 螢火蟲
   for (let n = 0; n < 26; n++) {
     const fx = Math.round(rnd(n, 41) * TOWN_W + Math.sin(time * 0.6 + n) * 14) - cx, fy = Math.round(118 + rnd(n, 42) * 58 + Math.sin(time * 0.9 + n * 2) * 6) - cy;
-    const on = 0.5 + 0.5 * Math.sin(time * 2.2 + n * 1.7);
+    const on = (0.5 + 0.5 * Math.sin(time * 2.2 + n * 1.7)) * (1 - DAY);   // 螢火蟲只在晚上
     if (on < 0.15 || fx < 0 || fy < 0 || fx >= W || fy >= frame.h) continue;
     out[fy * W + fx] = 0xffa0f4d4;
     for (let y = -4; y <= 4; y++) for (let x = -4; x <= 4; x++) { const f = 1 - Math.hypot(x, y) / 4.5; if (f > 0) add(fx + x, fy + y, 200, 255, 140, f * f * on * 0.5); }
