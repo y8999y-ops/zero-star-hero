@@ -285,6 +285,8 @@ function absorb(it) {
   buildFormHud();
   return true;
 }
+/** 形態被動「星之光輝」：星星時大招傷害 +4%／級 */
+const ultPassive = () => (player.form === "star" ? 1 + 0.04 * rank("star", "p_star") : 1);
 function switchForm(id) {
   if (!id || id === player.form || !profile.forms.owned[id] || ult.on) return;
   if (profile.forms.fresh === id) { delete profile.forms.fresh; setTimeout(buildFormHud, 0); }
@@ -1370,7 +1372,7 @@ const ultHooks = {
     for (const e of enemies) {
       if (e.dead || ult.hitSet.has(e) || e.x < x0 || e.x > x1 || Math.abs(e.y - (ult.fy ?? e.y)) > 130) continue;   // 8b：只打同一層附近的
       ult.hitSet.add(e);
-      e.hit(player.roll(ULT_MULT * (1 + player.stats.ult / 100)), e.x < tx ? -1 : 1, { launch: true, push: 4 }, world);
+      e.hit(player.roll(ULT_MULT * (1 + player.stats.ult / 100) * ultPassive()), e.x < tx ? -1 : 1, { launch: true, push: 4 }, world);
       n++;
     }
     if (n) addCombo(n);
@@ -1378,7 +1380,7 @@ const ultHooks = {
   dust: (x, y) => { world.dust(x, y, 6); sfx("ultHit"); },
   // 形態大招（ult-forms.js）用的
   enemies: () => enemies.filter((e) => !e.dead),
-  hit(e, mult, dir, opts) { if (e.dead) return; e.hit(player.roll(mult * (1 + player.stats.ult / 100)), dir, opts, world); addCombo(1); },
+  hit(e, mult, dir, opts) { if (e.dead) return; e.hit(player.roll(mult * (1 + player.stats.ult / 100) * ultPassive()), dir, opts, world); addCombo(1); },
   view: () => { const v = viewRect(); return { l: camX + v.x0, r: camX + v.x0 + v.w, top: camY + v.y0 }; },   // 大招只打看得到的範圍
   puddle: (x, y) => hazards.addTemp({ type: "goo", x: Math.round(x), y, w: 44, ttl: 6 }),
   heal: (k) => { player.hp = Math.min(player.maxHp, player.hp + player.maxHp * k); },

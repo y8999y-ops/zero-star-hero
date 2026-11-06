@@ -9,7 +9,7 @@ import { GUILD_MAX, SYSTEM, sysActive, accept, abandon, turnIn, isReady, refresh
 import { isCore, subStep, coreTier, coreOf, CORES } from "./items.js";
 import { SLOTS, RARITY, AFFIXES, rerollAffix, maxPlus, enhanceRate, enhanceCost, enhanceUp, fmtStat, mainValue } from "./items.js";
 import { uiFx } from "./ui-fx.js";
-import { TREES, PATHS, rank as treeRank, canBuy, buy, refund, freePts, pathSpent, CAP_NEED } from "./skilltree.js";
+import { TREES, PATHS, rank as treeRank, canBuy, buy, refund, freePts, pathSpent, CAP_NEED, costOf } from "./skilltree.js";
 import { FORMS, CORE_STAT, CORE_COST, CARRY_MAX } from "./forms.js";
 import * as parryFx from "../../pixelfx/src/fx/impacts/parry.js";
 import * as burstFx from "../../pixelfx/src/fx/pickups/collect-burst.js";
@@ -418,6 +418,14 @@ export function openTree(form) {
       head.prepend(sw);
     }
     left.appendChild(head);
+    // 使用者 2026-11-06：形態被動（只有這個形態時有效，最高 10 級，越後面越貴）放在三條路線上面
+    const pn = TREES[id].find((x) => x.path === 4);
+    if (pn) {
+      const pr = treeRank(id, pn.id), prow = h("div", "tree-pas");
+      prow.appendChild(nodeEl(id, pn));
+      prow.appendChild(h("div", "tp-txt", `<b>形態被動・${pn.name}</b><span>${pn.desc(Math.max(1, pr))}</span><small>${pr >= pn.max ? "已滿級" : `下一級 ${costOf(pn, pr)} 點`}</small>`));
+      left.appendChild(prow);
+    }
     const grid = h("div", "tree-grid");
     for (let p = 0; p < 3; p++) {
       const col = h("div", "tree-col", `<div class="tree-path">${PATHS[p]}<em>${pathSpent(id, p)}</em></div>`);
@@ -437,7 +445,7 @@ export function openTree(form) {
       const r = treeRank(id, n.id);
       info.innerHTML = `<div class="tn">${ico(n.icon, "big")}<b>${n.name}</b><span>${r}/${n.max}</span></div><div class="td">${n.desc(Math.max(1, r))}</div>`;
       if (r < n.max) {
-        const b = ibtn("check", `投入 ${n.cost} 點`, () => invest(id, n));
+        const b = ibtn("check", `投入 ${costOf(n, r)} 點`, () => invest(id, n));
         if (!canBuy(id, n.id)) b.classList.add("off");
         info.appendChild(b);
       } else info.appendChild(h("span", "maxed", "MAX"));

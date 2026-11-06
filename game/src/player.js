@@ -203,6 +203,8 @@ export class Player {
     }
     if (input.attack && (this.state === "move" || (this.state === "attack" && this.atk.time >= this.atk.s.cancel))) this.startAttack(world);
     if ((this.buff.t -= dt) <= 0) Object.assign(this.buff, { atk: 0, spd: 0, move: 0 });
+    // 形態被動「黏液再生」：黏液星每秒回復 (0.9＋0.1×級)% 生命（1 級 1%、10 級 1.9%）
+    if (this.form === "slime" && this.hp > 0 && this.hp < this.maxHp) { const pr = rank("slime", "p_slime"); if (pr) this.hp = Math.min(this.maxHp, this.hp + this.maxHp * (0.009 + 0.001 * pr) * dt); }
 
     // ---- 各狀態
     const ctl = this.state === "move" ? 1 : this.state === "attack" ? 0.25 : 0;
@@ -261,12 +263,12 @@ export class Player {
         if (this.doubleReady) { this.doubleReady = false; this.doubleT = 1.2; }   // 二段飛：1.2 秒內可以再飛一次
       }
     } else if (this.state === "hurt") {
-      if (this.t >= 0.32) this.state = "move";
+      if (this.t >= 0.32 * (this.hurtK ?? 1)) this.state = "move";
     }
 
     // ---- 水平移動
     if (this.state !== "dash" && this.state !== "hurt" && this.state !== "charge" && this.state !== "fly") {
-      const target = input.move * RUN * (1 + this.stats.move / 100 + this.buff.move + (this.lightT > 0 ? 0.2 : 0) + (this.nightT > 0 ? 0.3 : 0)) * ctl;
+      const target = input.move * RUN * (1 + this.stats.move / 100 + this.buff.move + (this.lightT > 0 ? 0.2 : 0) + (this.nightT > 0 ? 0.3 : 0) + (this.form === "bat" ? 0.02 * rank("bat", "p_bat") : 0)) * ctl;   // 形態被動「夜翼」：移速 +2%／級
       const acc = (this.grounded ? ACC_GROUND : ACC_AIR) * dt;
       this.vx += Math.max(-acc, Math.min(acc, target - this.vx));
       if (this.state === "move" && input.move) this.face = Math.sign(input.move);
@@ -282,7 +284,9 @@ export class Player {
       } else if (input.jump && (this.grounded || this.coyote > 0 || this.jumps < 2)) {
         consume("jump");
         const first = this.grounded || this.coyote > 0;
-        this.vy = first ? JUMP_V : JUMP2_V;
+        // 形態被動「夜翼」：蝠翼星跳躍高度 +1.5%／級（高度跟初速平方成正比，所以初速乘開根號）
+        const jk = this.form === "bat" ? Math.sqrt(1 + 0.015 * rank("bat", "p_bat")) : 1;
+        this.vy = (first ? JUMP_V : JUMP2_V) * jk;
         this.jumps = first ? 1 : 2;
         this.grounded = false;
         this.coyote = 0;
@@ -433,8 +437,10 @@ export class Player {
     this.state = "hurt";
     this.t = 0;
     this.atk = null;
-    this.vx = (this.x >= fromX ? 1 : -1) * 170;
-    this.vy = -170;
+    // 形態被動「鐵底盤」：鐵罐星被打時擊退距離、硬直時間 -5%／級
+    this.hurtK = this.form === "can" ? 1 - 0.05 * rank("can", "p_can") : 1;
+    this.vx = (this.x >= fromX ? 1 : -1) * 170 * this.hurtK;
+    this.vy = -170 * this.hurtK;
     this.grounded = false;
     hitStop(0.07);
     shake(0.25, 3);

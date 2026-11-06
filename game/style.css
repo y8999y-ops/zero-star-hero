@@ -1160,3 +1160,9 @@ body.playing #hud #hudMenu #btnForms { display: flex !important; }
 .fm-meta { font-size: 12px; color: #8ae0ff; }
 .fm-desc { font-size: 12px; color: var(--ink); line-height: 1.45; margin-top: 2px; }
 .fm-btns { grid-column: 2; display: flex; gap: 6px; margin-top: 4px; }
+/* 使用者 2026-11-06：技能樹最上面的「形態被動」一列 */
+.tree-pas { display: flex; align-items: center; gap: 8px; margin: 2px 0 6px; padding: 4px 6px; border: 2px solid rgba(255, 216, 74, .45); background: rgba(40, 28, 6, .35); }
+.tree-pas .tp-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.tree-pas .tp-txt b { font-size: 13px; color: var(--gold); }
+.tree-pas .tp-txt span { font-size: 12px; color: var(--ink); }
+.tree-pas .tp-txt small { font-size: 11px; color: var(--dim); }

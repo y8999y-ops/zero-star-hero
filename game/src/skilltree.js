@@ -50,6 +50,17 @@ export const TREES = {
     { id: "b_swarm", path: 3, max: 1, cost: 3, icon: "n_b_swarm", name: "蝙蝠群", desc: () => "滑翔時放出 3 隻小蝙蝠，自動去咬附近的敵人" },
   ],
 };
+// 使用者 2026-11-06：每個形態一個「形態被動」（路線 4，在樹的最上面）——只有變成那個形態時有效，最高 10 級，越後面越貴（點滿 22 點），
+//   不算進三條路線，也不影響最終節點的條件。效果寫在用到的地方：星星＝main.js 大招、其他＝player.js
+export const PASSIVE_COSTS = [1, 1, 1, 2, 2, 2, 3, 3, 3, 4];
+const pas = (form, id, icon, name, desc) => ({ id, path: 4, max: 10, costs: PASSIVE_COSTS, cost: 1, icon, name, desc });
+TREES.star.push(pas("star", "p_star", "st_ult", "星之光輝", (r) => `（星星時）大招傷害 +${4 * r}%`));
+TREES.slime.push(pas("slime", "p_slime", "st_hp", "黏液再生", (r) => `（黏液星時）每秒回復 ${(0.9 + 0.1 * r).toFixed(1)}% 生命`));
+TREES.bat.push(pas("bat", "p_bat", "st_move", "夜翼", (r) => `（蝠翼星時）移動速度 +${2 * r}%、跳躍高度 +${(1.5 * r).toFixed(1)}%`));
+TREES.can.push(pas("can", "p_can", "st_def", "鐵底盤", (r) => `（鐵罐星時）被打時的擊退距離和硬直時間 -${5 * r}%`));
+/** 下一級要幾點（被動越後面越貴） */
+export const costOf = (n, r) => (n.costs ? n.costs[Math.min(r, n.costs.length - 1)] : n.cost);
+const nodeSpent = (n, r) => (n.costs ? n.costs.slice(0, r).reduce((s, c) => s + c, 0) : r * n.cost);
 export const CAP_NEED = 3;   // 最終節點：三條路線各要幾點
 
 let forms = null;
@@ -61,14 +72,14 @@ const nodeOf = (form, id) => TREES[form]?.find((n) => n.id === id);
 /** 某條路線花了幾點 */
 export function pathSpent(form, path) {
   const t = forms?.owned?.[form]?.tree ?? {};
-  return (TREES[form] ?? []).filter((n) => n.path === path).reduce((s, n) => s + (t[n.id] ?? 0) * n.cost, 0);
+  return (TREES[form] ?? []).filter((n) => n.path === path).reduce((s, n) => s + nodeSpent(n, t[n.id] ?? 0), 0);
 }
-export const spent = (form) => [0, 1, 2, 3].reduce((s, p) => s + pathSpent(form, p), 0);
+export const spent = (form) => [0, 1, 2, 3, 4].reduce((s, p) => s + pathSpent(form, p), 0);
 export const freePts = (form) => (forms?.owned?.[form]?.pts ?? 0) - spent(form);
 /** 能不能再點一級：點數夠、沒滿、最終節點要三條路線各 3 點 */
 export function canBuy(form, id) {
   const n = nodeOf(form, id);
-  if (!n || rank(form, id) >= n.max || freePts(form) < n.cost) return false;
+  if (!n || rank(form, id) >= n.max || freePts(form) < costOf(n, rank(form, id))) return false;
   if (n.path === 3 && [0, 1, 2].some((p) => pathSpent(form, p) < CAP_NEED)) return false;
   return true;
 }
