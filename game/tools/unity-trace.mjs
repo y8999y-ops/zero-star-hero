@@ -44,7 +44,7 @@ const { updateCombatFx, drawCombatFx, drawDamageNumbers, dustFx, fxState } = awa
 const { updateLight, computeLight } = await import("../src/light.js");
 const L = await import("../src/level.js");
 const { A } = await import("../src/assets.js");
-const { floorAt, solidAt } = await import("../src/map.js");
+const { floorAt, solidAt, moveX, groundAt } = await import("../src/map.js");
 const { STAGE_1_1 } = await import("../src/stage.js");
 const { PAL, createFx } = await import("../../pixelfx/src/core/index.js");
 const { GLOW } = await import("../src/assets.js");
@@ -57,6 +57,17 @@ const { FORMS } = await import("../src/forms.js");
 const { TREES, bindForms, rank } = await import("../src/skilltree.js");
 const { drawWave, WAVE_T, WAVE_V } = await import("../src/starwave.js");
 const { drawMiniBat } = await import("../src/minibat.js");
+const IT = await import("../src/items.js");
+const { computeStats } = await import("../src/stats.js");
+const { drawMark, drawStrike, drawShield, drawReson, drawKingBack, drawKingFront, STRIKE_T } = await import("../src/setfx.js");
+const { drawTrail, drawDizzy, TRAIL_T } = await import("../src/corefx.js");
+const sparkFx = await import("../../pixelfx/src/fx/impacts/hit-spark.js");
+const levelUpFx = await import("../../pixelfx/src/fx/ui/level-up.js");
+const { Drops } = await import("../src/loot.js");
+const { drawCore, drawAbsorbBeams } = await import("../src/coreart.js");
+const { makeCore } = await import("../src/forms.js");
+const { xpNeed, MAX_LV, compare } = await import("../src/stats.js");
+const collectBurstFx = await import("../../pixelfx/src/fx/pickups/collect-burst.js");
 const starFallFx = await import("../../pixelfx/src/fx/arcane/star-fall.js");
 const slamFx = await import("../../pixelfx/src/fx/impacts/ground-slam.js");
 const { COMBO_MP } = await import("../src/player.js");
@@ -68,6 +79,20 @@ const SCRIPT = SC.events.slice().sort((a, b) => a[0] - b[0]), TICKS = SC.ticks, 
 const treeOwned = {};
 for (const f of Object.keys(TREES)) treeOwned[f] = { pts: 0, tree: SC.tree === "max" ? Object.fromEntries(TREES[f].map((n) => [n.id, n.max])) : {} };
 bindForms({ owned: treeOwned });
+// 穿搭（環境變數 TRACE_VARIANT 選 SC.variants 裡的一組；沒有＝沒穿裝備）
+const VARIANT = process.env.TRACE_VARIANT ?? "";
+const V = VARIANT ? SC.variants[VARIANT] : SC.starter ?? null;   // 沒選穿搭＝新存檔的初始裝備（生鏽星核＋麻布衣）
+const equip = { weapon: null, head: null, body: null, hands: null, feet: null, acc1: null, acc2: null };
+function specItem(sp) {
+  const kind = sp.base ? IT.BASES[sp.base].kind : sp.unique ? IT.UNIQUES[sp.unique].kind : IT.MYTHS[sp.myth].kind;
+  const it = { uid: "x", kind, rarity: sp.rarity, ilvl: sp.ilvl, plus: sp.plus ?? 0, main: { id: sp.main[0], v: sp.main[1] }, affixes: (sp.affixes ?? []).map(([id, tier, v]) => ({ id, tier, v })), name: sp.name ?? "x", icon: "x" };
+  if (sp.base) it.base = sp.base;
+  if (sp.unique) it.unique = sp.unique;
+  if (sp.myth) { it.myth = sp.myth; it.awaken = { kills: sp.kills ?? 0 }; }
+  if (sp.set) it.set = sp.set;
+  return it;
+}
+if (V) for (const [slot, sp] of Object.entries(V.equip)) equip[slot] = specItem(sp);
 
 const W = 384, H = 216, ZOOM = 1.38, STEP = 1 / 60, LEVEL_W = L.LEVEL_W, MAP_H = L.MAP_H;
 const VIEW_DY = Math.round(0.05 * H / ZOOM);
@@ -77,11 +102,127 @@ const overlaps = (a, b) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b
 // ---- 世界（main.js 的子集：只有地形、主角、史萊姆、火把、戰鬥特效）
 const player = new Player(STAGE_1_1.start.x, STAGE_1_1.start.y);
 const enemies = [];
+if (V) player.setStats(computeStats(equip, V.lv ?? 1));
+const profile = { lv: V?.lv ?? 1, xp: 0, coins: 0, inv: [], forms: { owned: { star: {} } } };
+const drops = new Drops(), coins = [];
+const KILL_XP = { slime: 5, bat: 5, trash: 12, gold: 20, hog: 9 }, DROP_RATE = { slime: 0.1, bat: 0.1, trash: 0.35, gold: 1, hog: 0.2 };
+const ilvlNow = (bonus = 0) => profile.lv + bonus + Math.floor(Math.random() * 2);
+function gainXp(n) {
+  if (profile.lv >= MAX_LV) return;
+  profile.xp += n;
+  let up = false;
+  while (profile.lv < MAX_LV && profile.xp >= xpNeed(profile.lv)) { profile.xp -= xpNeed(profile.lv); profile.lv++; up = true; }
+  if (!up) return;
+  player.setStats(computeStats(equip, profile.lv));
+  player.hp = player.maxHp;
+  spawn(levelUpFx, { x: Math.round(player.x), y: Math.round(player.y), light: 0.45, seed: profile.lv });
+  flash(player.x, player.y - 12, 90, 3, 0.8, "#ffd84a");
+}
+function dropItem(x, y, minR = 0, opts = {}) {
+  const r = opts.rarity ?? IT.rollRarity(player.stats.mf, minR);
+  const item = IT.makeItem(opts.ilvl ?? ilvlNow(), r, opts);
+  drops.add(item, x, y, opts.dir);
+  if (item.rarity === IT.R.legend) { flash(x, y, 110, 4, 1, "#ff8a2a"); hitStop(0.12); shake(0.4, 3); }
+  else if (item.rarity === IT.R.epic) { flash(x, y, 90, 3, 0.6, "#b878ff"); shake(0.25, 2); hitStop(0.06); }
+  else if (item.rarity === IT.R.rare) shake(0.15, 2);
+}
+function pickUp(d) {
+  if (d.item.kind === "formcore") return false;
+  const it = d.item, better = compare(it, equip, profile.lv)?.better;
+  if (profile.inv.length >= 100) return false;
+  it.new = true;
+  profile.inv.push(it);
+  if (it.kind === "junk" && Math.random() < 0.4) {}
+  if (it.rarity >= IT.R.rare) spawn(collectBurstFx, { x: Math.round(player.x), y: Math.round(player.y) - 10, palette: it.rarity === IT.R.legend ? PAL.ember : ["#1e1206", "#4a2c08", "#86520c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"], light: 0.4 });
+  return true;
+}
+let absorbHp = null;
+function updateAbsorb(dt) {
+  const cores = drops.list.filter((d) => d.item.kind === "formcore" && d.landed && d.t > 0.45 && !d.got);
+  let near = null;
+  for (const d of cores) if (Math.abs(d.x - player.x) < 26 && Math.abs(d.y - player.y) < 30 && (!near || Math.abs(d.x - player.x) < Math.abs(near.x - player.x))) near = d;
+  const hit = absorbHp !== null && player.hp < absorbHp;
+  absorbHp = player.hp;
+  for (const d of cores) if (d !== near && d.hold) d.hold = Math.max(0, d.hold - dt * 3);
+  if (!near) return;
+  if (hit && near.hold > 0) { near.hold = 0; return; }
+  if (input.absorb && !ult.on) {
+    near.hold = Math.min(1, (near.hold ?? 0) + dt / 1);
+    if (near.hold >= 1) { near.got = true; absorbIt(near.item); }
+  } else near.hold = Math.max(0, (near.hold ?? 0) - dt * 3);
+}
+function absorbIt(it) {
+  spawn(collectBurstFx, { x: Math.round(player.x), y: Math.round(player.y) - 12, palette: FORM_BURST[it.form], light: 0.7 });
+  spawn(collectBurstFx, { x: Math.round(player.x), y: Math.round(player.y) - 12, palette: FORM_BURST[it.form], light: 0.4, seed: 7 }, { speed: 0.7 });
+  flash(player.x, player.y - 12, 120, 4, 0.9, FORMS[it.form].color);
+  shake(0.18, 2.5);
+}
+const mythOn = (id) => Object.values(equip).find((it) => it?.myth === id);
+const strikes = [], trail = [];
+let comet = null, noisyT = 4, combatT = 0, idleT = 0, boomDepth = 0;
+const NOISY = [["a", { atk: 0.3 }], ["b", { spd: 0.3 }], ["c", { move: 0.3 }], ["d", { atk: 0.3 }]];
+function updateUniques(dt) {
+  if (player.has("noisy") && (noisyT -= dt) <= 0) {
+    noisyT = 10;
+    const [line, buff] = NOISY[Math.floor(Math.random() * NOISY.length)];
+    Object.assign(player.buff, { atk: 0, spd: 0, move: 0, ...buff, t: player.core("noisy") || 5 });
+  }
+  const fighting = enemies.some((e) => !e.dead && e.kind !== "gold" && Math.abs(e.x - player.x) < 220 && Math.abs(e.y - player.y) < 140);
+  idleT = fighting ? 0 : idleT + dt;
+  combatT = fighting ? combatT + dt : idleT > 3 ? 0 : combatT;
+  player.dmgMul = player.has("overtime") ? 1 + Math.min(1, Math.floor(combatT / 10) * 0.05) : 1;
+}
+function updateCoreFx(dt) {
+  for (const e of enemies) {
+    if (e.dizzyT > 0) e.dizzyT -= dt;
+    if (!(e.flungT > 0) || e.dead) continue;
+    e.flungT -= dt;
+    if (Math.abs(e.vx) < 40) continue;
+    for (const o of enemies) if (!o.dead && !e.flungHit.has(o) && overlaps(e.box(), o.box())) { e.flungHit.add(o); o.hit({ dmg: e.flungDmg, crit: false }, Math.sign(e.vx), { push: 3 }, world); }
+  }
+  const x = player.core("comet");
+  if (comet && player.state === "dash" && x) trail.push({ x: player.x, y: player.y - 10, t: 0, seed: trail.length * 7 + (sceneClock * 60 | 0) });
+  else if (player.state !== "dash") comet = null;
+  for (const p of trail) {
+    p.t += dt;
+    if (!comet || p.t > 0.45) continue;
+    for (const e of enemies) if (!e.dead && !comet.hit.has(e) && overlaps({ x0: p.x - 6, x1: p.x + 6, y0: p.y - 14, y1: p.y + 10 }, e.box())) { comet.hit.add(e); e.hit(player.roll(x / 100), player.face, { push: 1 }, world); }
+  }
+  for (let i = trail.length - 1; i >= 0; i--) if (trail[i].t > TRAIL_T) trail.splice(i, 1);
+}
+function onCritHit(e, r) {
+  if (r?.crit && player.core("sharp") && !e.dead) e.hit({ dmg: r.dmg * player.core("sharp") / 100, crit: false }, player.face, { push: 0 }, world);
+  if (!r?.crit || !player.set4("meteor") || !e.box) return;
+  if (e.meteorMark > 0) { e.meteorMark = 0; strikes.push({ x: e.x, y: (e.box().y0 + e.box().y1) / 2, t: 0, e }); }
+  else e.meteorMark = 5;
+}
+function heartBurst(from) {
+  const it = mythOn("fallheart");
+  if (!it) return;
+  const st = IT.awakenStage(it), r = st >= 2 ? 60 : 40, mult = st >= 3 ? 1.6 : 0.8, el = ELEM[from] ?? null;
+  const pal = { burn: ["#4a1712", "#c9281f", "#f2561d", "#ff8a2a", "#ffc23d", "#ffe26b", "#fff3a6", "#ffffff"], slime: PAL.poison, shock: ["#0c2a60", "#1e64b0", "#3ab8f0", "#9af0ff", "#f0ffff", "#ffffff"], poison: ["#1a0a2a", "#3e1466", "#6a28a8", "#8ae040", "#e8ff70", "#ffffff"] }[el] ?? PAL.gold;
+  spawn(explosion, { x: Math.round(player.x), y: Math.round(player.y - 10), palette: pal, accent: pal, light: 0.6, seed: (Math.random() * 99) | 0 }, { speed: 1.6 });
+  flash(player.x, player.y - 10, r * 2, 3, 0.3, pal[4]);
+  world.hitArea({ x0: player.x - r, x1: player.x + r, y0: player.y - r, y1: player.y + 10 }, () => player.roll(mult), player.face, { push: 3, elem: el });
+}
+function mythKill() {
+  for (const it of Object.values(equip)) {
+    if (!it?.myth) continue;
+    const before = IT.awakenStage(it);
+    it.awaken.kills++;
+    const after = IT.awakenStage(it);
+    if (after > before) {
+      flash(player.x, player.y - 14, 120, 4, 0.6, "#fff0a0"); shake(0.3, 3);
+      spawn(levelUpFx, { x: Math.round(player.x), y: Math.round(player.y), light: 0.55, seed: after * 7, text: "AWAKEN!", palette: ["#2a1405", "#5c3008", "#9a5a0e", "#d48e18", "#f5b92c", "#ffde5e", "#fff4bc", "#ffffff"] });
+      player.setStats(computeStats(equip, V?.lv ?? 1));
+    }
+  }
+}
 for (const t of L.TORCH_POS) spawn(A.brazier, { x: t.x, y: t.y }, { layer: "back", keep: true }).update(Math.random() * 3);
 for (const sp of STAGE_1_1.spawns) {
   if (sp.k !== "slime" || sp.x > 1900) continue;   // 第一段：睡著的那隻＋三隻
   const e = new Enemy(sp.k, sp.x, sp.y);
-  e.x0 = sp.x; if (sp.deep) e.deepSleep = true;
+  e.x0 = sp.x; if (sp.core) e.core = sp.core; if (sp.deep) e.deepSleep = true;
   enemies.push(e);
 }
 const shots = [], waves = [], minis = [];
@@ -110,12 +251,14 @@ function switchForm(id) {
   if (!id || id === player.form) return;
   if (sceneClock < formCdUntil) return;
   formCdUntil = sceneClock + FORM_CD;
+  const prevForm = player.form;
   player.setForm(id);
   player.turnT = 0.09;
   if (id === "star" && rank("star", "s_origin") && sceneClock - originT > 3) { originT = sceneClock; player.mp = Math.min(player.maxMp, player.mp + 10); }
   if (id === "star" && rank("star", "s_return")) player.skillCd *= 0.5;
   if (id === "slime" && rank("slime", "g_film")) player.filmT = 3;
   if (id === "can" && rank("can", "c_dent")) player.dentT = 3;
+  heartBurst(prevForm);
   if (id === "bat" && rank("bat", "b_night")) player.nightT = 3;
   if (id === "spike" && rank("spike", "k_curl")) player.curlT = 3;
   player.invuln = Math.max(player.invuln, 0.15);
@@ -193,6 +336,7 @@ const world = {
     for (const e of enemies) if (!e.dead && overlaps(box, e.box())) {
       const r = typeof dmg === "function" ? dmg() : dmg, poisoned = e.st?.poison > 0;
       e.hit(r, dir, opts, world, box); n++;
+      onCritHit(e, r);
       if (poisoned && player.form === "bat" && rank("bat", "b_blood")) player.hp = Math.min(player.maxHp, player.hp + (r.dmg ?? r) * 0.03);
     }
     if (n) addCombo(n);
@@ -200,7 +344,7 @@ const world = {
   },
   hitOnce(box, hit, dmg, dir, opts) {
     let n = 0;
-    for (const e of enemies) if (!e.dead && !hit.has(e) && overlaps(box, e.box())) { hit.add(e); const r = dmg(); e.hit(r, dir, opts, world, box); n++; }
+    for (const e of enemies) if (!e.dead && !hit.has(e) && overlaps(box, e.box())) { hit.add(e); const r = dmg(); e.hit(r, dir, opts, world, box); onCritHit(e, r); n++; }
     if (n) { addCombo(n); hitStop(0.05); shake(0.15, 2); }
     return n;
   },
@@ -214,14 +358,40 @@ const world = {
   stepDust(x, y) { dustFx("step", x, y); },
   skidDust(x, y, dir) { dustFx("skid", x, y, false, dir); },
   dust(x, y, n) { spawn(A.dust, { x: Math.round(x), y: Math.round(y), flip: Math.random() < 0.5 }, { speed: 1.8 }); },
-  dropCoins() {},
+  dropCoins(x, y, n) { for (let i = 0; i < n; i++) coins.push({ x, y, vx: (Math.random() - 0.5) * 160, vy: -120 - Math.random() * 140, t: 0 }); },
   onPlayerHurt() {
     if (player.form === "slime" && rank("slime", "g_spring") && Math.random() < 0.2) {
       for (const e of enemies) if (!e.dead && Math.abs(e.x - player.x) < 44 && Math.abs(e.y - player.y) < 40) { e.vx = (e.x >= player.x ? 1 : -1) * 260; e.vy = -160; e.stun = Math.max(e.stun, 0.5); }
       flash(player.x, player.y - 12, 60, 2, 0.25, "#b4f890");
     }
   },
-  onKill(e) { stats.kills++; if (e.sqT > 0) hitStop(0.08); },
+  onKill(e) {
+    stats.kills++; if (e.sqT > 0) hitStop(0.08);
+    mythKill();
+    gainXp((KILL_XP[e.kind] ?? 5) * (e.elite ? 4 : 1));
+    if (e.core) { const b = e.box(); drops.add(makeCore(e.core), e.x, (b.y0 + b.y1) / 2, 1); }
+    const b = e.box(), cy = (b.y0 + b.y1) / 2;
+    if (e.elite || Math.random() < (DROP_RATE[e.kind] ?? 0.1) * (1 + player.stats.mf / 200)) dropItem(e.x, cy, 0, { ilvl: ilvlNow(0) });
+    if (player.has("hardhat") && boomDepth < 6 && Math.random() * 100 < 25) {
+      const big = player.has("hardhat") ? 1.5 : 1, rx = 34 * big;
+      boomDepth++;
+      spawn(explosion, { x: Math.round(e.x), y: Math.round(cy), palette: PAL.ember, accent: PAL.lava, light: GLOW.skill * 0.7, seed: (Math.random() * 99) | 0 }, { speed: 1.6 });
+      flash(e.x, cy, 70, 3, 0.3, "#ff8a30");
+      world.hitArea({ x0: e.x - rx, x1: e.x + rx, y0: cy - rx, y1: cy + rx }, () => player.roll(1.2), e.x < player.x ? -1 : 1, { launch: true, push: 2 });
+      shake(0.2, 2);
+      boomDepth--;
+    }
+  },
+  cometStart() { comet = { hit: new Set() }; },
+  coreMeteor() {
+    const e = world.nearestEnemy(player.x, player.y, 320, player.face) ?? world.nearestEnemy(player.x, player.y, 320);
+    if (e) strikes.push({ x: e.x, y: (e.box().y0 + e.box().y1) / 2, t: 0, e, mult: 1.2 });
+  },
+  coreStun(fromX, y) {
+    let best = null, bd = 48;
+    for (const e of enemies) { if (e.dead) continue; const d = Math.abs(e.x - fromX) + Math.abs(e.y - y) * 0.3; if (d < bd) { bd = d; best = e; } }
+    if (best) { best.stun = Math.max(best.stun, 1); best.dizzyT = 1; }
+  },
 };
 
 // ---- 鏡頭（main.js 的 snapCam、followCam）
@@ -278,6 +448,25 @@ function skillTreeBoom(s) {
     if (rank("slime", "g_split")) for (const vy of [-140, 0, 140]) world.spawnShotlet(x, y, vy ? s.dir : -s.dir, "slime", { vy, mult: 0.5, life: 0.28 });
   }
 }
+const COIN_PAL = { k: "#3a1e08", h: "#fff2a8", g: "#ffc83a", G: "#c07c18", H: "#6e3c10" };
+const { hex } = await import("../../pixelfx/src/core/index.js");
+const COIN_FRAMES = [
+  [".kkkk.", "khhgGk", "khgGGk", "kggGGk", "kggGHk", "kgGGHk", ".kkkk."],
+  [".kk.", "khgk", "khGk", "kgGk", "kgGk", "kGHk", ".kk."],
+  [".k.", "kGk", "kGk", "kGk", "kGk", "kHk", ".k."],
+  [".kk.", "kgGk", "kgGk", "kgGk", "kGHk", "kGHk", ".kk."],
+].map((rows) => rows.map((r) => [...r].map((ch) => (ch === "." ? 0 : hex(COIN_PAL[ch]) >>> 0))));
+const COIN_LIGHT = hex("#8a5a10") >>> 0;
+function drawCoins() {
+  const Cc = frame.color, L = frame.light, Wf = frame.w;
+  for (const c of coins) {
+    const spr = COIN_FRAMES[Math.floor(c.t * 10 + c.x * 0.1) & 3], w = spr[0].length;
+    const x = Math.round(c.x) - frame.ox - (w >> 1), y = Math.round(c.y) - frame.oy - 3;
+    spr.forEach((row, j) => row.forEach((col, i) => { const px = x + i, py = y + j; if (col && px >= 0 && py >= 0 && px < Wf && py < frame.h) Cc[py * Wf + px] = col; }));
+    const lx = x + (w >> 1), ly = y + 3;
+    if (lx >= 0 && ly >= 0 && lx < Wf && ly < frame.h) L[ly * Wf + lx] = COIN_LIGHT;
+  }
+}
 function tick(dt) {
   tickInput(dt);
   if (juice.shakeT > 0) juice.shakeT -= dt;
@@ -296,8 +485,15 @@ function tick(dt) {
   ultCd -= dt;
   const ultReady = player.mp >= ULT_MP && !ult.on && ultCd <= 0;
   if (input.ult && !ultReady && !ult.on) consume("ult");
-  if (input.ult && ultReady && player.state !== "hurt") { consume("ult"); player.mp -= ULT_MP; ultCd = 1; startUlt(player, null); return; }
+  if (input.ult && ultReady && player.state !== "hurt") { consume("ult"); player.mp -= ULT_MP; ultCd = 1; startUlt(player, null);
+    if (player.set4("reson")) player.resonT = 10;
+    const crown = mythOn("starking");
+    if (crown) { const st = IT.awakenStage(crown); player.kingT = st >= 2 ? 12 : 8; if (st >= 3) player.mp = Math.min(player.maxMp, player.mp + ULT_MP / 2); }
+    return; }
   player.update(dt, world);
+  updateUniques(dt);
+  drops.update(dt, player, 16, pickUp);
+  updateAbsorb(dt);
   for (const e of enemies) {
     if (e.dead) continue;
     e.update(dt, player, world);
@@ -307,6 +503,7 @@ function tick(dt) {
     }
   }
   separate(dt);
+  updateCoreFx(dt);
   for (let i = enemies.length - 1; i >= 0; i--) if (enemies[i].dead) enemies.splice(i, 1);
   // 技能彈（main.js 的「火球」段）
   for (const s of shots) {
@@ -349,6 +546,34 @@ function tick(dt) {
     if (tgt && m.cd <= 0 && Math.abs(tgt.x - m.x) < 10 && Math.abs(ty - m.y) < 12) { m.cd = 0.6; tgt.hit(player.roll(0.4), m.vx >= 0 ? 1 : -1, { push: 1, elem: "poison" }, world); }
   }
   for (let i = minis.length - 1; i >= 0; i--) if (minis[i].life <= 0) minis.splice(i, 1);
+  for (const e of enemies) if (e.meteorMark > 0) e.meteorMark -= dt;
+  for (const s of strikes) {
+    s.t += dt;
+    if (s.t >= STRIKE_T && !s.done) {
+      s.done = true;
+      spawn(sparkFx, { x: Math.round(s.x), y: Math.round(s.y), palette: ["#6e3a0c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"], light: 0.6 });
+      flash(s.x, s.y, 50, 2.5, 0.2, "#ffe066"); shake(0.12, 2);
+      if (!s.e.dead) s.e.hit(player.roll(s.mult ?? 0.8), player.face, { push: 2 }, world);
+    }
+  }
+  for (let i = strikes.length - 1; i >= 0; i--) if (strikes[i].done) strikes.splice(i, 1);
+  for (const c of coins) {
+    c.t += dt;
+    if (c.t < 0.45) {
+      c.vy += 700 * dt;
+      const py = c.y + 2;
+      c.x = moveX(c.x, c.x + c.vx * dt, c.y + 2, 4, 3);
+      c.y += c.vy * dt;
+      const gy = c.vy >= 0 ? groundAt(c.x, py, c.y + 2) : null;
+      if (gy !== null) { c.y = gy - 2; c.vy *= -0.45; c.vx *= 0.6; }
+    } else {
+      const dx = player.x - c.x, dy = player.y - 12 - c.y, d = Math.hypot(dx, dy) || 1, sp = 120 + (c.t - 0.45) * 900;
+      c.x += (dx / d) * sp * dt;
+      c.y += (dy / d) * sp * dt;
+      if (d < 10) { c.got = true; profile.coins++; }
+    }
+  }
+  for (let i = coins.length - 1; i >= 0; i--) if (coins[i].got) coins.splice(i, 1);
   updateFx(dt);
   if ((stats.comboT -= dt) <= 0 && stats.combo) stats.combo = 0;
   followCam(dt);
@@ -376,15 +601,26 @@ function render() {
   L.drawAtmosphere(frame, sceneClock);
   PROBE("2");
   if (!ult.on) drawFx(frame, "back");
+  drops.draw(frame);
+  for (const d of drops.list) if (d.item.kind === "formcore" && d.hold > 0 && d.cx !== undefined) drawAbsorbBeams(frame, d.cx, d.cy, player.x, player.y - 12, sceneClock, d.item.form, d.hold);
   PROBE("3");
   for (const e of enemies) e.draw(frame);
   PROBE("4");
   drawBolts(frame);
   for (const w of waves) drawWave(frame, w);
   for (const m of minis) drawMiniBat(frame, m);
+  for (const e of enemies) if (e.meteorMark > 0 && !e.dead) drawMark(frame, e.x, e.box().y0 - 7, sceneClock);
+  for (const s of strikes) drawStrike(frame, s);
+  drawTrail(frame, trail);
+  for (const e of enemies) if (e.dizzyT > 0 && !e.dead) drawDizzy(frame, e.x, e.box().y0 - 4, sceneClock);
+  if (player.shield > 0) drawShield(frame, player.x, player.y - 12, player.shield / (player.maxHp * 0.2), sceneClock);
+  if (player.resonT > 0) drawReson(frame, player.x, player.y - 12, sceneClock);
+  drawCoins();
   if (ult.on) { dimScene(frame); drawFx(frame, "back"); }
   PROBE("5");
+  if (player.kingT > 0) drawKingBack(frame, player.x, player.y - 12, sceneClock);
   player.draw(frame);
+  if (player.kingT > 0) drawKingFront(frame, player.x, player.y - 12, sceneClock);
   PROBE("6");
   drawFx(frame, "front");
   PROBE("7");
@@ -410,7 +646,7 @@ const lines = [], frames = [];
 snapCam();
 let si = 0;
 for (let n = 0; n < TICKS; n++) {
-  while (si < SCRIPT.length && SCRIPT[si][0] === n) { const [, type, code] = SCRIPT[si++]; if (type === "f") pendingForm = code; else if (type === "m") player.mp = player.maxMp; else ev(type === "d" ? "keydown" : "keyup", code); }
+  while (si < SCRIPT.length && SCRIPT[si][0] === n) { const [, type, code] = SCRIPT[si++]; if (type === "f") pendingForm = code; else if (type === "m") player.mp = player.maxMp; else if (type === "x") gainXp(+code); else if (type === "i") dropItem(player.x + 40 * player.face, player.y - 12, +code); else ev(type === "d" ? "keydown" : "keyup", code); }
   runTimers();
   curTick = n;
   tick(STEP);
@@ -423,7 +659,7 @@ for (let n = 0; n < TICKS; n++) {
   if (n % FRAME_EVERY === 0) frames.push(Buffer.from(img.buffer.slice(0)));
   if (process.env.DUMP_TICK && +process.env.DUMP_TICK === n) writeFileSync(join(OUT, "dump.bin"), Buffer.concat([Buffer.from(frame.color.buffer.slice(0)), Buffer.from(frame.light.buffer.slice(0))]));
 }
-writeFileSync(join(OUT, "trace.txt"), lines.join("\n") + "\n");
-writeFileSync(join(OUT, "trace-frames.bin"), Buffer.concat(frames));
+writeFileSync(join(OUT, `trace${VARIANT ? "-" + VARIANT : ""}.txt`), lines.join("\n") + "\n");
+writeFileSync(join(OUT, `trace-frames${VARIANT ? "-" + VARIANT : ""}.bin`), Buffer.concat(frames));
 console.log(`網頁版：${TICKS} 步、${frames.length} 張畫面 → ${OUT}`);
 console.log("最後：", lines[lines.length - 1].split(" ").slice(0, 10).join(" "));

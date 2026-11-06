@@ -31,6 +31,7 @@ const FX = {
   sunburst: "holy/sunburst.js",
   "ground-slam": "impacts/ground-slam.js",
   "star-fall": "arcane/star-fall.js",
+  "level-up": "ui/level-up.js",
 };
 
 const STAR_BOOM = ["#3a1608", "#6e3a0c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"];
@@ -45,6 +46,10 @@ const CASES = [
   { name: "acid-splash", fx: "acid-splash", opts: { palette: ["#0e1d14", "#173320", "#23552e", "#318232", "#55b92f", "#8eea3f", "#cfff63", "#f6ffc2"], light: 0.4, seed: 9 }, speed: 1.5 },
   { name: "collect-burst", fx: "collect-burst", opts: { palette: ["#160c24", "#2e1a4a", "#5c388c", "#8058b8", "#b48ae8", "#e2d0ff", "#ffffff"], light: 0.4 }, speed: 1 },
 ];
+CASES.push(
+  { name: "level-up", fx: "level-up", opts: { light: 0.45, seed: 3 }, speed: 1 },
+  { name: "level-up-awaken", fx: "level-up", opts: { light: 0.55, seed: 14, text: "AWAKEN!", palette: ["#2a1405", "#5c3008", "#9a5a0e", "#d48e18", "#f5b92c", "#ffde5e", "#fff4bc", "#ffffff"] }, speed: 1 },
+);
 // 第二批：預設選項，加上金色色階 light 0.5 seed 11 速度 1.2；迴圈的第 60 步 stop()
 const ONLY = (process.env.FX_ONLY ?? "").split(",").filter(Boolean);
 for (const fx of ["rune-circle", "sunburst", "ground-slam", "star-fall"]) {

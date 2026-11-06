@@ -19,6 +19,8 @@ namespace PixelFX
         public Dictionary<string, double> Num = new Dictionary<string, double>();
         /// 特效自己的文字選項（例如石頭顏色 "stone"）。
         public Dictionary<string, string> Str = new Dictionary<string, string>();
+        /// 特效要照亮／包住的角色（meta.actor）；沒給而特效需要時用替身角色 Actor.Stock。
+        public Actor Actor;
 
         public FxOptions Set(string key, double v) { Num[key] = v; return this; }
         public FxOptions Set(string key, string v) { Str[key] = v; return this; }
@@ -34,7 +36,7 @@ namespace PixelFX
             {
                 Palette = FitTo(o.Palette, def.Palette), Accent = FitTo(o.Accent, def.Accent),
                 Light = o.Light ?? def.Light, Angle = o.Angle ?? def.Angle, X = o.X ?? def.X, Y = o.Y ?? def.Y,
-                Seed = o.Seed ?? def.Seed, Flip = o.Flip ?? def.Flip,
+                Seed = o.Seed ?? def.Seed, Flip = o.Flip ?? def.Flip, Actor = o.Actor ?? def.Actor,
             };
             foreach (var kv in def.Num) r.Num[kv.Key] = kv.Value;
             foreach (var kv in o.Num) r.Num[kv.Key] = kv.Value;
@@ -69,6 +71,8 @@ namespace PixelFX
         public int Fps = 30;
         public bool Loop;
         public FxOptions Options = new FxOptions();
+        /// meta.actor：特效需要一個角色（1 或 2＝替身角色的大小），0＝不需要。
+        public int ActorK;
         /// 純函式特效：直接給 Pure（不需要 Update）。
         public FxImpl Pure;
         /// 模擬特效：每次播放 Create 一份新的狀態。
@@ -90,6 +94,7 @@ namespace PixelFX
         {
             Def = def;
             Options = FxOptions.Resolve(def.Options, o);
+            if (def.ActorK > 0 && Options.Actor == null) Options.Actor = Actor.Stock(def.ActorK == 2 ? 2 : 1);
             impl = def.Create != null ? def.Create(Options) : def.Pure;
         }
 

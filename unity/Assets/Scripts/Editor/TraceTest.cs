@@ -8,6 +8,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using UnityEditor;
+using System.Linq;
 using UnityEngine;
 using PixelFX;
 
@@ -16,6 +17,18 @@ namespace ZeroStar.Tests
     public static class TraceTest
     {
         static string F(double v) => v.ToString("G17", CultureInfo.InvariantCulture);
+
+        static Item SpecItem(OrderedDict sp)
+        {
+            string S(string k) => sp.ContainsKey(k) ? (string)sp[k] : null;
+            int N(string k) => sp.ContainsKey(k) ? (int)(double)sp[k] : 0;
+            string kind = S("base") != null ? Items.Base(S("base")).Kind : S("unique") != null ? Items.UNIQUES.First(u => u.Id == S("unique")).Kind : Items.MYTHS.First(m => m.id == S("myth")).kind;
+            var main = (List<object>)sp["main"];
+            var it = new Item { Uid = "x", Kind = kind, Rarity = N("rarity"), Ilvl = N("ilvl"), Plus = N("plus"), Main = new Affix { Id = (string)main[0], V = (double)main[1] }, Name = "x", Icon = "x",
+                Base = S("base"), Unique = S("unique"), Myth = S("myth"), Set = S("set"), AwakenKills = N("kills") };
+            if (sp.ContainsKey("affixes")) foreach (List<object> a in (List<object>)sp["affixes"]) it.Affixes.Add(new Affix { Id = (string)a[0], Tier = (int)(double)a[1], V = (double)a[2] });
+            return it;
+        }
 
         [MenuItem("零星工具/比對測試：操作錄影")]
         public static void Run()
@@ -28,6 +41,16 @@ namespace ZeroStar.Tests
             Game.W = 384;
             var g = new Game();
             if (sc.tree == "max") g.MaxTree();
+            // 穿搭（環境變數 TRACE_VARIANT 選 variants 裡的一組）
+            string variant = Environment.GetEnvironmentVariable("TRACE_VARIANT") ?? "";
+            {
+                var root = (OrderedDict)MiniJson.Parse(File.ReadAllText(TraceScript.DefaultPath()));
+                var V = variant != "" ? (OrderedDict)((OrderedDict)root["variants"])[variant] : (OrderedDict)root["starter"];   // 沒選穿搭＝新存檔的初始裝備
+                g.Lv = V.ContainsKey("lv") ? (int)(double)V["lv"] : 1;
+                var eq = (OrderedDict)V["equip"];
+                foreach (var slot in eq.Order) g.Equip[slot] = SpecItem((OrderedDict)eq[slot]);
+                g.ApplyStats();
+            }
             var frame = new Frame(Game.W, Game.H);
             var rgba = new byte[Game.W * Game.H * 4];
             var sb = new StringBuilder();
@@ -35,7 +58,7 @@ namespace ZeroStar.Tests
             int si = 0;
             for (int n = 0; n < sc.ticks; n++)
             {
-                while (si < sc.events.Count && sc.events[si].t == n) { var e = sc.events[si++]; if (e.type == "f") g.PendingForm = e.code; else if (e.type == "m") g.Player.Mp = g.Player.MaxMp; else if (e.type == "d") g.Input.KeyDown(e.code); else g.Input.KeyUp(e.code); }
+                while (si < sc.events.Count && sc.events[si].t == n) { var e = sc.events[si++]; if (e.type == "f") g.PendingForm = e.code; else if (e.type == "m") g.Player.Mp = g.Player.MaxMp; else if (e.type == "x") g.GainXp(int.Parse(e.code)); else if (e.type == "i") g.DropItem(g.Player.X + 40 * g.Player.Face, g.Player.Y - 12, int.Parse(e.code)); else if (e.type == "d") g.Input.KeyDown(e.code); else g.Input.KeyUp(e.code); }
                 var stepWatch = System.Diagnostics.Stopwatch.StartNew();
                 bool one = Environment.GetEnvironmentVariable("PROF_TICK") == n.ToString();
                 Dictionary<string, double> saved = null;
@@ -85,8 +108,9 @@ namespace ZeroStar.Tests
             }
             string outDir = Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Golden", "unity");
             Directory.CreateDirectory(outDir);
-            File.WriteAllText(Path.Combine(outDir, "trace.txt"), sb.ToString());
-            File.WriteAllBytes(Path.Combine(outDir, "trace-frames.bin"), frames.ToArray());
+            string suf = variant != "" ? "-" + variant : "";
+            File.WriteAllText(Path.Combine(outDir, $"trace{suf}.txt"), sb.ToString());
+            File.WriteAllBytes(Path.Combine(outDir, $"trace-frames{suf}.bin"), frames.ToArray());
             var prof = new StringBuilder();
             foreach (var kv in Prof.Ms) prof.Append($"{kv.Key} {kv.Value / Math.Max(1, profN):F2}　");
             prof.Append($"（{profN} 步）最慢一步 {maxMs:F1} ms（第 {maxAt} 步）");

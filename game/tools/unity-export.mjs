@@ -114,6 +114,15 @@ const comboKeys = {};   // 形態 → [{ anim 名稱, 招式 }]
   writeFileSync(join(OUT, "tree.json"), JSON.stringify({ nodes }, null, 1));
   console.log("  tree.json");
 }
+// ---- 4c. 物品圖示（icons.js：每個 ICON_SIZE×ICON_SIZE，hex 顏色或空）
+{
+  const { ICONS, ICON_SIZE } = await import("../src/icons.js");
+  const { hex } = await import("../../pixelfx/src/core/index.js");
+  const w = new W();
+  w.str("ZIC1").i32(ICON_SIZE).i32(Object.keys(ICONS).length);
+  for (const [name, cells] of Object.entries(ICONS)) w.str(name).u32(Uint32Array.from(cells, (c) => (c ? hex(c) >>> 0 : 0)));
+  w.save("icons.bytes");
+}
 // ---- 5. 比對測試的那串按鍵（輸出的遊戲用 -shot 自動玩時讀這份）
 writeFileSync(join(OUT, "trace-script.json"), readFileSync(join(ROOT, "game", "tools", "unity-trace-script.json")));
 console.log("  trace-script.json");

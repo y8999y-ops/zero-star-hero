@@ -32,8 +32,14 @@ namespace ZeroStar
             var args = Environment.GetCommandLineArgs();
             for (int i = 0; i < args.Length - 1; i++) if (args[i] == "-shot") shotDir = args[i + 1];
             if (shotDir != null) { Application.runInBackground = true; Directory.CreateDirectory(shotDir); script = TraceScript.Load(TraceScript.DefaultPath()).events; Rnd.R = new Rng(12345); }
+            // 暖身：裝備產生、數值計算第一次用到時要編譯程式（會卡一下），載入時先做掉；用另一組亂數，不影響遊戲
+            { var saved = Rnd.R; Rnd.R = new Rng(1); var eq = new Dictionary<string, Item> { ["weapon"] = null, ["head"] = null, ["body"] = null, ["hands"] = null, ["feet"] = null, ["acc1"] = null, ["acc2"] = null };
+              for (int i = 0; i < 40; i++) { var it = Items.MakeItem(1 + i * 2, i % 6); Items.Compare(it, eq, 10); } Items.ComputeStats(eq, 10); Rnd.R = saved; }
             game = new Game();
+            game.OnSay = msg => { sayText = msg; sayT = 2.6f; };
+            game.OnPickup = it => { sayText = "撿到：" + it.Name; sayT = 1.6f; };
             if (shotDir != null && TraceScript.Load(TraceScript.DefaultPath()).tree == "max") game.MaxTree();
+            if (shotDir == null) { var (c, sh) = Items.StarterGear(); game.Equip["weapon"] = c; game.Equip["body"] = sh; game.ApplyStats(); }   // 新存檔的初始裝備（存檔在階段 5）
             screen.Tick += OnTick;
             screen.Draw += f => game.Render(f);
             screen.PostComposite += d => game.PostComposite(d);
@@ -73,6 +79,8 @@ namespace ZeroStar
             if (Input.GetKeyDown(KeyCode.O)) game.PendingForm = NextForm();
             // 開發用：T＝技能樹全部點滿／全部清掉（之後有技能樹畫面再拿掉）
             if (Input.GetKeyDown(KeyCode.T)) { if (game.Tree.Count > 0) game.Tree.Clear(); else game.MaxTree(); }
+            // 開發用：G＝把背包裡比身上好的裝備換上去（背包畫面在階段 4）
+            if (Input.GetKeyDown(KeyCode.G)) game.EquipBetter();
             if (Input.GetKeyDown(KeyCode.Escape) && !Application.isEditor) Application.Quit();
         }
 
@@ -82,7 +90,7 @@ namespace ZeroStar
         {
             if (shotDir != null)
             {
-                while (si < script.Count && script[si].t == tickN) { var e = script[si++]; if (e.type == "f") game.PendingForm = e.code; else if (e.type == "m") game.Player.Mp = game.Player.MaxMp; else if (e.type == "d") game.Input.KeyDown(e.code); else game.Input.KeyUp(e.code); }
+                while (si < script.Count && script[si].t == tickN) { var e = script[si++]; if (e.type == "f") game.PendingForm = e.code; else if (e.type == "m") game.Player.Mp = game.Player.MaxMp; else if (e.type == "x") game.GainXp(int.Parse(e.code)); else if (e.type == "i") game.DropItem(game.Player.X + 40 * game.Player.Face, game.Player.Y - 12, int.Parse(e.code)); else if (e.type == "d") game.Input.KeyDown(e.code); else game.Input.KeyUp(e.code); }
                 if (shotNo < shotAt.Length && tickN == shotAt[shotNo]) { ScreenCapture.CaptureScreenshot(Path.Combine(shotDir, $"play-{shotNo}.png")); shotNo++; }
                 if (tickN % 30 == 0) Debug.Log($"[Perf] 第 {tickN} 步{(game.Ult.On ? "（大招）" : "")}：{screen.Fps:F0} fps，平均 {screen.AvgMs:F2} ms，最慢 {screen.MaxMs:F2} ms");
                 if (shotNo >= shotAt.Length && tickN > shotAt[shotAt.Length - 1] + 20) Application.Quit();
@@ -104,12 +112,13 @@ namespace ZeroStar
         (Vector2 c, float r) DashBtn { get { var a = AtkBtn; float B = a.r * 2 * 0.7f; return (new Vector2(a.c.x - a.r - B * 0.7f, a.c.y + a.r - B * 0.5f), B * 0.5f); } }
         (Vector2 c, float r) SkillBtn { get { var a = AtkBtn; float B = a.r * 2 * 0.68f; return (new Vector2(a.c.x - a.r * 0.15f, a.c.y - a.r - B * 0.62f), B * 0.5f); } }
         (Vector2 c, float r) UltBtn { get { var a = AtkBtn; var k = SkillBtn; return (new Vector2(k.c.x - k.r * 2.3f, k.c.y + k.r * 0.2f), k.r); } }
+        (Vector2 c, float r) AbsorbBtn { get { var a = AtkBtn; return (new Vector2(a.c.x - a.r * 0.2f, a.c.y - a.r * 2.9f), a.r * 0.6f); } }
         (Vector2 c, float r) FormBtn { get { var a = AtkBtn; float B = a.r * 2 * 0.55f; return (new Vector2(Screen.width - 14 * Css - B * 0.5f, a.c.y - a.r * 2.6f - B * 0.5f), B * 0.5f); } }
 
         void UpdateTouch(GameInput inp)
         {
             double now = Time.unscaledTimeAsDouble;
-            bool atk = false;
+            bool atk = false, absorbHeld = false;
             for (int i = 0; i < Input.touchCount; i++)
             {
                 var t = Input.GetTouch(i);
@@ -118,7 +127,8 @@ namespace ZeroStar
                 if (t.phase == TouchPhase.Began)
                 {
                     var a = AtkBtn; var d = DashBtn;
-                    if (Vector2.Distance(p, a.c) < a.r) { btnOf[t.fingerId] = "attack"; }
+                    if (game.AbsorbNear != null && Vector2.Distance(p, AbsorbBtn.c) < AbsorbBtn.r) { btnOf[t.fingerId] = "absorb"; }
+                    else if (Vector2.Distance(p, a.c) < a.r) { btnOf[t.fingerId] = "attack"; }
                     else if (Vector2.Distance(p, d.c) < d.r) { btnOf[t.fingerId] = "dash"; inp.Press("dash"); }
                     else if (Vector2.Distance(p, SkillBtn.c) < SkillBtn.r) { btnOf[t.fingerId] = "skill"; inp.Press("skill"); }
                     else if (Vector2.Distance(p, UltBtn.c) < UltBtn.r) { btnOf[t.fingerId] = "ult"; inp.Press("ult"); }
@@ -130,6 +140,7 @@ namespace ZeroStar
                     }
                 }
                 if (btnOf.TryGetValue(t.fingerId, out var b) && b == "attack" && t.phase != TouchPhase.Ended && t.phase != TouchPhase.Canceled) atk = true;
+                if (b == "absorb" && t.phase != TouchPhase.Ended && t.phase != TouchPhase.Canceled) absorbHeld = true;
                 if (t.fingerId == stickId && (t.phase == TouchPhase.Moved || t.phase == TouchPhase.Stationary))
                 {
                     double dx = x - ax;
@@ -150,11 +161,13 @@ namespace ZeroStar
                 }
             }
             inp.TouchAttack = atk;
+            inp.TouchAbsorb = absorbHeld;
         }
 
         // ---- 介面（暫時版：血條、魔力條、手機按鈕；正式的介面在階段 3 用 UI Toolkit 重做）
         Texture2D white, circle;
-        GUIStyle perfStyle, nameStyle;
+        GUIStyle perfStyle, nameStyle, infoStyle;
+        string sayText; float sayT;
         static Texture2D Circle(int n)
         {
             var t = new Texture2D(n, n) { filterMode = FilterMode.Bilinear };
@@ -177,6 +190,17 @@ namespace ZeroStar
             y += h + 4 * u; h = 5 * u;
             Rect(x - u, y - u, w * 0.8f + 2 * u, h + 2 * u, new Color(0.07f, 0.05f, 0.1f, 0.9f));
             Rect(x, y, w * 0.8f * (float)(game.Player.Mp / game.Player.MaxMp), h, new Color(0.35f, 0.6f, 1f));
+            // 等級、金幣、背包；系統訊息（暫時版）
+            if (infoStyle == null) infoStyle = new GUIStyle(GUI.skin.label);
+            infoStyle.fontSize = Mathf.RoundToInt(10 * u); infoStyle.normal.textColor = new Color(1, 0.95f, 0.8f, 0.85f);
+            GUI.Label(new UnityEngine.Rect(14 * u, 34 * u, 300 * u, 18 * u), $"Lv {game.Lv}　金幣 {game.Money}　背包 {game.Inv.Count}　形態 {string.Join("", game.FormsOwned.Keys)}", infoStyle);
+            if (sayT > 0)
+            {
+                sayT -= Time.unscaledDeltaTime;
+                infoStyle.fontSize = Mathf.RoundToInt(12 * u);
+                GUI.Label(new UnityEngine.Rect(14 * u, Screen.height * 0.62f, Screen.width * 0.6f, 24 * u), sayText, infoStyle);
+            }
+            if (game.AbsorbNear != null) { infoStyle.fontSize = Mathf.RoundToInt(11 * u); GUI.Label(new UnityEngine.Rect(Screen.width * 0.4f, Screen.height * 0.3f, 300 * u, 20 * u), touchMode ? "按住右下的吸收鍵" : "按住 F 吸收", infoStyle); }
             // 大招名（網頁版是 HTML 文字，跟特寫帶一起出現）
             if (game.Ult.On && game.Ult.T >= game.Ult.NameAt)
             {
@@ -194,6 +218,7 @@ namespace ZeroStar
                 Disc(a.c, a.r, game.Input.TouchAttack ? new Color(1f, 0.82f, 0.3f, 0.75f) : new Color(0.95f, 0.72f, 0.2f, 0.45f));   // 攻擊＝金色（主要按鈕）
                 Disc(d.c, d.r, new Color(0.62f, 0.55f, 0.72f, 0.4f));                                                                   // 閃避＝紫灰
                 var sk = SkillBtn; Disc(sk.c, sk.r, game.Player.Mp >= Player.MP_COST && game.Player.SkillCd <= 0 ? new Color(0.62f, 0.55f, 0.72f, 0.5f) : new Color(0.3f, 0.28f, 0.35f, 0.4f));   // 技能
+                if (game.AbsorbNear != null) { var ab = AbsorbBtn; Disc(ab.c, ab.r, game.Input.TouchAbsorb ? new Color(0.5f, 1f, 0.5f, 0.75f) : new Color(0.4f, 0.85f, 0.4f, 0.5f)); }   // 吸收（旁邊有魔物核時才出現）
                 var ub = UltBtn; Disc(ub.c, ub.r, game.Player.Mp >= Ult.ULT_MP ? new Color(0.95f, 0.72f, 0.2f, 0.6f) : new Color(0.3f, 0.28f, 0.35f, 0.4f));   // 大招（魔力夠了變金色）
                 var fb = FormBtn; ColorUtility.TryParseHtmlString(Game.FORM_COLOR[game.Player.Form], out var fc); fc.a = 0.55f; Disc(fb.c, fb.r, fc);   // 換形態（目前形態的顏色）
                 if (stickId >= 0) { Disc(stickPos, 55 * Css, new Color(1, 1, 1, 0.08f)); Disc(stickPos + knobOff, 22 * Css, new Color(1, 1, 1, 0.3f)); }

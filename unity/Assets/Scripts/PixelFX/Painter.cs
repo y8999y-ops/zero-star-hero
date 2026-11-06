@@ -424,6 +424,40 @@ namespace PixelFX
             }
             } finally { PfProf.T1("Glow", __t); }
         }
+        // 光暈的共用：一列一列加光（跟 Add 同一個算法，範圍已經夾在畫布內）；大的範圍切成 4 條同時算（每個像素只加一次，結果一樣）
+        delegate double KAt(int sx, int sy);   // 回傳這一格的光量（≤0＝不加）
+        void GlowRows(int x0, int x1, int y0, int y1, uint c, KAt kat)
+        {
+            if (x1 < x0 || y1 < y0) return;
+            double fl = Fade * LightK; uint cr = c & 255, cg = (c >> 8) & 255, cb = (c >> 16) & 255;
+            uint[] Lb = L; int W = w, OX = ox, OY = oy;
+            void Rows(int ya, int yb)
+            {
+                for (int sy = ya; sy <= yb; sy++)
+                {
+                    int row = (sy - OY) * W - OX;
+                    for (int sx = x0; sx <= x1; sx++)
+                    {
+                        double k0 = kat(sx, sy);
+                        if (double.IsNaN(k0)) continue;
+                        double kk = k0 * fl;
+                        if (kk <= 0.004) continue;
+                        int i = row + sx; uint dd = Lb[i];
+                        int rr = (int)Math.Min(255, (dd & 255) + cr * kk);
+                        int gg = (int)Math.Min(255, ((dd >> 8) & 255) + cg * kk);
+                        int bb = (int)Math.Min(255, ((dd >> 16) & 255) + cb * kk);
+                        Lb[i] = unchecked((uint)((255 << 24) | (bb << 16) | (gg << 8) | rr));
+                    }
+                }
+            }
+            int n = y1 - y0 + 1;
+            if (n * (x1 - x0 + 1) < 2500) Rows(y0, y1);
+            else
+            {
+                const int B = 4; int per = (n + B - 1) / B;
+                System.Threading.Tasks.Parallel.For(0, B, b => { int ya = y0 + b * per, yb = Math.Min(y1, ya + per - 1); if (ya <= yb) Rows(ya, yb); });
+            }
+        }
         public void GlowLine(double x0, double y0, double x1, double y1, double r, uint c, double k = 0.5)
         {
             long __t = PfProf.T0(); try {
@@ -432,32 +466,29 @@ namespace PixelFX
             double dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy; if (L2 == 0) L2 = 1e-9;
             int X0 = ClipX0((int)Math.Floor(Math.Min(ax, bx) - r)), X1 = ClipX1((int)Math.Ceiling(Math.Max(ax, bx) + r));
             int Y0 = ClipY0((int)Math.Floor(Math.Min(ay, by) - r)), Y1 = ClipY1((int)Math.Ceiling(Math.Max(ay, by) + r));
-            for (int sy = Y0; sy <= Y1; sy++)
-                for (int sx = X0; sx <= X1; sx++)
-                {
-                    double px = sx + 0.5, py = sy + 0.5, u = Pf.Clamp(((px - ax) * dx + (py - ay) * dy) / L2);
-                    double ex = ax + dx * u - px, ey = ay + dy * u - py, d = Math.Sqrt(ex * ex + ey * ey) / r;
-                    if (d >= 1) continue;
-                    double f = 1 - d;
-                    Add(sx, sy, c, f * f * k);
-                }
-        } finally { PfProf.T1("GlowLine", __t); }
+            GlowRows(X0, X1, Y0, Y1, c, (sx, sy) =>
+            {
+                double px = sx + 0.5, py = sy + 0.5, u = Pf.Clamp(((px - ax) * dx + (py - ay) * dy) / L2);
+                double ex = ax + dx * u - px, ey = ay + dy * u - py, d = Math.Sqrt(ex * ex + ey * ey) / r;
+                if (d >= 1) return double.NaN;
+                double f = 1 - d;
+                return f * f * k;
+            });
+            } finally { PfProf.T1("GlowLine", __t); }
         }
         public void GlowRing(double x, double y, double R, double r, uint c, double k = 0.5)
         {
             long __t = PfProf.T0(); try {
             if (r < 1 || k <= 0.004) return;
             double cx = ToX(x, y), cy = ToY(x, y), E = R + r;
-            int ry1 = ClipY1((int)Math.Ceiling(cy + E)), rx0 = ClipX0((int)Math.Floor(cx - E)), rx1 = ClipX1((int)Math.Ceiling(cx + E));
-            for (int sy = ClipY0((int)Math.Floor(cy - E)); sy <= ry1; sy++)
-                for (int sx = rx0; sx <= rx1; sx++)
-                {
-                    double d = Math.Abs(Pf.Hypot(sx + 0.5 - cx, sy + 0.5 - cy) - R) / r;
-                    if (d >= 1) continue;
-                    double f = 1 - d;
-                    Add(sx, sy, c, f * f * k);
-                }
-        } finally { PfProf.T1("GlowRing", __t); }
+            GlowRows(ClipX0((int)Math.Floor(cx - E)), ClipX1((int)Math.Ceiling(cx + E)), ClipY0((int)Math.Floor(cy - E)), ClipY1((int)Math.Ceiling(cy + E)), c, (sx, sy) =>
+            {
+                double d = Math.Abs(Pf.Hypot(sx + 0.5 - cx, sy + 0.5 - cy) - R) / r;
+                if (d >= 1) return double.NaN;
+                double f = 1 - d;
+                return f * f * k;
+            });
+            } finally { PfProf.T1("GlowRing", __t); }
         }
     }
 }

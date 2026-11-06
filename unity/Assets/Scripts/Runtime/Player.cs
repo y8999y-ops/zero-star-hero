@@ -28,7 +28,7 @@ namespace ZeroStar
         public double Atk = 12, MaxHp = 100, Def, Crit, CritDmg = 10, Skill, Ult, Charge, Cdr, Leech, Move, Mf, MaxMp = 100;
         public HashSet<string> Uniques = new HashSet<string>();
         public Dictionary<string, int> Sets = new Dictionary<string, int>();
-        public string CoreId; public double CoreX;   // 星核的核心效果
+        public string CoreId; public double CoreX; public int CoreTier;   // 星核的核心效果
     }
 
     /// 主角和怪要用到的世界（main.js 的 world）

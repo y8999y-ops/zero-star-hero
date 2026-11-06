@@ -12,7 +12,8 @@ const COLS = ["步", "主角x", "主角y", "vx", "vy", "狀態", "血", "面向"
 const EC = ["x", "y", "vx", "vy", "血", "醒", "狀態"];
 const name = (i) => (i < COLS.length ? COLS[i] : `怪${Math.floor((i - COLS.length) / 7)}.${EC[(i - COLS.length) % 7]}`);
 
-const A = readFileSync(join(G, "web", "trace.txt"), "utf8").trim().split("\n"), B = readFileSync(join(G, "unity", "trace.txt"), "utf8").trim().split("\n");
+const VAR = process.argv[2] ? "-" + process.argv[2] : "";   // 穿搭：node unity-trace-compare.mjs A
+const A = readFileSync(join(G, "web", `trace${VAR}.txt`), "utf8").trim().split("\n"), B = readFileSync(join(G, "unity", `trace${VAR}.txt`), "utf8").trim().split("\n");
 let bad = 0;
 if (A.length !== B.length) { console.log(`✗ 步數不同：網頁 ${A.length}、Unity ${B.length}`); bad++; }
 for (let n = 0; n < Math.min(A.length, B.length); n++) {
@@ -35,7 +36,7 @@ for (let n = 0; n < Math.min(A.length, B.length); n++) {
 if (!bad) console.log(`✓ 數值：${A.length} 步，每一步、每一欄完全一樣`);
 
 // 畫面
-const fa = readFileSync(join(G, "web", "trace-frames.bin")), fb = readFileSync(join(G, "unity", "trace-frames.bin"));
+const fa = readFileSync(join(G, "web", `trace-frames${VAR}.bin`)), fb = readFileSync(join(G, "unity", `trace-frames${VAR}.bin`));
 const W = 384, H = 216, sz = W * H * 4, nf = Math.min(fa.length, fb.length) / sz;
 let fbad = 0, shown = 0;
 if (fa.length !== fb.length) { console.log(`✗ 畫面張數不同：網頁 ${fa.length / sz}、Unity ${fb.length / sz}`); fbad++; }

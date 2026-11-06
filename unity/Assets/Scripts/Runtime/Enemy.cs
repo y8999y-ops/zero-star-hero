@@ -30,6 +30,7 @@ namespace ZeroStar
         public double X0, Vx, Vy, Hp, MaxHp, Stun, FlashT, Face = 1, Clock, HopDir = 1, T, Speed, SqT, AwakeT, AlertT = -1;
         public double Xp, Yp;
         public bool Dead_, Awake, DeepSleep, FlungUp;
+        public string Core;   // 關卡指定必掉的魔物核（1-1 教吸收那隻）
         public StatusSet St;
         public double MarkT, FlungT, FlungDmg, DizzyT, MeteorMark; public HashSet<Enemy> FlungHit;   // 元素狀態（status.js 的 e.st）
         IWorld world;
