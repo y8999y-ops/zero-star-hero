@@ -907,7 +907,6 @@ function questProgress(ev, d) {
   save(profile);
 }
 const trackEl = $("qtrack");
-const SYS_TRACK_ICON = { out11: "star", reg: "guild", guild1: "seal", forge2: "hammer", meal1: "bowl", reroll1: "dice", rankE: "guild", forms3: "star", boss1: "q_kill" };
 function renderTracker() {
   const Q = profile.quests, I = (n) => `<img class="ico" src="${iconURL(n, 2)}" alt="">`;
   // 使用者 2026-11-06：第一行固定是主線（系統任務，金色「主線」），下面是追蹤中的那一個支線（公會任務）
@@ -915,10 +914,11 @@ function renderTracker() {
   const keep = (Q.tracked ?? Q.active.slice(0, 1).map((q) => q.id)).filter((k) => Q.active.some((q) => q.id === k)).slice(0, 1);
   Q.tracked ??= [];
   Q.tracked.splice(0, Q.tracked.length, ...keep);   // 原地改（任務視窗拿著同一個陣列）
-  const lines = sysNow.map((s) => `<div class="sys"><em class="main">主線</em>${I(SYS_TRACK_ICON[s.id] ?? "xp")}${s.title}</div>`);
+  // 使用者 2026-11-06：主線（系統）、支線（公會）用圖示分，不寫字——主線＝系統的星、支線＝公會的盾
+  const lines = sysNow.map((s) => `<div class="sys" title="主線">${I("xp")}${s.title}</div>`);
   for (const k of Q.tracked) {
     const q = Q.active.find((x) => x.id === k), L = questLook(q), ok = q.have >= q.need;
-    lines.push(`<div class="${ok ? "ok" : ""}">${I(L.icon)}${L.label}　<b>${ok ? "✓" : q.have + "/" + q.need}</b><i class="qbar"><em style="width:${Math.min(100, (q.have / q.need) * 100)}%"></em></i></div>`);
+    lines.push(`<div class="${ok ? "ok" : ""}" title="支線">${I("guild")}${L.label}　<b>${ok ? "✓" : q.have + "/" + q.need}</b><i class="qbar"><em style="width:${Math.min(100, (q.have / q.need) * 100)}%"></em></i></div>`);
   }
   const m = MEALS[profile.meal];
   if (m) lines.push(`<div class="meal">${I(m.icon)}${m.buff[1]}</div>`);
