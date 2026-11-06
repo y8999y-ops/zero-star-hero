@@ -149,6 +149,7 @@ const enemies = [];
 const coins = [];
 const shots = [];
 const stats = { coins: 0, kills: 0, combo: 0, comboT: 0, best: 0, time: 0, deaths: 0 };
+const COMBO_T = 4.4;   // 使用者 2026-11-06：連擊維持時間翻倍（2.2 → 4.4 秒沒打到才斷）
 let camX = 0, camY = TOWN ? 0 : Math.max(0, MAP_H - H), started = false, director = null, cleared = false, introOn = false;   // introOn：開場動畫播放中（遊戲暫停）
 
 // ---- 存檔與刷寶
@@ -1437,7 +1438,7 @@ function addCombo(n) {
     const b = $("mpBar"); b.classList.remove("gain"); void b.offsetWidth; b.classList.add("gain");
   }
   stats.combo += n;
-  stats.comboT = 2.2;
+  stats.comboT = COMBO_T;
   stats.best = Math.max(stats.best, stats.combo);
   if (stats.combo >= 50 && stats.combo - n < 50) toast("系統：50 連擊！……我開始有點興奮了。");
   if (stats.combo >= 100 && stats.combo - n < 100) toast("系統：100 連擊！這不科學！");
@@ -2030,7 +2031,7 @@ function hud(dt) {
   lvEl.textContent = "Lv " + profile.lv;
   xpFill.style.width = (profile.lv >= MAX_LV ? 100 : (profile.xp / xpNeed(profile.lv)) * 100) + "%";
   killsEl.textContent = stats.kills;
-  comboArt.update(stats.combo, stats.comboT / 2.2, dt);
+  comboArt.update(stats.combo, stats.comboT / COMBO_T, dt);
   cdEl.style.height = Math.max(0, player.skillCd / player.skillMax) * 100 + "%";
   // 魔力條；魔力不夠放技能時，技能鍵變暗
   mpFill.style.width = (player.mp / player.maxMp) * 100 + "%";
