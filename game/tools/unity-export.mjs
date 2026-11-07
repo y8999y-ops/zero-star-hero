@@ -139,6 +139,16 @@ const comboKeys = {};   // 形態 → [{ anim 名稱, 招式 }]
   writeFileSync(join(OUT, "stages.json"), JSON.stringify({ stages: STAGES, chestTiers: CHEST_TIERS }, null, 1));
   console.log("  stages.json");
 }
+// ---- 4e. 選關世界地圖（worldmap-art.js）：不會動的底圖（bakeBase）、地點、路（一串點）
+{
+  const WA = await import("../src/worldmap-art.js");
+  const w = new W();
+  w.str("ZWM1").i32(WA.WM_W).i32(WA.WM_H).i32(WA.LMY).u32(WA.bakeBase());
+  const ids = Object.keys(WA.NODES);
+  w.i32(ids.length); for (const id of ids) w.str(id).f64(WA.NODES[id].x).f64(WA.NODES[id].y);
+  w.i32(WA.segs.length); for (const s of WA.segs) { w.str(s.a).str(s.b).i32(s.pts.length); for (const [x, y] of s.pts) w.f64(x).f64(y); }
+  w.save("worldmap.bytes");
+}
 // ---- 5. 比對測試的那串按鍵（輸出的遊戲用 -shot 自動玩時讀這份）
 writeFileSync(join(OUT, "trace-script.json"), readFileSync(join(ROOT, "game", "tools", "unity-trace-script.json")));
 console.log("  trace-script.json");

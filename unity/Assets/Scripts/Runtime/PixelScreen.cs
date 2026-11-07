@@ -100,6 +100,12 @@ namespace ZeroStar
             cam.transform.position = new Vector3(0, (float)-dy, -10);
         }
 
+        /// 畫布座標（左上原點）→ 螢幕座標（像素，左下原點）
+        public Vector2 CanvasToScreen(Vector2 c)
+        {
+            var s = cam.WorldToScreenPoint(new Vector3(c.x - W / 2f, H / 2f - c.y, 0));
+            return new Vector2(s.x, s.y);
+        }
         /// 螢幕座標（像素，左下原點）→ 畫布座標（左上原點）
         public Vector2 ScreenToCanvas(Vector2 p)
         {

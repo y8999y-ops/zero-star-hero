@@ -110,6 +110,32 @@ namespace ZeroStar
             return L;
         }
 
+        /// 選關世界地圖（worldmap-art.js）：底圖、地點、路
+        public class WorldMapData
+        {
+            public int W, H, Lmy; public uint[] Base;
+            public readonly Dictionary<string, (double x, double y)> Nodes = new Dictionary<string, (double, double)>();
+            public readonly List<(string a, string b, double[][] pts)> Segs = new List<(string, string, double[][])>();
+        }
+        static WorldMapData worldMap;
+        public static WorldMapData WorldMap()
+        {
+            if (worldMap != null) return worldMap;
+            var r = new Rd(Load("worldmap"));
+            if (r.Str() != "ZWM1") throw new Exception("世界地圖資料格式不對");
+            var d = new WorldMapData { W = r.I32(), H = r.I32(), Lmy = r.I32() };
+            d.Base = r.U32();
+            int n = r.I32(); for (int i = 0; i < n; i++) { string id = r.Str(); d.Nodes[id] = (r.F64(), r.F64()); }
+            n = r.I32();
+            for (int i = 0; i < n; i++)
+            {
+                string a = r.Str(), b = r.Str(); int m = r.I32(); var pts = new double[m][];
+                for (int k = 0; k < m; k++) pts[k] = new[] { r.F64(), r.F64() };
+                d.Segs.Add((a, b, pts));
+            }
+            return worldMap = d;
+        }
+
         static Dictionary<string, HeroPose> hero;
         /// 主角姿勢：key＝"形態:姿勢名"（陣列的姿勢是 "run#2"）。
         public static Dictionary<string, HeroPose> Hero()

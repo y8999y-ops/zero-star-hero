@@ -11,7 +11,7 @@ const ORDER = ["town", "1-1", "1-2", "1-3", "1-4", "endless", "ch2"];   // 鍵�
 let base = null;
 
 /** 地點之間的路（沿著畫好的路走）：回傳一串點 */
-function route(from, to) {
+export function route(from, to) {
   if (from === to) return [[NODES[to].x, NODES[to].y]];
   const adj = {};
   for (const s of segs) { (adj[s.a] ??= []).push([s.b, s.pts]); (adj[s.b] ??= []).push([s.a, [...s.pts].reverse()]); }
@@ -21,6 +21,20 @@ function route(from, to) {
   const parts = [];
   for (let n = to; prev[n]; n = prev[n][0]) parts.unshift(prev[n][1]);
   return parts.flat();
+}
+
+/** 小星靈沿著路走一格（每秒 80 格）：回傳這一格有沒有在走（Unity 轉移的比對也用這個） */
+export function stepHero(hero, dt) {
+  let move = 80 * dt, moving = false;
+  while (move > 0 && hero.path.length) {
+    const [px, py] = hero.path[0], dx = px - hero.x, dy = py - hero.y, d = Math.hypot(dx, dy);
+    if (d <= move) { hero.x = px; hero.y = py; hero.path.shift(); move -= d; }
+    else { hero.x += (dx / d) * move; hero.y += (dy / d) * move; move = 0; }
+    if (Math.abs(dx) > 0.3) hero.face = Math.sign(dx);
+    moving = true;
+  }
+  if (moving) hero.dist += 80 * dt;
+  return moving;
 }
 
 export function openWorldMap({ profile, unlocked, layouts, notes, sfx, thumbs = "art/thumbs/" }) {
@@ -122,16 +136,7 @@ export function openWorldMap({ profile, unlocked, layouts, notes, sfx, thumbs = 
   function frameLoop(now) {
     if (!alive) return;
     const dt = Math.min(0.05, (now - last) / 1000); last = now; t += dt;
-    // 沿著路走（每秒 80 格）
-    let move = 80 * dt, moving = false;
-    while (move > 0 && hero.path.length) {
-      const [px, py] = hero.path[0], dx = px - hero.x, dy = py - hero.y, d = Math.hypot(dx, dy);
-      if (d <= move) { hero.x = px; hero.y = py; hero.path.shift(); move -= d; }
-      else { hero.x += (dx / d) * move; hero.y += (dy / d) * move; move = 0; }
-      if (Math.abs(dx) > 0.3) hero.face = Math.sign(dx);
-      moving = true;
-    }
-    if (moving) hero.dist += 80 * dt;
+    const moving = stepHero(hero, dt);   // 沿著路走（每秒 80 格）
     drawWorld(frame, t, base, st);
     paintStar(frame, hero.x, hero.y + 3, moving ? POSES.run[Math.floor(hero.dist / 6) % 4] : POSES.stand, hero.face < 0, { glow: 0 });
     composite(frame, img.data, null, 1);

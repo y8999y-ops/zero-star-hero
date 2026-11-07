@@ -136,7 +136,20 @@
     - 網頁版的開發用接口 `__game.chest` 原本會被 Object.assign 抄死（看不到王掉的星箱），改成 defineProperty。
   - 效能（Windows 版）：王戰全程平均 59 fps，106 個區段只有 3 個低於 55 fps（最低 42 fps）。
   - 換關順序：1-1 → 1-2 → 1-3 → 1-4 → 回 1-1。
-- 下一步：3d（世界地圖）。
+- **3d 完成（選關世界地圖「墜星之谷」）**：
+  - 底圖（地形、小溪、樹、路、地標）是網頁版 `bakeBase()` 畫好匯出的（`worldmap.bytes`），還有地點和路的點。
+  - 每格會動的部分（worldmap-art.js 的 drawWorld）一行一行翻成 `Runtime/WorldMap.cs`：
+    路上的光點、鎮上燈光、蝙蝠、王的紅眼、無限討伐的裂縫、打過的旗子、NEW 光圈、選中的亮框、霧、第 2 章木牌。
+    小星靈沿路走（route、stepHero）和選地點的規則也在裡面。
+  - 網頁版只改一個地方：worldmap.js 把 `route`、`stepHero`（原本寫在 frameLoop 裡的走路）拆出來 export，行為不變。
+  - 比對：`unity-worldmap-cases.json` 有三種進度（剛開始、打到 1-3、全破），每種依序點幾個地點、每 3 格存一張。
+    網頁版 `node --no-use-std-math-pow game/tools/unity-worldmap-golden.mjs`，Unity 版 `ZeroStar.Tests.WorldMapTest.Run`，
+    比對用 `... unity-worldmap-golden.mjs compare`。460 張每個像素都一樣。
+  - 接進遊戲：進傳送門之後打開地圖選下一關（網頁版是回碎星鎮、走到路標才打開；碎星鎮在階段 4）。
+    操作：← → 換地點、Enter／點兩下出發；Esc 關掉只有用 M 鍵打開時才能用（開發用：M＝隨時打開地圖）。
+    資訊卡（關卡縮圖、名稱、已通關／NEW、說明、出發）是暫時版的介面，UI 在階段 4 重做。
+    碎星鎮、無限討伐還沒搬，選了會提示。自動玩（-shot）照舊直接到下一關。
+- **階段 3 完成**：第一章四關、王、世界地圖都能從頭打到尾，所有比對逐像素一樣。下一步：階段 4（城鎮和介面）。
 
 ## 1. 現況盤點
 
