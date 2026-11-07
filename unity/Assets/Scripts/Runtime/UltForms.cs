@@ -576,7 +576,7 @@ namespace ZeroStar
             if (t >= FIRE0 && t < FIRE1 && t - FIRE0 >= vol * 0.07)
             {
                 vol++;
-                if (vol % 3 == 1) kit.Sfx("swing");   // JS：sfx("swing", "spike")，UltKit.Sfx 只收一個參數
+                if (vol % 3 == 1) kit.Sfx("swing:spike");   // JS：sfx("swing", "spike")，UltKit.Sfx 只收一個參數
                 double ccx = cx, ccy = cy;
                 var foes = H.Enemies().Where(e => Math.Abs(e.X - ccx) < 230 && Math.Abs(e.Y - ccy) < 170).ToList();
                 foreach (var e in foes)

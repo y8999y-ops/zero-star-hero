@@ -19,7 +19,7 @@ namespace ZeroStar.UI
     public class Settings
     {
         readonly VisualElement overlay, panel, homeRow; readonly Label musicV, sfxV, muteL; readonly VisualElement musicBar, sfxBar;
-        public Action OnIntro, OnTitle, OnGoHome; public Action<string> Sfx;
+        public Action OnIntro, OnTitle, OnGoHome, OnExport, OnImport; public Action<string> Sfx;
         public bool Open { get; private set; }
         float openT = 9;
 
@@ -30,10 +30,12 @@ namespace ZeroStar.UI
             panel = Box(overlay, "setPanel"); Abs(panel, null, 56, 10); panel.style.width = 230; Nine(panel, "panel", 12, 12);
             panel.style.paddingLeft = panel.style.paddingRight = 12 + 10; panel.style.paddingTop = 12 + 6; panel.style.paddingBottom = 12 + 8; panel.pickingMode = PickingMode.Position;
             var t = Text(panel, "設定", 14, "#ffd24a", true); t.style.letterSpacing = 3; t.style.marginBottom = 8;
-            musicBar = Slider(panel, "音樂", out musicV, v => { Volume.Music = v; Sync(); });
-            sfxBar = Slider(panel, "音效", out sfxV, v => { Volume.Sfx = v; Sync(); Sfx?.Invoke("coin"); });
-            muteL = Btn(Row(panel), "全部靜音：關", "plain", () => { Volume.Mute = !Volume.Mute; Sync(); Sfx?.Invoke("ui"); }).Q<Label>();
+            musicBar = Slider(panel, "音樂", out musicV, v => { Volume.Music = v; Sync(); ZeroStar.Synth.ApplySaved(); });
+            sfxBar = Slider(panel, "音效", out sfxV, v => { Volume.Sfx = v; Sync(); ZeroStar.Synth.ApplySaved(); Sfx?.Invoke("coin"); });
+            muteL = Btn(Row(panel), "全部靜音：關", "plain", () => { Volume.Mute = !Volume.Mute; Sync(); ZeroStar.Synth.ApplySaved(); Sfx?.Invoke("ui"); }).Q<Label>();
             var r2 = Row(panel); Btn(r2, "重看開場動畫", "plain", () => { Close(); OnIntro?.Invoke(); }); Btn(r2, "回主畫面", "plain", () => { Close(); OnTitle?.Invoke(); });
+            // 存檔：複製成代碼（備份、換裝置）、從剪貼簿匯入（網頁版「匯出存檔」的代碼）
+            var r3 = Row(panel); Btn(r3, "匯出存檔", "plain", () => OnExport?.Invoke()); Btn(r3, "從剪貼簿匯入", "plain", () => { Close(); OnImport?.Invoke(); });
             homeRow = Row(panel); Btn(homeRow, "放棄這趟，回城鎮", "red", () => { Close(); OnGoHome?.Invoke(); });
             Btn(Row(panel), "關閉", "go", Close);
         }

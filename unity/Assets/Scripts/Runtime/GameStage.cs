@@ -89,7 +89,8 @@ namespace ZeroStar
         {
             if (StageDone) return;
             StageDone = true;
-            Cleared_.Add(StageD.Id);
+            Cleared_.Add(StageD.Id); Clears++;
+            Sfx("jingle=clear");   // 通關的小段音樂
             QuestProgress("clear", stage: StageD.Id, deaths: Deaths);
             if (PortalX == null) OpenBossPortal();   // 1-4：打倒王之後在主角前面開傳送門
             Say.Queue.Clear();

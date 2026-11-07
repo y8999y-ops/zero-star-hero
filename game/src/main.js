@@ -1987,6 +1987,16 @@ let clearReport = null;
 $("againBtn").addEventListener("click", () => goScene(ENDLESS ? "endless" : "stage", STAGE_ID));
 $("nextBtn").addEventListener("click", () => nextStage() && goScene("stage", nextStage()));
 $("homeBtn").addEventListener("click", () => goScene("town"));
+// 匯出存檔：把存檔變成一段代碼（ZSH1:＋base64）複製到剪貼簿，Unity（App）版的設定裡「從剪貼簿匯入」貼回去
+$("btnExport").addEventListener("click", async (e) => {
+  e.stopPropagation();
+  save(profile, true);
+  let bin = ""; for (const b of new TextEncoder().encode(JSON.stringify(profile))) bin += String.fromCharCode(b);
+  const code = "ZSH1:" + btoa(bin);
+  try { await navigator.clipboard.writeText(code); toast("系統：存檔代碼複製好了。到 App 版的設定按「從剪貼簿匯入」。", 3); }
+  catch { prompt("複製下面這段存檔代碼：", code); }
+  sfx("ui");
+});
 // 使用者 2026-11-05：右上角的回城鍵拿掉（H 鍵也拿掉），改放在設定裡「放棄這趟，回城鎮」；戰鬥中（附近有怪）按不了
 $("btnGoHome").addEventListener("click", async (e) => {
   e.stopPropagation();

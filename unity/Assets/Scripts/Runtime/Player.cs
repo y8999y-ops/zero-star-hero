@@ -450,7 +450,7 @@ namespace ZeroStar
             {
                 a.Spawned = true;
                 w.Fx.Spawn(Baked.Anim(s.anim), Pf.Round(X), Pf.Round(Y), a.Flip, speed: spd);
-                w.Sfx("swing");
+                w.Sfx("swing:" + Form);   // 揮擊聲照形態（鐵罐叮、黏液悶、其他咻）
                 if (Grounded) Vx = Face * 70;
             }
             for (; a.Nh < s.hits.Length && s.hits[a.Nh].t <= a.Time; a.Nh++)

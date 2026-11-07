@@ -566,7 +566,7 @@ namespace ZeroStar.UI
             // 穿雲的白閃、城鎮段的音效
             if (td > 0.9 && td < 1.05) FadeTo(g, 0.5, "230,226,255");
             Once("dive", () => S("dash"));
-            if (td > 3) Once("town", () => S("chime"));
+            if (td > 3) Once("town", () => S("chime:1318"));
             // 最後 0.5 秒：全黑（下一幕從洞窟裡看它砸下來）
             FadeTo(g, td < 0.25 ? 1 - td / 0.25 : td > D - 0.5 ? (td - (D - 0.5)) * 2 : 0);
         }
@@ -627,11 +627,11 @@ namespace ZeroStar.UI
                 if (w > 4.4 && w < 5.2)
                 {                                                                                                    // 嚇一跳：原地彈起來
                     double k = (w - 4.4) / 0.8; q = "jump"; hy = gy - JR(Math.Sin(k * Math.PI) * 22); mark = true;
-                    Once("jump", () => S("chime"));
+                    Once("jump", () => S("chime:2093"));
                 }
                 if (w >= 5.2 && w < 5.5) { q = "land"; Once("land1", () => S("land")); }
                 if (w >= 5.5 && w < 6.6) { double k = w - 5.5; q = "run#" + (int)Math.Floor(k * 10) % 4; hx = cx + JR(k * 22); }   // 想走路
-                if (w >= 6.6 && w < 7.9) { hx = cx + 24; hy = gy + 3; q = "hurt"; Once("trip", () => { S("land"); S("squish"); }); }   // 跌個狗吃屎
+                if (w >= 6.6 && w < 7.9) { hx = cx + 24; hy = gy + 3; q = "hurt"; Once("trip", () => { S("land:true"); S("squish"); }); }   // 跌個狗吃屎
                 if (w >= 7.9) { hx = cx + 24; q = w < 8.2 ? "land" : "idle#" + (int)Math.Floor(t * 6.6) % 8; }
                 if (w > 2.2) Once("up", () => S("land"));
                 // E：轉頭看右邊的史萊姆

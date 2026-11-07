@@ -97,7 +97,7 @@ namespace ZeroStar
             if (State != "intro" && State != "ult") UltT += dt;
             double k = Hp / BOSS_HP;
             if (Phase == 1 && k <= PHASE2 && State == "idle") { Phase = 2; G.BossBar(k, 2); Go("roar", new Opts { Say = "系統：牠生氣了。……你剛剛是不是戳到牠的肚子？" }); return; }
-            if (Phase == 2 && k <= PHASE3 && State == "idle") { Phase = 3; G.BossBar(k, 3); UltT = 99; G.Say.Unshift("系統：那個光……牠把星星吃掉了？！小心，你也是星星。", 3); }
+            if (Phase == 2 && k <= PHASE3 && State == "idle") { G.Sfx("tempo=1.08"); Phase = 3; G.BossBar(k, 3); UltT = 99; G.Say.Unshift("系統：那個光……牠把星星吃掉了？！小心，你也是星星。", 3); }
             if (!Split && k <= 0.5 && State == "idle") { Split = true; Go("split"); return; }
             switch (State)
             {
@@ -145,7 +145,7 @@ namespace ZeroStar
             if (Tt < 2.2)
             {
                 Pose = "roar";
-                if (!Roared) { Roared = true; G.Fx.Shake(0.9, 3, true); G.Sfx("roar"); G.Say.Show("大胃王：一顆小星星也想挑戰本大爺？……正好，飯後甜點。", 3.2); }
+                if (!Roared) { Roared = true; G.Fx.Shake(0.9, 3, true); G.Sfx("roar"); G.Sfx("music=boss"); G.Say.Show("大胃王：一顆小星星也想挑戰本大爺？……正好，飯後甜點。", 3.2); }
                 return;
             }
             G.Say.Unshift("系統：牠說的沒錯。但你可以讓牠閉嘴。", 2.8);
@@ -203,7 +203,7 @@ namespace ZeroStar
         {
             double T = (o.Kind == "fire" ? 0.6 : 0.7) * Tm;
             Pose = "inhale"; Pk = Math.Min(1, Tt / T);
-            if (!o.Snd) { o.Snd = true; G.Sfx("inhale"); }
+            if (!o.Snd) { o.Snd = true; G.Sfx("inhale:" + T.ToString(System.Globalization.CultureInfo.InvariantCulture)); }
             if (Tt >= T) { SpitOut(o.Kind); Go("spit"); }
         }
         void S_spit() { Pose = "spit"; Pk = Math.Min(1, Tt / 0.5); if (Tt > 0.5) Go("idle"); }
@@ -332,7 +332,7 @@ namespace ZeroStar
         {
             Dying = 0.001; State = "dying"; Tt = 0; BeamX = null; OnTop = false;
             junk.Clear(); foreach (var b in balls) b.fx.Stop(); balls.Clear(); rain.Clear();
-            G.Fx.HitStop(0.25); G.Fx.Shake(0.8, 4); SceneLight.AddFlash(Xp, Yp - 20, 140, 3.5, 1, "#fff6c0"); G.Sfx("melt");
+            G.Fx.HitStop(0.25); G.Fx.Shake(0.8, 4); SceneLight.AddFlash(Xp, Yp - 20, 140, 3.5, 1, "#fff6c0"); G.Sfx("melt"); G.Sfx("music=");
             G.Say.Unshift("系統：倒了……牠倒了！", 2.4);
         }
         public bool IsDying => Dying != 0;
@@ -427,7 +427,7 @@ namespace ZeroStar
             G.Combat.Dust("land", Xp - 20, Yp, true); G.Combat.Dust("land", Xp + 20, Yp, true);
             G.Fx.Shake(big ? 0.35 : 0.2, big ? 3 : 2); G.Fx.HitStop(big ? 0.05 : 0.02);
             SceneLight.AddFlash(Xp, Yp - 10, 60, 1.5, 0.2, "#c0dc54");
-            G.Sfx(big ? "bossLand" : "land");
+            G.Sfx(big ? "bossLand:true" : "land:true");
         }
         double ClampX(double x) { var (l, r) = Lock; return Math.Max(l + 36, Math.Min(r - 36, x)); }
 

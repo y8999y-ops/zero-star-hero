@@ -29,6 +29,11 @@ namespace ZeroStar.UI
             (new Regex("波波"), "clerk"), (new Regex("岩叔"), "golem"), (new Regex("菇媽"), "mushroom"), (new Regex("系統"), null),
             (new Regex("啵啵"), "kid"), (new Regex("慢慢"), "turtle"), (new Regex("碎碎"), "pebble"), (new Regex("菇菇寶寶"), "shroom"),
         };
+        static readonly Dictionary<string, (double f, string w)> VOICE = new Dictionary<string, (double, string)>
+        {
+            ["波波"] = (880, "square"), ["岩叔"] = (196, "square"), ["菇媽"] = (523, "triangle"), ["系統"] = (1320, "sine"),
+            ["啵啵"] = (1046, "square"), ["慢慢"] = (147, "triangle"), ["碎碎"] = (330, "square"), ["菇菇寶寶"] = (784, "triangle"),
+        };
         static string FaceOf(string name) { foreach (var s in SPEAKERS) if (s.re.IsMatch(name)) return s.face; return null; }
 
         public Dialog(VisualElement parent, Func<string> heroForm)
@@ -115,6 +120,7 @@ namespace ZeroStar.UI
         {
             if (pick == null || i < 0 || i >= values.Count) return;
             if (typing || optWait < 0 || optWait > 0) { if (typing) Next(); return; }
+            ZeroStar.Synth.Blip(1200, "square");
             var r = pick; pick = null; Hide(); r.SetResult(values[i]);
         }
         public void Next()
@@ -134,7 +140,11 @@ namespace ZeroStar.UI
             if (typing)
             {
                 typeNext -= dt;
-                while (typeNext <= 0 && typed < shownText.Length) { char ch = shownText[typed++]; typeNext += ch == '…' ? 0.11f : "，。！？".IndexOf(ch) >= 0 ? 0.16f : 0.032f; }
+                while (typeNext <= 0 && typed < shownText.Length)
+                {
+                    char ch = shownText[typed++]; typeNext += ch == '…' ? 0.11f : "，。！？".IndexOf(ch) >= 0 ? 0.16f : 0.032f;
+                    if (typed % 2 == 1 && !char.IsWhiteSpace(ch) && "…，。！？、「」（）".IndexOf(ch) < 0) { var v = VOICE.TryGetValue(nameEl.text ?? "", out var vv) ? vv : (660, "square"); ZeroStar.Synth.Blip(v.Item1, v.Item2); }
+                }
                 if (typed >= shownText.Length) { typing = false; if (pick != null) optWait = 0.45f; }
             }
             else if (optWait > 0 && (optWait -= dt) <= 0) optWait = 0;

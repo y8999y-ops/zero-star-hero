@@ -42,6 +42,7 @@ namespace ZeroStar
         double lookX, sceneClock;
         double? camRefY, camLand;
         public int Kills, Coins, Combo, BestCombo; public double ComboT;
+        public double HitTune = 1;   // 打擊音的音高倍數（GameRoot 交給 Synth.HitTuneK）
         public readonly Status Status;
         public readonly Ult Ult;
         double ultCd;
@@ -63,6 +64,7 @@ namespace ZeroStar
         // ---- 裝備（存檔的 profile.equip、profile.lv；存檔系統在階段 5 才搬）
         public readonly Dictionary<string, Item> Equip = new Dictionary<string, Item> { ["weapon"] = null, ["head"] = null, ["body"] = null, ["hands"] = null, ["feet"] = null, ["acc1"] = null, ["acc2"] = null };
         public int Lv = 1, Xp, Money, Scrap;
+        public int Clears; public bool SeenIntro;   // 存檔：通關次數、看過開場沒有
         public readonly List<Item> Inv = new List<Item>();
         public readonly Dictionary<string, int> FormsOwned = new Dictionary<string, int> { ["star"] = 0 };   // 吸收過的形態 → 多出來的靈核
         public readonly Drops Drops = new Drops();
@@ -70,7 +72,7 @@ namespace ZeroStar
         static readonly Dictionary<string, double> KILL_XP = new Dictionary<string, double> { ["slime"] = 5, ["bat"] = 5, ["trash"] = 12, ["gold"] = 20, ["hog"] = 9 };
         static readonly Dictionary<string, double> DROP_RATE = new Dictionary<string, double> { ["slime"] = 0.1, ["bat"] = 0.1, ["trash"] = 0.35, ["gold"] = 1, ["hog"] = 0.2 };
         const double ABSORB_T = 1;
-        double? absorbHp; public Drops.Drop AbsorbNear;
+        double? absorbHp; double absorbTick; public Drops.Drop AbsorbNear;
         int IlvlNow(int bonus = 0) => Lv + bonus + (int)Math.Floor(Rnd.Next() * 2);
         /// 經驗：升級＝數值重算、生命全滿、金色光柱
         public void GainXp(double n)
@@ -158,6 +160,7 @@ namespace ZeroStar
             var cores = Drops.List.Where(d => d.Item.Kind == "formcore" && d.Landed && d.T > 0.45 && !d.Got).ToList();
             Drops.Drop near = null;
             foreach (var d in cores) if (Math.Abs(d.X - Player.X) < 26 && Math.Abs(d.Y - Player.Y) < 30 && (near == null || Math.Abs(d.X - Player.X) < Math.Abs(near.X - Player.X))) near = d;
+            if (near != null && AbsorbNear == null) Sfx("chime");   // 吸收鍵出現
             AbsorbNear = near;
             bool hit = absorbHp != null && Player.Hp < absorbHp;
             absorbHp = Player.Hp;
@@ -167,6 +170,7 @@ namespace ZeroStar
             if (Input.Absorb && !Ult.On)
             {
                 near.Hold = Math.Min(1, near.Hold + dt / ABSORB_T);
+                if ((absorbTick += dt) > 0.22) { absorbTick = 0; Sfx("ui"); }   // 按住吸收：滴答
                 if (near.Hold >= 1) { near.Got = true; Absorb(near.Item); }
             }
             else near.Hold = Math.Max(0, near.Hold - dt * 3);
@@ -184,7 +188,7 @@ namespace ZeroStar
             Fx.Shake(0.18, 2.5);
             if (unlocked)
             {
-                OnFormBanner?.Invoke(it.Form);
+                OnFormBanner?.Invoke(it.Form); Sfx("levelup");
                 bool carried = Array.IndexOf(Carry, it.Form) >= 0;
                 Say.Show($"系統：吸收了{FORM_NAME[it.Form]}的靈核！新形態「{FORM_NAME[it.Form]}」。" + (carried ? (IsTouch ? "點右邊的【形態】就能變身。" : "按【1】～【3】就能變身。") : "已經帶滿 3 個了，不在戰鬥中時打開技能樹的【形態】頁就能換。"), 3.4, "forms");
                 Say.Unshift($"系統：你把{(it.Form == "slime" ? "史萊姆" : "垃圾桶")}的靈核吃掉了？不對，是吸收。好吧，差不多。", 2.8);
@@ -413,7 +417,7 @@ namespace ZeroStar
             Taught.UnionWith(f.Taught); Reacted.UnionWith(f.Reacted); SysDone.UnionWith(f.SysDone); Cleared_.UnionWith(f.Cleared_);
             GuildRegistered = f.GuildRegistered; GuildDone = f.GuildDone; TGuide = f.TGuide;
             Meal = f.Town || !Town ? f.Meal : null;
-            Locked.UnionWith(f.Locked); Auto = f.Auto;
+            Locked.UnionWith(f.Locked); Auto = f.Auto; Clears = f.Clears; SeenIntro = f.SeenIntro; PityLegend = f.PityLegend;
             foreach (var kv in f.CoreSpent) CoreSpent[kv.Key] = kv.Value;
             foreach (var kv in f.CoreBonus) CoreBonus[kv.Key] = kv.Value;
             foreach (var kv in f.MapSeen) MapSeen[kv.Key] = kv.Value;   // 料理的效果只到這趟冒險結束（從關卡回城鎮時用掉）
@@ -475,7 +479,7 @@ namespace ZeroStar
         }
         public void SpawnFireball(double x, double y, double dir, string form, double vy = 0)
         {
-            Sfx("shot");
+            Sfx("shot:" + form);
             var pal = SHOT_PAL.ContainsKey(form) ? SHOT_PAL[form] : SHOT_PAL["star"];
             Shots.Add(new Shot { X = x, Y = y, Dir = dir, Vy = vy, Form = form, Life = 1.1, Mult = 1, Fx = SpawnLive("fireball", x, y, new FxOptions { Flip = dir < 0, Palette = pal.fx, Light = 0.65, Seed = Pf.ToInt32(Rnd.Next() * 99) }) });
         }
@@ -510,7 +514,7 @@ namespace ZeroStar
         {
             double fy = Map.FloorAt(x, y - 8);
             SpawnLive("ground-slam", Pf.Round(x), Pf.Round(fy), new FxOptions { Palette = METAL7, Light = 0.4, Seed = Pf.ToInt32(Rnd.Next() * 99) }, 1.8);
-            Fx.Shake(0.25, 3); Sfx("land");
+            Fx.Shake(0.25, 3); Sfx("land:true");
             HitArea(new Box(x - r, x + r, fy - 30, fy + 2), () => Player.RollDmg(mult * Player.SkillMul()), Player.Face, new HitOpts { Launch = true, Push = 3 });
         }
         public void SpikeBurst(double x, double y)
@@ -574,7 +578,7 @@ namespace ZeroStar
             SpawnLive("collect-burst", Pf.Round(Player.X), Pf.Round(Player.Y) - 12, new FxOptions { Palette = FORM_BURST[id], Light = 0.4 });
             SceneLight.AddFlash(Player.X, Player.Y - 12, 60, 2, 0.3, FORM_COLOR[id]);
         }
-        public void Land(double x, double y, bool hard) { Sfx("land"); Combat.Dust("land", x, y, hard); Props.Landing(x, y, hard); Scenery.Landing(x, y, hard); }
+        public void Land(double x, double y, bool hard) { Sfx(hard ? "land:true" : "land"); Combat.Dust("land", x, y, hard); Props.Landing(x, y, hard); Scenery.Landing(x, y, hard); }
         public void Dust(double x, double y, int n) { Fx.Spawn(Baked.Anim("dust"), Pf.Round(x), Pf.Round(y), Rnd.Next() < 0.5, speed: 1.8); }
         public void DropCoins(double x, double y, int n) { CoinList.Drop(x, y, n); }
         static readonly Dictionary<string, string> CORE_FROM = new Dictionary<string, string> { ["slime"] = "slime", ["bat"] = "bat", ["trash"] = "can", ["hog"] = "spike" };
@@ -889,6 +893,7 @@ namespace ZeroStar
             if (got > 0) { Coins += got; Money += got; Sfx("coin"); }
             Fx.Update(dt);
             if ((ComboT -= dt) <= 0 && Combo != 0) Combo = 0;
+            HitTune = Math.Pow(2, Math.Min(8, Math.Floor(Combo / 5.0)) / 12);   // 連擊越高打擊音越高（每 5 連擊升半音，最多 8 個半音）
             FollowCam(dt);
             Say.Update();
         }

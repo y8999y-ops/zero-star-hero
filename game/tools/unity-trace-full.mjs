@@ -279,6 +279,7 @@ for (let n = 0; n < TICKS; n++) {
 const SUF = TAG + (VARIANT ? "-" + VARIANT : "");
 writeFileSync(join(OUT, `trace${SUF}.txt`), lines.join("\n") + "\n");
 writeFileSync(join(OUT, `trace-frames${SUF}.bin`), Buffer.concat(frames));
+if (process.env.SAVE_OUT) { writeFileSync(process.env.SAVE_OUT, localStorage.getItem("zero-hero-save-v1") ?? ""); console.log("存檔：", process.env.SAVE_OUT); }   // 開發用：跑完把網頁版的存檔寫出來（Unity 版測匯入）
 if (BOT && process.env.BOT_OUT) { writeFileSync(join(dirname(fileURLToPath(import.meta.url)), process.env.BOT_OUT), JSON.stringify({ ...SC, note: SC.note + "（後半段是機器人玩到通關時按的鍵）", ticks: TICKS, events: [...SC.events, ...botEv] }, null, 1)); console.log("存了機器人的按鍵：", process.env.BOT_OUT, botEv.length, "個"); }
 console.log("機關：", (G.features?.items ?? []).map((f) => f.t + (f.done ? "✓" : "✗")).join(" ")); console.log("關卡：事件", G.director?.next, "祭壇", G.altars.map((a) => a.lit ? 1 : 0).join(""), "寶箱", G.chest ? (G.chest.opened ? "開" : "沒開") + "@" + G.chest.x + "," + G.chest.y : "無", "傳送門", JSON.stringify(G.portal), "擊殺", G.stats.kills, "死亡", G.stats.deaths);
 console.log(`網頁版（完整 main.js）：${TICKS} 步、${frames.length} 張畫面 → ${OUT}`);

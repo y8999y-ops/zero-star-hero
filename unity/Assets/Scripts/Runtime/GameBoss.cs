@@ -72,6 +72,7 @@ namespace ZeroStar
                 for (int i = Enemies.Count - 1; i >= 0; i--) { var e = Enemies[i]; if (e.IsBoss || (e.X >= l && e.X <= r && e.Y > StageD.ArenaInfo.Floor - 220)) Enemies.RemoveAt(i); }
                 Director.ResetLock();
                 BossBarOn = false;
+                Sfx("music=");   // 王戰中死掉：王戰音樂停（下次王吼再開始）
             }
             return to;
         }

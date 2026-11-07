@@ -27,6 +27,7 @@ namespace ZeroStar
         void Start()
         {
             screen = GetComponent<PixelScreen>();
+            Synth.Init();   // 即時合成的音效和音樂（Runtime/Audio）
             Game.W = screen.W;
             screen.Resized += w => Game.W = w;
             var args = Environment.GetCommandLineArgs();
@@ -42,11 +43,12 @@ namespace ZeroStar
             screen.Draw += f => { screen.Zoom = Game.Zoom; game.Render(f); };   // 王戰時鏡頭拉遠（Game.Zoom）；地圖開著時後面照樣畫（暫停中）
             screen.PostComposite += d => game.PostComposite(d);
             screen.Paused = () => map != null || (win != null && win.Open) || (inv != null && inv.Open) || (settings != null && settings.Open) || (title != null && title.Open) || (intro != null && intro.Playing);
-            { var uiGo = new GameObject("UI"); uiGo.transform.SetParent(transform); var uiRoot = ZeroStar.UI.Ui.CreateRoot(uiGo); hud = new ZeroStar.UI.Hud(uiRoot); dlg = new ZeroStar.UI.Dialog(uiRoot, () => game.Player.Form);
+            { var uiGo = new GameObject("UI"); uiGo.transform.SetParent(transform); var uiRoot = ZeroStar.UI.Ui.CreateRoot(uiGo); uiRootEl = uiRoot; hud = new ZeroStar.UI.Hud(uiRoot); dlg = new ZeroStar.UI.Dialog(uiRoot, () => game.Player.Form);
               win = new ZeroStar.UI.Win(uiRoot); inv = new ZeroStar.UI.Inventory(uiRoot); mapWin = new ZeroStar.UI.MapWin(uiRoot);
               title = new ZeroStar.UI.Title(uiRoot); intro = new ZeroStar.UI.Intro(uiRoot); settings = new ZeroStar.UI.Settings(uiRoot); loading = new ZeroStar.UI.Loading(uiRoot); uiFx = new ZeroStar.UI.UiFx(uiRoot); }   // 疊的順序：主畫面、開場 < 設定 < 載入畫面 < 介面特效   // 4e：設定、主畫面、開場、載入畫面
-            settings.Sfx = s => game.Sfx(s); title.Sfx = s => game.Sfx(s); intro.Sfx = s => game.Sfx(s);
+            settings.Sfx = s => game.Sfx(s); title.Sfx = s => game.Sfx(s); intro.Sfx = Synth.Route;
             settings.OnIntro = () => _ = ReplayIntro();
+            settings.OnExport = ExportSave; settings.OnImport = () => _ = ImportSave();
             settings.OnTitle = BackToTitle;
             settings.OnGoHome = async () => { if (game.Town || dlg.Open) return; if (await dlg.Ask("系統", "要放棄這趟回碎星鎮嗎？撿到的東西都會留著，但這關要重來。", new[] { ("回城鎮", "y"), ("繼續打", "n") }) == "y") pending = "town"; };
             title.OnStart = () => _ = StartOrIntro();
@@ -66,9 +68,19 @@ namespace ZeroStar
             touchMode = Input.touchSupported && Application.isMobilePlatform || Array.IndexOf(args, "-touch") >= 0;   // -touch：開發用，電腦上看手機的排法
             // 開遊戲：載入畫面 → 主畫面（自動玩、地圖截圖直接開始）
             for (int i = 0; i < args.Length - 1; i++) if (args[i] == "-titleshot") titleShot = args[i + 1];   // 開發用：截主畫面、說明、設定、開場、通關載入畫面
-            if (titleShot != null) { Directory.CreateDirectory(titleShot); PlayerPrefs.DeleteKey("seenIntro"); }
+            if (titleShot != null) Directory.CreateDirectory(titleShot);
             if (shotDir != null || mapShot != null) started = true;
-            else { title.Form = game.Player.Form; title.Show("開始冒險"); loading.Show(); loading.Done(); }
+            else
+            {
+                // 讀存檔：有打過關或登記過冒險者＝從碎星鎮繼續，不然從 1-1 開始
+                bool cont = false;
+                if (!uiDemo && SaveData.Load() is string json)
+                {
+                    try { SaveData.Apply(game, json); cont = game.Clears > 0 || game.GuildRegistered; if (cont) NewGame("town", game); }
+                    catch (Exception e) { Debug.LogWarning("[Save] 讀不了存檔：" + e.Message); }
+                }
+                title.Form = game.Player.Form; title.Show(cont ? "繼續冒險" : "開始冒險"); loading.Show(); loading.Done();
+            }
             if (mapShot != null) { Directory.CreateDirectory(mapShot); game.Cleared_.UnionWith(new[] { "1-1", "1-2" }); OpenMap(false); }
         }
         string mapShot; int mapShotN;
@@ -92,14 +104,48 @@ namespace ZeroStar
         async System.Threading.Tasks.Task StartOrIntro()
         {
             if (started || intro.Playing) return;
-            if (game.Town || game.StageId != "1-1" || PlayerPrefs.GetInt("seenIntro", 0) == 1) { StartGame(); return; }
+            if (game.Town || game.StageId != "1-1" || game.SeenIntro) { StartGame(); return; }
             title.MenuVisible = false;
             await intro.Play();
-            PlayerPrefs.SetInt("seenIntro", 1);
+            game.SeenIntro = true; Save();
             game.SkipStageIntro();   // 開場已經講過「轉生成功、種族星靈」，1-1 直接接第一句教學
             StartGame();
         }
-        void StartGame() { started = true; title.Hide(); title.MenuVisible = true; }
+        void StartGame() { started = true; title.Hide(); title.MenuVisible = true; StageMusic(); }
+        /// 遊戲裡的聲音：music=名字（空白＝停）、tempo=倍數、jingle=種類，其他交給 Synth.Route（「名字:參數」）
+        void Sound(string s)
+        {
+            if (s.StartsWith("music=")) { var n = s.Substring(6); Synth.Music(n == "" ? null : n); }
+            else if (s.StartsWith("tempo=")) Synth.Tempo(double.Parse(s.Substring(6), System.Globalization.CultureInfo.InvariantCulture));
+            else if (s.StartsWith("jingle=")) Synth.Jingle(s.Substring(7));
+            else Synth.Route(s);
+        }
+        /// main.js 的 start()：城鎮放城鎮的歌、關卡放關卡的歌；1-4 王出場大吼時才開始王戰音樂
+        void StageMusic() { if (shotDir == null) Synth.Music(game.Town ? "town" : game.StageId == "1-4" ? null : "stage"); }
+        // ---- 存檔：換場景、關背包和視窗、每 20 秒、App 切到背景、關掉時（自動玩、比對、截圖不存）
+        bool CanSave => shotDir == null && mapShot == null && titleShot == null && !uiDemo && game != null;
+        float saveT;
+        void Save() { if (CanSave) SaveData.Save(game); }
+        void OnApplicationPause(bool pause) { if (pause) Save(); }
+        void OnApplicationQuit() { Save(); }
+        /// 設定：把存檔複製成一段代碼（備份、換裝置）
+        void ExportSave() { GUIUtility.systemCopyBuffer = SaveData.Encode(SaveData.ToJson(game)); hud.ShowHint("存檔代碼複製好了。", 2.5); }
+        /// 設定：從剪貼簿匯入（網頁版「匯出存檔」的代碼）：問一次，之後從碎星鎮（或 1-1）重新開始
+        async System.Threading.Tasks.Task ImportSave()
+        {
+            string json = SaveData.Decode(GUIUtility.systemCopyBuffer);
+            if (json == null) { hud.ShowHint("剪貼簿裡沒有存檔代碼。先在網頁版的設定按「匯出存檔」。", 3.5); return; }
+            if (await dlg.Ask("系統", "要用剪貼簿裡的存檔取代現在的進度嗎？現在的進度會被蓋掉。", new[] { ("匯入", "y"), ("取消", "n") }) != "y") return;
+            var fresh = new Game("1-1", null);
+            try { SaveData.Apply(fresh, json); }
+            catch (Exception e) { hud.ShowHint("這段存檔讀不了：" + e.Message, 3.5); return; }
+            bool cont = fresh.Clears > 0 || fresh.GuildRegistered;
+            started = false;
+            NewGame(cont ? "town" : "1-1", fresh);
+            Save();
+            title.Form = game.Player.Form; title.Show(cont ? "繼續冒險" : "開始冒險");
+            hud.ShowHint("匯入完成。", 2.5);
+        }
         /// 設定裡的「重看開場動畫」：在原地播（遊戲暫停），播完回到原本的畫面
         async System.Threading.Tasks.Task ReplayIntro() { if (intro.Playing) return; await intro.Play(); }
         /// 「回主畫面」：關卡中回去的話，下次從碎星鎮繼續；還沒到過鎮上的新玩家從原本的關卡
@@ -116,8 +162,28 @@ namespace ZeroStar
         /// 地圖：關卡裡＝這一關走過的地方（mapview.js）；碎星鎮沒有關卡地圖，打開選關地圖
         void OpenLevelMap() { if (game.Town) OpenMap(false); else { game.Sfx("open"); _ = ZeroStar.UI.LevelMap.Open(game); } }
         ZeroStar.UI.Hud hud; ZeroStar.UI.Dialog dlg; ZeroStar.UI.Win win; ZeroStar.UI.UiFx uiFx; ZeroStar.UI.MapWin mapWin; int winTicks;
-        void LateUpdate() { if (hud == null || game == null) return; if (titleShot != null) TitleShot(Time.unscaledDeltaTime); hud.Touch = touchMode; mapWin.Touch = touchMode; hud.Dim = dlg.Open; hud.Update(game, Time.unscaledDeltaTime); mapWin.Update(Time.unscaledDeltaTime); dlg.Update(Time.unscaledDeltaTime); win.Update(Time.unscaledDeltaTime); inv.Update(Time.unscaledDeltaTime); settings.Update(Time.unscaledDeltaTime); title.Update(Time.unscaledDeltaTime); intro.Update(Time.unscaledDeltaTime); loading.Update(Time.unscaledDeltaTime); uiFx.Update(Time.unscaledDeltaTime);
-            hud.Visible = started; }
+        bool wasOpen; UnityEngine.Rect lastSafe;
+        /// 手機：介面避開瀏海、圓角（Screen.safeArea）；遊戲畫面照樣蓋滿
+        void FitSafeArea()
+        {
+            var sa = Screen.safeArea; if (sa == lastSafe || uiRootEl == null || uiRootEl.panel == null) return; lastSafe = sa;
+            float k = ZeroStar.UI.Ui.Scale();
+            uiRootEl.style.left = sa.xMin / k; uiRootEl.style.right = (Screen.width - sa.xMax) / k;
+            uiRootEl.style.bottom = sa.yMin / k; uiRootEl.style.top = (Screen.height - sa.yMax) / k;
+        }
+        UnityEngine.UIElements.VisualElement uiRootEl;
+        void LateUpdate()
+        {
+            if (hud == null || game == null) return;
+            FitSafeArea();
+            bool open = win.Open || inv.Open; if (wasOpen && !open) Save(); wasOpen = open;   // 關掉背包、視窗：存檔
+            if (titleShot != null) TitleShot(Time.unscaledDeltaTime);
+            float dt = Time.unscaledDeltaTime;
+            hud.Touch = touchMode; mapWin.Touch = touchMode; hud.Dim = dlg.Open;
+            hud.Update(game, dt); mapWin.Update(dt); dlg.Update(dt); win.Update(dt); inv.Update(dt); settings.Update(dt);
+            title.Update(dt); intro.Update(dt); loading.Update(dt); uiFx.Update(dt);
+            hud.Visible = started;
+        }
 
         static readonly string[] ORDER = { "1-1", "1-2", "1-3", "1-4" };
 
@@ -153,6 +219,7 @@ namespace ZeroStar
             // 換場景：載入畫面蓋一下；踩傳送門通關的話，在載入畫面播通關成績（loading.js）
             if (from != null && shotDir == null && loading != null)
             {
+                Save();
                 string[] rep = null;
                 if (from.StageDone && !from.Town)
                 {
@@ -166,13 +233,14 @@ namespace ZeroStar
             game = new Game(stage, from);
             if (tracePath != null) TraceScript.Apply(game, tracePath);   // 自動玩：照比對腳本的存檔
             Debug.Log($"[Stage] 開始 {stage}（Lv {game.Lv}）");
-            game.OnSay = msg => hud.ShowHint(msg, 2.6);   // 開發用的提示（G 換裝備）
+            game.OnSay = msg => hud.ShowHint(msg, 2.6);
+            game.OnSfx = Sound;   // 開發用的提示（G 換裝備）
             game.OnHint = (msg, sec) => hud.ShowHint(msg, sec);
             game.OnFeed = hud.Feed;
             game.OnFormBanner = hud.FormBanner;
             game.OnResBanner = hud.ResBanner;
             game.Say.OnShow = null;   // 系統台詞、提示改由 HUD 顯示（UI/Hud.cs）
-            if (from == null && tracePath == null) foreach (var f in game.Carry) game.FormsOwned[f] = 0;   // 開發用：形態全部都有（存檔、技能樹畫面在階段 4、5）
+            if (from == null && tracePath == null) game.Carry = new[] { "star" };   // 新遊戲：只有星星（跟網頁版的新存檔一樣）
             // 進傳送門：網頁版回碎星鎮、再從選關地圖選下一關（階段 3d）；這裡先直接到下一關（1-4 打完回 1-1）
             game.OnLeave = () => game.After(380, () => pending = shotDir != null ? NextStage() : "town");   // 進傳送門：回碎星鎮（自動玩（-shot）照舊直接到下一關）
             // 碎星鎮：路標＝打開選關地圖；店家、路人的對話和視窗在階段 4b、4c
@@ -181,6 +249,7 @@ namespace ZeroStar
             game.Vibrate = () => Handheld.Vibrate();   // 大招落地震一下（手機）
 #endif
             game.StartStage();
+            if (started) StageMusic();   // 換場景：換歌
             game.Warm(screen.Frame);
         }
         string NextStage() { int i = Array.IndexOf(ORDER, game.StageId); return ORDER[(i + 1) % ORDER.Length]; }
@@ -229,7 +298,7 @@ namespace ZeroStar
             if (Input.GetKeyDown(KeyCode.Escape) && settings.Open) settings.Close();
             else if (Input.GetKeyDown(KeyCode.Escape) && inv.Open) inv.Close();
             else if (Input.GetKeyDown(KeyCode.Escape) && win.Open) win.Close();
-            else if (Input.GetKeyDown(KeyCode.Escape) && !Application.isEditor) Application.Quit();
+            else if (Input.GetKeyDown(KeyCode.Escape) && !dlg.Open && map == null) settings.Show(!game.Town);   // 什麼都沒開：Esc（手機的返回鍵）＝打開設定
         }
 
         bool mouseOnUi;
@@ -304,6 +373,8 @@ namespace ZeroStar
             game.Tick(game.SlowT > 0 ? dt * 0.35 : dt);   // 慢動作（傳說掉落、打倒菁英）
             game.SlowT -= dt;
             ZeroStar.UI.LevelMap.UpdateSeen(game, (float)dt);   // 關卡地圖：看得到的範圍算走過
+            if (CanSave && (saveT += (float)dt) > 20) { saveT = 0; Save(); }   // 每 20 秒存一次
+            Synth.HitTuneK = game.HitTune;
             game.Hud(Game.STEP);   // 台詞計時每一步都走（網頁版每步：tick、畫、hud；畫面不讀台詞，先後一樣）。原本放在畫面那邊，畫面卡、一次跑兩步時台詞和關卡事件會被拖慢
             game.SimMs += 1000 / 60.0;
             if (pending != null) { var next = pending; pending = null; NewGame(next, game); }

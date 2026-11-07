@@ -31,6 +31,10 @@ namespace ZeroStar.EditorTools
             if (!File.Exists(MAIN)) MakeScene();
             PlayerSettings.companyName = "y8999y";
             PlayerSettings.productName = "轉生成星星碎片的我";
+            PlayerSettings.bundleVersion = "0.5.0";
+            // App 圖示（暫時版：主角的像素圖放大，深紫底＋金色光暈；Resources/Art/ui/app-icon.png）
+            var icon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Resources/Art/ui/app-icon.png");
+            if (icon != null) PlayerSettings.SetIcons(UnityEditor.Build.NamedBuildTarget.Unknown, new[] { icon }, IconKind.Any);
         }
         static void Report(BuildReport r)
         {
@@ -57,8 +61,7 @@ namespace ZeroStar.EditorTools
         {
             Common();
             PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Android, "com.y8999y.zerostar");
-            PlayerSettings.bundleVersion = "0.1.0";
-            PlayerSettings.Android.bundleVersionCode = 1;
+            PlayerSettings.Android.bundleVersionCode = 5;   // 每次上架要比上一次大
             PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26;
             PlayerSettings.SetScriptingBackend(UnityEditor.Build.NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
