@@ -18,18 +18,6 @@ namespace ZeroStar.Tests
     {
         static string F(double v) => v.ToString("G17", CultureInfo.InvariantCulture);
 
-        static Item SpecItem(OrderedDict sp)
-        {
-            string S(string k) => sp.ContainsKey(k) ? (string)sp[k] : null;
-            int N(string k) => sp.ContainsKey(k) ? (int)(double)sp[k] : 0;
-            string kind = S("base") != null ? Items.Base(S("base")).Kind : S("unique") != null ? Items.UNIQUES.First(u => u.Id == S("unique")).Kind : Items.MYTHS.First(m => m.id == S("myth")).kind;
-            var main = (List<object>)sp["main"];
-            var it = new Item { Uid = "x", Kind = kind, Rarity = N("rarity"), Ilvl = N("ilvl"), Plus = N("plus"), Main = new Affix { Id = (string)main[0], V = (double)main[1] }, Name = "x", Icon = "x",
-                Base = S("base"), Unique = S("unique"), Myth = S("myth"), Set = S("set"), AwakenKills = N("kills") };
-            if (sp.ContainsKey("affixes")) foreach (List<object> a in (List<object>)sp["affixes"]) it.Affixes.Add(new Affix { Id = (string)a[0], Tier = (int)(double)a[1], V = (double)a[2] });
-            return it;
-        }
-
         [MenuItem("零星工具/比對測試：操作錄影")]
         public static void Run()
         {
@@ -39,24 +27,9 @@ namespace ZeroStar.Tests
             Prof.On = true; Prof.Ms.Clear();
             string ultOnly = Environment.GetEnvironmentVariable("ULT_PROF"); int profN = 0; double maxMs = 0; int maxAt = 0;
             Game.W = 384;
-            var g = new Game();
-            if (sc.tree == "max") g.MaxTree();
-            // 穿搭（環境變數 TRACE_VARIANT 選 variants 裡的一組）
             string variant = Environment.GetEnvironmentVariable("TRACE_VARIANT") ?? "";
-            {
-                var root = (OrderedDict)MiniJson.Parse(File.ReadAllText(TraceScript.DefaultPath()));
-                var V = variant != "" ? (OrderedDict)((OrderedDict)root["variants"])[variant] : (OrderedDict)root["starter"];   // 沒選穿搭＝新存檔的初始裝備
-                g.Lv = V.ContainsKey("lv") ? (int)(double)V["lv"] : 1;
-                foreach (var k in g.Equip.Keys.ToList()) g.Equip[k] = null;   // 存檔裡只有腳本給的那幾件
-                var eq = (OrderedDict)V["equip"];
-                foreach (var slot in eq.Order) g.Equip[slot] = SpecItem((OrderedDict)eq[slot]);
-                g.ApplyStats();
-                g.Player.Hp = g.Player.MaxHp;
-                // 存檔：每個形態都有（技能樹點滿）、帶著的形態、互動教學看過沒
-                foreach (var f in new[] { "star", "slime", "bat", "can", "spike" }) g.FormsOwned[f] = 0;
-                g.Carry = root.ContainsKey("carry") ? ((List<object>)root["carry"]).Cast<string>().ToArray() : new[] { "star", "slime", "bat" };
-                g.TipUse = root.ContainsKey("tipUse") && (double)root["tipUse"] != 0;
-            }
+            var g = new Game(sc.stage);
+            TraceScript.Apply(g, TraceScript.DefaultPath(), variant);   // 穿搭、技能樹、帶著的形態、打過的關卡（跟網頁版的存檔一樣）
             var frame = new Frame(Game.W, Game.H);
             var rgba = new byte[Game.W * Game.H * 4];
             g.StartStage();
@@ -96,7 +69,7 @@ namespace ZeroStar.Tests
                 if (n > 30 && stepMs > maxMs) { maxMs = stepMs; maxAt = n; }
                 Prof.Mark("合成");
                 var p = g.Player;
-                var row = new List<string> { n.ToString(), F(p.X), F(p.Y), F(p.Vx), F(p.Vy), p.State, F(p.Hp), F(p.Face), p.Grounded ? "1" : "0", p.Pose, F(g.CamX), F(g.CamY), F(g.Fx.Freeze), F(g.Fx.ShakeT), p.Form, F(p.Mp), g.Combo.ToString(), g.Ult.On ? "U" + F(g.Ult.T) : "-", (g.Director?.Next ?? -1).ToString(), g.Enemies.Count.ToString() };
+                var row = new List<string> { n.ToString(), F(p.X), F(p.Y), F(p.Vx), F(p.Vy), p.State, F(p.Hp), F(p.Face), p.Grounded ? "1" : "0", p.Pose, F(g.CamX), F(g.CamY), F(g.Fx.Freeze), F(g.Fx.ShakeT), p.Form, F(p.Mp), g.Combo.ToString(), g.Ult.On ? "U" + F(g.Ult.T) : "-", (g.Director?.Next ?? -1).ToString() + (g.StageDone ? "d" : "") + (g.Leaving ? "l" : ""), g.Enemies.Count.ToString() };
                 foreach (var e in g.Enemies)
                 {
                     row.Add(e.Kind[0] + (e.Elite ? "E" : ""));

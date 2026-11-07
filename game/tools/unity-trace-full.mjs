@@ -154,8 +154,11 @@ const profile = {
   guild: { registered: false, done: 0, quest: null }, meal: null,
   seenIntro: true, tipUse: SC.tipUse ?? 0, cleared: {}, taught: {},
 };
+// 哪一關（腳本的 stage，沒寫＝1-1）；前面的關卡算打過了（正常玩到這一關的存檔）
+const STAGE = SC.stage ?? "1-1", ORDER = ["1-1", "1-2", "1-3", "1-4"];
+for (const id of ORDER.slice(0, ORDER.indexOf(STAGE))) profile.cleared[id] = true;
 globalThis.localStorage = new Store({ "zero-hero-save-v1": JSON.stringify(profile) });
-globalThis.sessionStorage = new Store({ "zero-hero-next": "stage", "zero-hero-stage": "1-1", "zero-hero-auto": "1" });
+globalThis.sessionStorage = new Store({ "zero-hero-next": "stage", "zero-hero-stage": STAGE, "zero-hero-auto": "1" });
 
 // ---- 載入網頁版（載入時取的亂數也算在同一串裡）
 await import("../src/main.js");
@@ -171,7 +174,9 @@ const f = (v) => String(v);
 const lines = [], frames = [];
 let si = 0;
 const held = new Set(), botEv = [], later = [];
-let stuckN = 0, lastX = 0, jumps = 0;
+let stuckN = 0, lastX = 0, jumps = 0, leg = 0, legWait = 0, lastForced = -999, coastAt = -1, gliding = false;
+// 路線（腳本的 route，只給機器人用）：依序走到每個 x（有寫 y 就要到那個高度附近），jumps＝經過 [x, y] 時二段跳
+const ROUTE = SC.route ?? [];
 function botTick(n) {
   const out = [], p = G.player, E = G.enemies.filter((e) => !e.dead);
   const hold = (code, on) => { if (on !== held.has(code)) { out.push([n, on ? "d" : "u", code]); on ? held.add(code) : held.delete(code); } };
@@ -179,7 +184,7 @@ function botTick(n) {
   for (let i = later.length - 1; i >= 0; i--) if (later[i][0] === n) {
     const [, t, c] = later.splice(i, 1)[0];
     if (t === "u" && held.has(c)) { out.push([n, "u", c]); held.delete(c); }
-    if (t === "d2") { if (held.has(c)) { out.push([n, "u", c]); held.delete(c); } out.push([n, "d", c]); held.add(c); later.push([n + 10, "u", c]); }
+    if (t === "d2") { if (held.has(c)) { out.push([n, "u", c]); held.delete(c); } out.push([n, "d", c]); held.add(c); later.push([n + 16, "u", c]); }
   }
   const P = G.portal;
   if (P.leaving) { for (const c of [...held]) hold(c, false); return out; }
@@ -189,21 +194,51 @@ function botTick(n) {
   const altar = G.altars.find((a) => !a.lit && Math.abs(a.x - p.x) < 10 && Math.abs(a.y - p.y) < 20);
   const ch = G.chest, chestOk = ch && !ch.opened && Math.abs(ch.x - p.x) < 12 && Math.abs(ch.y - p.y) < 16 && !E.some((e) => e.kind !== "gold" && Math.abs(e.x - ch.x) < 160 && Math.abs(e.y - ch.y) < 80);
   const portalOk = P.stageDone && Math.abs(P.x - p.x) < 8 && Math.abs(P.y - p.y) < 16;
-  if ((altar || chestOk || portalOk) && p.grounded) { hold("KeyD", false); hold("KeyA", false); hold("KeyJ", false); if (n % 8 === 0) tap("KeyF"); return out; }
+  const feat = (G.features?.usable?.() ?? []).length > 0;
+  if ((altar || chestOk || portalOk || feat) && p.grounded) { hold("KeyD", false); hold("KeyA", false); hold("KeyJ", false); if (n % 8 === 0) tap("KeyF"); return out; }
   // 往右走；祭壇、寶箱、傳送門在前面就走到它旁邊停下
   let target = 1e9;
-  if (ch && !ch.opened && ch.x > p.x - 8 && Math.abs(ch.y - p.y) < 40) target = ch.x;
+  const R = ROUTE[leg];
+  if (R && Math.abs(p.x - R.x) < 8 && (R.y == null || (Math.abs(p.y - R.y) < 16 && (p.grounded || R.air)))) leg++;
+  else if (R && Math.abs(p.x - R.x) < 8 && ++legWait > (R.glide ? 900 : 120)) { leg++; legWait = 0; }   // 到了那個 x 卻不在那個高度（掉下去了）：放棄這一段
+  const BK = ROUTE[leg]?.back;   // back＝[x0, x1, y]：在 x0～x1 之間掉到 y 以下＝這一段失敗了，回上一段重來
+  if (BK && p.x > BK[0] && p.x < BK[1] && p.y >= BK[2] && p.grounded) leg--;
+  if (ROUTE[leg]) target = ROUTE[leg].x;
+  else if (ch && !ch.opened && ch.x > p.x - 8 && Math.abs(ch.y - p.y) < 40) target = ch.x;
   else if (P.stageDone) target = P.x;
+  for (const [jx, jy, run] of ROUTE[leg]?.jumps ?? []) if (p.grounded && Math.abs(p.x - jx) < 10 && Math.abs(p.y - jy) < 3 && n - lastForced > 60) { lastForced = n; coastAt = run != null ? n + run : -1; tap("Space", 14); later.push([n + 16, "d2", "Space"]); }
+  if (coastAt >= 0 && n >= coastAt) { if (p.grounded && n > coastAt + 4) coastAt = -1; else target = p.x; }   // 二段跳只往前按 run 步，之後放開，落在平台上
   const goal = G.altars.find((a) => !a.lit && a.x > p.x - 8 && a.x < p.x + 60 && Math.abs(a.y - p.y) < 40);
   if (goal) target = Math.min(target, goal.x);
   hold("KeyA", target < p.x - 3);
   hold("KeyD", target > p.x + 3 && !(ahead.length && Math.abs(ahead[0].x - p.x) < 26));
-  hold("KeyJ", near.length > 0);
+  const vein = (G.features?.items ?? []).some((f) => f.t === "vein" && !f.done && Math.abs(f.x - p.x) < 18 && Math.abs(f.y - p.y) < 20);
+  hold("KeyJ", near.length > 0 || vein);
   if (ahead.length >= 3 && p.mp >= 25 && n % 30 === 0) tap("KeyE");
   if (near.length >= 2 && p.mp >= 100 && n % 45 === 0) tap("KeyQ");
   if (E.some((e) => e.mode === "swoop" && Math.abs(e.x - p.x) < 60 && Math.abs(e.y - p.y) < 50) && n % 20 === 0) tap("KeyK");
+  // 機關：裂牆（換鐵罐星衝撞）、封印（換星星射星屑彈）；魔力不夠就補滿（m）
+  const FI = G.features?.items ?? [];
+  const crack = FI.find((f) => f.t === "crack" && !f.done && f.x - p.x > 0 && f.x - p.x < 44 && Math.abs(f.y - p.y) < 30);
+  const seal = FI.find((f) => f.t === "seal" && !f.done && !(f.lit > 0) && f.x - p.x > 0 && f.x - p.x < 120 && p.y > f.y - (f.h ?? 48) - 10 && p.y <= f.y + 30);
+  const want = crack ? "can" : seal ? "star" : null;
+  if (want && !near.length) {
+    hold("KeyJ", false);
+    if (p.form !== want) { if (n % 20 === 0) out.push([n, "f", want]); }
+    else if (p.mp < 25) { if (n % 20 === 0) out.push([n, "m", ""]); }
+    else if (p.grounded && n % 40 === 0) tap("KeyE");
+    return out;
+  }
+  // 路段指定的形態（黏液菇要黏液星、氣流要蝠翼星）；沒指定就換回星星
+  const RL = ROUTE[leg], close = RL && Math.abs(p.x - RL.x) < (RL.near ?? 120);   // 接近那一段的目標才換形態、才滑翔
+  const legForm = (close && RL.form) || "star";
+  if (p.form !== legForm && !near.length && n % 20 === 0) out.push([n, "f", legForm]);
+  // 滑翔路段：在空中一直按住跳；站在氣流裡就先跳起來
+  if (close && RL.glide) { if (!p.grounded) hold("Space", true); else if (held.has("Space")) hold("Space", false); else if (n % 20 === 0) tap("Space"); return out; }
+  else if (gliding && held.has("Space")) hold("Space", false);
+  gliding = !!(close && RL.glide);
   // 卡住：先跳、空中再跳；跳不過去就往下穿平台
-  if (held.has("KeyD") && !near.length && Math.abs(p.x - lastX) < 0.3) stuckN++; else stuckN = 0;
+  if ((held.has("KeyD") || held.has("KeyA")) && !near.length && Math.abs(p.x - lastX) < 0.3) stuckN++; else stuckN = 0;
   lastX = p.x;
   if (stuckN > 12 && p.grounded) {
     stuckN = 0; jumps++;
@@ -228,7 +263,7 @@ for (let n = 0; n < TICKS; n++) {
   const img = G.step();
   simMs += 1000 / 60;
   const p = G.player, E = G.enemies;
-  const row = [n, p.x, p.y, p.vx, p.vy, p.state, p.hp, p.face, p.grounded ? 1 : 0, poseName.get(p.pose) ?? "?", G.camX, G.camY, juice.freeze, juice.shakeT, p.form, p.mp, G.stats.combo, ult.on ? "U" + ult.t : "-", G.director?.next ?? -1, E.length];
+  const row = [n, p.x, p.y, p.vx, p.vy, p.state, p.hp, p.face, p.grounded ? 1 : 0, poseName.get(p.pose) ?? "?", G.camX, G.camY, juice.freeze, juice.shakeT, p.form, p.mp, G.stats.combo, ult.on ? "U" + ult.t : "-", (G.director?.next ?? -1) + (G.portal.stageDone ? "d" : "") + (G.portal.leaving ? "l" : ""), E.length];   // 關卡事件（d＝通關、l＝進傳送門）
   for (const e of E) { const S = e.st ?? {}; row.push(e.kind[0] + (e.elite ? "E" : ""), e.x, e.y, e.vx, e.vy, e.hp, e.awake ? 1 : 0, ["burn", "slime", "shock", "poison", "stuck"].map((k) => (S[k] > 0 ? k[0] : "")).join("") || "-"); }
   lines.push(row.map(f).join(" "));
   if (n % FRAME_EVERY === 0) frames.push(Buffer.from(img.buffer.slice(0)));
@@ -237,6 +272,6 @@ const SUF = TAG + (VARIANT ? "-" + VARIANT : "");
 writeFileSync(join(OUT, `trace${SUF}.txt`), lines.join("\n") + "\n");
 writeFileSync(join(OUT, `trace-frames${SUF}.bin`), Buffer.concat(frames));
 if (BOT && process.env.BOT_OUT) { writeFileSync(join(dirname(fileURLToPath(import.meta.url)), process.env.BOT_OUT), JSON.stringify({ ...SC, note: SC.note + "（後半段是機器人玩到通關時按的鍵）", ticks: TICKS, events: [...SC.events, ...botEv] }, null, 1)); console.log("存了機器人的按鍵：", process.env.BOT_OUT, botEv.length, "個"); }
-console.log("關卡：事件", G.director?.next, "祭壇", G.altars.map((a) => a.lit ? 1 : 0).join(""), "寶箱", G.chest?.opened ? "開" : "沒開", "傳送門", JSON.stringify(G.portal), "擊殺", G.stats.kills, "死亡", G.stats.deaths);
+console.log("機關：", (G.features?.items ?? []).map((f) => f.t + (f.done ? "✓" : "✗")).join(" ")); console.log("關卡：事件", G.director?.next, "祭壇", G.altars.map((a) => a.lit ? 1 : 0).join(""), "寶箱", G.chest?.opened ? "開" : "沒開", "傳送門", JSON.stringify(G.portal), "擊殺", G.stats.kills, "死亡", G.stats.deaths);
 console.log(`網頁版（完整 main.js）：${TICKS} 步、${frames.length} 張畫面 → ${OUT}`);
 console.log("最後：", lines[lines.length - 1].split(" ").slice(0, 12).join(" "));

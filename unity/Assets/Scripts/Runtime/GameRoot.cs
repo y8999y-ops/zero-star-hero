@@ -13,7 +13,7 @@ namespace ZeroStar
         PixelScreen screen;
         Game game;
         // 自動玩（-shot）
-        string shotDir; List<(int t, string type, string code)> script; int tickN, si; readonly int[] shotAt = { 760, 790, 2660, 2700, 2930, 3170, 3420, 3480 }; int shotNo;
+        string shotDir; List<(int t, string type, string code)> script; int tickN, si; readonly int[] shotAt = { 760, 790, 2660, 2700, 2930, 3170, 3420, 3480 }; int shotNo, scTicks;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
@@ -31,26 +31,39 @@ namespace ZeroStar
             screen.Resized += w => Game.W = w;
             var args = Environment.GetCommandLineArgs();
             for (int i = 0; i < args.Length - 1; i++) if (args[i] == "-shot") shotDir = args[i + 1];
-            if (shotDir != null) { Application.runInBackground = true; Directory.CreateDirectory(shotDir); script = TraceScript.Load(TraceScript.DefaultPath()).events; Rnd.R = new Rng(12345); }
+            if (shotDir != null) { Application.runInBackground = true; Directory.CreateDirectory(shotDir); var ts = TraceScript.Load(TraceScript.DefaultPath()); script = ts.events; scTicks = ts.ticks; Rnd.R = new Rng(12345); }
             // 暖身：裝備產生、數值計算第一次用到時要編譯程式（會卡一下），載入時先做掉；用另一組亂數，不影響遊戲
             { var saved = Rnd.R; Rnd.R = new Rng(1); var eq = new Dictionary<string, Item> { ["weapon"] = null, ["head"] = null, ["body"] = null, ["hands"] = null, ["feet"] = null, ["acc1"] = null, ["acc2"] = null };
               for (int i = 0; i < 40; i++) { var it = Items.MakeItem(1 + i * 2, i % 6); Items.Compare(it, eq, 10); } Items.ComputeStats(eq, 10); Rnd.R = saved; }
-            game = new Game();
+            var sc = shotDir != null ? TraceScript.Load(TraceScript.DefaultPath()) : null;
+            screen.Tick += OnTick;
+            screen.Draw += f => game.Render(f);
+            screen.PostComposite += d => game.PostComposite(d);
+            NewGame(sc?.stage ?? "1-1", null, sc != null ? TraceScript.DefaultPath() : null);
+            touchMode = Input.touchSupported && Application.isMobilePlatform;
+        }
+
+        static readonly string[] ORDER = { "1-1", "1-2", "1-3" };   // 1-4（王）在階段 3c
+        /// 開一關。from＝上一關（等級、裝備、背包、形態、技能樹這些帶過來）
+        void NewGame(string stage, Game from, string tracePath = null)
+        {
+            game = new Game(stage, from);
+            if (tracePath != null) TraceScript.Apply(game, tracePath);   // 自動玩：照比對腳本的存檔
+            Debug.Log($"[Stage] 開始 {stage}（Lv {game.Lv}）");
             game.OnSay = msg => { sayText = msg; sayT = 2.6f; };
             game.Say.OnShow = (msg, sec, focus) => { sayText = msg; sayT = (float)(sec + msg.Length * 0.035); };
-            foreach (var f in game.Carry) game.FormsOwned[f] = 0;   // 開發用：形態全部都有（存檔、技能樹畫面在階段 4、5）
+            if (from == null && tracePath == null) foreach (var f in game.Carry) game.FormsOwned[f] = 0;   // 開發用：形態全部都有（存檔、技能樹畫面在階段 4、5）
             game.OnPickup = it => { sayText = "撿到：" + it.Name; sayT = 1.6f; };
-            if (shotDir != null && TraceScript.Load(TraceScript.DefaultPath()).tree == "max") game.MaxTree();
-            screen.Tick += OnTick;
-            game.StartStage();
-            game.Warm(screen.Frame);
-            screen.Draw += f => { game.Render(f); game.Hud(Game.STEP); };
-            screen.PostComposite += d => game.PostComposite(d);
+            // 進傳送門：網頁版回碎星鎮、再從選關地圖選下一關（階段 3d）；這裡先直接到下一關（最後一關之後回 1-1）
+            game.OnLeave = () => game.After(380, () => pending = NextStage());
 #if UNITY_ANDROID || UNITY_IOS
             game.Vibrate = () => Handheld.Vibrate();   // 大招落地震一下（手機）
 #endif
-            touchMode = Input.touchSupported && Application.isMobilePlatform;
+            game.StartStage();
+            game.Warm(screen.Frame);
         }
+        string NextStage() { int i = Array.IndexOf(ORDER, game.StageId); return ORDER[(i + 1) % ORDER.Length]; }
+        string pending;   // 這一步跑完之後要換到哪一關
 
         static readonly (KeyCode k, string code)[] KEYS =
         {
@@ -84,6 +97,8 @@ namespace ZeroStar
             if (Input.GetKeyDown(KeyCode.T)) { if (game.Tree.Count > 0) game.Tree.Clear(); else game.MaxTree(); }
             // 開發用：G＝把背包裡比身上好的裝備換上去（背包畫面在階段 4）
             if (Input.GetKeyDown(KeyCode.G)) game.EquipBetter();
+            // 開發用：N＝直接到下一關（選關地圖在階段 3d）
+            if (Input.GetKeyDown(KeyCode.N)) pending = NextStage();
             if (Input.GetKeyDown(KeyCode.Escape) && !Application.isEditor) Application.Quit();
         }
 
@@ -95,13 +110,15 @@ namespace ZeroStar
             {
                 while (si < script.Count && script[si].t == tickN) { var e = script[si++]; if (e.type == "f") game.SwitchForm(e.code); else if (e.type == "m") game.Player.Mp = game.Player.MaxMp; else if (e.type == "x") game.GainXp(int.Parse(e.code)); else if (e.type == "i") game.DropItem(game.Player.X + 40 * game.Player.Face, game.Player.Y - 12, int.Parse(e.code)); else if (e.type == "d") game.Input.KeyDown(e.code); else game.Input.KeyUp(e.code); }
                 if (shotNo < shotAt.Length && tickN == shotAt[shotNo]) { ScreenCapture.CaptureScreenshot(Path.Combine(shotDir, $"play-{shotNo}.png")); shotNo++; }
-                if (tickN % 30 == 0) Debug.Log($"[Perf] 第 {tickN} 步{(game.Ult.On ? "（大招）" : "")}：{screen.Fps:F0} fps，平均 {screen.AvgMs:F2} ms，最慢 {screen.MaxMs:F2} ms");
-                if (shotNo >= shotAt.Length && tickN > shotAt[shotAt.Length - 1] + 20) Application.Quit();
+                if (tickN % 30 == 0) Debug.Log($"[Perf] 第 {tickN} 步{(game.Ult.On ? "（大招）" : "")}：{screen.Fps:F0} fps，平均 {screen.AvgMs:F2} ms，最慢 {screen.MaxMs:F2} ms，回收 {GC.CollectionCount(0)} 次");
+                if (shotNo >= shotAt.Length && tickN > Math.Max(shotAt[shotAt.Length - 1] + 20, scTicks)) { Debug.Log($"[Shot] 結束：{game.StageId} 主角 {game.Player.X:F1},{game.Player.Y:F1} 通關 {game.StageDone} 離開 {game.Leaving}"); Application.Quit(); }
             }
             game.RunTimers();
             game.Tick(game.SlowT > 0 ? dt * 0.35 : dt);   // 慢動作（傳說掉落、打倒菁英）
             game.SlowT -= dt;
+            game.Hud(Game.STEP);   // 台詞計時每一步都走（網頁版每步：tick、畫、hud；畫面不讀台詞，先後一樣）。原本放在畫面那邊，畫面卡、一次跑兩步時台詞和關卡事件會被拖慢
             game.SimMs += 1000 / 60.0;
+            if (pending != null) { var next = pending; pending = null; NewGame(next, game); }
             tickN++;
         }
 
@@ -236,7 +253,7 @@ namespace ZeroStar
     /// 比對測試的那串按鍵（game/tools/unity-trace-script.json）
     public class TraceScript
     {
-        public int ticks, frameEvery; public string tree;
+        public int ticks, frameEvery; public string tree, stage = "1-1";
         public List<(int t, string type, string code)> events = new List<(int, string, string)>();
         public static string DefaultPath() => Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "game", "tools", Environment.GetEnvironmentVariable("TRACE_SCRIPT") ?? "unity-trace-script.json"));
         public static TraceScript Load(string path)
@@ -246,6 +263,8 @@ namespace ZeroStar
             s.ticks = Num(txt, "\"ticks\""); s.frameEvery = Num(txt, "\"frameEvery\"");
             var tm = System.Text.RegularExpressions.Regex.Match(txt, "\"tree\"\\s*:\\s*\"(\\w+)\"");
             if (tm.Success) s.tree = tm.Groups[1].Value;
+            var sm = System.Text.RegularExpressions.Regex.Match(txt, @"""stage""\s*:\s*""([\w-]+)""");
+            if (sm.Success) s.stage = sm.Groups[1].Value;
             int i = txt.IndexOf("\"events\"");
             if (i >= 0)
             {
@@ -254,6 +273,37 @@ namespace ZeroStar
             }
             s.events = System.Linq.Enumerable.ToList(System.Linq.Enumerable.OrderBy(s.events, a => a.t));   // 穩定排序（同一步的事件照檔案裡的順序），跟網頁版一樣
             return s;
+        }
+        /// 照腳本把遊戲設成網頁版比對時的存檔：技能樹、穿搭（variant 沒選＝新存檔的初始裝備）、形態、打過的關卡
+        public static void Apply(Game g, string path, string variant = "")
+        {
+            string txt = File.Exists(path) ? File.ReadAllText(path) : (Resources.Load<TextAsset>("Baked/trace-script")?.text ?? "{}");
+            var sc = Load(path);
+            if (sc.tree == "max") g.MaxTree();
+            var root = (OrderedDict)MiniJson.Parse(txt);
+            var V = variant != "" ? (OrderedDict)((OrderedDict)root["variants"])[variant] : (OrderedDict)root["starter"];
+            g.Lv = V.ContainsKey("lv") ? (int)(double)V["lv"] : 1;
+            foreach (var k in System.Linq.Enumerable.ToList(g.Equip.Keys)) g.Equip[k] = null;   // 存檔裡只有腳本給的那幾件
+            var eq = (OrderedDict)V["equip"];
+            foreach (var slot in eq.Order) g.Equip[slot] = SpecItem((OrderedDict)eq[slot]);
+            g.ApplyStats();
+            g.Player.Hp = g.Player.MaxHp;
+            foreach (var f in new[] { "star", "slime", "bat", "can", "spike" }) g.FormsOwned[f] = 0;
+            g.Carry = root.ContainsKey("carry") ? System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Cast<string>((List<object>)root["carry"])) : new[] { "star", "slime", "bat" };
+            g.TipUse = root.ContainsKey("tipUse") && (double)root["tipUse"] != 0;
+            var order = new[] { "1-1", "1-2", "1-3", "1-4" };
+            for (int i = 0; i < Array.IndexOf(order, sc.stage); i++) g.Cleared_.Add(order[i]);   // 前面的關卡算打過了
+        }
+        static Item SpecItem(OrderedDict sp)
+        {
+            string S(string k) => sp.ContainsKey(k) ? (string)sp[k] : null;
+            int N(string k) => sp.ContainsKey(k) ? (int)(double)sp[k] : 0;
+            string kind = S("base") != null ? Items.Base(S("base")).Kind : S("unique") != null ? System.Linq.Enumerable.First(Items.UNIQUES, u => u.Id == S("unique")).Kind : System.Linq.Enumerable.First(Items.MYTHS, m => m.id == S("myth")).kind;
+            var main = (List<object>)sp["main"];
+            var it = new Item { Uid = "x", Kind = kind, Rarity = N("rarity"), Ilvl = N("ilvl"), Plus = N("plus"), Main = new Affix { Id = (string)main[0], V = (double)main[1] }, Name = "x", Icon = "x",
+                Base = S("base"), Unique = S("unique"), Myth = S("myth"), Set = S("set"), AwakenKills = N("kills") };
+            if (sp.ContainsKey("affixes")) foreach (List<object> a in (List<object>)sp["affixes"]) it.Affixes.Add(new Affix { Id = (string)a[0], Tier = (int)(double)a[1], V = (double)a[2] });
+            return it;
         }
         static int Num(string txt, string key) { int i = txt.IndexOf(key); if (i < 0) return 0; var m = System.Text.RegularExpressions.Regex.Match(txt.Substring(i + key.Length), "\\d+"); return int.Parse(m.Value); }
     }

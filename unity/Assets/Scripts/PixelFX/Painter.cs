@@ -275,6 +275,8 @@ namespace PixelFX
             return this;
         }
 
+        /// 沒有旋轉（只可能左右鏡像）：本地的不同整數 x 一定落在畫面上不同的欄
+        public bool Straight => sn == 0 && (cs == 1 || cs == -1);
         // ---- 座標轉換
         public double ToX(double x, double y) => tx + x * fx * cs - y * sn;
         public double ToY(double x, double y) => ty + x * fx * sn + y * cs;

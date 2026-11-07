@@ -61,10 +61,10 @@ namespace PixelFX.Fx
         static void DrawSheet(Painter p, uint[] C, Sheet sh, int si, double E, double t, int seed)
         {
             double ph = t / D; var T = Tongues(sh, si, E, ph); int d = sh.dim; double X = Math.Ceiling(E * 1.25);
-            for (double x = -X; x <= X; x++)
+            void Column(double x)
             {
                 double H = Height(sh, si, E, x + 0.5, ph, T, seed);
-                if (H < 0.6) continue;
+                if (H < 0.6) return;
                 double top = -Round(H);
                 for (double y = top; y <= 1; y++)
                 {
@@ -74,6 +74,14 @@ namespace PixelFX.Fx
                     uint c = y == top ? C[Math.Max(1, 4 - d)] : lv < 0.16 ? C[6 - d] : lv < 0.42 ? C[5 - d] : lv < 0.68 ? C[4 - d] : C[Math.Max(1, 3 - d)];
                     p.Blend(x, y, c, sh.a * (y == top ? 0.65 : (0.6 + 0.4 * (1 - v)) * streak));
                 }
+            }
+            // 每一欄（整數 x）只畫到畫面上自己那一欄（沒旋轉時），各欄互不影響：切成幾段同時畫，結果跟一欄一欄畫一樣
+            int nx = (int)(2 * X) + 1;
+            if (!p.Straight) { for (double x = -X; x <= X; x++) Column(x); }
+            else
+            {
+                const int B = 8; int per = (nx + B - 1) / B;
+                System.Threading.Tasks.Parallel.For(0, B, b => { for (int i = b * per, e = Math.Min(nx, i + per); i < e; i++) Column(-X + i); });
             }
             // 氣舌前端往前爬時捲起來
             foreach (var g in T)

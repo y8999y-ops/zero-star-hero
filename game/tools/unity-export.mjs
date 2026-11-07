@@ -1,9 +1,12 @@
 // Unity 轉移：把網頁版「載入時算好的東西」原封不動匯出成資料，給 Unity 直接用（保證每個像素跟網頁版一樣）。
-//   場景（1-1 的遊玩層、各圖層、光源）、主角每個姿勢的像素、烘焙好的動畫（史萊姆、火把、煙、刀光）、連段數值。
-// 執行：node --no-use-std-math-pow game/tools/unity-export.mjs   → 寫到 unity/Assets/Resources/Baked/（.bytes 是 gzip 壓過的二進位）
+//   場景（每一關的遊玩層、各圖層、光源）、主角每個姿勢的像素、烘焙好的動畫（史萊姆、火把、煙、刀光）、連段數值。
+// 執行：node --no-use-std-math-pow game/tools/unity-export.mjs（1-2、1-3 的場景再各跑一次：STAGE=1-2 …）→ 寫到 unity/Assets/Resources/Baked/（.bytes 是 gzip 壓過的二進位）
 // 改了網頁版的美術或數值之後重跑一次，Unity 就會用新的。
 import { installDom } from "./unity/node-dom.mjs";
 installDom();
+// STAGE=1-2 這樣跑：只匯出那一關的場景（其他資料每關都一樣）
+const ONLY_STAGE = process.env.STAGE;
+globalThis.sessionStorage = { getItem: (k) => (k === "zero-hero-stage" ? ONLY_STAGE ?? null : null), setItem() {}, removeItem() {} };
 import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { join, dirname } from "node:path";
@@ -46,6 +49,7 @@ class W {
   w.i32(L.geo.platforms.length); for (const p of L.geo.platforms) w.f64(p.x).f64(p.y).f64(p.w);
   w.save(`level-${L.STAGE_ID}.bytes`);
 }
+if (ONLY_STAGE) process.exit(0);
 
 // ---- 2. 主角的姿勢（五個形態 × 每個姿勢）
 {

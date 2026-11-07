@@ -333,12 +333,14 @@ namespace ZeroStar
         public readonly (Item core, Item shell) Fresh;
 
         /// 照 main.js 載入關卡的順序建立（亂數的順序要一樣）。建好之後呼叫 StartStage() 才開始（擺怪、開場台詞）
-        public Game(string stage = "1-1")
+        /// from：上一關的遊戲（換關時把存檔裡的東西帶過來：等級、裝備、背包、形態、技能樹、找到的機關……；存檔在階段 5）
+        public Game(string stage = "1-1", Game from = null)
         {
             StageId = stage;
             Enemy.ResetStatics();
             SceneLight.Reset();
             Fresh = Items.StarterGear();
+            if (from != null) CarryOver(from);
             Status = new Status(this) { Allow = stage == "1-1" ? new HashSet<string> { "burn", "slime" } : null };   // 1-1 只有燃燒和黏液
             Ult = new Ult(this);
             FxSystem.WarmUp();
@@ -349,7 +351,7 @@ namespace ZeroStar
             InitStage(stage);
             var combos = JsonUtility.FromJson<ComboDef>(Baked.Text("combos"));
             Player = new Player(StageD.StartX, StageD.StartY, combos) { RankFn = Rank };
-            Equip["weapon"] = Fresh.core; Equip["body"] = Fresh.shell;
+            if (from == null) { Equip["weapon"] = Fresh.core; Equip["body"] = Fresh.shell; }
             ApplyStats();
             Player.Hp = Player.MaxHp;
             CamY = Math.Max(0, Data.H - H);
@@ -360,6 +362,20 @@ namespace ZeroStar
         }
         /// 場景物件（props、scenery、hazards、features）：搬好之後在這裡建立
         partial void InitStageObjects();
+        /// 換關：網頁版是存檔、重新載入頁面；這裡直接把存檔裡會留下來的東西抄過來
+        void CarryOver(Game f)
+        {
+            Lv = f.Lv; Xp = f.Xp; Money = f.Money; Scrap = f.Scrap;
+            foreach (var k in f.Equip.Keys) Equip[k] = f.Equip[k];
+            Inv.AddRange(f.Inv);
+            foreach (var kv in f.FormsOwned) FormsOwned[kv.Key] = kv.Value;
+            foreach (var kv in f.Tree) Tree[kv.Key] = kv.Value;
+            Carry = f.Carry;
+            foreach (var kv in f.Found) Found[kv.Key] = new Dictionary<string, int>(kv.Value);
+            MpBonus = f.MpBonus; Lore = f.Lore; PityMyth = f.PityMyth;
+            TipUse = f.TipUse; SeenSet = f.SeenSet; SeenCoreTip = f.SeenCoreTip;
+            Taught.UnionWith(f.Taught); Reacted.UnionWith(f.Reacted); SysDone.UnionWith(f.SysDone); Cleared_.UnionWith(f.Cleared_);
+        }
 
         // ---- world
         public Enemy NearestEnemy(double x, double y, double range, int dir = 0)
