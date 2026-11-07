@@ -22,14 +22,174 @@ namespace PixelFX
     {
         public readonly int W, H;
         public int Ox, Oy;
-        public readonly uint[] Color, Light;
-        public Frame(int w, int h, int ox = 0, int oy = 0) { W = w; H = h; Ox = ox; Oy = oy; Color = new uint[w * h]; Light = new uint[w * h]; }
-        public Frame Clear() { Array.Clear(Color, 0, Color.Length); Array.Clear(Light, 0, Light.Length); return this; }
+        public readonly uint[] Color;
+        readonly uint[] light;
+        /// 光的緩衝。拿之前先把還沒畫的光暈畫完（見 Defer）。
+        public uint[] Light { get { if (Q.Count > 0) Flush(); return light; } }
+        public uint[] LightRaw => light;   // 不先 Flush（只給會自己顧好順序的地方用）
+        public Frame(int w, int h, int ox = 0, int oy = 0) { W = w; H = h; Ox = ox; Oy = oy; Color = new uint[w * h]; light = new uint[w * h]; }
+        public Frame Clear() { Q.Clear(); Array.Clear(Color, 0, Color.Length); Array.Clear(light, 0, light.Length); return this; }
+
+        // ---- 光暈先記下來、晚點一起畫（Defer＝true 時）
+        // 光暈只加到 Light，不碰 Color。記下來的光暈照原本的順序，在 Flush 時把畫面切成幾條同時畫：
+        // 每一條只畫自己那幾列，每個像素被加光的先後順序跟一個一個畫完全一樣，所以結果一樣。
+        // 任何人要讀寫 Light（Light 屬性、畫筆的 Add、ShadePar）之前都會先 Flush。
+        public bool Defer;
+        public struct GlowCmd
+        {
+            public int kind;              // 0＝圓光暈 1＝線光暈 2＝環光暈 3＝烘焙動畫的光（Run 傳進來）
+            public Action<int, int> rows; // kind 3：畫第 ya～yb 列（畫布座標）
+            public int x0, x1, y0, y1;    // 畫布座標，已夾在畫布內
+            public double a, b, c, d, e, r, k, fl, cut;
+            public uint cr, cg, cb;
+        }
+        public readonly System.Collections.Generic.List<GlowCmd> Q = new System.Collections.Generic.List<GlowCmd>();
+        long qWork;
+        public void Push(GlowCmd q)
+        {
+            if (!Defer) { if (Q.Count > 0) Flush(); Run(q); return; }
+            Q.Add(q); qWork += (long)(q.x1 - q.x0 + 1) * (q.y1 - q.y0 + 1);
+        }
+        /// 不延後時：直接畫；大的切成 4 條同時畫（跟原本一樣）
+        void Run(GlowCmd q)
+        {
+            int n = q.y1 - q.y0 + 1;
+            if (n * (q.x1 - q.x0 + 1) < 2500) { ExecRows(ref q, q.y0, q.y1); return; }
+            const int B = 4; int per = (n + B - 1) / B;
+            System.Threading.Tasks.Parallel.For(0, B, b => { int ya = q.y0 + b * per, yb = Math.Min(q.y1, ya + per - 1); if (ya <= yb) ExecRows(ref q, ya, yb); });
+        }
+        public void Flush()
+        {
+            int nq = Q.Count; if (nq == 0) return;
+            long __t = PfProf.T0(); try {
+            var arr = Q.ToArray(); Q.Clear(); long work = qWork; qWork = 0;
+            if (work < 4000) { for (int i = 0; i < nq; i++) ExecRows(ref arr[i], arr[i].y0, arr[i].y1); return; }
+            // 切條：照每一列要算的格數平均分給幾條（光暈常常擠在畫面同一塊）
+            int B = Math.Max(1, Math.Min(8, Environment.ProcessorCount));
+            var acc = new long[H + 1];
+            for (int i = 0; i < nq; i++) { long wd = arr[i].x1 - arr[i].x0 + 1; acc[arr[i].y0 - Oy] += wd; acc[arr[i].y1 - Oy + 1] -= wd; }
+            long run = 0, tot = 0; for (int y = 0; y < H; y++) { run += acc[y]; tot += run; acc[y] = tot; }   // acc[y]＝第 0～y 列加起來
+            var cut = new int[B + 1]; cut[B] = H;
+            for (int b = 1, y = 0; b < B; b++) { long want = tot * b / B; while (y < H - 1 && acc[y] < want) y++; cut[b] = y; }
+            System.Threading.Tasks.Parallel.For(0, B, b =>
+            {
+                int ya = Oy + cut[b], yb = Oy + cut[b + 1] - 1;
+                if (ya > yb) return;
+                for (int i = 0; i < nq; i++)
+                {
+                    int a0 = Math.Max(ya, arr[i].y0), a1 = Math.Min(yb, arr[i].y1);
+                    if (a0 <= a1) ExecRows(ref arr[i], a0, a1);
+                }
+            });
+            } finally { PfProf.T1("Flush", __t); }
+        }
+        [ThreadStatic] static double[] dxBuf;
+        // 這一格加光（跟 Add 同一個算法；kk > 0.004，值都是 0～255 的正數，直接截成整數）
+        static void AddPx(uint[] Lb, int i, uint cr, uint cg, uint cb, double kk)
+        {
+            uint dd = Lb[i];
+            int rr = (int)Math.Min(255, (dd & 255) + cr * kk);
+            int gg = (int)Math.Min(255, ((dd >> 8) & 255) + cg * kk);
+            int bb = (int)Math.Min(255, ((dd >> 16) & 255) + cb * kk);
+            Lb[i] = unchecked((uint)((255 << 24) | (bb << 16) | (gg << 8) | rr));
+        }
+        // 畫一個光暈的第 ya～yb 列（畫布座標）。每一格的算式和原本逐格算的一模一樣；
+        // 只跳過一定照不到的格子（離中心、線、環超過半徑再多 1 格的地方，原本算出來也是不加）
+        void ExecRows(ref GlowCmd q, int ya, int yb)
+        {
+            if (q.kind == 3) { q.rows(ya, yb); return; }
+            uint[] Lb = light; int W_ = W, OX = Ox, OY = Oy;
+            uint cr = q.cr, cg = q.cg, cb = q.cb; double k = q.k, fl = q.fl, r = q.r;
+            int X0 = q.x0, X1 = q.x1;
+            if (q.kind == 0)
+            {
+                double cx = q.a, cy = q.b, dcut = q.cut;
+                // dx 只跟哪一欄有關：先算好每一欄的 dx*dx（同一個算式，值一樣）
+                int nx = X1 - X0 + 1;
+                var dx2 = dxBuf; if (dx2 == null || dx2.Length < nx) dxBuf = dx2 = new double[Math.Max(nx, 512)];
+                for (int sx = X0; sx <= X1; sx++) { double dx = (sx + 0.5 - cx) / r; dx2[sx - X0] = dx * dx; }
+                for (int sy = ya; sy <= yb; sy++)
+                {
+                    double dy = (sy + 0.5 - cy) / r; int row = (sy - OY) * W_ - OX;
+                    double m = dcut - dy * dy;
+                    if (m < 0) continue;
+                    double half = r * Math.Sqrt(m), dy2 = dy * dy;
+                    int xa = Math.Max(X0, (int)Math.Floor(cx - 0.5 - half) - 1), xb = Math.Min(X1, (int)Math.Ceiling(cx - 0.5 + half) + 1);
+                    for (int sx = xa; sx <= xb; sx++)
+                    {
+                        double d = dx2[sx - X0] + dy2;
+                        if (d >= 1) continue;
+                        double f = 1 - Math.Sqrt(d), kk = f * f * k * fl;
+                        if (kk <= 0.004) continue;
+                        AddPx(Lb, row + sx, cr, cg, cb, kk);
+                    }
+                }
+                return;
+            }
+            if (q.kind == 1)
+            {
+                double ax = q.a, ay = q.b, dx = q.c, dy = q.d, L2 = q.e;
+                double len = Math.Sqrt(dx * dx + dy * dy), reach = r * len;
+                for (int sy = ya; sy <= yb; sy++)
+                {
+                    int row = (sy - OY) * W_ - OX; double py = sy + 0.5;
+                    int xa = X0, xb = X1;
+                    // 離整條直線 ≥ r 的格子，離線段也 ≥ r：只看直線兩旁的那一段
+                    if (Math.Abs(dy) > 1e-6)
+                    {
+                        double m0 = (py - ay) * dx, lo = ax + (m0 - reach) / dy, hi = ax + (m0 + reach) / dy;
+                        if (lo > hi) { double tt = lo; lo = hi; hi = tt; }
+                        if (!(lo > -1e9 && hi < 1e9)) { lo = X0; hi = X1; }
+                        xa = Math.Max(X0, (int)Math.Floor(lo - 0.5) - 1); xb = Math.Min(X1, (int)Math.Ceiling(hi - 0.5) + 1);
+                    }
+                    for (int sx = xa; sx <= xb; sx++)
+                    {
+                        double px = sx + 0.5, u = Pf.Clamp(((px - ax) * dx + (py - ay) * dy) / L2);
+                        double ex = ax + dx * u - px, ey = ay + dy * u - py, d = Math.Sqrt(ex * ex + ey * ey) / r;
+                        if (d >= 1) continue;
+                        double f = 1 - d, k0 = f * f * k;
+                        if (double.IsNaN(k0)) continue;
+                        double kk = k0 * fl;
+                        if (kk <= 0.004) continue;
+                        AddPx(Lb, row + sx, cr, cg, cb, kk);
+                    }
+                }
+                return;
+            }
+            {
+                double cx = q.a, cy = q.b, R = q.c, Ro = R + r + 1, Ri = R - r - 1;
+                for (int sy = ya; sy <= yb; sy++)
+                {
+                    int row = (sy - OY) * W_ - OX; double ddy = sy + 0.5 - cy, m = Ro * Ro - ddy * ddy;
+                    if (m < 0) continue;
+                    // 環的外圈以外、內圈以內，離環都 ≥ r：只看左右兩段
+                    double ho = Math.Sqrt(m), hi = Ri > 0 && Math.Abs(ddy) < Ri ? Math.Sqrt(Ri * Ri - ddy * ddy) : -1;
+                    int la = Math.Max(X0, (int)Math.Floor(cx - ho - 0.5) - 1), rb = Math.Min(X1, (int)Math.Ceiling(cx + ho - 0.5) + 1);
+                    int lb = rb, ra = rb + 1;
+                    if (hi > 2) { lb = Math.Min(rb, (int)Math.Ceiling(cx - hi - 0.5) + 1); ra = Math.Max(lb + 1, (int)Math.Floor(cx + hi - 0.5) - 1); }
+                    for (int pass = 0; pass < 2; pass++)
+                    {
+                        int s0 = pass == 0 ? la : ra, s1 = pass == 0 ? lb : rb;
+                        for (int sx = s0; sx <= s1; sx++)
+                        {
+                            double d = Math.Abs(Pf.Hypot(sx + 0.5 - cx, sy + 0.5 - cy) - R) / r;
+                            if (d >= 1) continue;
+                            double f = 1 - d, k0 = f * f * k;
+                            if (double.IsNaN(k0)) continue;
+                            double kk = k0 * fl;
+                            if (kk <= 0.004) continue;
+                            AddPx(Lb, row + sx, cr, cg, cb, kk);
+                        }
+                    }
+                }
+            }
+        }
 
         /// Color 疊在背景上再加光，輸出 RGBA 位元組。bg：null＝透明。照 fx.js 的 composite。
         /// 畫面切成幾條同時算（每個像素各算各的，結果跟一條一條算完全一樣）。
         public byte[] Composite(byte[] o = null, uint? bg = null, double lightK = 1)
         {
+            Flush();
             int n = W * H; o = o ?? new byte[n * 4];
             const int BANDS = 8;
             int per = (H + BANDS - 1) / BANDS;
@@ -45,7 +205,7 @@ namespace PixelFX
         {
             for (int i = from; i < to; i++)
             {
-                uint c = Color[i], l = Light[i] & 0xffffff;
+                uint c = Color[i], l = light[i] & 0xffffff;
                 uint ca = c >> 24;
                 int j = i * 4;
                 if (ca == 255)
@@ -104,7 +264,7 @@ namespace PixelFX
         public Painter(Frame f) { Frame = f; Reset(); }
         public Painter Reset()
         {
-            var f = Frame; w = f.W; h = f.H; ox = f.Ox; oy = f.Oy; C = f.Color; L = f.Light;
+            var f = Frame; w = f.W; h = f.H; ox = f.Ox; oy = f.Oy; C = f.Color; L = f.LightRaw;
             tx = 0; ty = 0; fx = 1; cs = 1; sn = 0; Fade = 1; LightK = 1; Layer = "front";
             return this;
         }
@@ -137,6 +297,7 @@ namespace PixelFX
         {
             k *= Fade * LightK;
             if (k <= 0.004) return;
+            if (Frame.Q.Count > 0) Frame.Flush();
             int x = sx - ox, y = sy - oy;
             if (x < 0 || y < 0 || x >= w || y >= h) return;
             int i = y * w + x; uint d = L[i];
@@ -320,6 +481,10 @@ namespace PixelFX
         {
             Bounds(x0, y0, x1, y1, out int sx0, out int sx1, out int sy0, out int sy1);
             if (sx1 < sx0 || sy1 < sy0) return;
+            long __t = PfProf.T0(); try {
+            // 顏色直接畫；光先記在自己的格子裡（第一次有光才開），畫完再交給畫布照順序加（跟 Add 同一個算法）
+            int nx = sx1 - sx0 + 1, ny = sy1 - sy0 + 1;
+            var lb = new LBuf();
             void Rows(int ya, int yb)
             {
                 for (int sy = ya; sy <= yb; sy++)
@@ -329,14 +494,49 @@ namespace PixelFX
                         var o = new Out { c = 0, a = 1, l = 0, k = 0 };
                         fn(FromX(px, py), FromY(px, py), ref o);
                         if (o.c != 0) Put(sx, sy, o.c, o.a);
-                        if (o.k > 0) Add(sx, sy, o.l != 0 ? o.l : o.c, o.k);
+                        if (o.k > 0)
+                        {
+                            if (lb.k == null) lock (lb) if (lb.k == null) { lb.c = new uint[nx * ny]; lb.k = new double[nx * ny]; }
+                            int j = (sy - sy0) * nx + sx - sx0; lb.c[j] = o.l != 0 ? o.l : o.c; lb.k[j] = o.k;
+                        }
                     }
             }
-            int n = sy1 - sy0 + 1;
-            if (n * (sx1 - sx0 + 1) < 2000) { Rows(sy0, sy1); return; }
-            const int B = 4; int per = (n + B - 1) / B;
-            System.Threading.Tasks.Parallel.For(0, B, b => { int ya = sy0 + b * per, yb = Math.Min(sy1, ya + per - 1); if (ya <= yb) Rows(ya, yb); });
+            if (nx * ny < 2000) Rows(sy0, sy1);
+            else
+            {
+                int B = Math.Max(1, Math.Min(8, Environment.ProcessorCount)); int per = (ny + B - 1) / B;
+                System.Threading.Tasks.Parallel.For(0, B, b => { int ya = sy0 + b * per, yb = Math.Min(sy1, ya + per - 1); if (ya <= yb) Rows(ya, yb); });
+            }
+            if (lb.k == null) return;
+            double fl = Fade * LightK; uint[] Lb = L; int W_ = w, H_ = h, OX = ox, OY = oy;
+            int cy0 = Math.Max(sy0, oy), cy1 = Math.Min(sy1, oy + h - 1);
+            if (cy0 > cy1) return;
+            uint[] LC = lb.c; double[] LK = lb.k;
+            Frame.Push(new Frame.GlowCmd { kind = 3, x0 = sx0, x1 = sx1, y0 = cy0, y1 = cy1, rows = (ya, yb) =>
+            {
+                for (int sy = ya; sy <= yb; sy++)
+                {
+                    int y = sy - OY, j0 = (sy - sy0) * nx - sx0;
+                    for (int sx = sx0; sx <= sx1; sx++)
+                    {
+                        double k0 = LK[j0 + sx];
+                        if (!(k0 > 0)) continue;
+                        double k = k0 * fl;
+                        if (k <= 0.004) continue;
+                        int x = sx - OX;
+                        if (x < 0 || x >= W_) continue;
+                        uint c = LC[j0 + sx];
+                        int i = y * W_ + x; uint d = Lb[i];
+                        int r = (int)Math.Min(255, (d & 255) + (c & 255) * k);
+                        int g = (int)Math.Min(255, ((d >> 8) & 255) + ((c >> 8) & 255) * k);
+                        int bb = (int)Math.Min(255, ((d >> 16) & 255) + ((c >> 16) & 255) * k);
+                        Lb[i] = unchecked((uint)((255 << 24) | (bb << 16) | (g << 8) | r));
+                    }
+                }
+            } });
+            } finally { PfProf.T1("ShadePar", __t); }
         }
+        class LBuf { public uint[] c; public double[] k; }
         /// 顏色、透明度固定的環：不用每格算角度和距離（只傳給顏色函式用），切條同時算；畫到的像素一樣
         public void Ring(double cx, double cy, double r, double wd, uint c, double a = 1)
         {
@@ -425,79 +625,14 @@ namespace PixelFX
             double cx = ToX(x, y), cy = ToY(x, y);
             int x0 = ClipX0((int)Math.Floor(cx - r)), x1 = ClipX1((int)Math.Ceiling(cx + r)), y0 = ClipY0((int)Math.Floor(cy - r)), y1 = ClipY1((int)Math.Ceiling(cy + r));
             if (x1 < x0 || y1 < y0) return;
-            // 跟 Add 一樣的算法，直接寫在迴圈裡（範圍已經夾在畫布內，不用每格再檢查）；大的光暈切成幾條同時算（每個像素只加一次，結果一樣）
-            double fl = Fade * LightK; uint cr = c & 255, cg = (c >> 8) & 255, cb = (c >> 16) & 255;
-            uint[] Lb = L; int W = w, OX = ox, OY = oy;
+            double fl = Fade * LightK;
             // 有效半徑：離中心越遠光越弱，弱到 ≤ 0.004 的格子 Add 本來就不加。先算出那個距離（留安全邊界），
             // 每一列只算那個距離以內的格子（邊界內照原本逐格精確計算，結果一樣）
             double kf = k * fl;
             if (kf <= 0.004) return;
             double fmin = Math.Sqrt(0.004 / kf), rc = 1 - fmin, dcut = rc * rc * (1 + 1e-6) + 1e-9;
-            void Rows(int ya, int yb)
-            {
-                for (int sy = ya; sy <= yb; sy++)
-                {
-                    double dy = (sy + 0.5 - cy) / r; int row = (sy - OY) * W - OX;
-                    double m = dcut - dy * dy;
-                    if (m < 0) continue;
-                    double half = r * Math.Sqrt(m);
-                    int xa = Math.Max(x0, (int)Math.Floor(cx - 0.5 - half) - 1), xb = Math.Min(x1, (int)Math.Ceiling(cx - 0.5 + half) + 1);
-                    for (int sx = xa; sx <= xb; sx++)
-                    {
-                        double dx = (sx + 0.5 - cx) / r, d = dx * dx + dy * dy;
-                        if (d >= 1) continue;
-                        double f = 1 - Math.Sqrt(d), kk = f * f * k * fl;
-                        if (kk <= 0.004) continue;
-                        int i = row + sx; uint dd = Lb[i];
-                        int rr = (int)Math.Min(255, (dd & 255) + cr * kk);
-                        int gg = (int)Math.Min(255, ((dd >> 8) & 255) + cg * kk);
-                        int bb = (int)Math.Min(255, ((dd >> 16) & 255) + cb * kk);
-                        Lb[i] = unchecked((uint)((255 << 24) | (bb << 16) | (gg << 8) | rr));
-                    }
-                }
-            }
-            int n = y1 - y0 + 1;
-            if (n * (x1 - x0 + 1) < 2500) Rows(y0, y1);
-            else
-            {
-                const int B = 4; int per = (n + B - 1) / B;
-                System.Threading.Tasks.Parallel.For(0, B, b => { int ya = y0 + b * per, yb = Math.Min(y1, ya + per - 1); if (ya <= yb) Rows(ya, yb); });
-            }
+            Frame.Push(new Frame.GlowCmd { kind = 0, x0 = x0, x1 = x1, y0 = y0, y1 = y1, a = cx, b = cy, r = r, k = k, fl = fl, cut = dcut, cr = c & 255, cg = (c >> 8) & 255, cb = (c >> 16) & 255 });
             } finally { PfProf.T1("Glow", __t); }
-        }
-        // 光暈的共用：一列一列加光（跟 Add 同一個算法，範圍已經夾在畫布內）；大的範圍切成 4 條同時算（每個像素只加一次，結果一樣）
-        delegate double KAt(int sx, int sy);   // 回傳這一格的光量（≤0＝不加）
-        void GlowRows(int x0, int x1, int y0, int y1, uint c, KAt kat)
-        {
-            if (x1 < x0 || y1 < y0) return;
-            double fl = Fade * LightK; uint cr = c & 255, cg = (c >> 8) & 255, cb = (c >> 16) & 255;
-            uint[] Lb = L; int W = w, OX = ox, OY = oy;
-            void Rows(int ya, int yb)
-            {
-                for (int sy = ya; sy <= yb; sy++)
-                {
-                    int row = (sy - OY) * W - OX;
-                    for (int sx = x0; sx <= x1; sx++)
-                    {
-                        double k0 = kat(sx, sy);
-                        if (double.IsNaN(k0)) continue;
-                        double kk = k0 * fl;
-                        if (kk <= 0.004) continue;
-                        int i = row + sx; uint dd = Lb[i];
-                        int rr = (int)Math.Min(255, (dd & 255) + cr * kk);
-                        int gg = (int)Math.Min(255, ((dd >> 8) & 255) + cg * kk);
-                        int bb = (int)Math.Min(255, ((dd >> 16) & 255) + cb * kk);
-                        Lb[i] = unchecked((uint)((255 << 24) | (bb << 16) | (gg << 8) | rr));
-                    }
-                }
-            }
-            int n = y1 - y0 + 1;
-            if (n * (x1 - x0 + 1) < 2500) Rows(y0, y1);
-            else
-            {
-                const int B = 4; int per = (n + B - 1) / B;
-                System.Threading.Tasks.Parallel.For(0, B, b => { int ya = y0 + b * per, yb = Math.Min(y1, ya + per - 1); if (ya <= yb) Rows(ya, yb); });
-            }
         }
         public void GlowLine(double x0, double y0, double x1, double y1, double r, uint c, double k = 0.5)
         {
@@ -512,14 +647,8 @@ namespace PixelFX
             if (re > r) re = r;
             int X0 = ClipX0((int)Math.Floor(Math.Min(ax, bx) - re)), X1 = ClipX1((int)Math.Ceiling(Math.Max(ax, bx) + re));
             int Y0 = ClipY0((int)Math.Floor(Math.Min(ay, by) - re)), Y1 = ClipY1((int)Math.Ceiling(Math.Max(ay, by) + re));
-            GlowRows(X0, X1, Y0, Y1, c, (sx, sy) =>
-            {
-                double px = sx + 0.5, py = sy + 0.5, u = Pf.Clamp(((px - ax) * dx + (py - ay) * dy) / L2);
-                double ex = ax + dx * u - px, ey = ay + dy * u - py, d = Math.Sqrt(ex * ex + ey * ey) / r;
-                if (d >= 1) return double.NaN;
-                double f = 1 - d;
-                return f * f * k;
-            });
+            if (X1 < X0 || Y1 < Y0) return;
+            Frame.Push(new Frame.GlowCmd { kind = 1, x0 = X0, x1 = X1, y0 = Y0, y1 = Y1, a = ax, b = ay, c = dx, d = dy, e = L2, r = r, k = k, fl = Fade * LightK, cr = c & 255, cg = (c >> 8) & 255, cb = (c >> 16) & 255 });
             } finally { PfProf.T1("GlowLine", __t); }
         }
         public void GlowRing(double x, double y, double R, double r, uint c, double k = 0.5)
@@ -527,13 +656,9 @@ namespace PixelFX
             long __t = PfProf.T0(); try {
             if (r < 1 || k <= 0.004) return;
             double cx = ToX(x, y), cy = ToY(x, y), E = R + r;
-            GlowRows(ClipX0((int)Math.Floor(cx - E)), ClipX1((int)Math.Ceiling(cx + E)), ClipY0((int)Math.Floor(cy - E)), ClipY1((int)Math.Ceiling(cy + E)), c, (sx, sy) =>
-            {
-                double d = Math.Abs(Pf.Hypot(sx + 0.5 - cx, sy + 0.5 - cy) - R) / r;
-                if (d >= 1) return double.NaN;
-                double f = 1 - d;
-                return f * f * k;
-            });
+            int X0 = ClipX0((int)Math.Floor(cx - E)), X1 = ClipX1((int)Math.Ceiling(cx + E)), Y0 = ClipY0((int)Math.Floor(cy - E)), Y1 = ClipY1((int)Math.Ceiling(cy + E));
+            if (X1 < X0 || Y1 < Y0) return;
+            Frame.Push(new Frame.GlowCmd { kind = 2, x0 = X0, x1 = X1, y0 = Y0, y1 = Y1, a = cx, b = cy, c = R, r = r, k = k, fl = Fade * LightK, cr = c & 255, cg = (c >> 8) & 255, cb = (c >> 16) & 255 });
             } finally { PfProf.T1("GlowRing", __t); }
         }
     }

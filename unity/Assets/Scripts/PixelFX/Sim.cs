@@ -67,6 +67,7 @@ namespace PixelFX
         public static void Band(Painter p, double cx, double cy, double r, double sy, double th, double k, uint[] R, Func<double, bool> keep = null, bool hot = false)
         {
             if (r <= 0 || k <= 0) return;
+            long __t = PfProf.T0(); try {
             int n = R.Length;
             for (int j = 0, m = (int)Math.Ceiling(r * TAU * 1.2); j < m; j++)
             {
@@ -79,6 +80,7 @@ namespace PixelFX
                     p.Dot(cx + ca * (r - o), cy + sa * (r - o) * sy, c, k * (u < 0.4 ? 1.2 : 1.15 - u));
                 }
             }
+            } finally { PfProf.T1("Band", __t); }
         }
 
         // ---- shapes.js

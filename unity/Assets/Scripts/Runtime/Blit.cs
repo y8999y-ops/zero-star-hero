@@ -41,8 +41,9 @@ namespace ZeroStar
             var s = FrameAt(anim, t);
             if (s.W == 0) return;
             int W = frame.W, H = frame.H;
-            uint[] C = frame.Color, L = frame.Light;
+            uint[] C = frame.Color;
             int bx = (int)Pf.Round(x) - frame.Ox, by = (int)Pf.Round(y) - frame.Oy;
+            // 顏色直接貼；光交給畫布（畫布在延後光暈時，會照順序跟光暈一起切條畫；顏色和光是分開的緩衝，結果一樣）
             for (int yy = 0; yy < s.H; yy++)
             {
                 int py = by + s.Ly + yy;
@@ -60,13 +61,27 @@ namespace ZeroStar
                         if (a == 255) C[j] = c;
                         else C[j] = Mix(c, C[j], a / 255.0);
                     }
-                    if (s.Light != null)
-                    {
-                        uint l = s.Light[row + xx];
-                        if (l != 0) L[j] = AddLight(L[j], l);
-                    }
                 }
             }
+            if (s.Light == null) return;
+            int y0 = Math.Max(0, by + s.Ly), y1 = Math.Min(H - 1, by + s.Ly + s.H - 1);
+            if (y0 > y1) return;
+            uint[] L = frame.LightRaw; int oy = frame.Oy;
+            frame.Push(new Frame.GlowCmd { kind = 3, x0 = 0, x1 = s.W - 1, y0 = y0 + oy, y1 = y1 + oy, rows = (ya, yb) =>
+            {
+                for (int py = ya - oy; py <= yb - oy; py++)
+                {
+                    int yy = py - by - s.Ly, row = yy * s.W, outp = py * W;
+                    for (int xx = 0; xx < s.W; xx++)
+                    {
+                        int lx = s.Lx + xx, px = flip ? bx - lx - 1 : bx + lx;
+                        if (px < 0 || px >= W) continue;
+                        if (alpha < 1 && alpha <= BAYER[((py & 3) << 2) | (px & 3)]) continue;
+                        uint l = s.Light[row + xx];
+                        if (l != 0) { int j = outp + px; L[j] = AddLight(L[j], l); }
+                    }
+                }
+            } });
         }
 
         /// 跟 Draw 一樣，但以原點（腳底）為中心縮放（受擊壓扁用）。最近鄰取樣。

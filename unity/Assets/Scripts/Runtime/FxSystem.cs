@@ -63,8 +63,11 @@ namespace ZeroStar
         public void Draw(Frame frame, bool back)
         {
             double mid = frame.Ox + frame.W / 2.0;
+            frame.Defer = Probe == null;   // 光暈先記下來，最後切條一起畫（結果一樣，見 Frame.Defer）
             foreach (var e in list)
                 if (e.Back == back && Math.Abs(e.X - mid) < frame.W / 2.0 + 220) { if (Prof.On) Prof.Mark(back ? "背景特效" : "前景特效"); if (e.Baked != null) e.Baked.Draw(frame); else e.Live.Draw(frame); if (Prof.On) Prof.Mark("fx:" + (e.Baked != null ? "烘焙" : e.Live.Def.Name)); Probe?.Invoke(e.Baked != null ? e.Baked.Anim.Name + " t=" + e.Baked.T.ToString("R") : e.Live.Def.Name + " t=" + e.Live.T.ToString("R")); }
+            frame.Defer = false; frame.Flush();
+            if (Prof.On) Prof.Mark("fx:光暈");
         }
         public int Count => list.Count;
         public static Action<string> Probe;   // 開發用：每畫完一個特效呼叫一次
