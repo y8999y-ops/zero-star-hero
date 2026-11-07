@@ -144,6 +144,8 @@ function build() {
   blit(FG, FG_W, H, ART["town/fg"], 0, H - ART["town/fg"].h);
 }
 build();
+/** Unity 轉移用（game/tools/unity-export.mjs）：載入時畫好的圖層、會發光的像素、光源。網頁版不會用到。 */
+export const BAKED_TOWN = () => ({ FAR, MID, MAIN, FG, EMIT, LIGHTS, FAR_W, MID_W, FG_W, LAMPS, SHOPS });
 
 // ---- 白天與晚上（使用者 2026-11-06「城鎮中加入白天與夜晚」）
 //   用真實時間算：一整天 8 分鐘（白天 4 分、晚上 4 分），日出、日落各約 30 秒慢慢轉。換場景、重新整理都接得上。

@@ -35,6 +35,9 @@ const FX = {
   poof: "spawn/poof.js",
   splash: "water/splash.js",
   "treasure-chest": "../../../game/fx/loot/treasure-chest.js",
+  "shooting-stars": "weather/shooting-stars.js",
+  frog: "critters/frog.js",
+  "town-rain": "../../../game/src/fx-town-rain.js",
 };
 
 const STAR_BOOM = ["#3a1608", "#6e3a0c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"];
@@ -71,6 +74,14 @@ for (const fx of ["rune-circle", "sunburst", "ground-slam", "star-fall"]) {
   CASES.push({ name: fx, fx, opts: {}, speed: 1, loopStop: 60 });
   CASES.push({ name: fx + "-gold", fx, opts: { palette: PAL.gold, light: 0.5, seed: 11 }, speed: 1.2, loopStop: 60 });
 }
+
+// 第 3e 批：城鎮的夜空（starsky.js）、青蛙、雨（town.js 的選項）。都是迴圈，固定步數；速度加快讓步數涵蓋大半個迴圈
+CASES.push(
+  { name: "shooting-stars", fx: "shooting-stars", opts: { sky: ["#120c26", "#2a1e4a", "#4a3878", "#9a88d0", "#e8e0ff"], seed: 4 }, speed: 2.5, steps: 240 },
+  { name: "frog", fx: "frog", opts: { seed: 3, light: 0.2 }, speed: 1, steps: 300 },
+  { name: "town-rain", fx: "town-rain", opts: { density: 1 }, speed: 2, steps: 240 },
+  { name: "town-rain-light", fx: "town-rain", opts: { density: 0.45 }, speed: 1.3, steps: 150 },
+);
 
 const manifest = [];
 let files = 0;

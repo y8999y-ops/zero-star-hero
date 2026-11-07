@@ -28,12 +28,19 @@ namespace ZeroStar.Tests
             string ultOnly = Environment.GetEnvironmentVariable("ULT_PROF"); int profN = 0; double maxMs = 0; int maxAt = 0;
             Game.W = 384;
             string variant = Environment.GetEnvironmentVariable("TRACE_VARIANT") ?? "";
+            TownArt.DayOverride = null; TownArt.WeatherOverride = null;
             var g = new Game(sc.stage);
+            TownArt.NowMs = () => 1767225600000.0 + g.SimMs;   // 城鎮的日夜、天氣：固定的日期＋遊戲時間（跟網頁版的比對工具一樣）
             TraceScript.Apply(g, TraceScript.DefaultPath(), variant);   // 穿搭、技能樹、帶著的形態、打過的關卡（跟網頁版的存檔一樣）
             var frame = new Frame(Game.W, Game.H);
             var rgba = new byte[Game.W * Game.H * 4];
             g.StartStage();
             g.Warm(frame);
+            {   // 城鎮的白天晚上、天氣：腳本可以固定（網頁版也是載入完才設）
+                var r = (OrderedDict)MiniJson.Parse(File.ReadAllText(TraceScript.DefaultPath()));
+                if (r.ContainsKey("day")) TownArt.DayOverride = (double)r["day"];
+                if (r.ContainsKey("weather")) TownArt.WeatherOverride = (string)r["weather"];
+            }
             var sb = new StringBuilder();
             var frames = new MemoryStream();
             int si = 0;

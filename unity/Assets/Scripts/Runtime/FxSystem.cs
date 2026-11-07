@@ -17,7 +17,10 @@ namespace ZeroStar
             ["zap-hit"] = PixelFX.Fx.ZapHit.Def, ["poison-cloud"] = PixelFX.Fx.PoisonCloud.Def, ["acid-splash"] = PixelFX.Fx.AcidSplash.Def,
             ["collect-burst"] = PixelFX.Fx.CollectBurst.Def, ["rune-circle"] = PixelFX.Fx.RuneCircle.Def, ["sunburst"] = PixelFX.Fx.Sunburst.Def,
             ["ground-slam"] = PixelFX.Fx.GroundSlam.Def, ["star-fall"] = PixelFX.Fx.StarFall.Def, ["level-up"] = PixelFX.Fx.LevelUp.Def, ["poof"] = PixelFX.Fx.Poof.Def, ["splash"] = PixelFX.Fx.Splash.Def, ["treasure-chest"] = PixelFX.Fx.TreasureChest.Def,
+            ["shooting-stars"] = PixelFX.Fx.ShootingStars.Def, ["frog"] = PixelFX.Fx.Frog.Def, ["town-rain"] = PixelFX.Fx.TownRain.Def,
         };
+        /// 名字對應的即時特效定義（自己建 FxRun 用，例如城鎮的夜空、雨）
+        public static FxDef Def(string name) => DEFS[name];
 
         /// 載入時把每個即時特效先建一次、跑幾步、畫一次（第一次用到時要編譯程式、建表，會卡一下；先做掉）。
         /// 用自己的畫布和自己的亂數，不影響遊戲。

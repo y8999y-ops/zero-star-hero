@@ -37,9 +37,10 @@ namespace ZeroStar
         /// 建立關卡流程需要的東西（祭壇、寶箱、傳送門），照 main.js 載入時的順序
         void InitStage(string id)
         {
-            StageD = StageData.Get(id);
+            StageD = id == "town" ? StageData.Empty("town") : StageData.Get(id);
             Say.Paced = StageD.Paced;
             if (StageD.Altars != null) foreach (var a in StageD.Altars) Altars.Add(new Altar { X = a.X, Y = a.Y ?? Map.FloorAt(a.X, 0) });
+            if (id == "town") return;
             if (id != "1-4") Chest = MakeChest(StageD.ExitX - 120, STAGE_CHEST.TryGetValue(id, out var ct) ? ct : 0, Map.FloorAt(StageD.ExitX - 120, (StageD.ExitY != 0 ? StageD.ExitY : Data.Floor) - 8));
             if (id != "1-4") { PortalX = StageD.ExitX + 26; PortalY = StageD.ExitY != 0 ? StageD.ExitY : Data.Floor; }
         }
@@ -47,7 +48,8 @@ namespace ZeroStar
         public void StartStage()
         {
             Started = true;
-            placing = true; Director = new Director(StageD, this, IsTouch); placing = false;
+            if (Town) TownArrive();
+            else { placing = true; Director = new Director(StageD, this, IsTouch); placing = false; }
             SnapCam();
         }
         static ChestState MakeChest(double x, int tier, double y) => new ChestState { X = Pf.Round(x), Y = y, Tier = tier };
@@ -113,6 +115,12 @@ namespace ZeroStar
             switch (id)
             {
                 case "out11": return Cleared_.Contains("1-1");
+                case "reg": return GuildRegistered;
+                case "guild1": return GuildDone >= 1;
+                case "rankE": return GuildDone >= 3;
+                case "forge2": return Quests.EnhanceMax >= 2;
+                case "meal1": return Quests.Meals >= 1;
+                case "reroll1": return Quests.Rerolls >= 1;
                 case "core1": return FormsOwned.Count >= 2;
                 case "forms3": return Carry.Length >= 3;
                 case "boss1": return Cleared_.Contains("1-4");

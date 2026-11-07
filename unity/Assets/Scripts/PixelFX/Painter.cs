@@ -238,6 +238,35 @@ namespace PixelFX
                 o[j] = Clamp8(r); o[j + 1] = Clamp8(g); o[j + 2] = Clamp8(b); o[j + 3] = Clamp8(a);
             }
         }
+        /// 跟 Composite 一樣，但背景是每一格各自的顏色（fx.js 的 composite(f, out, bg陣列)；城鎮的夜空用）。逐格照 JS 的算法
+        public byte[] CompositeBg(byte[] o, uint[] bgArr, double lightK = 1)
+        {
+            Flush();
+            int n = W * H; o = o ?? new byte[n * 4];
+            var outp = o; int per = (n + 7) / 8;
+            System.Threading.Tasks.Parallel.For(0, 8, band => { for (int i = band * per, e = Math.Min(n, i + per); i < e; i++) CompositeBgPx(outp, bgArr, lightK, i); });   // 每一格各算各的：切成 8 段同時算，結果一樣
+            return o;
+        }
+        void CompositeBgPx(byte[] o, uint[] bgArr, double lightK, int i)
+        {
+            {
+                uint c = Color[i], l = light[i] & 0xffffff, ca = c >> 24;
+                double r, g, b, a;
+                if (ca == 255) { r = c & 255; g = (c >> 8) & 255; b = (c >> 16) & 255; a = 255; }
+                else
+                {
+                    uint k = bgArr[i]; double f = ca / 255.0;
+                    r = (c & 255) * f + (k & 255) * (1 - f); g = ((c >> 8) & 255) * f + ((k >> 8) & 255) * (1 - f);
+                    b = ((c >> 16) & 255) * f + ((k >> 16) & 255) * (1 - f); a = 255;
+                }
+                if (l != 0)
+                {
+                    double lr = (l & 255) * lightK, lg = ((l >> 8) & 255) * lightK, lb = ((l >> 16) & 255) * lightK;
+                    r = Math.Min(255, r + lr); g = Math.Min(255, g + lg); b = Math.Min(255, b + lb);
+                }
+                int j = i * 4; o[j] = Clamp8(r); o[j + 1] = Clamp8(g); o[j + 2] = Clamp8(b); o[j + 3] = Clamp8(a);
+            }
+        }
         static byte AddRound(uint v0, double add)
         {
             double v = v0 + add;
@@ -277,6 +306,50 @@ namespace PixelFX
 
         /// 沒有旋轉（只可能左右鏡像）：本地的不同整數 x 一定落在畫面上不同的欄
         public bool Straight => sn == 0 && (cs == 1 || cs == -1);
+        /// 放置參數（weather 的 rows／pass 直接算畫布座標用）
+        public double TX => tx; public double TY => ty; public double FX => fx; public double SN => sn;
+
+        // ---- 只畫在一個本地方框裡的畫筆（weather/_lib.js 的 clip）
+        // 同一張畫布、同樣的放置；框外的顏色、混色、光都丟掉。光暈改成在本地座標逐格加光（照 clip 的 glow）。
+        bool clipped, clipRect; int csx0, csx1, csy0, csy1; double cbx0, cby0, cbx1, cby1;
+        /// 回傳一支只畫在本地方框 x0 ≤ x < x1、y0 ≤ y < y1 的畫筆（原本這支不變）
+        public Painter Clip(double x0, double y0, double x1, double y1)
+        {
+            var q = (Painter)MemberwiseClone();
+            q.clipped = true; q.cbx0 = x0; q.cby0 = y0; q.cbx1 = x1; q.cby1 = y1;
+            q.clipRect = sn == 0;
+            if (q.clipRect)
+            {
+                double a = ToX(x0, 0), b = ToX(x1, 0);
+                q.csx0 = (int)Pf.Round(Math.Min(a, b)); q.csx1 = (int)Pf.Round(Math.Max(a, b));
+                q.csy0 = (int)Pf.Round(ToY(0, y0)); q.csy1 = (int)Pf.Round(ToY(0, y1));
+            }
+            return q;
+        }
+        bool ClipOk(int sx, int sy)
+        {
+            if (clipRect) return sx >= csx0 && sx < csx1 && sy >= csy0 && sy < csy1;
+            double lx = FromX(sx + 0.5, sy + 0.5), ly = FromY(sx + 0.5, sy + 0.5);
+            return lx >= cbx0 && lx < cbx1 && ly >= cby0 && ly < cby1;
+        }
+        // clip 的 glow：方框先夾在框內，本地格子逐格加光
+        void ClipGlow(double x, double y, double r, uint c, double k)
+        {
+            if (r < 1 || k <= 0.004) return;
+            double x0 = Math.Max(cbx0, Math.Floor(x - r)), x1 = Math.Min(cbx1 - 1, Math.Ceiling(x + r));
+            double y0 = Math.Max(cby0, Math.Floor(y - r)), y1 = Math.Min(cby1 - 1, Math.Ceiling(y + r));
+            for (double py = y0; py <= y1; py++)
+            {
+                double dy = (py + 0.5 - y) / r;
+                for (double px = x0; px <= x1; px++)
+                {
+                    double dx = (px + 0.5 - x) / r, d = dx * dx + dy * dy;
+                    if (d >= 1) continue;
+                    double f = 1 - Math.Sqrt(d);
+                    LightAt(px, py, c, f * f * k);
+                }
+            }
+        }
         // ---- 座標轉換
         public double ToX(double x, double y) => tx + x * fx * cs - y * sn;
         public double ToY(double x, double y) => ty + x * fx * sn + y * cs;
@@ -288,6 +361,7 @@ namespace PixelFX
         // ---- 直接寫入（畫布座標、整數像素）。顏色 0＝什麼都不畫。
         public void Put(int sx, int sy, uint c, double a = 1)
         {
+            if (clipped && !ClipOk(sx, sy)) return;
             if (c == 0) return;
             a *= Fade;
             if (a < 1 && a <= BAYER[((sy & 3) << 2) | (sx & 3)]) return;
@@ -297,6 +371,7 @@ namespace PixelFX
         }
         public void Add(int sx, int sy, uint c, double k = 1)
         {
+            if (clipped && !ClipOk(sx, sy)) return;
             k *= Fade * LightK;
             if (k <= 0.004) return;
             if (Frame.Q.Count > 0) Frame.Flush();
@@ -312,6 +387,7 @@ namespace PixelFX
         /// 半透明混色（煙、霧、塵）：保留結果的透明度。
         public void BlendPx(int sx, int sy, uint c, double a)
         {
+            if (clipped && !ClipOk(sx, sy)) return;
             a *= Fade;
             if (c == 0 || a <= 0.004) return;
             int x = sx - ox, y = sy - oy;
@@ -481,6 +557,7 @@ namespace PixelFX
         /// 跟 Shade 一樣，但切成幾條同時算。只能用在 fn 只看自己那一格（不改外面的東西）的地方：每個像素只寫一次，結果一樣
         public void ShadePar(double x0, double y0, double x1, double y1, ShadeFn fn)
         {
+            if (clipped) { Shade(x0, y0, x1, y1, fn); return; }   // 裁切的畫筆：光要一格一格經過 Add
             Bounds(x0, y0, x1, y1, out int sx0, out int sx1, out int sy0, out int sy1);
             if (sx1 < sx0 || sy1 < sy0) return;
             long __t = PfProf.T0(); try {
@@ -622,6 +699,7 @@ namespace PixelFX
         int ClipY0(int v) => Math.Max(v, oy); int ClipY1(int v) => Math.Min(v, oy + h - 1);
         public void Glow(double x, double y, double r, uint c, double k = 0.5)
         {
+            if (clipped) { ClipGlow(x, y, r, c, k); return; }
             long __t = PfProf.T0(); try {
             if (r < 1 || k <= 0.004) return;
             double cx = ToX(x, y), cy = ToY(x, y);
@@ -642,6 +720,21 @@ namespace PixelFX
             if (r < 1 || k <= 0.004) return;
             double ax = ToX(x0, y0), ay = ToY(x0, y0), bx = ToX(x1, y1), by = ToY(x1, y1);
             double dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy; if (L2 == 0) L2 = 1e-9;
+            if (clipped)
+            {   // 裁切的畫筆：照 painter.js 逐格經過 Add（Add 會擋掉框外）
+                int SX0 = (int)Math.Floor(Math.Min(ax, bx) - r), SX1 = (int)Math.Ceiling(Math.Max(ax, bx) + r);
+                int SY0 = (int)Math.Floor(Math.Min(ay, by) - r), SY1 = (int)Math.Ceiling(Math.Max(ay, by) + r);
+                for (int sy = SY0; sy <= SY1; sy++)
+                    for (int sx = SX0; sx <= SX1; sx++)
+                    {
+                        double px = sx + 0.5, py = sy + 0.5, u = Pf.Clamp(((px - ax) * dx + (py - ay) * dy) / L2);
+                        double ex = ax + dx * u - px, ey = ay + dy * u - py, d = Math.Sqrt(ex * ex + ey * ey) / r;
+                        if (d >= 1) continue;
+                        double f = 1 - d;
+                        Add(sx, sy, c, f * f * k);
+                    }
+                return;
+            }
             // 有效半徑：離線越遠光越弱，弱到 ≤ 0.004 的格子本來就不加；範圍只取到那裡（留 1 格邊界，裡面照原本逐格算）
             double kf = k * Fade * LightK;
             if (kf <= 0.004) return;
@@ -658,6 +751,18 @@ namespace PixelFX
             long __t = PfProf.T0(); try {
             if (r < 1 || k <= 0.004) return;
             double cx = ToX(x, y), cy = ToY(x, y), E = R + r;
+            if (clipped)
+            {   // 裁切的畫筆：照 painter.js 逐格經過 Add
+                for (int sy = (int)Math.Floor(cy - E); sy <= Math.Ceiling(cy + E); sy++)
+                    for (int sx = (int)Math.Floor(cx - E); sx <= Math.Ceiling(cx + E); sx++)
+                    {
+                        double d = Math.Abs(Pf.Hypot(sx + 0.5 - cx, sy + 0.5 - cy) - R) / r;
+                        if (d >= 1) continue;
+                        double f = 1 - d;
+                        Add(sx, sy, c, f * f * k);
+                    }
+                return;
+            }
             int X0 = ClipX0((int)Math.Floor(cx - E)), X1 = ClipX1((int)Math.Ceiling(cx + E)), Y0 = ClipY0((int)Math.Floor(cy - E)), Y1 = ClipY1((int)Math.Ceiling(cy + E));
             if (X1 < X0 || Y1 < Y0) return;
             Frame.Push(new Frame.GlowCmd { kind = 2, x0 = X0, x1 = X1, y0 = Y0, y1 = Y1, a = cx, b = cy, c = R, r = r, k = k, fl = Fade * LightK, cr = c & 255, cg = (c >> 8) & 255, cb = (c >> 16) & 255 });

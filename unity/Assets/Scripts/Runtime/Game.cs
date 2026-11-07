@@ -27,7 +27,7 @@ namespace ZeroStar
         public static int W = 384;
         public const int H = 216;
         public const double STEP = 1 / 60.0, ZOOM = 1.38;
-        public static readonly int VIEW_DY = (int)Pf.Round(0.05 * H / ZOOM);
+        public static int VIEW_DY = (int)Pf.Round(0.05 * H / ZOOM);   // 城鎮比關卡再往下 5%（0.10）
 
         public readonly LevelData Data;
         public readonly LevelArt Art;
@@ -337,6 +337,8 @@ namespace ZeroStar
         public Game(string stage = "1-1", Game from = null)
         {
             StageId = stage;
+            Town = stage == "town";
+            VIEW_DY = (int)Pf.Round((Town ? 0.10 : 0.05) * H / ZOOM);
             Zoom = ZOOM;
             Enemy.ResetStatics();
             SceneLight.Reset();
@@ -346,12 +348,13 @@ namespace ZeroStar
             Ult = new Ult(this);
             FxSystem.WarmUp();
             SceneLight.GlobalLv = 0;
-            Data = Baked.Level(stage);
-            Art = new LevelArt(Data);
+            Data = Town ? TownArt.Level() : Baked.Level(stage);
+            Art = Town ? null : new LevelArt(Data);
+            if (Town) TownArt.Reset();
             Map = new GameMap(Data.W, Data.H, Data.Solids, Data.Platforms);
             InitStage(stage);
             var combos = JsonUtility.FromJson<ComboDef>(Baked.Text("combos"));
-            Player = new Player(StageD.StartX, StageD.StartY, combos) { RankFn = Rank };
+            Player = Town ? new Player(120, TownArt.FLOOR, combos) { RankFn = Rank } : new Player(StageD.StartX, StageD.StartY, combos) { RankFn = Rank };
             if (from == null) { Equip["weapon"] = Fresh.core; Equip["body"] = Fresh.shell; }
             ApplyStats();
             Player.Hp = Player.MaxHp;
@@ -360,6 +363,7 @@ namespace ZeroStar
             var brazier = Baked.Anim("brazier");
             foreach (var t in Data.Torches) Fx.Spawn(brazier, t.x, t.y, back: true, keep: true).Update(Rnd.Next() * 3);
             if (PortalX != null) Fx.Spawn(Baked.Anim("portal"), PortalX.Value, PortalY, back: true, keep: true);
+            if (Town) { Folk = new Folk(TownArt.FLOOR); var fo = new FxOptions { Seed = 3, Light = 0.2 }; Fx.SpawnLive("frog", 548, TownArt.FLOOR, fo, 1, back: true, keep: true); }   // 路人、青蛙
         }
         /// 場景物件（props、scenery、hazards、features）：搬好之後在這裡建立
         partial void InitStageObjects();
@@ -376,6 +380,8 @@ namespace ZeroStar
             MpBonus = f.MpBonus; Lore = f.Lore; PityMyth = f.PityMyth;
             TipUse = f.TipUse; SeenSet = f.SeenSet; SeenCoreTip = f.SeenCoreTip;
             Taught.UnionWith(f.Taught); Reacted.UnionWith(f.Reacted); SysDone.UnionWith(f.SysDone); Cleared_.UnionWith(f.Cleared_);
+            GuildRegistered = f.GuildRegistered; GuildDone = f.GuildDone; TGuide = f.TGuide;
+            Quests.Active.AddRange(f.Quests.Active); Quests.Board.AddRange(f.Quests.Board); Quests.EnhanceMax = f.Quests.EnhanceMax; Quests.Meals = f.Quests.Meals; Quests.Rerolls = f.Quests.Rerolls;
         }
 
         // ---- world
@@ -608,6 +614,7 @@ namespace ZeroStar
         }
         void SnapCam()
         {
+            if (Town) return;
             var v = ViewRect(); double gy = Map.FloorAt(Player.X, Math.Max(0, Player.Y));
             camLand = Player.Grounded ? (double?)null : gy; camRefY = gy; lookX = Player.Face * 36;
             CamX = Math.Max(-v.x0, Math.Min(Data.W - v.x0 - v.w, Player.X - W / 2.0));
@@ -688,6 +695,7 @@ namespace ZeroStar
             if (Fx.Freeze > 0) { Fx.Freeze -= dt; return; }
             if (!Started) return;
             Combat.Update(dt);
+            if (Town) { TownTick(dt); return; }
             SceneLight.Update(dt);
             Status.Update(dt);
             UpdateStageObjectsEarly(dt);   // 元素場景物件、死亡碎片
@@ -864,7 +872,7 @@ namespace ZeroStar
             frame.Oy = (int)Pf.Round(CamY) + sy;
             Array.Clear(frame.Light, 0, frame.Light.Length);
             sceneClock += 1 / 60.0;
-            var lights = Art.SceneLights(CamX, W, sceneClock);
+            var lights = Town ? TownArt.Lights(sceneClock) : Art.SceneLights(CamX, W, sceneClock);
             lights.Add(new LightSrc(Player.X, Player.Y - 10, 64, 1.6, "#ffcf6a"));
             foreach (var e in Enemies) e.Lights(lights);
             foreach (var e in Enemies) if (e.Elite && !e.Dead) lights.Add(new LightSrc(e.X, e.Y - 10, 36, 1.2, "#ff4a3a"));
@@ -876,14 +884,16 @@ namespace ZeroStar
             Prof.Mark(null);
             var lv = SceneLight.Compute(frame, lights);
             Prof.Mark("光源");
-            Art.Draw(frame, lv);
+            if (Town) TownArt.Draw(frame, lv, sceneClock);
+            else { Art.Draw(frame, lv); }
             Prof.Mark("場景");
-            Art.DrawAtmosphere(frame, sceneClock);
+            if (!Town) Art.DrawAtmosphere(frame, sceneClock);
             Prof.Mark("大氣");
             foreach (var a in Altars) if (Math.Abs(a.X - CamX - W / 2.0) < W) DrawAltar(frame, a);
             DrawPlug(frame);   // 王房屋頂的垃圾塞子
             DrawStageObjects(frame, lv);   // features、props、scenery、hazards
-            if (UseT != null) DrawBang(frame, UseT.X, UseT.Top);
+            if (Town) DrawTownPeople(frame);
+            else if (UseT != null) DrawBang(frame, UseT.X, UseT.Top);
             if (Chest != null && !Chest.Opened && Math.Abs(Chest.X - CamX - W / 2.0) < W) DrawChestSolid(frame);
             Prof.Mark("場景物件");
             if (!Ult.On) Fx.Draw(frame, true);
@@ -916,9 +926,10 @@ namespace ZeroStar
             Prof.Mark("戰鬥小特效");
             Ult.Draw(frame);
             Prof.Mark("大招畫");
-            DrawLowHp(frame);
+            if (!Town) DrawLowHp(frame);
+            if (Town) { TownArt.DrawWeather(frame, sceneClock); TownArt.DrawFg(frame); }
             if (Director?.Lock != null) DrawBarrier(frame, Director.Lock.Value);
-            Art.DrawForeground(frame);
+            if (!Town) Art.DrawForeground(frame);
             Combat.DrawNumbers(frame, ViewRect());
             Prof.Mark("前景");
             Ult.DrawCutIn(frame);

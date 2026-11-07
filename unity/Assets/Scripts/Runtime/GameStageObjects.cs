@@ -25,9 +25,9 @@ namespace ZeroStar
 
         partial void InitStageObjects()
         {
-            var runs = StageRuns.MainRuns(Map);
+            var runs = Town ? null : StageRuns.MainRuns(Map);   // main.js 的 RUNS：只有大地圖（BARE）才算地面的區段，城鎮是 null
             var torches = Data.Torches.ToList();
-            Scenery = new Scenery(new Scenery.Opts { Floor = Data.Floor, W = Data.W, Platforms = Data.Platforms, Town = false, NoPuddles = StageId == "1-1", Runs = runs, Fx = Fx, Sfx = Sfx, NowMs = () => SimMs });
+            Scenery = new Scenery(new Scenery.Opts { Floor = Data.Floor, W = Data.W, Platforms = Data.Platforms, Town = Town, NoPuddles = StageId == "1-1", Runs = runs, Fx = Fx, Sfx = Sfx, NowMs = () => SimMs });
             Hazards = new Hazards(StageId, Data.Floor, torches, Scenery.Puddles, StageD.Hazards.Select(h => (h.kind, h.x, (double?)h.y)).ToList(), (e, el) => Status.Apply(e, el));
             // 水窪不要疊在元素物件、祭壇、機關上
             {
@@ -41,7 +41,8 @@ namespace ZeroStar
             foreach (var h in Hazards.List) { avoid.Add(h.x - 14); avoid.Add(h.x); avoid.Add(h.x + 14); }
             avoid.Add(StageD.ExitX - 120); avoid.Add(StageD.ExitX + 26); avoid.Add(StageD.StartX);
             foreach (var p in Scenery.Puddles) { avoid.Add(p.x - p.w / 4); avoid.Add(p.x); avoid.Add(p.x + p.w / 4); }
-            Props = new Props(new Props.Opts { Floor = Data.Floor, W = Data.W, Platforms = Data.Platforms, Town = false, Runs = runs, FloorFn = Map.FloorAt, BigCrystals = Data.BigCrystals, Avoid = avoid, Fx = Fx, Sfx = Sfx, Blip = (f, t, ms) => { }, HitFx = (x, y, d, h) => Combat.Hit(x, y, d, h) });
+            if (Town) { avoid.Clear(); avoid.AddRange(TownArt.NPCS.Select(n => n.x)); avoid.Add(924); }   // 城鎮：居民、路標前面不要擺東西
+            Props = new Props(new Props.Opts { Floor = Data.Floor, W = Data.W, Platforms = Data.Platforms, Town = Town, Runs = runs, FloorFn = Town ? null : (Func<double, double, double>)Map.FloorAt, BigCrystals = Data.BigCrystals, Avoid = avoid, Fx = Fx, Sfx = Sfx, Blip = (f, t, ms) => { }, HitFx = (x, y, d, h) => Combat.Hit(x, y, d, h) });
             // 藍水晶打一下＝補魔力（最大魔力的 25%，大水晶 35%）
             Props.OnMana = c =>
             {

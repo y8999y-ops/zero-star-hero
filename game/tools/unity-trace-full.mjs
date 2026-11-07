@@ -158,11 +158,18 @@ const profile = {
 const STAGE = SC.stage ?? "1-1", ORDER = ["1-1", "1-2", "1-3", "1-4"];
 for (const id of ORDER.slice(0, ORDER.indexOf(STAGE))) profile.cleared[id] = true;
 globalThis.localStorage = new Store({ "zero-hero-save-v1": JSON.stringify(profile) });
-globalThis.sessionStorage = new Store({ "zero-hero-next": "stage", "zero-hero-stage": STAGE, "zero-hero-auto": "1" });
+// 碎星鎮（stage: "town"）：前面的關卡算打過了照 SC.cleared；SC.profile 可以再蓋存檔的欄位（例如公會登記、引導進度）
+if (STAGE === "town") for (const id of SC.cleared ?? []) profile.cleared[id] = true;
+if (SC.profile) Object.assign(profile, SC.profile);
+localStorage.setItem("zero-hero-save-v1", JSON.stringify(profile));
+globalThis.sessionStorage = new Store({ "zero-hero-next": STAGE === "town" ? "town" : "stage", "zero-hero-stage": STAGE === "town" ? "1-1" : STAGE, "zero-hero-auto": "1" });
 
 // ---- 載入網頁版（載入時取的亂數也算在同一串裡）
 await import("../src/main.js");
 const G = window.__game;
+// 城鎮的白天晚上、天氣：腳本可以固定（day＝0～1、weather＝"clear"／"cloudy"／"rain"），兩邊載入完才設
+if (SC.day != null) G.day(SC.day);
+if (SC.weather != null) G.weather(SC.weather);
 console.log("載入完成；載入時用掉的亂數：", rndCount, "director", !!G.director, "setPanel", byId("setPanel").classList.contains("hidden"));
 const { POSES } = await import("../src/star.js");
 const { juice } = await import("../src/fx.js");

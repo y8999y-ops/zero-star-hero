@@ -117,6 +117,8 @@ namespace PixelFX
         public static double Rand(int a) => Hash(a) / 4294967296.0;
         public static double Rand(int a, int b) => Hash(a, b) / 4294967296.0;
         public static double Rand(int a, int b, int c) => Hash(a, b, c) / 4294967296.0;
+        public static uint Hash(int a, int b, int c, int d) => (uint)Mix1(Mix1(Mix1(Mix1(unchecked((int)0x9e3779b9), a), b), c), d);
+        public static double Rand(int a, int b, int c, int d) => Hash(a, b, c, d) / 4294967296.0;
 
         public static double Noise(double x, int seed = 0)
         {

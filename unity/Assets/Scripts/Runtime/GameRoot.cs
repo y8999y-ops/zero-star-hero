@@ -65,7 +65,7 @@ namespace ZeroStar
         void MapGo(string id)
         {
             if (id == null) return;
-            if (id == "town") { if (!mapFromLeave) CloseMap(); else { mapMsg = "碎星鎮要等階段 4 才搬過來，先選一關出發吧。"; mapMsgT = 3; } return; }
+            if (id == "town") { if (game.Town) CloseMap(); else { map = null; game.Sfx("ui"); NewGame("town", game); } return; }   // 在鎮上＝留在鎮上；在關卡裡＝回碎星鎮
             if (id == "endless") { mapMsg = "無限討伐還沒搬到 Unity。"; mapMsgT = 3; return; }
             if (Array.IndexOf(WorldMap.STAGES, id) >= 0 && map.Nodes[id].Open) { map = null; game.Sfx("ui"); NewGame(id, game); }
         }
@@ -148,7 +148,9 @@ namespace ZeroStar
             if (from == null && tracePath == null) foreach (var f in game.Carry) game.FormsOwned[f] = 0;   // 開發用：形態全部都有（存檔、技能樹畫面在階段 4、5）
             game.OnPickup = it => { sayText = "撿到：" + it.Name; sayT = 1.6f; };
             // 進傳送門：網頁版回碎星鎮、再從選關地圖選下一關（階段 3d）；這裡先直接到下一關（1-4 打完回 1-1）
-            game.OnLeave = () => game.After(380, () => { if (shotDir != null) pending = NextStage(); else OpenMap(true); });   // 自動玩（-shot）照舊直接到下一關
+            game.OnLeave = () => game.After(380, () => pending = shotDir != null ? NextStage() : "town");   // 進傳送門：回碎星鎮（自動玩（-shot）照舊直接到下一關）
+            // 碎星鎮：路標＝打開選關地圖；店家、路人的對話和視窗在階段 4b、4c
+            game.OnTalk = n => { if (n.Place == "sign") OpenMap(false); else { sayText = n.Name + "：（對話在階段 4b 搬過來）"; sayT = 2.2f; } };
 #if UNITY_ANDROID || UNITY_IOS
             game.Vibrate = () => Handheld.Vibrate();   // 大招落地震一下（手機）
 #endif
@@ -376,6 +378,16 @@ namespace ZeroStar
                 GUI.Label(new UnityEngine.Rect(0, Screen.height * 0.18f, Screen.width, 40 * u), game.Ult.Name, nameStyle);
             }
             DrawBossHud(u);
+            // 碎星鎮：居民頭上的自言自語泡泡（網頁版是 HTML）
+            if (game.Town && game.BubbleText != null)
+            {
+                var sp = screen.CanvasToScreen(new Vector2((float)(game.BubbleX - Math.Round(game.CamX)), (float)(game.BubbleHead - Math.Round(game.CamY))));
+                infoStyle.fontSize = Mathf.RoundToInt(9 * u); var sz = infoStyle.CalcSize(new GUIContent(game.BubbleText));
+                float bx = sp.x - sz.x / 2 - 4 * u, by = Screen.height - sp.y - sz.y - 6 * u;
+                Rect(bx, by, sz.x + 8 * u, sz.y + 2 * u, new Color(1f, 0.97f, 0.9f, 0.92f));
+                var keep = infoStyle.normal.textColor; infoStyle.normal.textColor = new Color(0.15f, 0.1f, 0.12f);
+                GUI.Label(new UnityEngine.Rect(bx + 4 * u, by + u, sz.x, sz.y), game.BubbleText, infoStyle); infoStyle.normal.textColor = keep;
+            }
             // 效能（右上角）：每秒幾格、每格算畫面花幾毫秒
             if (perfStyle == null) perfStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperRight, fontSize = Mathf.RoundToInt(10 * u) };
             perfStyle.normal.textColor = new Color(1, 1, 1, 0.55f);
@@ -439,6 +451,7 @@ namespace ZeroStar
             g.TipUse = root.ContainsKey("tipUse") && (double)root["tipUse"] != 0;
             var order = new[] { "1-1", "1-2", "1-3", "1-4" };
             for (int i = 0; i < Array.IndexOf(order, sc.stage); i++) g.Cleared_.Add(order[i]);   // 前面的關卡算打過了
+            if (root.ContainsKey("cleared")) foreach (string id in (List<object>)root["cleared"]) g.Cleared_.Add(id);   // 城鎮：腳本指定打過哪幾關
         }
         static Item SpecItem(OrderedDict sp)
         {

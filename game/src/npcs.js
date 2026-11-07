@@ -27,6 +27,9 @@ function anim(id, walk) {
   return cache[k];
 }
 
+/** Unity 轉移用：烘焙好的動畫（待機或走路） */
+export const npcAnim = (id, walk = false) => anim(id, walk);
+export const NPC_IDS = Object.keys(DEFS);
 /** 畫到 frame：x 是腳底中間、y 是腳底（世界座標），t 是動畫時間（秒），flip 面朝左，walk 走路中 */
 export function paintNpc(frame, id, t, x, y, flip = false, walk = false) {
   blit(frame, anim(id, walk), t, x, y + 1, flip);

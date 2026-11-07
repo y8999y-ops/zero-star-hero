@@ -84,6 +84,9 @@ const comboKeys = {};   // 形態 → [{ anim 名稱, 招式 }]
   // 1-4 的王（boss.js 的 prepareBoss）：每個姿勢一組，名稱 boss:姿勢；fps 0、duration＝每張的秒數（0＝照 k 選張）
   const { prepareBoss } = await import("../src/boss.js");
   for (const [pose, b] of Object.entries(prepareBoss())) anims["boss:" + pose] = { fps: 0, loop: false, duration: b.dt ?? 0, frames: b.frames };
+  // 碎星鎮的居民、路人（npcs.js）：npc:id（待機）、npc:id:walk（走路）
+  const { npcAnim, NPC_IDS } = await import("../src/npcs.js");
+  for (const id of NPC_IDS) { anims["npc:" + id] = npcAnim(id); anims["npc:" + id + ":walk"] = npcAnim(id, true); }
   for (const [form, F] of Object.entries(FORMS)) {
     comboKeys[form] = BAKED_COMBOS.COMBO_DEF[F.combo].map((s, i) => { const n = `atk:${form}:${i}`; anims[n] = slashAnim(s.mod, form); return n; });
   }
@@ -138,6 +141,14 @@ const comboKeys = {};   // 形態 → [{ anim 名稱, 招式 }]
   const { CHEST_TIERS } = await import("../src/chest-tiers.js");
   writeFileSync(join(OUT, "stages.json"), JSON.stringify({ stages: STAGES, chestTiers: CHEST_TIERS }, null, 1));
   console.log("  stages.json");
+}
+// ---- 4f. 碎星鎮（town.js）：載入時畫好的圖層（遠景、中景、街道、前景）、會發光的像素、光源
+{
+  const T = await import("../src/town.js"), b = T.BAKED_TOWN(), w = new W();
+  w.str("ZTN1").i32(T.TOWN_W).i32(b.FAR_W).i32(b.MID_W).i32(b.FG_W);
+  w.u32(b.FAR).u32(b.MID).u32(b.MAIN).u32(b.FG).u8(b.EMIT);
+  w.i32(b.LIGHTS.length); for (const [x, y, r, lv, col] of b.LIGHTS) w.f64(x).f64(y).f64(r).f64(lv).str(col);
+  w.save("town.bytes");
 }
 // ---- 4e. 選關世界地圖（worldmap-art.js）：不會動的底圖（bakeBase）、地點、路（一串點）
 {

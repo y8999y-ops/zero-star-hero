@@ -17,6 +17,8 @@ namespace ZeroStar
         public class Feature { public string T, Form; public double X, Y, W, H; public int I; public OrderedDict Raw; }
         public class Arena { public double L, R, Floor; public RectD? Top, Hole; }   // Top＝王放大招站的高台（y＝台面）、Hole＝屋頂的破洞
         public string Id, Name; public bool Paced;
+        /// 城鎮用：沒有怪、沒有機關的空關卡資料
+        public static StageData Empty(string id) => new StageData { Id = id, Name = id };
         public double StartX, StartY, ExitX, ExitY;
         public List<string> Intro = new List<string>();
         public List<Spawn> Spawns; public List<Event> Events = new List<Event>(); public List<Cache> Caches = new List<Cache>();
