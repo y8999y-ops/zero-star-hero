@@ -32,6 +32,13 @@ namespace ZeroStar
             ["mushroom"] = new[] { "今天的湯是蘑菇湯～不是親戚喔。", "累了就來休息吧～", "頭上的孩子們又長高了呢～" },
         };
 
+        /// 引導的下一步：還沒講到的上一步提示就不講了
+        public void GuideNext(string line)
+        {
+            TGuide++;
+            Say.Queue.RemoveAll(q => q.Item3 == "guide");
+            if (line != null) Say.Push(line, 3.4, "guide");
+        }
         List<string> Unlocked() { var o = new[] { "1-1", "1-2", "1-3", "1-4" }; return o.Where((id, i) => i == 0 || Cleared_.Contains(o[i - 1])).ToList(); }
 
         /// main.js 的 townArrive：任務板補滿、檢查主線、「碎星鎮」、引導台詞

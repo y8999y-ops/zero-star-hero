@@ -13,7 +13,7 @@ namespace ZeroStar
         PixelScreen screen;
         Game game;
         // 自動玩（-shot）
-        string shotDir; List<(int t, string type, string code)> script; int tickN, si; readonly int[] shotAt = { 760, 790, 2660, 2700, 2930, 3170, 3420, 3480 }; int shotNo, scTicks;
+        string shotDir; List<(int t, string type, string code)> script; int tickN, si; int[] shotAt = { 760, 790, 2660, 2700, 2930, 3170, 3420, 3480 }; int shotNo, scTicks;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
@@ -31,7 +31,8 @@ namespace ZeroStar
             screen.Resized += w => Game.W = w;
             var args = Environment.GetCommandLineArgs();
             for (int i = 0; i < args.Length - 1; i++) if (args[i] == "-shot") shotDir = args[i + 1];
-            for (int i = 0; i < args.Length - 1; i++) if (args[i] == "-mapshot") mapShot = args[i + 1];   // 開發用：打開地圖、換幾個地點各截一張圖
+            for (int i = 0; i < args.Length - 1; i++) if (args[i] == "-mapshot") mapShot = args[i + 1];
+            for (int i = 0; i < args.Length - 1; i++) if (args[i] == "-shotat") shotAt = Array.ConvertAll(args[i + 1].Split(','), int.Parse);   // 開發用：自動玩時在第幾步截圖（逗號分開）   // 開發用：打開地圖、換幾個地點各截一張圖
             if (shotDir != null) { Application.runInBackground = true; Directory.CreateDirectory(shotDir); var ts = TraceScript.Load(TraceScript.DefaultPath()); script = ts.events; scTicks = ts.ticks; Rnd.R = new Rng(12345); }
             // 暖身：裝備產生、數值計算第一次用到時要編譯程式（會卡一下），載入時先做掉；用另一組亂數，不影響遊戲
             { var saved = Rnd.R; Rnd.R = new Rng(1); var eq = new Dictionary<string, Item> { ["weapon"] = null, ["head"] = null, ["body"] = null, ["hands"] = null, ["feet"] = null, ["acc1"] = null, ["acc2"] = null };
@@ -42,9 +43,12 @@ namespace ZeroStar
             screen.PostComposite += d => { if (map == null) game.PostComposite(d); };
             NewGame(sc?.stage ?? "1-1", null, sc != null ? TraceScript.DefaultPath() : null);
             touchMode = Input.touchSupported && Application.isMobilePlatform;
+            { var uiGo = new GameObject("UI"); uiGo.transform.SetParent(transform); var uiRoot = ZeroStar.UI.Ui.CreateRoot(uiGo); hud = new ZeroStar.UI.Hud(uiRoot); dlg = new ZeroStar.UI.Dialog(uiRoot, () => game.Player.Form); }   // 階段 4b：UI Toolkit 的 HUD
             if (mapShot != null) { Directory.CreateDirectory(mapShot); game.Cleared_.UnionWith(new[] { "1-1", "1-2" }); OpenMap(false); }
         }
         string mapShot; int mapShotN;
+        ZeroStar.UI.Hud hud; ZeroStar.UI.Dialog dlg;
+        void LateUpdate() { if (hud == null || game == null) return; hud.Visible = map == null; hud.Dim = dlg.Open; if (map == null) hud.Update(game, Time.unscaledDeltaTime); dlg.Update(Time.unscaledDeltaTime); }
 
         static readonly string[] ORDER = { "1-1", "1-2", "1-3", "1-4" };
 
@@ -144,13 +148,13 @@ namespace ZeroStar
             if (tracePath != null) TraceScript.Apply(game, tracePath);   // 自動玩：照比對腳本的存檔
             Debug.Log($"[Stage] 開始 {stage}（Lv {game.Lv}）");
             game.OnSay = msg => { sayText = msg; sayT = 2.6f; };
-            game.Say.OnShow = (msg, sec, focus) => { sayText = msg; sayT = (float)(sec + msg.Length * 0.035); };
+            game.Say.OnShow = null;   // 系統台詞、提示改由 HUD 顯示（UI/Hud.cs）
             if (from == null && tracePath == null) foreach (var f in game.Carry) game.FormsOwned[f] = 0;   // 開發用：形態全部都有（存檔、技能樹畫面在階段 4、5）
             game.OnPickup = it => { sayText = "撿到：" + it.Name; sayT = 1.6f; };
             // 進傳送門：網頁版回碎星鎮、再從選關地圖選下一關（階段 3d）；這裡先直接到下一關（1-4 打完回 1-1）
             game.OnLeave = () => game.After(380, () => pending = shotDir != null ? NextStage() : "town");   // 進傳送門：回碎星鎮（自動玩（-shot）照舊直接到下一關）
             // 碎星鎮：路標＝打開選關地圖；店家、路人的對話和視窗在階段 4b、4c
-            game.OnTalk = n => { if (n.Place == "sign") OpenMap(false); else { sayText = n.Name + "：（對話在階段 4b 搬過來）"; sayT = 2.2f; } };
+            game.OnTalk = n => _ = ZeroStar.UI.TownTalk.Interact(game, dlg, n, () => OpenMap(false));
 #if UNITY_ANDROID || UNITY_IOS
             game.Vibrate = () => Handheld.Vibrate();   // 大招落地震一下（手機）
 #endif
@@ -216,7 +220,7 @@ namespace ZeroStar
             }
             if (shotDir != null)
             {
-                while (si < script.Count && script[si].t == tickN) { var e = script[si++]; if (e.type == "f") game.SwitchForm(e.code); else if (e.type == "m") game.Player.Mp = game.Player.MaxMp; else if (e.type == "h") game.Player.Hp = int.Parse(e.code); else if (e.type == "x") game.GainXp(int.Parse(e.code)); else if (e.type == "i") game.DropItem(game.Player.X + 40 * game.Player.Face, game.Player.Y - 12, int.Parse(e.code)); else if (e.type == "d") game.Input.KeyDown(e.code); else game.Input.KeyUp(e.code); }
+                while (si < script.Count && script[si].t == tickN) { var e = script[si++]; if (e.type == "f") game.SwitchForm(e.code); else if (e.type == "m") game.Player.Mp = game.Player.MaxMp; else if (e.type == "h") game.Player.Hp = int.Parse(e.code); else if (e.type == "x") game.GainXp(int.Parse(e.code)); else if (e.type == "i") game.DropItem(game.Player.X + 40 * game.Player.Face, game.Player.Y - 12, int.Parse(e.code)); else if (e.type == "d") { game.Input.KeyDown(e.code); if (dlg != null && dlg.Open && e.code == "KeyF") dlg.Next(); } else game.Input.KeyUp(e.code); }   // 自動玩：F 也翻對話
                 if (shotNo < shotAt.Length && tickN == shotAt[shotNo]) { ScreenCapture.CaptureScreenshot(Path.Combine(shotDir, $"play-{shotNo}.png")); shotNo++; }
                 if (tickN % 30 == 0) Debug.Log($"[Perf] 第 {tickN} 步{(game.Ult.On ? "（大招）" : "")}：{screen.Fps:F0} fps，平均 {screen.AvgMs:F2} ms，最慢 {screen.MaxMs:F2} ms，回收 {GC.CollectionCount(0)} 次");
                 if (shotNo >= shotAt.Length && tickN > Math.Max(shotAt[shotAt.Length - 1] + 20, scTicks)) { Debug.Log($"[Shot] 結束：{game.StageId} 主角 {game.Player.X:F1},{game.Player.Y:F1} 通關 {game.StageDone} 離開 {game.Leaving}"); Application.Quit(); }
@@ -349,20 +353,9 @@ namespace ZeroStar
             if (white == null) { white = Texture2D.whiteTexture; circle = Circle(128); }
             if (map != null) { MapGui(); return; }
             float u = Mathf.Max(1, Screen.height / 360f);
-            // 血條（左上）
-            float x = 14 * u, y = 12 * u, w = 120 * u, h = 9 * u;
-            Rect(x - u, y - u, w + 2 * u, h + 2 * u, new Color(0.07f, 0.05f, 0.1f, 0.9f));
-            Rect(x, y, w, h, new Color(0.25f, 0.08f, 0.12f));
-            Rect(x, y, w * (float)(game.Player.Hp / game.Player.MaxHp), h, new Color(0.9f, 0.25f, 0.3f));
-            Rect(x, y, w * (float)(game.Player.Hp / game.Player.MaxHp), 2 * u, new Color(1f, 0.55f, 0.55f));
-            // 魔力條
-            y += h + 4 * u; h = 5 * u;
-            Rect(x - u, y - u, w * 0.8f + 2 * u, h + 2 * u, new Color(0.07f, 0.05f, 0.1f, 0.9f));
-            Rect(x, y, w * 0.8f * (float)(game.Player.Mp / game.Player.MaxMp), h, new Color(0.35f, 0.6f, 1f));
-            // 等級、金幣、背包；系統訊息（暫時版）
+            // 血條、魔力條、等級、系統台詞：改由 UI Toolkit 的 HUD 畫（UI/Hud.cs）；這裡只剩還沒搬的暫時版
             if (infoStyle == null) infoStyle = new GUIStyle(GUI.skin.label);
             infoStyle.fontSize = Mathf.RoundToInt(10 * u); infoStyle.normal.textColor = new Color(1, 0.95f, 0.8f, 0.85f);
-            GUI.Label(new UnityEngine.Rect(14 * u, 34 * u, 300 * u, 18 * u), $"Lv {game.Lv}　金幣 {game.Money}　背包 {game.Inv.Count}　形態 {string.Join("", game.FormsOwned.Keys)}", infoStyle);
             if (sayT > 0)
             {
                 sayT -= Time.unscaledDeltaTime;
@@ -389,9 +382,10 @@ namespace ZeroStar
                 GUI.Label(new UnityEngine.Rect(bx + 4 * u, by + u, sz.x, sz.y), game.BubbleText, infoStyle); infoStyle.normal.textColor = keep;
             }
             // 效能（右上角）：每秒幾格、每格算畫面花幾毫秒
-            if (perfStyle == null) perfStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperRight, fontSize = Mathf.RoundToInt(10 * u) };
-            perfStyle.normal.textColor = new Color(1, 1, 1, 0.55f);
-            GUI.Label(new UnityEngine.Rect(Screen.width - 220 * u, 6 * u, 210 * u, 20 * u), $"{screen.Fps:F0} fps  {screen.AvgMs:F1} ms（最慢 {screen.MaxMs:F0}）  {screen.W}×216", perfStyle);
+            // 效能（下方中間，跟網頁版的 #fps 一樣）：每秒幾格、每格算畫面花幾毫秒
+            if (perfStyle == null) perfStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.LowerCenter, fontSize = Mathf.RoundToInt(9 * u) };
+            perfStyle.normal.textColor = new Color(0.65f, 0.62f, 0.74f, 0.6f);
+            GUI.Label(new UnityEngine.Rect(Screen.width / 2f - 150 * u, Screen.height - 18 * u, 300 * u, 16 * u), $"{screen.Fps:F0} fps  {screen.AvgMs:F1} ms（最慢 {screen.MaxMs:F0}）  {screen.W}×216", perfStyle);
             if (touchMode)
             {
                 var a = AtkBtn; var d = DashBtn;

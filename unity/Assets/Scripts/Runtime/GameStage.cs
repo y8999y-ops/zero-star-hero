@@ -127,6 +127,27 @@ namespace ZeroStar
                 default: return false;   // 城鎮的條件（登記、工坊、旅館）在關卡裡不會變
             }
         }
+        /// 主線追蹤：還沒完成的第一個主線的名稱（全部完成＝null）
+        public string MainQuestTitle() { foreach (var s in SYSTEM) if (!SysDone.Contains(s.id)) return s.title; return null; }
+        /// 跟 QuestProgress 一樣，但在對話中：主線完成的台詞回傳回來讓對話當場講（main.js 的 questProgress(ev, d, true)）
+        public List<string> QuestProgressLines()
+        {
+            var lines = new List<string>();
+            foreach (var s in SYSTEM)
+            {
+                if (SysDone.Contains(s.id)) continue;
+                if (SysCheck(s.id))
+                {
+                    SysDone.Add(s.id);
+                    Money += s.coins; Scrap += s.scrap; if (s.xp > 0) GainXp(s.xp);
+                    Sfx("chime");
+                    var rw = string.Join("、", new[] { s.coins > 0 ? $"{s.coins} 金幣" : null, s.scrap > 0 ? $"{s.scrap} 星塵" : null, s.xp > 0 ? $"{s.xp} 經驗" : null }.Where(t => t != null));
+                    lines.Add($"主線「{s.title}」完成。{s.say}（{rw}）");
+                }
+                break;
+            }
+            return lines;
+        }
         public void QuestProgress(string ev)
         {
             foreach (var s in SYSTEM)
