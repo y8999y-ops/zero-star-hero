@@ -17,7 +17,7 @@ namespace ZeroStar
     public class QuestBook
     {
         public readonly List<Quest> Active = new List<Quest>(), Board = new List<Quest>();
-        public List<string> Tracked;
+        public List<string> Tracked = new List<string>();   // 追蹤中的支線（最多 1 個）
         public int EnhanceMax, Meals, Rerolls;
 
         static readonly Dictionary<string, string> ENEMY_NAME = new Dictionary<string, string> { ["slime"] = "狂化史萊姆", ["bat"] = "蝙蝠", ["trash"] = "垃圾桶怪", ["hog"] = "刺蝟", ["elite"] = "菁英（紅色）魔物" };
@@ -51,6 +51,36 @@ namespace ZeroStar
                 return new Quest { Id = id, Kind = "clear", Stage = stage, NoDeath = nodeath, Need = 1, Title = $"{(stage == "1-4" ? "討伐王" : "探索")}：{LAYOUT_NAME[stage]}", Desc = $"通關 {stage} {LAYOUT_NAME[stage]}{(nodeath ? "，而且一次都不能死" : "")}", Coins = (nodeath ? 120 : 70) + si * 40, Scrap = 6, Xp = 60 + si * 30 };
             }
             return new Quest { Id = id, Kind = "core", Need = 1, Title = "研究：靈核", Desc = "吸收 1 顆魔物的靈核（史萊姆、垃圾桶怪、蝙蝠都會掉）", Coins = 90, Scrap = 8, Xp = 50 };
+        }
+        public bool Accept(string id)
+        {
+            int i = Board.FindIndex(q => q.Id == id);
+            if (i < 0) return false;
+            Active.Add(Board[i]); Board.RemoveAt(i);
+            return true;
+        }
+        public void Abandon(string id) { Active.RemoveAll(q => q.Id == id); Tracked.Remove(id); }
+        /// 交付：回傳那張任務（呼叫的人發獎勵）
+        public Quest TurnIn(string id)
+        {
+            int i = Active.FindIndex(q => q.Id == id && q.Ready);
+            if (i < 0) return null;
+            var q = Active[i]; Active.RemoveAt(i); Tracked.Remove(id);
+            return q;
+        }
+        /// 進度事件（quests.js 的 questEvent 公會那半）：回傳剛做完的
+        public List<Quest> Event(string ev, string kind = null, bool elite = false, string stage = null, int deaths = 0)
+        {
+            var done = new List<Quest>();
+            foreach (var q in Active)
+            {
+                if (q.Ready) continue;
+                bool add = ev == "kill" && q.Kind == "kill" && (q.Enemy == "elite" ? elite : q.Enemy == kind)
+                    || ev == "junk" && q.Kind == "junk" || ev == "core" && q.Kind == "core"
+                    || ev == "clear" && q.Kind == "clear" && q.Stage == stage && (!q.NoDeath || deaths == 0);
+                if (add) { q.Have = Math.Min(q.Need, q.Have + 1); if (q.Ready) done.Add(q); }
+            }
+            return done;
         }
         /// 任務板沒了或要換新時：補到 4 張
         public void RefreshBoard(IList<string> unlocked, bool force = false)

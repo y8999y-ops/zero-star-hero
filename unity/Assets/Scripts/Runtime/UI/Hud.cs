@@ -16,7 +16,9 @@ namespace ZeroStar.UI
         readonly VisualElement medal, hpLag, hpFill, mpFill, mpMark; readonly Label lv, hpText, mpText;
         float hpLagK = 1, hpLagWait;
         // 主線追蹤、右上、形態
-        readonly VisualElement qtrack, forms; readonly Label qtrackText;
+        readonly VisualElement qtrack, forms; string qtrackKey;
+        /// 點了左上的任務追蹤（打開任務視窗）
+        public Action OnTrack;
         readonly List<(string form, VisualElement slot)> formSlots = new List<(string, VisualElement)>();
         // 系統台詞、一般提示
         readonly VisualElement sys, sysFace; readonly Label sysText, toast;
@@ -69,11 +71,12 @@ namespace ZeroStar.UI
             }
 
             // ---- 主線追蹤（左邊，徽章下面）
-            qtrack = Box(root, "qtrack"); Abs(qtrack, 10, 100); qtrack.style.flexDirection = FlexDirection.Row; qtrack.style.alignItems = Align.Center;
+            // 任務追蹤：第一行主線，下面是追蹤中的那一個支線、料理的加成（main.js 的 renderTracker）
+            qtrack = Box(root, "qtrack"); Abs(qtrack, 10, 100); qtrack.style.flexDirection = FlexDirection.Column; qtrack.style.maxWidth = 260;
             qtrack.style.paddingLeft = 8; qtrack.style.paddingRight = 16; qtrack.style.paddingTop = qtrack.style.paddingBottom = 4;
-            qtrack.style.borderLeftWidth = 2; qtrack.style.borderLeftColor = C("#ffd84a", 0.7f); qtrack.style.backgroundColor = C("#0a081a", 0.5f);
-            var qi = Box(qtrack); Size(qi, 18, 18); Img(qi, "icons/xp"); qi.style.marginRight = 2;
-            qtrackText = Text(qtrack, "", 12, "#a8f0ff", true, 1);
+            qtrack.style.borderLeftWidth = 2; qtrack.style.borderLeftColor = C("#ffd84a", 0.7f);
+            Stretch(qtrack, Gen(32, 1, (x, y) => new Color(10 / 255f, 8 / 255f, 26 / 255f, 0.62f * (1 - (x + 0.5f) / 32))));
+            qtrack.pickingMode = PickingMode.Position; qtrack.RegisterCallback<PointerDownEvent>(e => { e.StopPropagation(); OnTrack?.Invoke(); });
 
             // ---- 右上：設定（齒輪）、形態
             set = Box(root, "btnSet"); Abs(set, null, 8, 10); Size(set, 34, 34); Nine(set, "inset", 6, 6);
@@ -161,9 +164,7 @@ namespace ZeroStar.UI
             lv.text = "Lv " + g.Lv;
             Img(medal, "medal-" + P.Form);
             // 主線追蹤：還沒完成的第一個
-            string main = g.MainQuestTitle();
-            qtrack.style.display = main != null ? DisplayStyle.Flex : DisplayStyle.None;
-            if (main != null) qtrackText.text = main;
+            UpdateTrack(g);
             // 形態：帶著的那幾個，目前的亮
             if (formSlots.Count != g.Carry.Length || formSlots.Select(f => f.form).Where((f, i) => f != g.Carry[i]).Any()) BuildForms(g);
             for (int i = 0; i < formSlots.Count; i++)
@@ -214,6 +215,37 @@ namespace ZeroStar.UI
         }
         /// 按鈕跟著教學一個一個出現（1-1 的新玩家）：教過的記在 Taught；打過 1-1 的全部照舊顯示
         static bool Locked(Game g, string k) => g.StageId == "1-1" && !g.Town && !g.Taught.Contains(k) && !g.Cleared_.Contains("1-1");
+        void UpdateTrack(Game g)
+        {
+            var Q = g.Quests;
+            Q.Tracked.RemoveAll(k => !Q.Active.Any(q => q.Id == k));
+            string main = g.MainQuestTitle();
+            var tq = Q.Tracked.Count > 0 ? Q.Active.First(q => q.Id == Q.Tracked[0]) : null;
+            var meal = g.Meal != null && Game.MEALS.TryGetValue(g.Meal, out var m) ? m : default;
+            bool hint = tq == null && Q.Active.Count > 0;
+            string key = $"{main}|{tq?.Id}:{tq?.Have}|{g.Meal}|{hint}";
+            if (key == qtrackKey) return;
+            qtrackKey = key; qtrack.Clear();
+            VisualElement Line(string icon, string text, string col)
+            {
+                var r = Box(qtrack); r.style.flexDirection = FlexDirection.Row; r.style.alignItems = Align.Center; r.style.minHeight = 19;
+                var ic = Box(r); Size(ic, 16, 16); Img(ic, "icons/" + icon); ic.style.marginRight = 3; ic.style.flexShrink = 0;
+                var l = Text(r, text, 12, col, true, 1); l.enableRichText = true;
+                return r;
+            }
+            if (main != null) Line("xp", main, "#a8f0ff");
+            if (tq != null)
+            {
+                bool ok = tq.Ready; var L = TownWins.QuestLook(tq);
+                Line("guild", $"{L.label}　<color=#ffd24a>{(ok ? "✓" : tq.Have + "/" + tq.Need)}</color>", ok ? "#8af08a" : "#e8e0f4");
+                var bar = Box(qtrack); bar.style.height = 3; bar.style.marginLeft = 22; bar.style.marginTop = 1; bar.style.marginBottom = 3; bar.style.backgroundColor = C("#000000", 0.5f);
+                var f = Box(bar); f.style.height = Length.Percent(100); f.style.width = Length.Percent(Math.Min(100, tq.Have * 100f / tq.Need));
+                if (ok) f.style.backgroundColor = C("#3ad06a"); else Stretch(f, Gen(16, 1, (x, y) => Color.Lerp(C("#c8861a"), C("#ffd84a"), (x + 0.5f) / 16)));
+            }
+            if (meal.name != null) Line(meal.icon, meal.buff, "#ffc89a");
+            if (hint) Line("paper", "點這裡選要追蹤的支線", "#a59fbd");
+            qtrack.style.display = qtrack.childCount > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+        }
         void BuildForms(Game g)
         {
             forms.Clear(); formSlots.Clear();

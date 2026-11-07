@@ -39,9 +39,17 @@ namespace ZeroStar
               for (int i = 0; i < 40; i++) { var it = Items.MakeItem(1 + i * 2, i % 6); Items.Compare(it, eq, 10); } Items.ComputeStats(eq, 10); Rnd.R = saved; }
             var sc = shotDir != null ? TraceScript.Load(TraceScript.DefaultPath()) : null;
             screen.Tick += OnTick;
-            screen.Draw += f => { if (map != null) { screen.Zoom = 1; DrawMap(f); return; } screen.Zoom = Game.Zoom; game.Render(f); };   // 王戰時鏡頭拉遠（Game.Zoom）
-            screen.PostComposite += d => { if (map == null) game.PostComposite(d); };
-            { var uiGo = new GameObject("UI"); uiGo.transform.SetParent(transform); var uiRoot = ZeroStar.UI.Ui.CreateRoot(uiGo); hud = new ZeroStar.UI.Hud(uiRoot); dlg = new ZeroStar.UI.Dialog(uiRoot, () => game.Player.Form); }   // 階段 4b：UI Toolkit 的 HUD
+            screen.Draw += f => { screen.Zoom = Game.Zoom; game.Render(f); };   // 王戰時鏡頭拉遠（Game.Zoom）；地圖開著時後面照樣畫（暫停中）
+            screen.PostComposite += d => game.PostComposite(d);
+            screen.Paused = () => map != null || (win != null && win.Open);
+            { var uiGo = new GameObject("UI"); uiGo.transform.SetParent(transform); var uiRoot = ZeroStar.UI.Ui.CreateRoot(uiGo); hud = new ZeroStar.UI.Hud(uiRoot); dlg = new ZeroStar.UI.Dialog(uiRoot, () => game.Player.Form);
+              win = new ZeroStar.UI.Win(uiRoot); mapWin = new ZeroStar.UI.MapWin(uiRoot); uiFx = new ZeroStar.UI.UiFx(uiRoot); }   // 介面特效蓋在最上面
+            mapWin.OnGo = MapGo;
+            mapWin.OnClose = () => { if (!mapFromLeave) CloseMap(); };
+            mapWin.OnPick = (x, y) => { string id = map?.Pick(x, y); if (id != null) { if (map.Select(id)) MapGo(id); else game.Sfx("ui"); } };   // 階段 4b：UI Toolkit 的 HUD；4c：視窗、介面特效
+            win.Sfx = s => game.Sfx(s); win.Money = () => (game.Money, game.Scrap);
+            ZeroStar.UI.TownWins.W = win; ZeroStar.UI.TownWins.Fx = uiFx;
+            hud.OnTrack = () => { if (!dlg.Open && !win.Open && !game.TownBusy) { game.Sfx("ui"); _ = ZeroStar.UI.TownWins.OpenQuests(game, false, game.Quests.Tracked.Count > 0 ? "guild" : "sys"); } };
             hud.CanvasToScreen = screen.CanvasToScreen;
             hud.OnMenu = k => { if (k == "map" && map == null) OpenMap(false); };   // 背包、技能樹的畫面在階段 4d
             hud.OnForm = f => { if (!game.Town) game.PendingForm = f; };
@@ -50,31 +58,27 @@ namespace ZeroStar
             if (mapShot != null) { Directory.CreateDirectory(mapShot); game.Cleared_.UnionWith(new[] { "1-1", "1-2" }); OpenMap(false); }
         }
         string mapShot; int mapShotN;
-        ZeroStar.UI.Hud hud; ZeroStar.UI.Dialog dlg;
-        void LateUpdate() { if (hud == null || game == null) return; hud.Visible = map == null; hud.Touch = touchMode; hud.Dim = dlg.Open; if (map == null) hud.Update(game, Time.unscaledDeltaTime); dlg.Update(Time.unscaledDeltaTime); }
+        ZeroStar.UI.Hud hud; ZeroStar.UI.Dialog dlg; ZeroStar.UI.Win win; ZeroStar.UI.UiFx uiFx; ZeroStar.UI.MapWin mapWin; int winTicks;
+        void LateUpdate() { if (hud == null || game == null) return; hud.Touch = touchMode; mapWin.Touch = touchMode; hud.Dim = dlg.Open; hud.Update(game, Time.unscaledDeltaTime); mapWin.Update(Time.unscaledDeltaTime); dlg.Update(Time.unscaledDeltaTime); win.Update(Time.unscaledDeltaTime); uiFx.Update(Time.unscaledDeltaTime); }
 
         static readonly string[] ORDER = { "1-1", "1-2", "1-3", "1-4" };
 
         // ---- 選關世界地圖（worldmap.js 的 openWorldMap）：進傳送門之後打開（網頁版是回碎星鎮、走到路標才打開；碎星鎮在階段 4）
-        WorldMap map; bool mapFromLeave; string mapMsg; float mapMsgT; UnityEngine.Rect cardRect;
-        static readonly Dictionary<string, string> NOTE = new Dictionary<string, string> { ["1-1"] = "主角掉下來的地方，系統教你怎麼打", ["1-2"] = "垃圾桶怪很多", ["1-3"] = "蝙蝠群、菁英", ["1-4"] = "王：大胃王史萊姆" };
-        readonly Dictionary<string, Texture2D> thumbs = new Dictionary<string, Texture2D>();
-        GUIStyle mapStyle;
-        int MapOx => (screen.W - map.Frame.W) / 2;
-        int MapOy => (216 - map.Frame.H) / 2;
+        WorldMap map; bool mapFromLeave;
         void OpenMap(bool fromLeave)
         {
-            map = new WorldMap(game.Cleared_); mapFromLeave = fromLeave; mapMsg = null;
+            map = new WorldMap(game.Cleared_); mapFromLeave = fromLeave;
+            mapWin.Show(map, !fromLeave);
             game.Sfx("open");
         }
-        void CloseMap() { map = null; game.Sfx("close"); }
+        void CloseMap() { map = null; mapWin.Hide(); game.Sfx("close"); }
         /// 出發：關卡＝換到那一關（等級、裝備這些帶過去）；碎星鎮、無限討伐還沒搬過來
         void MapGo(string id)
         {
             if (id == null) return;
-            if (id == "town") { if (game.Town) CloseMap(); else { map = null; game.Sfx("ui"); NewGame("town", game); } return; }   // 在鎮上＝留在鎮上；在關卡裡＝回碎星鎮
-            if (id == "endless") { mapMsg = "無限討伐還沒搬到 Unity。"; mapMsgT = 3; return; }
-            if (Array.IndexOf(WorldMap.STAGES, id) >= 0 && map.Nodes[id].Open) { map = null; game.Sfx("ui"); NewGame(id, game); }
+            if (id == "town") { if (game.Town) CloseMap(); else { map = null; mapWin.Hide(); game.Sfx("ui"); NewGame("town", game); } return; }   // 在鎮上＝留在鎮上；在關卡裡＝回碎星鎮
+            if (id == "endless") { mapWin.Msg("無限討伐還沒搬到 Unity。"); return; }
+            if (Array.IndexOf(WorldMap.STAGES, id) >= 0 && map.Nodes[id].Open) { map = null; mapWin.Hide(); game.Sfx("ui"); NewGame(id, game); }
         }
         void MapInput()
         {
@@ -83,65 +87,6 @@ namespace ZeroStar
             if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.F)) MapGo(map.Sel);
             if (map != null && Input.GetKeyDown(KeyCode.Escape) && !mapFromLeave) CloseMap();
             if (map == null) return;
-            // 點地圖：找最近的地點；點已經選的那個＝出發（點在資訊卡上不算，那裡有自己的按鈕）
-            Vector2? tap = null;
-            if (Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Began) tap = Input.GetTouch(0).position;
-            else if (Input.touchCount == 0 && Input.GetMouseButtonDown(0)) tap = Input.mousePosition;
-            if (tap != null && !cardRect.Contains(new Vector2(tap.Value.x, Screen.height - tap.Value.y)))
-            {
-                var c = screen.ScreenToCanvas(tap.Value);
-                string id = map.Pick(c.x - MapOx, c.y - MapOy);
-                if (id != null) { if (map.Select(id)) MapGo(id); else game.Sfx("ui"); }
-            }
-        }
-        /// 地圖畫在畫布中間（320×180），四周塗暗
-        void DrawMap(Frame f)
-        {
-            uint bg = 0xff100a0a; var C = f.Color; var L = f.Light;
-            for (int i = 0; i < C.Length; i++) { C[i] = bg; L[i] = 0; }
-            var m = map.Frame; int ox = MapOx, oy = MapOy;
-            for (int y = 0; y < m.H; y++)
-            {
-                int fy = y + oy; if (fy < 0 || fy >= f.H) continue;
-                for (int x = 0; x < m.W; x++) { int fx = x + ox; if (fx < 0 || fx >= f.W) continue; C[fy * f.W + fx] = m.Color[y * m.W + x]; L[fy * f.W + fx] = m.LightRaw[y * m.W + x]; }
-            }
-        }
-        Texture2D Thumb(string id)
-        {
-            if (!thumbs.TryGetValue(id, out var t)) { t = Resources.Load<Texture2D>("Thumbs/" + id); if (t != null) t.filterMode = FilterMode.Point; thumbs[id] = t; }
-            return t;
-        }
-        /// 地圖上的字：標題、資訊卡（關卡縮圖、名稱、狀態、出發）。暫時版，UI 在階段 4 重做
-        void MapGui()
-        {
-            float u = Mathf.Max(1, Screen.height / 360f);
-            if (mapStyle == null) mapStyle = new GUIStyle(GUI.skin.label) { wordWrap = true };
-            Vector2 S(double px, double py) { var s = screen.CanvasToScreen(new Vector2((float)px + MapOx, (float)py + MapOy)); return new Vector2(s.x, Screen.height - s.y); }
-            var tl = S(0, 0); var br = S(map.Frame.W, map.Frame.H);
-            mapStyle.fontSize = Mathf.RoundToInt(13 * u); mapStyle.fontStyle = FontStyle.Bold; mapStyle.normal.textColor = new Color(1f, 0.85f, 0.4f);
-            GUI.Label(new UnityEngine.Rect(tl.x, tl.y - 22 * u, 200 * u, 20 * u), "墜星之谷", mapStyle);
-            mapStyle.fontSize = Mathf.RoundToInt(9 * u); mapStyle.fontStyle = FontStyle.Normal; mapStyle.normal.textColor = new Color(1, 1, 1, 0.6f);
-            GUI.Label(new UnityEngine.Rect(br.x - 260 * u, tl.y - 20 * u, 260 * u, 20 * u), touchMode ? "點地圖上的地方" : "← → 選地方、Enter 出發" + (mapFromLeave ? "" : "、Esc 關掉"), mapStyle);
-            string id = map.Sel; if (id == null) return;
-            var n = map.D.Nodes[id]; var p = S(n.x, n.y); var st = map.Nodes[id];
-            bool stage = Array.IndexOf(WorldMap.STAGES, id) >= 0;
-            float cw = 150 * u, ch = id == "ch2" ? 60 * u : stage || id == "endless" ? 150 * u : 70 * u;
-            bool left = n.x > map.Frame.W * 0.55;
-            float cx = left ? p.x - cw - 18 * u : p.x + 18 * u, cy = Mathf.Clamp(p.y - ch / 2, tl.y, br.y - ch);
-            cardRect = new UnityEngine.Rect(cx, cy, cw, ch);
-            Rect(cx, cy, cw, ch, new Color(0.08f, 0.06f, 0.1f, 0.92f));
-            Rect(cx, cy, cw, 2 * u, new Color(1f, 0.85f, 0.4f, 0.8f));
-            float y = cy + 6 * u;
-            var tex = stage || id == "endless" ? Thumb(id) : null;
-            if (tex != null) { float th = (cw - 12 * u) * tex.height / tex.width; GUI.DrawTexture(new UnityEngine.Rect(cx + 6 * u, y, cw - 12 * u, th), tex); y += th + 4 * u; }
-            string name = stage ? StageData.Get(id).Name + (st.Cleared ? "　已通關" : st.Fresh ? "　NEW" : "") : id == "endless" ? "無限討伐" : id == "town" ? "碎星鎮" : "第 2 章　迷霧森林";
-            string note = stage ? NOTE[id] : id == "endless" ? "怪一直出，打到你手痠為止" : id == "town" ? "先不出發，留在鎮上" : "霧太濃了，現在還過不去";
-            mapStyle.fontSize = Mathf.RoundToInt(10 * u); mapStyle.fontStyle = FontStyle.Bold; mapStyle.normal.textColor = new Color(1f, 0.93f, 0.75f);
-            GUI.Label(new UnityEngine.Rect(cx + 6 * u, y, cw - 12 * u, 16 * u), name, mapStyle); y += 15 * u;
-            mapStyle.fontSize = Mathf.RoundToInt(8 * u); mapStyle.fontStyle = FontStyle.Normal; mapStyle.normal.textColor = new Color(1, 1, 1, 0.75f);
-            GUI.Label(new UnityEngine.Rect(cx + 6 * u, y, cw - 12 * u, 24 * u), note, mapStyle); y += 22 * u;
-            if (id != "ch2" && GUI.Button(new UnityEngine.Rect(cx + 6 * u, Mathf.Min(y, cy + ch - 22 * u), cw - 12 * u, 18 * u), id == "town" ? "留在鎮上" : "出發")) MapGo(id);
-            if (mapMsg != null && (mapMsgT -= Time.unscaledDeltaTime) > 0) { mapStyle.normal.textColor = new Color(1f, 0.8f, 0.6f); GUI.Label(new UnityEngine.Rect(tl.x, br.y + 2 * u, br.x - tl.x, 18 * u), mapMsg, mapStyle); }
         }
 
         /// 開一關。from＝上一關（等級、裝備、背包、形態、技能樹這些帶過來）
@@ -207,7 +152,8 @@ namespace ZeroStar
             // 開發用：N＝直接到下一關、M＝打開選關地圖
             if (Input.GetKeyDown(KeyCode.N)) pending = NextStage();
             if (Input.GetKeyDown(KeyCode.M)) OpenMap(false);
-            if (Input.GetKeyDown(KeyCode.Escape) && !Application.isEditor) Application.Quit();
+            if (Input.GetKeyDown(KeyCode.Escape) && win.Open) win.Close();
+            else if (Input.GetKeyDown(KeyCode.Escape) && !Application.isEditor) Application.Quit();
         }
 
         bool mouseOnUi;
@@ -215,6 +161,19 @@ namespace ZeroStar
         bool uiDemo = Array.IndexOf(Environment.GetCommandLineArgs(), "-uidemo") >= 0;
         void UiDemo()
         {
+            if (game.Town)
+            {
+                // 碎星鎮：依序打開任務（公會）、工坊、旅館、主線、地圖（每個 4 秒後自動關）
+                if (tickN == 30) { game.GuildRegistered = true; game.Money = 900; game.Scrap = 120; game.Equip["weapon"] = Items.MakeItem(20, 3, "weapon"); game.Equip["head"] = Items.MakeItem(12, 2, "head"); game.Quests.RefreshBoard(game.UnlockedStages()); game.Quests.Accept(game.Quests.Board[0].Id); game.Quests.Active[0].Have = game.Quests.Active[0].Need; game.Quests.Tracked.Add(game.Quests.Active[0].Id); }
+                if (tickN == 40) _ = ZeroStar.UI.TownWins.OpenQuests(game, true);
+                if (tickN == 110) { uiFx.At(win.BoxCenter(), "quest-complete", new FxOptions { Seed = 1 }); uiFx.At(win.MoneyCenter(), "coin-collect", new FxOptions { Seed = 1 }.Set("count", 8)); }
+                if (tickN == 330) _ = ZeroStar.UI.TownWins.OpenForge(game);
+                if (tickN == 400) uiFx.At(win.BoxCenter(), "parry", new FxOptions { Palette = new[] { "#3a1a06", "#8a4a10", "#e0901c", "#ffc83a", "#ffe98a", "#fff8d8", "#ffffff" }, Light = 0.5, Seed = 3 });
+                if (tickN == 620) _ = ZeroStar.UI.TownWins.OpenInn(game, () => System.Threading.Tasks.Task.CompletedTask);
+                if (tickN == 910) _ = ZeroStar.UI.TownWins.OpenQuests(game, false, "sys");
+                if (tickN == 1200) OpenMap(false);
+                return;
+            }
             if (tickN == 120) hud.FormBanner("slime");
             if (tickN == 300) hud.ResBanner("fire", "星之殘火", "攻擊力 +3%（永久）", "從星星上剝落的一小塊火。還溫溫的。");
             if (tickN == 420) { hud.Feed(new Game.FeedRow { Icon = "dagger", Name = "生鏽的小刀", Color = Items.RARITY[2].Color, Better = true }); hud.Feed(new Game.FeedRow { Icon = "mana", Name = "藍水晶", Color = Items.RARITY[1].Color, Note = "魔力 +25" }); hud.ShowHint("往上滑＝跳，在空中再滑一次＝二段跳", 3); }
@@ -223,6 +182,13 @@ namespace ZeroStar
 
         void OnTick(double dt)
         {
+            if (shotDir != null)
+            {
+                while (si < script.Count && script[si].t == tickN) { var e = script[si++]; if (e.type == "f") game.SwitchForm(e.code); else if (e.type == "m") game.Player.Mp = game.Player.MaxMp; else if (e.type == "h") game.Player.Hp = int.Parse(e.code); else if (e.type == "x") game.GainXp(int.Parse(e.code)); else if (e.type == "i") game.DropItem(game.Player.X + 40 * game.Player.Face, game.Player.Y - 12, int.Parse(e.code)); else if (e.type == "d") { game.Input.KeyDown(e.code); if (dlg != null && dlg.Open && e.code == "KeyF") dlg.Next(); } else game.Input.KeyUp(e.code); }   // 自動玩：F 也翻對話
+                if (shotNo < shotAt.Length && tickN == shotAt[shotNo]) { ScreenCapture.CaptureScreenshot(Path.Combine(shotDir, $"play-{shotNo}.png")); shotNo++; }
+                if (tickN % 30 == 0) Debug.Log($"[Perf] 第 {tickN} 步{(game.Ult.On ? "（大招）" : "")}：{screen.Fps:F0} fps，平均 {screen.AvgMs:F2} ms，最慢 {screen.MaxMs:F2} ms，回收 {GC.CollectionCount(0)} 次");
+                if (shotNo >= shotAt.Length && tickN > Math.Max(shotAt[shotAt.Length - 1] + 20, scTicks)) { Debug.Log($"[Shot] 結束：{game.StageId} 主角 {game.Player.X:F1},{game.Player.Y:F1} 通關 {game.StageDone} 離開 {game.Leaving}"); Application.Quit(); }
+            }
             if (map != null)
             {
                 map.Step(dt);   // 地圖開著：遊戲暫停
@@ -232,16 +198,17 @@ namespace ZeroStar
                     ScreenCapture.CaptureScreenshot(Path.Combine(mapShot, $"map-{k}.png"));
                     if (k >= 4) Application.Quit(); else map.SelectNext(k == 2 ? -3 : 1);
                 }
+                if (shotDir != null) tickN++;   // 自動玩：地圖開著也照樣數步數（才會截圖、結束）
                 return;
             }
-            if (shotDir != null)
-            {
-                while (si < script.Count && script[si].t == tickN) { var e = script[si++]; if (e.type == "f") game.SwitchForm(e.code); else if (e.type == "m") game.Player.Mp = game.Player.MaxMp; else if (e.type == "h") game.Player.Hp = int.Parse(e.code); else if (e.type == "x") game.GainXp(int.Parse(e.code)); else if (e.type == "i") game.DropItem(game.Player.X + 40 * game.Player.Face, game.Player.Y - 12, int.Parse(e.code)); else if (e.type == "d") { game.Input.KeyDown(e.code); if (dlg != null && dlg.Open && e.code == "KeyF") dlg.Next(); } else game.Input.KeyUp(e.code); }   // 自動玩：F 也翻對話
-                if (shotNo < shotAt.Length && tickN == shotAt[shotNo]) { ScreenCapture.CaptureScreenshot(Path.Combine(shotDir, $"play-{shotNo}.png")); shotNo++; }
-                if (tickN % 30 == 0) Debug.Log($"[Perf] 第 {tickN} 步{(game.Ult.On ? "（大招）" : "")}：{screen.Fps:F0} fps，平均 {screen.AvgMs:F2} ms，最慢 {screen.MaxMs:F2} ms，回收 {GC.CollectionCount(0)} 次");
-                if (shotNo >= shotAt.Length && tickN > Math.Max(shotAt[shotAt.Length - 1] + 20, scTicks)) { Debug.Log($"[Shot] 結束：{game.StageId} 主角 {game.Player.X:F1},{game.Player.Y:F1} 通關 {game.StageDone} 離開 {game.Leaving}"); Application.Quit(); }
-            }
             if (uiDemo) UiDemo();
+            // 視窗開著：遊戲暫停，系統的話照樣播（main.js：isWinOpen 時只跑 updateSay）。自動玩：開 4 秒後自己關（截圖用）
+            if (win.Open)
+            {
+                game.Hud(Game.STEP); tickN++;
+                if (shotDir != null && ++winTicks > 240) { winTicks = 0; win.Close(); }
+                return;
+            }
             game.RunTimers();
             game.Tick(game.SlowT > 0 ? dt * 0.35 : dt);   // 慢動作（傳說掉落、打倒菁英）
             game.SlowT -= dt;
@@ -312,7 +279,6 @@ namespace ZeroStar
         void OnGUI()
         {
             if (game == null) return;
-            if (map != null) { MapGui(); return; }
             float u = Mathf.Max(1, Screen.height / 360f);
             // 效能（下方中間，跟網頁版的 #fps 一樣）：每秒幾格、每格算畫面花幾毫秒
             if (perfStyle == null) perfStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.LowerCenter, fontSize = Mathf.RoundToInt(9 * u) };

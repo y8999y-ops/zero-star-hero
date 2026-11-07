@@ -1,5 +1,5 @@
 // main.js 的 interact、guild、workshop、inn、travel：碎星鎮裡按互動之後的對話流程。
-// 公會的任務板、工坊、旅館的視窗在階段 4c（openQuests、openForge、openInn），現在先跳過、直接接下面的對話。
+// 公會的任務板、工坊、旅館的視窗在 UI/TownWins.cs（openQuests、openForge、openInn）。
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -52,7 +52,9 @@ namespace ZeroStar.UI
             bool firstBoard = g.TGuide == 1;
             if (firstBoard) await dlg.Talk(name, new[] { "任務都貼在任務板上，想接幾張都可以。", "不過一次只能追蹤一個——點任務右邊的星星，它就會顯示在你的頭像下面。", "做完再回來找我交付喔。" });
             else await dlg.Talk(name, new[] { g.GuildDone == 0 && g.Quests.Active.Count == 0 ? "任務都貼在任務板上，挑喜歡的接吧。做完再回來找我交付喔。" : "（推眼鏡）任務板在這裡。" });
-            // TODO 階段 4c：openQuests（任務板視窗）
+            var qp = TownWins.OpenQuests(g, true);
+            if (firstBoard) TownWins.W.GuidePulse();   // 第一次打開：主要按鈕閃金光
+            await qp;
             if (firstBoard) g.GuideNext("系統：下一站，岩叔的工坊。撿到用不到的裝備，可以拿去那裡拆掉、把身上的打強一點。");
             if (RankOf(g.GuildDone) != before)
             {
@@ -65,7 +67,9 @@ namespace ZeroStar.UI
             bool first = g.TGuide == 2;
             if (first) await dlg.Talk(name, new[] { "……新來的？我是岩叔。", "用不到的裝備拿來，拆了變碎屑。碎屑拿來強化你身上穿的。", "……要重鑄、合成，也在這裡。" });
             else await dlg.Talk(name, new[] { "……要打什麼？" });
-            // TODO 階段 4c：openForge（鍛造視窗）
+            var fp = TownWins.OpenForge(g);
+            if (first) TownWins.W.GuidePulse();
+            await fp;
             g.ApplyStats();
             if (first) g.GuideNext("系統：再來是旅館。菇媽那裡可以睡一晚、吃點東西。");
         }
@@ -78,7 +82,14 @@ namespace ZeroStar.UI
                 g.GuideNext("系統：最後，鎮子最右邊的路標。準備好了就去那裡選要去哪。");
             }
             else await dlg.Talk(name, new[] { Rnd.Next() < 0.4 ? INN_CHAT[(int)Math.Floor(Rnd.Next() * INN_CHAT.Length)] : "哎呀，歡迎光臨～要休息還是吃點東西？" });
-            // TODO 階段 4c：openInn（旅館視窗：睡一晚、料理）
+            if (firstInn) TownWins.W.GuidePulse();   // 第一次打開：「睡一晚」閃一下
+            await TownWins.OpenInn(g, async () =>
+            {
+                g.Player.Hp = g.Player.MaxHp;
+                g.Quests.RefreshBoard(g.UnlockedStages(), true);
+                await TownWins.W.FadeBlack(0.6f);
+                await dlg.Talk(name, new[] { "睡得好嗎？生命全滿，也幫你存好檔了。", "對了，公會的任務板好像換新了喔～" });
+            });
             g.ApplyStats();
         }
         static async Task Travel(Game g, Dialog dlg, Action openMap)

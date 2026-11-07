@@ -1,7 +1,7 @@
 // 第二批特效用到的共用工具（網頁版 pixelfx/src/fx/*/_lib.js），只翻用得到的：
 //   ArcaneLib：arcane/_lib.js（地上的透視圓環、符文、小光點）
 //   HolyLib：holy/_lib.js 的 GOLD 色階
-//   ImpactLib：impacts/_lib.js（石頭配色、打擊星芒、地裂、衝擊波新月、翻滾的石塊）
+//   ImpactLib：impacts/_lib.js（石頭配色、打擊星芒、碎環、地裂、衝擊波新月、翻滾的石塊）
 using System;
 using System.Collections.Generic;
 using static PixelFX.Pf;
@@ -112,6 +112,25 @@ namespace PixelFX.Fx
             double r = heart * sc * Math.Sqrt(th);
             p.Circle(x, y, r + 0.8, inner, a);
             p.Circle(x, y, r, core, a);
+        }
+
+        public class RingSeg { public double a, gap, dr, w = 1; }
+        /// 碎成弧的環：segs 平均分在環上（a＝中心角、gap 0～1、dr＝飛出去多快、w＝粗細倍數）。brk 0＝完整的 th 粗環；
+        /// brk 越大每段越短、兩頭收尖成新月、各自往外飄。c＝外緣色、c2＝內緣色；sy 壓扁到地面；maxY 以下不畫（地板）。
+        public static void BrokenRing(Painter p, double x, double y, double r, double th, IList<RingSeg> segs, double brk, uint c, uint c2, double k = 1, double sy = 1, double maxY = double.PositiveInfinity)
+        {
+            if (r <= 0 || k <= 0) return;
+            double full = TAU / segs.Count;
+            foreach (var s in segs)
+            {
+                double span = full * (1 - s.gap * brk) + 0.02, rr = r * (1 + s.dr * brk); int m = (int)Math.Max(4, Math.Ceiling(rr * span * 1.8));
+                for (int j = 0; j <= m; j++)
+                {
+                    double u = (double)j / m, ang = s.a + (u - 0.5) * span, w = Math.Max(0.5, th * s.w * (1 - brk * Pow(Math.Abs(2 * u - 1), 1.6)));
+                    double ca = Cos(ang), sa = Sin(ang);
+                    for (double o = -w / 2; o <= w / 2 + 0.01; o += 0.5) if (y + sa * (rr + o) * sy < maxY) p.Dot(x + ca * (rr + o), y + sa * (rr + o) * sy, o > -0.26 ? c : c2, k);
+                }
+            }
         }
 
         // 從 (x, y) 朝 a 走 L px 的鋸齒線；每個點是 [x, y, 走了多遠]

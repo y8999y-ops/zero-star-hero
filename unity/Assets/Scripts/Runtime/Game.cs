@@ -191,7 +191,15 @@ namespace ZeroStar
         public Action<FeedRow> OnFeed;
         public Action<string> OnFormBanner;                         // 獲得新形態：畫面中間的大字（main.js 的 formBanner）
         public Action<string, string, string, string> OnResBanner;  // 重要資源的橫幅（icon, title, eff, flavor）
-        public void ApplyStats() { var s = Items.ComputeStats(Equip, Lv); s.MaxMp = 100 + MpBonus; Player.SetStats(s); }
+        public void ApplyStats() { var s = Items.ComputeStats(Equip, Lv); s.MaxMp = 100 + MpBonus; if (Meal != null && MEALS.TryGetValue(Meal, out var m)) m.apply(s); Player.SetStats(s); }
+        // ---- 旅館的料理（townui.js 的 MEALS）：吃了下一趟冒險有效（回到城鎮時用掉），一次只能一道
+        public string Meal;
+        public static readonly Dictionary<string, (string name, string icon, string buffIcon, string buff, int cost, Action<Stats> apply)> MEALS = new Dictionary<string, (string, string, string, string, int, Action<Stats>)>
+        {
+            ["stew"] = ("星光燉肉", "stew", "q_kill", "攻擊 +10%", 80, s => s.Atk = Pf.Round(s.Atk * 1.1)),
+            ["soup"] = ("菇菇濃湯", "soup", "heart", "生命 +20%", 60, s => s.MaxHp = Pf.Round(s.MaxHp * 1.2)),
+            ["pie"] = ("幸運蘋果派", "pie", "coin", "掉寶 +25%", 100, s => s.Mf += 25),
+        };
         Item MythOn(string id) { foreach (var it in Equip.Values) if (it?.Myth == id) return it; return null; }
         // 裝備效果的物件
         public class Strike { public double X, Y, T, Mult = 0.8; public Enemy E; public bool Done; }
@@ -387,6 +395,8 @@ namespace ZeroStar
             TipUse = f.TipUse; SeenSet = f.SeenSet; SeenCoreTip = f.SeenCoreTip;
             Taught.UnionWith(f.Taught); Reacted.UnionWith(f.Reacted); SysDone.UnionWith(f.SysDone); Cleared_.UnionWith(f.Cleared_);
             GuildRegistered = f.GuildRegistered; GuildDone = f.GuildDone; TGuide = f.TGuide;
+            Meal = f.Town || !Town ? f.Meal : null;   // 料理的效果只到這趟冒險結束（從關卡回城鎮時用掉）
+            Quests.Tracked.AddRange(f.Quests.Tracked);
             Quests.Active.AddRange(f.Quests.Active); Quests.Board.AddRange(f.Quests.Board); Quests.EnhanceMax = f.Quests.EnhanceMax; Quests.Meals = f.Quests.Meals; Quests.Rerolls = f.Quests.Rerolls;
         }
 
@@ -569,7 +579,7 @@ namespace ZeroStar
             bool lastOne = Director?.Lock != null && Director.Wave >= Director.Waves.Count && Alive(Director.Lock) == 0;
             if (e.Elite || lastOne) { Fx.HitStop(0.11); SlowT = Math.Max(SlowT, 0.45); }
             MythKill();
-            QuestProgress("kill");
+            QuestProgress("kill", e.Kind, e.Elite);
             if (Kills == 30) Say.Show("系統：……三十隻了。你真的只是一塊碎片嗎？");
             if (Kills == 100) Say.Show("系統：好啦，我承認你有一點點厲害。");
             if (e.Kind == "gold") Say.Show("系統：金幣史萊姆！今晚加菜！");

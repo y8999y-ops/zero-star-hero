@@ -151,6 +151,40 @@ namespace PixelFX.Fx
                     if (!A.At(mx, my) && (A.At(mx - 1, my) || A.At(mx + 1, my) || A.At(mx, my - 1) || A.At(mx, my + 1)))
                         p.Dot(A.X + mx, A.Y + my, c, k * (0.75 + 0.45 * Noise(my * 0.45 - t * 7, mx * 3)));
         }
+
+        /// 介面底板的配色：暗框、亮的上緣、上半、下半、暗的下緣。
+        public class Ink { public uint outline, rim, top, body, low; }
+        /// 介面底板：圓角方塊，暗框、亮的上緣、越下面越暗的身體、暗的下緣；shine＝斜斜掃過的亮光（本地 x）。
+        public static void Panel(Painter p, double x, double y, double w, double h, Ink col, double r = 3, double a = 1, double? shine = null)
+        {
+            if (w < 2 || h < 2) return;
+            double X1 = x + w, Y1 = y + h;
+            p.Shade(x, y, X1, Y1, (double px, double py, ref Painter.Out o) =>
+            {
+                double cx = Math.Max(Math.Max(x + r - px, 0), px - (X1 - r)), cy = Math.Max(Math.Max(y + r - py, 0), py - (Y1 - r));
+                double e = cx > 0 && cy > 0 ? r - Hypot(cx, cy) : Math.Min(Math.Min(px - x, X1 - px), Math.Min(py - y, Y1 - py));
+                if (e < 0) return;
+                o.a = a;
+                if (e < 1) { o.c = col.outline; return; }
+                if (py - y < 2) { o.c = col.rim; return; }
+                if (Y1 - py < 2) { o.c = col.low; return; }
+                if (shine.HasValue)
+                {
+                    double d = Math.Abs(px - (py - y) * 0.6 - shine.Value);
+                    if (d < 1.3) { o.c = Col.WHITE; return; }
+                    if (d < 3) { o.c = col.rim; return; }
+                }
+                o.c = py - y < h * 0.45 ? col.top : col.body;
+            });
+        }
+
+        /// 整像素的震動、慢慢停：t 時的 (dx, dy)，amp px，從 t0 開始震 len 秒。
+        public static void Shake(double t, double amp, out double dx, out double dy, double t0 = 0, double len = 0.3, int seed = 1, double hz = 32)
+        {
+            if (t < t0 || t > t0 + len) { dx = 0; dy = 0; return; }
+            double k = 1 - (t - t0) / len;
+            dx = Round(Noise(t * hz, seed) * amp * k * 1.7); dy = Round(Noise(t * hz, seed + 7) * amp * k * 1.3);
+        }
     }
 
     public static class LevelUp

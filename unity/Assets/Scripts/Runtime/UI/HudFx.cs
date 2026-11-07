@@ -33,7 +33,7 @@ namespace ZeroStar.UI
         // 吸收提示、居民的泡泡
         VisualElement absorbTip, absorbPc; Label absorbTc; VisualElement bubble; Label bubbleText; float bubbleK;
         // 戰鬥中：次要的 HUD 變淡
-        float combatT; bool talking;
+        float combatT, feedDim = 1; bool talking;
 
         void BuildFx(VisualElement root)
         {
@@ -160,9 +160,8 @@ namespace ZeroStar.UI
             var P = g.Player;
             // 戰鬥中（附近 240px 有活的敵人），次要的 HUD 變淡；離開戰鬥 2 秒後恢復
             if (!g.Town && g.Enemies.Any(e => !e.Dead && Math.Abs(e.X - P.X) < 240)) combatT = 2; else combatT -= dt;
-            float dimK = combatT > 0 ? 0.4f : 1;
-            qtrack.style.opacity = Mathf.MoveTowards(qtrack.resolvedStyle.opacity, dimK, dt / 0.4f);
-            feed.style.opacity = qtrack.style.opacity;
+            float dimK = combatT > 0 ? 0.4f : 1;   // 任務追蹤一直清楚顯示（style.css 最後的規則），只有訊息列變淡
+            feedDim = Mathf.MoveTowards(feedDim, dimK, dt / 0.4f); feed.style.opacity = feedDim;
 
             // 撿東西：放在任務追蹤下面（任務多一行就跟著往下）；進場從左邊滑進來，2 秒後往左淡出
             float top = qtrack.resolvedStyle.display != DisplayStyle.None && qtrack.layout.height > 0 ? qtrack.layout.yMax + 6 : 92;

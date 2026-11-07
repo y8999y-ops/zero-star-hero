@@ -90,14 +90,14 @@ namespace ZeroStar
             if (StageDone) return;
             StageDone = true;
             Cleared_.Add(StageD.Id);
-            QuestProgress("clear");
+            QuestProgress("clear", stage: StageD.Id, deaths: Deaths);
             if (PortalX == null) OpenBossPortal();   // 1-4：打倒王之後在主角前面開傳送門
             Say.Queue.Clear();
             Say.Show("系統：傳送門開了。走過去按互動，回碎星鎮。", 2.6);
         }
 
         // ---- 主線任務（quests.js 的 SYSTEM：一次一個，條件達成就自動完成、給獎勵、系統吐槽）
-        static readonly (string id, string title, string say, int coins, int scrap, int xp)[] SYSTEM =
+        public static readonly (string id, string title, string say, int coins, int scrap, int xp)[] SYSTEM =
         {
             ("out11", "離開墜落之底", "出來了。……外面比我想的還亮。", 0, 0, 30),
             ("reg", "登記冒險者", "登記好了。F 級。……從谷底開始，很適合你。", 50, 0, 0),
@@ -148,8 +148,9 @@ namespace ZeroStar
             }
             return lines;
         }
-        public void QuestProgress(string ev)
+        public void QuestProgress(string ev, string kind = null, bool elite = false, string stage = null, int deaths = 0)
         {
+            foreach (var q in Quests.Event(ev, kind, elite, stage, deaths)) Say.Push($"系統：公會任務「{q.Title}」完成！回公會找波波交付。", 2.6);
             foreach (var s in SYSTEM)
             {
                 if (SysDone.Contains(s.id)) continue;

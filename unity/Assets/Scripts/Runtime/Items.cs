@@ -126,6 +126,62 @@ namespace ZeroStar
             new CoreDef { Id = "noisy", Name = "吐槽", V = 5, W = 10, Dec = 0 },
         }.ToDictionary(c => c.Id);
         static readonly Dictionary<string, string> CORE_OF = new Dictionary<string, string> { ["sword1"] = "rust", ["sword2"] = "dawn", ["great1"] = "heavy", ["great2"] = "meteor", ["dagger1"] = "sharp", ["dagger2"] = "shadow", ["spear1"] = "long", ["spear2"] = "comet", ["hammer1"] = "dull", ["hammer2"] = "rock" };
+        // ---- 強化（items.js）：上限看稀有度、每 +5 開副屬性（星核上限兩倍、每 +10），+11 以後可能失敗（失敗只扣材料）
+        public static readonly int[] MAX_PLUS = { 5, 10, 15, 20, 25, 25 };
+        public static int MaxPlus(Item it) => (it.Rarity < MAX_PLUS.Length ? MAX_PLUS[it.Rarity] : 5) * (IsCore(it) ? 2 : 1);
+        public static int SubStep(Item it) => IsCore(it) ? 10 : 5;
+        /// 從 +p 強化到 +p+1 的成功率（%）
+        public static int EnhanceRate(int p)
+        {
+            int t = p + 1;
+            if (t <= 10) return 100;
+            if (t >= 40) return 10;
+            if (t >= 30) return 15;
+            if (t >= 26) return 20;
+            return new[] { 90, 80, 70, 60, 50, 40, 30, 25 }[Math.Min(7, (t - 11) / 2)];
+        }
+        public static (int scrap, int coins) EnhanceCost(int p, Item it) => (2 + p * 2 + it.Rarity * 2, 15 + p * 12);
+        public class Up { public string Kind, Id; public double Before, After; }
+        /// 強化成功：+1。到 +5 的倍數時開副屬性（還沒 4 條＝新增一條，滿了＝隨機提升一條）
+        public static Up EnhanceUp(Item it)
+        {
+            it.Plus++;
+            if (it.Plus % SubStep(it) != 0 || it.Kind == "junk") return null;
+            if (it.Affixes.Count < 4)
+            {
+                var have = new HashSet<string>(it.Affixes.Select(x => x.Id)); if (it.Main != null) have.Add(it.Main.Id);
+                var n = RollSub(Pick(STAT_IDS.Where(id => !have.Contains(id)).ToList()), it.Ilvl);
+                it.Affixes.Add(n);
+                return new Up { Kind = "add", Id = n.Id, Before = 0, After = n.V };
+            }
+            var a = Pick(it.Affixes); var S = Stat(a.Id); double add = RollSub(a.Id, it.Ilvl).V, before = a.V;
+            a.V = ToFixed(a.V + add, S.Dec);
+            return new Up { Kind = "up", Id = a.Id, Before = before, After = a.V };
+        }
+        /// 工坊的重鑄：第 i 條副屬性換成另一種（不跟主屬性、其他條重複）
+        public static Affix RerollAffix(Item it, int i)
+        {
+            var have = new HashSet<string>(it.Affixes.Select(x => x.Id)); if (it.Main != null) have.Add(it.Main.Id);
+            var pool = STAT_IDS.Where(id => !have.Contains(id)).ToList();
+            var a = RollSub(pool.Count > 0 ? Pick(pool) : it.Affixes[i].Id, it.Ilvl);
+            it.Affixes[i] = a;
+            return a;
+        }
+        public static (int scrap, int coins) RerollCost(Item it) => (6 + it.Rarity * 3, 40 + it.Rarity * 40);
+        /// 一條屬性的文字：「攻擊 +12%」「技能冷卻 -5%」
+        public static string FmtStat(string id, double v)
+        {
+            var S = Stat(id); double n = ToFixed(v, S.Dec);
+            return $"{S.Name} {(S.Neg ? "-" : "+")}{n.ToString(S.Dec > 0 ? "0.#" : "0")}{(S.Pct ? "%" : "")}";
+        }
+        public static readonly Dictionary<string, Func<double, string>> CORE_TEXT = new Dictionary<string, Func<double, string>>
+        {
+            ["rust"] = x => $"連段最後一下傷害 +{x}%", ["dawn"] = x => $"生命 80% 以上時，傷害 +{x}%", ["heavy"] = x => $"普攻擊退 +{x}%；被打飛的敵人撞到別的敵人時，對方也會受傷",
+            ["meteor"] = x => $"每 {x} 秒，下一次技能多叫一顆小隕石", ["sharp"] = x => $"暴擊時多打一次 {x}% 的星光傷害", ["shadow"] = x => $"閃避後 2 秒內，傷害 +{x}%",
+            ["long"] = x => $"普攻距離 +{x}%", ["comet"] = x => $"衝刺留下一道星光尾巴，敵人碰到受到攻擊力 {x}% 的傷害", ["dull"] = x => $"被打時 {x}% 機率讓攻擊你的敵人暈 1 秒",
+            ["rock"] = x => $"生命低於 40% 時，防禦 +{x}%", ["noisy"] = x => $"每 10 秒吐槽你一次，並給予隨機增益 {x} 秒",
+        };
+
         public static bool IsCore(Item it) => it?.Kind == "weapon";
         public static int CoreTier(Item it) => Math.Min(6, 1 + it.Plus / 10);
         /// 這顆星核的核心效果（id、數值）；不是星核回傳 null

@@ -39,6 +39,7 @@ namespace ZeroStar
             Say.Queue.RemoveAll(q => q.Item3 == "guide");
             if (line != null) Say.Push(line, 3.4, "guide");
         }
+        public List<string> UnlockedStages() => Unlocked();
         List<string> Unlocked() { var o = new[] { "1-1", "1-2", "1-3", "1-4" }; return o.Where((id, i) => i == 0 || Cleared_.Contains(o[i - 1])).ToList(); }
 
         /// main.js 的 townArrive：任務板補滿、檢查主線、「碎星鎮」、引導台詞

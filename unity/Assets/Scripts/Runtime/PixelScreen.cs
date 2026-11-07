@@ -70,12 +70,14 @@ namespace ZeroStar
             Resized?.Invoke(W);
         }
 
+        public Func<bool> Paused;
         void Update()
         {
             if (Math.Abs(Aspect() - lastAspect) > 0.001f) { int w = WidthFor(Aspect()); if (w != W) Rebuild(w); else lastAspect = Aspect(); }
             watch.Restart();
             acc += Math.Min(0.1, Time.unscaledDeltaTime);
             while (acc >= STEP) { acc -= STEP; Tick?.Invoke(STEP); }
+            if (Paused?.Invoke() == true) { Fit(); return; }   // 地圖、視窗開著：遊戲暫停，畫面停在最後一格（不用每格重畫）
             Frame.Clear();
             Draw?.Invoke(Frame);
             Frame.Composite(rgba, null, 0.8);

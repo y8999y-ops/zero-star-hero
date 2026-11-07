@@ -38,6 +38,9 @@ const FX = {
   "shooting-stars": "weather/shooting-stars.js",
   frog: "critters/frog.js",
   "town-rain": "../../../game/src/fx-town-rain.js",
+  parry: "impacts/parry.js",
+  "quest-complete": "ui/quest-complete.js",
+  "coin-collect": "ui/coin-collect.js",
 };
 
 const STAR_BOOM = ["#3a1608", "#6e3a0c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"];
@@ -81,6 +84,16 @@ CASES.push(
   { name: "frog", fx: "frog", opts: { seed: 3, light: 0.2 }, speed: 1, steps: 300 },
   { name: "town-rain", fx: "town-rain", opts: { density: 1 }, speed: 2, steps: 240 },
   { name: "town-rain-light", fx: "town-rain", opts: { density: 0.45 }, speed: 1.3, steps: 150 },
+);
+
+// 第 4b 批：格擋（金色、灰色鈍刀）、任務完成橫幅、撿金幣
+CASES.push(
+  { name: "parry-gold", fx: "parry", opts: { palette: ["#3a1a06", "#8a4a10", "#e0901c", "#ffc83a", "#ffe98a", "#fff8d8", "#ffffff"], light: 0.5, seed: 5 }, speed: 1 },
+  { name: "parry-dull", fx: "parry", opts: { palette: ["#16161a", "#2e2e34", "#4e4e56", "#74747c", "#9c9ca4", "#c8c8ce", "#ececf0"], light: 0.1, seed: 23, height: 24 }, speed: 1.3 },
+  { name: "quest-complete", fx: "quest-complete", opts: {}, speed: 1 },
+  { name: "quest-complete-alt", fx: "quest-complete", opts: { text: "Stage Clear!", seed: 31, light: 0.4, ribbon: ["#06121e", "#0e2a45", "#1a4a7a", "#2a6aad", "#4390d8", "#7ab8f2", "#b7dcff"] }, speed: 1.2 },
+  { name: "coin-collect", fx: "coin-collect", opts: { count: 8, light: 0.4 }, speed: 1 },
+  { name: "coin-collect-12", fx: "coin-collect", opts: { count: 12, from: 95, seed: 17 }, speed: 1.1 },
 );
 
 const manifest = [];
