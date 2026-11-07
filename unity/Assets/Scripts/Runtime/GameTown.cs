@@ -11,6 +11,8 @@ namespace ZeroStar
     public partial class Game
     {
         public readonly bool Town;
+        /// 無限討伐（main.js 的 ENDLESS）：舊的一個畫面高的 1-1 地形，沒有祭壇、寶箱、傳送門、機關、關卡流程，怪一直冒出來
+        public readonly bool Endless;
         public Folk Folk;
         // ---- 存檔裡跟城鎮有關的（公會、引導、任務）
         public bool GuildRegistered; public int GuildDone; public int TGuide = -1;

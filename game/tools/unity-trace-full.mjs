@@ -162,7 +162,7 @@ globalThis.localStorage = new Store({ "zero-hero-save-v1": JSON.stringify(profil
 if (STAGE === "town") for (const id of SC.cleared ?? []) profile.cleared[id] = true;
 if (SC.profile) Object.assign(profile, SC.profile);
 localStorage.setItem("zero-hero-save-v1", JSON.stringify(profile));
-globalThis.sessionStorage = new Store({ "zero-hero-next": STAGE === "town" ? "town" : "stage", "zero-hero-stage": STAGE === "town" ? "1-1" : STAGE, "zero-hero-auto": "1" });
+globalThis.sessionStorage = new Store({ "zero-hero-next": STAGE === "town" ? "town" : STAGE === "endless" ? "endless" : "stage", "zero-hero-stage": STAGE === "town" ? "1-1" : STAGE, "zero-hero-auto": "1" });
 
 // ---- 載入網頁版（載入時取的亂數也算在同一串裡）
 await import("../src/main.js");

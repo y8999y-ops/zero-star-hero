@@ -40,7 +40,7 @@ namespace ZeroStar
             StageD = id == "town" ? StageData.Empty("town") : StageData.Get(id);
             Say.Paced = StageD.Paced;
             if (StageD.Altars != null) foreach (var a in StageD.Altars) Altars.Add(new Altar { X = a.X, Y = a.Y ?? Map.FloorAt(a.X, 0) });
-            if (id == "town") return;
+            if (id == "town" || id == "endless") return;
             if (id != "1-4") Chest = MakeChest(StageD.ExitX - 120, STAGE_CHEST.TryGetValue(id, out var ct) ? ct : 0, Map.FloorAt(StageD.ExitX - 120, (StageD.ExitY != 0 ? StageD.ExitY : Data.Floor) - 8));
             if (id != "1-4") { PortalX = StageD.ExitX + 26; PortalY = StageD.ExitY != 0 ? StageD.ExitY : Data.Floor; }
         }
@@ -49,8 +49,31 @@ namespace ZeroStar
         {
             Started = true;
             if (Town) TownArrive();
+            else if (Endless) Say.Show("系統：無限模式。打到你手痠為止。");
             else { placing = true; Director = new Director(StageD, this, IsTouch); placing = false; }
             SnapCam();
+        }
+        // ---- 無限討伐（main.js 的 spawnEnemies）：畫面附近一直冒怪，時間越久同時越多（8 隻起、每 5 秒多 1 隻，最多 28）
+        double spawnT; public int MaxEnemies = 28;
+        void SpawnEnemies(double dt)
+        {
+            StatTime += dt;
+            int target = Math.Min(MaxEnemies, 8 + (int)Math.Floor(StatTime / 5));
+            int alive = Enemies.Count(e => !e.Dead);
+            if ((spawnT -= dt) > 0 || alive >= target) return;
+            spawnT = 0.35;
+            double x = 0;
+            for (int tries = 0; tries < 10; tries++)
+            {
+                x = CamX + Rnd.Next() * (W + 240) - 120;
+                if (Math.Abs(x - Player.X) > 110) break;
+            }
+            x = Math.Max(16 + 20, Math.Min(Data.W - 16 - 20, x));   // WALL＝16
+            double r = Rnd.Next();
+            var e = r < 0.04 ? new Enemy("gold", x, Data.Floor) : r < 0.36 ? new Enemy("bat", x, 50 + Rnd.Next() * 60) : new Enemy("slime", x, Data.Floor);
+            e.Awake = true;   // 一出來就追
+            Enemies.Add(e);
+            Dust(e.X, e.K.Fly ? e.Y + 8 : e.Y, 4);
         }
         static ChestState MakeChest(double x, int tier, double y) => new ChestState { X = Pf.Round(x), Y = y, Tier = tier };
 
@@ -299,7 +322,7 @@ namespace ZeroStar
         void PlayerDied()
         {
             Deaths++;
-            (double x, double y)? to = CheckpointAltar != null ? (CheckpointAltar.X, CheckpointAltar.Y) : (StageD.StartX, Map.FloorAt(StageD.StartX, 0));
+            (double x, double y)? to = CheckpointAltar != null ? (CheckpointAltar.X, CheckpointAltar.Y) : Endless ? ((double x, double y)?)null : (StageD.StartX, Map.FloorAt(StageD.StartX, 0));   // 無限討伐：原地復活
             to = BossDeath(to);   // 王戰中死掉：王和房裡的小怪收掉、解除封鎖；王融化中死掉：原地復活
             string col = FORM_COLOR.TryGetValue(Player.Form, out var cc) ? cc : "#ffd84a";
             OnShatter?.Invoke(Player.X, Player.Y, col);

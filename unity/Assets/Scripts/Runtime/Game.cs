@@ -372,7 +372,7 @@ namespace ZeroStar
         public Game(string stage = "1-1", Game from = null)
         {
             StageId = stage;
-            Town = stage == "town";
+            Town = stage == "town"; Endless = stage == "endless";
             VIEW_DY = (int)Pf.Round((Town ? 0.10 : 0.05) * H / ZOOM);
             Zoom = ZOOM;
             Enemy.ResetStatics();
@@ -389,7 +389,7 @@ namespace ZeroStar
             Map = new GameMap(Data.W, Data.H, Data.Solids, Data.Platforms);
             InitStage(stage);
             var combos = JsonUtility.FromJson<ComboDef>(Baked.Text("combos"));
-            Player = Town ? new Player(120, TownArt.FLOOR, combos) { RankFn = Rank } : new Player(StageD.StartX, StageD.StartY, combos) { RankFn = Rank };
+            Player = Town ? new Player(120, TownArt.FLOOR, combos) { RankFn = Rank } : new Player(StageD.StartX, Endless ? Data.Floor : StageD.StartY, combos) { RankFn = Rank };
             if (from == null) { Equip["weapon"] = Fresh.core; Equip["body"] = Fresh.shell; }
             ApplyStats();
             Player.Hp = Player.MaxHp;
@@ -656,7 +656,7 @@ namespace ZeroStar
         }
         void SnapCam()
         {
-            if (Town) return;
+            if (Town || Endless) return;
             var v = ViewRect(); double gy = Map.FloorAt(Player.X, Math.Max(0, Player.Y));
             camLand = Player.Grounded ? (double?)null : gy; camRefY = gy; lookX = Player.Face * 36;
             CamX = Math.Max(-v.x0, Math.Min(Data.W - v.x0 - v.w, Player.X - W / 2.0));
@@ -780,8 +780,8 @@ namespace ZeroStar
             UpdateGems(dt);
             Drops.Update(dt, Player, 16, Map, PickUp);
             UpdateAbsorb(dt);
-            StatTime += dt;
-            { var v = ViewRect(); Director?.Update(dt, Player, CamX + v.x0, v.w); }
+            if (Endless) SpawnEnemies(dt);
+            else { StatTime += dt; var v = ViewRect(); Director?.Update(dt, Player, CamX + v.x0, v.w); }
             // 戰鬥區封鎖：主角出不去
             if (Director?.Lock != null) Player.X = Math.Max(Director.Lock.Value.l + 10, Math.Min(Director.Lock.Value.r - 10, Player.X));
             for (int ei = 0; ei < Enemies.Count; ei++)   // 照 JS 的 for…of：迴圈中新加的怪（王分裂）同一格也會跑到

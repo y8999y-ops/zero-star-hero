@@ -83,7 +83,7 @@ namespace ZeroStar
             }
             if (mapShot != null) { Directory.CreateDirectory(mapShot); game.Cleared_.UnionWith(new[] { "1-1", "1-2" }); OpenMap(false); }
         }
-        string mapShot; int mapShotN;
+        string mapShot; int mapShotN, endlessN; readonly bool goEndless = Array.IndexOf(Environment.GetCommandLineArgs(), "-endless") >= 0;
         ZeroStar.UI.Inventory inv; ZeroStar.UI.Settings settings; ZeroStar.UI.Title title; ZeroStar.UI.Intro intro; ZeroStar.UI.Loading loading;
         bool started;
         // -titleshot：依時間截圖（主畫面 → 操作說明 → 設定 → 開場 → 通關的載入畫面）
@@ -160,7 +160,7 @@ namespace ZeroStar
         bool Busy() => dlg.Open || win.Open || inv.Open || map != null || game.TownBusy || settings.Open || !started;
         void OpenTree() { game.Sfx("ui"); _ = ZeroStar.UI.TreeWin.Open(game, hud.InCombat, null, game.Player.Form); }
         /// 地圖：關卡裡＝這一關走過的地方（mapview.js）；碎星鎮沒有關卡地圖，打開選關地圖
-        void OpenLevelMap() { if (game.Town) OpenMap(false); else { game.Sfx("open"); _ = ZeroStar.UI.LevelMap.Open(game); } }
+        void OpenLevelMap() { if (game.Town) OpenMap(false); else if (game.Endless) return; else { game.Sfx("open"); _ = ZeroStar.UI.LevelMap.Open(game); } }
         ZeroStar.UI.Hud hud; ZeroStar.UI.Dialog dlg; ZeroStar.UI.Win win; ZeroStar.UI.UiFx uiFx; ZeroStar.UI.MapWin mapWin; int winTicks;
         bool wasOpen; UnityEngine.Rect lastSafe;
         /// 手機：介面避開瀏海、圓角（Screen.safeArea）；遊戲畫面照樣蓋滿
@@ -196,12 +196,12 @@ namespace ZeroStar
             game.Sfx("open");
         }
         void CloseMap() { map = null; mapWin.Hide(); game.Sfx("close"); }
-        /// 出發：關卡＝換到那一關（等級、裝備這些帶過去）；碎星鎮、無限討伐還沒搬過來
+        /// 出發：關卡＝換到那一關（等級、裝備這些帶過去）；碎星鎮＝回鎮上；無限討伐＝舊的 1-1 平地一直冒怪
         void MapGo(string id)
         {
             if (id == null) return;
             if (id == "town") { if (game.Town) CloseMap(); else { map = null; mapWin.Hide(); game.Sfx("ui"); NewGame("town", game); } return; }   // 在鎮上＝留在鎮上；在關卡裡＝回碎星鎮
-            if (id == "endless") { mapWin.Msg("無限討伐還沒搬到 Unity。"); return; }
+            if (id == "endless") { map = null; mapWin.Hide(); game.Sfx("ui"); NewGame("endless", game); return; }   // 無限討伐（main.js 的 goScene("endless")）
             if (Array.IndexOf(WorldMap.STAGES, id) >= 0 && map.Nodes[id].Open) { map = null; mapWin.Hide(); game.Sfx("ui"); NewGame(id, game); }
         }
         void MapInput()
@@ -355,6 +355,7 @@ namespace ZeroStar
                 {
                     int k = mapShotN / 90;
                     ScreenCapture.CaptureScreenshot(Path.Combine(mapShot, $"map-{k}.png"));
+                    if (goEndless && k == 1) { StartGame(); MapGo("endless"); return; }   // -mapshot … -endless：從地圖進無限討伐（開發用截圖）
                     if (k >= 4) Application.Quit(); else map.SelectNext(k == 2 ? -3 : 1);
                 }
                 if (shotDir != null) tickN++;   // 自動玩：地圖開著也照樣數步數（才會截圖、結束）
@@ -372,7 +373,13 @@ namespace ZeroStar
             game.RunTimers();
             game.Tick(game.SlowT > 0 ? dt * 0.35 : dt);   // 慢動作（傳說掉落、打倒菁英）
             game.SlowT -= dt;
-            ZeroStar.UI.LevelMap.UpdateSeen(game, (float)dt);   // 關卡地圖：看得到的範圍算走過
+            if (!game.Endless) ZeroStar.UI.LevelMap.UpdateSeen(game, (float)dt);
+            if (mapShot != null && game.Endless && ++endlessN % 600 == 0)   // 無限討伐的截圖：每 10 秒一張，四張後結束
+            {
+                ScreenCapture.CaptureScreenshot(Path.Combine(mapShot, $"endless-{endlessN / 600}.png"));
+                Debug.Log($"[Endless] {endlessN} 步：怪 {System.Linq.Enumerable.Count(game.Enemies, e => !e.Dead)} 隻，擊倒 {game.Kills}，死了 {game.Deaths} 次，主角 {game.Player.X:F0},{game.Player.Y:F0}");
+                if (endlessN >= 2400) Application.Quit();
+            }   // 關卡地圖：看得到的範圍算走過
             if (CanSave && (saveT += (float)dt) > 20) { saveT = 0; Save(); }   // 每 20 秒存一次
             Synth.HitTuneK = game.HitTune;
             game.Hud(Game.STEP);   // 台詞計時每一步都走（網頁版每步：tick、畫、hud；畫面不讀台詞，先後一樣）。原本放在畫面那邊，畫面卡、一次跑兩步時台詞和關卡事件會被拖慢
