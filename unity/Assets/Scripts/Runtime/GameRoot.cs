@@ -41,14 +41,17 @@ namespace ZeroStar
             screen.Tick += OnTick;
             screen.Draw += f => { if (map != null) { screen.Zoom = 1; DrawMap(f); return; } screen.Zoom = Game.Zoom; game.Render(f); };   // 王戰時鏡頭拉遠（Game.Zoom）
             screen.PostComposite += d => { if (map == null) game.PostComposite(d); };
-            NewGame(sc?.stage ?? "1-1", null, sc != null ? TraceScript.DefaultPath() : null);
-            touchMode = Input.touchSupported && Application.isMobilePlatform;
             { var uiGo = new GameObject("UI"); uiGo.transform.SetParent(transform); var uiRoot = ZeroStar.UI.Ui.CreateRoot(uiGo); hud = new ZeroStar.UI.Hud(uiRoot); dlg = new ZeroStar.UI.Dialog(uiRoot, () => game.Player.Form); }   // 階段 4b：UI Toolkit 的 HUD
+            hud.CanvasToScreen = screen.CanvasToScreen;
+            hud.OnMenu = k => { if (k == "map" && map == null) OpenMap(false); };   // 背包、技能樹的畫面在階段 4d
+            hud.OnForm = f => { if (!game.Town) game.PendingForm = f; };
+            NewGame(sc?.stage ?? "1-1", null, sc != null ? TraceScript.DefaultPath() : null);
+            touchMode = Input.touchSupported && Application.isMobilePlatform || Array.IndexOf(args, "-touch") >= 0;   // -touch：開發用，電腦上看手機的排法
             if (mapShot != null) { Directory.CreateDirectory(mapShot); game.Cleared_.UnionWith(new[] { "1-1", "1-2" }); OpenMap(false); }
         }
         string mapShot; int mapShotN;
         ZeroStar.UI.Hud hud; ZeroStar.UI.Dialog dlg;
-        void LateUpdate() { if (hud == null || game == null) return; hud.Visible = map == null; hud.Dim = dlg.Open; if (map == null) hud.Update(game, Time.unscaledDeltaTime); dlg.Update(Time.unscaledDeltaTime); }
+        void LateUpdate() { if (hud == null || game == null) return; hud.Visible = map == null; hud.Touch = touchMode; hud.Dim = dlg.Open; if (map == null) hud.Update(game, Time.unscaledDeltaTime); dlg.Update(Time.unscaledDeltaTime); }
 
         static readonly string[] ORDER = { "1-1", "1-2", "1-3", "1-4" };
 
@@ -147,10 +150,13 @@ namespace ZeroStar
             game = new Game(stage, from);
             if (tracePath != null) TraceScript.Apply(game, tracePath);   // 自動玩：照比對腳本的存檔
             Debug.Log($"[Stage] 開始 {stage}（Lv {game.Lv}）");
-            game.OnSay = msg => { sayText = msg; sayT = 2.6f; };
+            game.OnSay = msg => hud.ShowHint(msg, 2.6);   // 開發用的提示（G 換裝備）
+            game.OnHint = (msg, sec) => hud.ShowHint(msg, sec);
+            game.OnFeed = hud.Feed;
+            game.OnFormBanner = hud.FormBanner;
+            game.OnResBanner = hud.ResBanner;
             game.Say.OnShow = null;   // 系統台詞、提示改由 HUD 顯示（UI/Hud.cs）
             if (from == null && tracePath == null) foreach (var f in game.Carry) game.FormsOwned[f] = 0;   // 開發用：形態全部都有（存檔、技能樹畫面在階段 4、5）
-            game.OnPickup = it => { sayText = "撿到：" + it.Name; sayT = 1.6f; };
             // 進傳送門：網頁版回碎星鎮、再從選關地圖選下一關（階段 3d）；這裡先直接到下一關（1-4 打完回 1-1）
             game.OnLeave = () => game.After(380, () => pending = shotDir != null ? NextStage() : "town");   // 進傳送門：回碎星鎮（自動玩（-shot）照舊直接到下一關）
             // 碎星鎮：路標＝打開選關地圖；店家、路人的對話和視窗在階段 4b、4c
@@ -185,7 +191,8 @@ namespace ZeroStar
             }
             if (Input.touchCount == 0)
             {
-                inp.Mouse(Input.GetMouseButton(0));
+                if (Input.GetMouseButtonDown(0)) mouseOnUi = hud.Blocks(Input.mousePosition);
+                inp.Mouse(Input.GetMouseButton(0) && !mouseOnUi);
                 if (Input.GetMouseButtonDown(1)) inp.Press("dash");
             }
             else touchMode = true;
@@ -203,6 +210,15 @@ namespace ZeroStar
             if (Input.GetKeyDown(KeyCode.Escape) && !Application.isEditor) Application.Quit();
         }
 
+        bool mouseOnUi;
+        // -uidemo：開發用，自動玩時叫出橫幅、訊息、提示框（截圖檢查介面用）
+        bool uiDemo = Array.IndexOf(Environment.GetCommandLineArgs(), "-uidemo") >= 0;
+        void UiDemo()
+        {
+            if (tickN == 120) hud.FormBanner("slime");
+            if (tickN == 300) hud.ResBanner("fire", "星之殘火", "攻擊力 +3%（永久）", "從星星上剝落的一小塊火。還溫溫的。");
+            if (tickN == 420) { hud.Feed(new Game.FeedRow { Icon = "dagger", Name = "生鏽的小刀", Color = Items.RARITY[2].Color, Better = true }); hud.Feed(new Game.FeedRow { Icon = "mana", Name = "藍水晶", Color = Items.RARITY[1].Color, Note = "魔力 +25" }); hud.ShowHint("往上滑＝跳，在空中再滑一次＝二段跳", 3); }
+        }
         string NextForm() { int i = Array.IndexOf(game.Carry, game.Player.Form); return game.Carry[(i + 1) % game.Carry.Length]; }
 
         void OnTick(double dt)
@@ -225,6 +241,7 @@ namespace ZeroStar
                 if (tickN % 30 == 0) Debug.Log($"[Perf] 第 {tickN} 步{(game.Ult.On ? "（大招）" : "")}：{screen.Fps:F0} fps，平均 {screen.AvgMs:F2} ms，最慢 {screen.MaxMs:F2} ms，回收 {GC.CollectionCount(0)} 次");
                 if (shotNo >= shotAt.Length && tickN > Math.Max(shotAt[shotAt.Length - 1] + 20, scTicks)) { Debug.Log($"[Shot] 結束：{game.StageId} 主角 {game.Player.X:F1},{game.Player.Y:F1} 通關 {game.StageDone} 離開 {game.Leaving}"); Application.Quit(); }
             }
+            if (uiDemo) UiDemo();
             game.RunTimers();
             game.Tick(game.SlowT > 0 ? dt * 0.35 : dt);   // 慢動作（傳說掉落、打倒菁英）
             game.SlowT -= dt;
@@ -238,17 +255,9 @@ namespace ZeroStar
         bool touchMode;
         const double DEAD = 10, FULL = 38, FOLLOW = 60, SWIPE = 26, SWIPE_AIR = 16, SWIPE_TIME = 0.18;
         int stickId = -1; double ax, ay, lockT; readonly List<(double y, double t)> hist = new List<(double, double)>();
-        Vector2 stickPos, knobOff;
+        Vector2 knobOff;
         readonly Dictionary<int, string> btnOf = new Dictionary<int, string>();
         static float Css => Screen.dpi > 0 ? Mathf.Max(1, Screen.dpi / 160f) : 2.5f;
-        // 按鈕的位置（螢幕像素，左上原點）：攻擊最大、在右下角；閃避在它左邊
-        (Vector2 c, float r) AtkBtn { get { float A = Mathf.Clamp(Screen.height / Css * 0.19f, 58, 86) * Css; return (new Vector2(Screen.width - 14 * Css - A * 0.55f, Screen.height - 12 * Css - A * 0.55f), A * 0.55f); } }
-        (Vector2 c, float r) DashBtn { get { var a = AtkBtn; float B = a.r * 2 * 0.7f; return (new Vector2(a.c.x - a.r - B * 0.7f, a.c.y + a.r - B * 0.5f), B * 0.5f); } }
-        (Vector2 c, float r) SkillBtn { get { var a = AtkBtn; float B = a.r * 2 * 0.68f; return (new Vector2(a.c.x - a.r * 0.15f, a.c.y - a.r - B * 0.62f), B * 0.5f); } }
-        (Vector2 c, float r) UltBtn { get { var a = AtkBtn; var k = SkillBtn; return (new Vector2(k.c.x - k.r * 2.3f, k.c.y + k.r * 0.2f), k.r); } }
-        (Vector2 c, float r) AbsorbBtn { get { var a = AtkBtn; return (new Vector2(a.c.x - a.r * 0.2f, a.c.y - a.r * 2.9f), a.r * 0.6f); } }
-        (Vector2 c, float r) FormBtn { get { var a = AtkBtn; float B = a.r * 2 * 0.55f; return (new Vector2(Screen.width - 14 * Css - B * 0.5f, a.c.y - a.r * 2.6f - B * 0.5f), B * 0.5f); } }
-
         void UpdateTouch(GameInput inp)
         {
             double now = Time.unscaledTimeAsDouble;
@@ -260,17 +269,13 @@ namespace ZeroStar
                 double x = p.x / Css, y = p.y / Css;
                 if (t.phase == TouchPhase.Began)
                 {
-                    var a = AtkBtn; var d = DashBtn;
-                    if (game.AbsorbNear != null && Vector2.Distance(p, AbsorbBtn.c) < AbsorbBtn.r) { btnOf[t.fingerId] = "absorb"; }
-                    else if (Vector2.Distance(p, a.c) < a.r) { btnOf[t.fingerId] = "attack"; }
-                    else if (Vector2.Distance(p, d.c) < d.r) { btnOf[t.fingerId] = "dash"; inp.Press("dash"); }
-                    else if (Vector2.Distance(p, SkillBtn.c) < SkillBtn.r) { btnOf[t.fingerId] = "skill"; inp.Press("skill"); }
-                    else if (Vector2.Distance(p, UltBtn.c) < UltBtn.r) { btnOf[t.fingerId] = "ult"; inp.Press("ult"); }
-                    else if (Vector2.Distance(p, FormBtn.c) < FormBtn.r) { btnOf[t.fingerId] = "form"; game.PendingForm = NextForm(); }
-                    else if (p.x < Screen.width / 2f)
+                    string key = dlg.Open ? null : hud.Pad.ButtonAt(hud.ToPanel(t.position));   // 右下的按鈕（UI/TouchPad.cs）
+                    if (key != null) { btnOf[t.fingerId] = key; if (key != "attack" && key != "absorb") inp.Press(key); }
+                    else if (hud.Blocks(t.position)) btnOf[t.fingerId] = "ui";   // 按在形態格、選單上：給介面處理
+                    else if (p.x < Screen.width / 2f && !dlg.Open)
                     {
                         if (inp.Air) { inp.Press("jump"); inp.JumpHeld = true; }   // 在空中點一下左半邊＝二段跳
-                        if (stickId < 0) { stickId = t.fingerId; ax = x; ay = y; hist.Clear(); hist.Add((y, now)); stickPos = p; knobOff = Vector2.zero; }
+                        if (stickId < 0) { stickId = t.fingerId; ax = x; ay = y; hist.Clear(); hist.Add((y, now)); knobOff = Vector2.zero; }
                     }
                 }
                 if (btnOf.TryGetValue(t.fingerId, out var b) && b == "attack" && t.phase != TouchPhase.Ended && t.phase != TouchPhase.Canceled) atk = true;
@@ -286,7 +291,7 @@ namespace ZeroStar
                     double up = y - maxY, down = y - minY;
                     if (up < -(inp.Air ? SWIPE_AIR : SWIPE) && now > lockT) { inp.Press("jump"); lockT = now + 0.22; inp.JumpHeld = true; hist.Clear(); hist.Add((y, now)); ay = y; }
                     else if (down > SWIPE && !inp.Air) { inp.Press("drop"); hist.Clear(); hist.Add((y, now)); ay = y; }
-                    knobOff = new Vector2((float)Math.Max(-34, Math.Min(34, dx)), (float)Math.Max(-30, Math.Min(30, y - ay))) * Css;
+                    knobOff = new Vector2((float)Math.Max(-34, Math.Min(34, dx)), (float)Math.Max(-30, Math.Min(30, y - ay)));   // CSS px
                 }
                 if (t.phase == TouchPhase.Ended || t.phase == TouchPhase.Canceled)
                 {
@@ -294,112 +299,26 @@ namespace ZeroStar
                     if (t.fingerId == stickId) { stickId = -1; inp.TouchMove = 0; inp.JumpHeld = false; }
                 }
             }
+            if (dlg.Open) { btnOf.Clear(); if (stickId >= 0) { stickId = -1; inp.TouchMove = 0; inp.JumpHeld = false; } atk = absorbHeld = false; }   // 對話打開：放開所有觸控
             inp.TouchAttack = atk;
             inp.TouchAbsorb = absorbHeld;
+            hud.Pad.Down.Clear(); foreach (var v in btnOf.Values) hud.Pad.Down.Add(v);
+            hud.Pad.StickOn = stickId >= 0; hud.Pad.StickOff = knobOff;
         }
 
-        // ---- 介面（暫時版：血條、魔力條、手機按鈕；正式的介面在階段 3 用 UI Toolkit 重做）
-        Texture2D white, circle;
-        GUIStyle perfStyle, nameStyle, infoStyle;
-        string sayText; float sayT;
-        static Texture2D Circle(int n)
-        {
-            var t = new Texture2D(n, n) { filterMode = FilterMode.Bilinear };
-            for (int y = 0; y < n; y++) for (int x = 0; x < n; x++) { float d = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(n / 2f, n / 2f)) / (n / 2f); t.SetPixel(x, y, new Color(1, 1, 1, Mathf.Clamp01((1 - d) * n / 2f))); }
-            t.Apply();
-            return t;
-        }
-        // 王戰的 HUD（網頁版是 HTML：畫面下方的王血條、大招時四周變暗、大招名稱；暫時版，UI 在階段 4 重做）
-        float bossLag = 1; GUIStyle bossStyle;
-        void DrawBossHud(float u)
-        {
-            double now = game.SimMs;
-            // 大招：四周暗下來（5 秒：一開始淡入、最後淡出）
-            double du = (now - game.BossUltAt) / 5000;
-            if (du >= 0 && du < 1)
-            {
-                float a = (float)(du < 0.08 ? du / 0.08 : du < 0.75 ? 1 : (1 - du) / 0.25) * 0.55f;
-                float bw = Screen.width * 0.18f, bh = Screen.height * 0.18f; var c = new Color(0.04f, 0.03f, 0.02f, a);
-                Rect(0, 0, Screen.width, bh, c); Rect(0, Screen.height - bh, Screen.width, bh, c); Rect(0, bh, bw, Screen.height - 2 * bh, c); Rect(Screen.width - bw, bh, bw, Screen.height - 2 * bh, c);
-            }
-            if (bossStyle == null) bossStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
-            // 大招名（1.6 秒：放大縮回、最後淡出）
-            double nu = (now - game.BossUltAt) / 1600;
-            if (nu >= 0 && nu < 1 && game.BossUltName != null)
-            {
-                float a = (float)(nu < 0.15 ? nu / 0.15 : nu < 0.8 ? 1 : (1 - nu) / 0.2), sc = (float)(nu < 0.15 ? 1.8 - 0.8 * nu / 0.15 : 1);
-                bossStyle.fontSize = Mathf.RoundToInt(30 * u * sc); bossStyle.normal.textColor = new Color(1f, 0.96f, 0.75f, a);
-                GUI.Label(new UnityEngine.Rect(0, Screen.height * 0.3f, Screen.width, 50 * u), game.BossUltName, bossStyle);
-            }
-            if (!game.BossBarOn) { bossLag = 1; return; }
-            // 血條：白色的「剛剛被打掉的部分」慢一點跟上；三個階段換顏色；60%、30% 有刻度
-            float k = (float)game.BossBarK; bossLag = Mathf.Max(k, bossLag - Time.unscaledDeltaTime * 0.6f);
-            float w = Mathf.Min(460 * u, Screen.width * 0.7f), h = 10 * u, x = (Screen.width - w) / 2, y = Screen.height - 22 * u - h;
-            bossStyle.fontSize = Mathf.RoundToInt(11 * u); bossStyle.normal.textColor = new Color(0.91f, 0.94f, 0.63f);
-            GUI.Label(new UnityEngine.Rect(x, y - 16 * u, w, 16 * u), "大胃王史萊姆", bossStyle);
-            Rect(x - 2 * u, y - 2 * u, w + 4 * u, h + 4 * u, new Color(0.07f, 0.05f, 0.06f, 0.95f));
-            Rect(x, y, w, h, new Color(0.08f, 0.07f, 0.04f));
-            Rect(x, y, w * bossLag, h, new Color(1f, 0.94f, 0.88f));
-            Color fill = game.BossBarPhase == 1 ? new Color(0.6f, 0.75f, 0.16f) : game.BossBarPhase == 2 ? new Color(1f, 0.48f, 0.23f) : new Color(1f, 0.85f, 0.29f);
-            if (game.BossBarPhase == 3 && (int)(Time.unscaledTime / 0.25f) % 2 == 0) fill = new Color(1f, 0.98f, 0.88f);
-            Rect(x, y, w * k, h, fill);
-            Rect(x, y, w * k, 2 * u, new Color(1f, 1f, 1f, 0.35f));
-            foreach (float m in new[] { 0.6f, 0.3f }) Rect(x + w * m - u, y - u, 2 * u, h + 2 * u, new Color(0.07f, 0.05f, 0.06f));
-        }
-
+        // ---- 介面：HUD、對話、手機按鈕都在 UI Toolkit（UI/*.cs）；這裡只剩選關地圖（階段 4c 跟視窗一起換）和效能
+        GUIStyle perfStyle;
+        void Rect(float x, float y, float w, float h, Color c) { var o = GUI.color; GUI.color = c; GUI.DrawTexture(new UnityEngine.Rect(x, y, w, h), Texture2D.whiteTexture); GUI.color = o; }
         void OnGUI()
         {
             if (game == null) return;
-            if (white == null) { white = Texture2D.whiteTexture; circle = Circle(128); }
             if (map != null) { MapGui(); return; }
             float u = Mathf.Max(1, Screen.height / 360f);
-            // 血條、魔力條、等級、系統台詞：改由 UI Toolkit 的 HUD 畫（UI/Hud.cs）；這裡只剩還沒搬的暫時版
-            if (infoStyle == null) infoStyle = new GUIStyle(GUI.skin.label);
-            infoStyle.fontSize = Mathf.RoundToInt(10 * u); infoStyle.normal.textColor = new Color(1, 0.95f, 0.8f, 0.85f);
-            if (sayT > 0)
-            {
-                sayT -= Time.unscaledDeltaTime;
-                infoStyle.fontSize = Mathf.RoundToInt(12 * u);
-                GUI.Label(new UnityEngine.Rect(14 * u, Screen.height * 0.62f, Screen.width * 0.6f, 24 * u), sayText, infoStyle);
-            }
-            if (game.AbsorbNear != null) { infoStyle.fontSize = Mathf.RoundToInt(11 * u); GUI.Label(new UnityEngine.Rect(Screen.width * 0.4f, Screen.height * 0.3f, 300 * u, 20 * u), touchMode ? "按住右下的吸收鍵" : "按住 F 吸收", infoStyle); }
-            // 大招名（網頁版是 HTML 文字，跟特寫帶一起出現）
-            if (game.Ult.On && game.Ult.T >= game.Ult.NameAt)
-            {
-                if (nameStyle == null) nameStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
-                nameStyle.fontSize = Mathf.RoundToInt(26 * u); nameStyle.normal.textColor = new Color(1f, 0.92f, 0.6f);
-                GUI.Label(new UnityEngine.Rect(0, Screen.height * 0.18f, Screen.width, 40 * u), game.Ult.Name, nameStyle);
-            }
-            DrawBossHud(u);
-            // 碎星鎮：居民頭上的自言自語泡泡（網頁版是 HTML）
-            if (game.Town && game.BubbleText != null)
-            {
-                var sp = screen.CanvasToScreen(new Vector2((float)(game.BubbleX - Math.Round(game.CamX)), (float)(game.BubbleHead - Math.Round(game.CamY))));
-                infoStyle.fontSize = Mathf.RoundToInt(9 * u); var sz = infoStyle.CalcSize(new GUIContent(game.BubbleText));
-                float bx = sp.x - sz.x / 2 - 4 * u, by = Screen.height - sp.y - sz.y - 6 * u;
-                Rect(bx, by, sz.x + 8 * u, sz.y + 2 * u, new Color(1f, 0.97f, 0.9f, 0.92f));
-                var keep = infoStyle.normal.textColor; infoStyle.normal.textColor = new Color(0.15f, 0.1f, 0.12f);
-                GUI.Label(new UnityEngine.Rect(bx + 4 * u, by + u, sz.x, sz.y), game.BubbleText, infoStyle); infoStyle.normal.textColor = keep;
-            }
-            // 效能（右上角）：每秒幾格、每格算畫面花幾毫秒
             // 效能（下方中間，跟網頁版的 #fps 一樣）：每秒幾格、每格算畫面花幾毫秒
             if (perfStyle == null) perfStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.LowerCenter, fontSize = Mathf.RoundToInt(9 * u) };
             perfStyle.normal.textColor = new Color(0.65f, 0.62f, 0.74f, 0.6f);
             GUI.Label(new UnityEngine.Rect(Screen.width / 2f - 150 * u, Screen.height - 18 * u, 300 * u, 16 * u), $"{screen.Fps:F0} fps  {screen.AvgMs:F1} ms（最慢 {screen.MaxMs:F0}）  {screen.W}×216", perfStyle);
-            if (touchMode)
-            {
-                var a = AtkBtn; var d = DashBtn;
-                Disc(a.c, a.r, game.Input.TouchAttack ? new Color(1f, 0.82f, 0.3f, 0.75f) : new Color(0.95f, 0.72f, 0.2f, 0.45f));   // 攻擊＝金色（主要按鈕）
-                Disc(d.c, d.r, new Color(0.62f, 0.55f, 0.72f, 0.4f));                                                                   // 閃避＝紫灰
-                var sk = SkillBtn; Disc(sk.c, sk.r, game.Player.Mp >= Player.MP_COST && game.Player.SkillCd <= 0 ? new Color(0.62f, 0.55f, 0.72f, 0.5f) : new Color(0.3f, 0.28f, 0.35f, 0.4f));   // 技能
-                if (game.AbsorbNear != null) { var ab = AbsorbBtn; Disc(ab.c, ab.r, game.Input.TouchAbsorb ? new Color(0.5f, 1f, 0.5f, 0.75f) : new Color(0.4f, 0.85f, 0.4f, 0.5f)); }   // 吸收（旁邊有魔物核時才出現）
-                var ub = UltBtn; Disc(ub.c, ub.r, game.Player.Mp >= Ult.ULT_MP ? new Color(0.95f, 0.72f, 0.2f, 0.6f) : new Color(0.3f, 0.28f, 0.35f, 0.4f));   // 大招（魔力夠了變金色）
-                var fb = FormBtn; ColorUtility.TryParseHtmlString(Game.FORM_COLOR[game.Player.Form], out var fc); fc.a = 0.55f; Disc(fb.c, fb.r, fc);   // 換形態（目前形態的顏色）
-                if (stickId >= 0) { Disc(stickPos, 55 * Css, new Color(1, 1, 1, 0.08f)); Disc(stickPos + knobOff, 22 * Css, new Color(1, 1, 1, 0.3f)); }
-            }
         }
-        void Rect(float x, float y, float w, float h, Color c) { var o = GUI.color; GUI.color = c; GUI.DrawTexture(new UnityEngine.Rect(x, y, w, h), white); GUI.color = o; }
-        void Disc(Vector2 c, float r, Color col) { var o = GUI.color; GUI.color = col; GUI.DrawTexture(new UnityEngine.Rect(c.x - r, c.y - r, r * 2, r * 2), circle); GUI.color = o; }
     }
 
     /// 比對測試的那串按鍵（game/tools/unity-trace-script.json）

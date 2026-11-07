@@ -9,7 +9,7 @@ using static ZeroStar.UI.Ui;
 
 namespace ZeroStar.UI
 {
-    public class Hud
+    public partial class Hud
     {
         readonly VisualElement root;
         // 左上
@@ -26,16 +26,21 @@ namespace ZeroStar.UI
         float skillCdK;
         // 經驗、擊倒數
         readonly VisualElement xpBar, xpFill; readonly Label xpText, killBox; float xpShowT, killShowT; long lastXp = -1; int lastKills = -1;
+        readonly VisualElement hud, set, pc, menuBox;
         public bool Visible { set => root.style.display = value ? DisplayStyle.Flex : DisplayStyle.None; }
-        /// 對話中：HUD 變淡（網頁版 body.talking #hud { opacity: .2 }）
-        public bool Dim { set => root.style.opacity = value ? 0.2f : 1; }
+        /// 對話中：HUD 變淡（網頁版 body.talking #hud, #topR, #forms, #combo, #sys { opacity: .2 }）、提示框和手機按鈕藏起來
+        public bool Dim { set => talking = value; }
+        /// 手機的排法（body.touch）
+        public bool Touch;
+        /// 點了左上的背包、技能樹、地圖（bag、tree、map）；點了形態格（形態 id）
+        public Action<string> OnMenu, OnForm;
 
         public Hud(VisualElement parent)
         {
             root = Box(parent, "hudRoot"); Abs(root, 0, 0, 0, 0);
 
             // ---- 左上：徽章、血條、魔力條、選單（整塊放大 1.2 倍）
-            var hud = Box(root, "hud"); Abs(hud, 8, 6);
+            hud = Box(root, "hud"); Abs(hud, 8, 6);
             hud.style.flexDirection = FlexDirection.Row; hud.style.alignItems = Align.FlexStart;
             hud.style.scale = new Scale(new Vector2(1.2f, 1.2f)); hud.style.transformOrigin = new TransformOrigin(0, 0);
             medal = Box(hud, "medal"); Size(medal, 76, 76); medal.style.flexShrink = 0; Img(medal, "medal-star");
@@ -52,12 +57,15 @@ namespace ZeroStar.UI
             var mpIn = Box(mp); mpIn.style.flexGrow = 1; mpIn.style.backgroundColor = C("#0a0e22");
             mpFill = Bands(mpIn, ("#c8f0ff", 1), ("#4aa8ff", 3), ("#2a5ac8", 0)); Abs(mpFill, 0, 0, null, 0); mpFill.style.width = Length.Percent(100);
             mpMark = Box(mpIn); Abs(mpMark, null, -2, null, -2); mpMark.style.width = 2; mpMark.style.marginLeft = -1; mpMark.style.backgroundColor = C("#ffe066");
+            mpMark.style.display = DisplayStyle.None;   // 使用者 2026-11-06：魔力條中間那條大招刻度線取消
             mpText = Text(mpIn, "", 12, "#dff4ff", true, 2); Abs(mpText, null, -5, 3); mpText.style.unityTextAlign = TextAnchor.UpperRight;
-            var menu = Box(hud, "hudMenu"); menu.style.flexDirection = FlexDirection.Row; menu.style.marginLeft = 6; menu.style.marginTop = 12;
+            var menu = menuBox = Box(hud, "hudMenu"); menu.style.flexDirection = FlexDirection.Row; menu.style.marginLeft = 6; menu.style.marginTop = 12;
             foreach (var (n, icon) in new[] { ("bag", "tb-bag"), ("tree", "icons/star"), ("map", "icons/map") })
             {
-                var b = Box(menu, "btn-" + n); Size(b, 40, 40); b.style.marginRight = 4;
-                if (n == "bag") Img(b, icon); else { var ic = Box(b); Size(ic, 26, 26); Abs(ic, 7, 7); Img(ic, icon); }
+                // 使用者 2026-11-06：背包／技能樹／地圖鍵不要底框，只留 30px 的圖示
+                var b = Box(menu, "btn-" + n); Size(b, 40, 40); b.style.marginRight = 4; b.pickingMode = PickingMode.Position;
+                var ic = Box(b); Size(ic, 30, 30); Abs(ic, 5, 5); Img(ic, icon);
+                string key = n; b.RegisterCallback<PointerDownEvent>(e => { e.StopPropagation(); OnMenu?.Invoke(key); });
             }
 
             // ---- 主線追蹤（左邊，徽章下面）
@@ -68,7 +76,7 @@ namespace ZeroStar.UI
             qtrackText = Text(qtrack, "", 12, "#a8f0ff", true, 1);
 
             // ---- 右上：設定（齒輪）、形態
-            var set = Box(root, "btnSet"); Abs(set, null, 8, 10); Size(set, 34, 34); Nine(set, "inset", 6, 6);
+            set = Box(root, "btnSet"); Abs(set, null, 8, 10); Size(set, 34, 34); Nine(set, "inset", 6, 6);
             var gear = Box(set); Size(gear, 20, 20); Abs(gear, 1, 1); Img(gear, "ic-gear");
             forms = Box(root, "forms"); Abs(forms, null, 62, 10); forms.style.flexDirection = FlexDirection.Row;
 
@@ -83,7 +91,7 @@ namespace ZeroStar.UI
             toast.style.translate = new Translate(new Length(-50, LengthUnit.Percent), 0); toast.style.whiteSpace = WhiteSpace.NoWrap; toast.style.opacity = 0;
 
             // ---- 右下：技能（E）、大招（Q）
-            var pc = Box(root, "pcKeys"); Abs(pc, null, null, 18, 16); pc.style.flexDirection = FlexDirection.Row; pc.style.alignItems = Align.FlexEnd;
+            pc = Box(root, "pcKeys"); Abs(pc, null, null, 18, 16); pc.style.flexDirection = FlexDirection.Row; pc.style.alignItems = Align.FlexEnd;
             pcSkill = Box(pc); Size(pcSkill, 56, 56); Img(pcSkill, "tb-skill"); pcSkill.style.marginRight = 14;
             skillWipe = Box(pcSkill); Abs(skillWipe, 3, 3, 3, 3); skillWipe.generateVisualContent += DrawWipe;
             skillT = Text(pcSkill, "", 17, "#ffffff", true, 2); Abs(skillT, 0, 0, 0, 0); skillT.style.unityTextAlign = TextAnchor.MiddleCenter;
@@ -96,6 +104,18 @@ namespace ZeroStar.UI
             xpFill = Bands(xpBar, ("#d0f4ff", 1), ("#5ac0f0", 2), ("#2a70b8", 0)); Abs(xpFill, 0, 0, null, 0);
             xpText = Text(root, "", 12, "#d0f4ff", true, 2); Abs(xpText, null, null, 4, 8); xpText.style.opacity = 0;
             killBox = Text(root, "", 14, "#a59fbd", true, 2); Abs(killBox, null, 172, 12); killBox.style.opacity = 0; killBox.enableRichText = true;
+            BuildFx(root);
+            Pad = new TouchPad(root, ultTex);
+        }
+        bool? lastTouch;
+        /// 手機：左上整塊 0.96 倍、淡一點；右上 0.85 倍；形態格直排在右邊中間；右下的 E／Q 圖示不顯示（有觸控按鈕）
+        void LayTouch(bool t)
+        {
+            hud.style.scale = new Scale(Vector2.one * (t ? 0.96f : 1.2f));
+            set.style.scale = new Scale(Vector2.one * (t ? 0.85f : 1)); set.style.transformOrigin = new TransformOrigin(Length.Percent(100), 0);
+            if (t) { forms.style.flexDirection = FlexDirection.Column; forms.style.top = Length.Percent(50); forms.style.right = 8; forms.style.translate = new Translate(0, Length.Percent(-82)); }
+            else { forms.style.flexDirection = FlexDirection.Row; forms.style.top = 10; forms.style.right = 62; forms.style.translate = new Translate(0, 0); }
+            formSlots.Clear();   // 重建形態格（手機的樣子不一樣）
         }
         static void KeyTag(VisualElement parent, string key)
         {
@@ -127,6 +147,8 @@ namespace ZeroStar.UI
         public void Update(Game g, float dt)
         {
             var P = g.Player;
+            if (lastTouch != Touch) { lastTouch = Touch; LayTouch(Touch); }
+            hud.style.opacity = talking ? 0.2f : Touch ? 0.85f : 1; set.style.opacity = talking ? 0.2f : Touch ? 0.85f : 1; forms.style.opacity = talking ? 0.2f : 1;
             // 血條：被打掉的那段先留白，0.25 秒後再慢慢縮
             float hpK = (float)Math.Max(0, P.Hp / P.MaxHp);
             hpFill.style.width = Length.Percent(hpK * 100);
@@ -144,11 +166,16 @@ namespace ZeroStar.UI
             if (main != null) qtrackText.text = main;
             // 形態：帶著的那幾個，目前的亮
             if (formSlots.Count != g.Carry.Length || formSlots.Select(f => f.form).Where((f, i) => f != g.Carry[i]).Any()) BuildForms(g);
-            for (int i = 0; i < formSlots.Count; i++) formSlots[i].slot.style.opacity = formSlots[i].form == P.Form ? 1 : 0.65f;
+            for (int i = 0; i < formSlots.Count; i++)
+            {
+                bool on = formSlots[i].form == P.Form; var sl = formSlots[i].slot;
+                if (!Touch) sl.style.opacity = on ? 1 : 0.65f;
+                else { sl.style.opacity = on ? 1 : 0.8f; sl.style.backgroundColor = on ? C("#ffffff", 0.18f) : C("#0c0818", 0.32f); Border(sl, 2, on ? C("#ffe27a") : C("#ffffff", 0.35f)); }
+            }
             // 系統台詞：打字（一般 32ms、「…」110ms、標點 160ms），打完把【】換成按鍵的樣子
             string s = g.Say.Sys;
             if (s != null && s != sysFull) StartSys(s);
-            sys.style.opacity = s != null ? 0.96f : 0;
+            sys.style.opacity = s != null ? (talking ? 0.2f : 0.96f) : 0;
             if (s != null)
             {
                 if (sysI < sysShown.Length) { sysNext -= dt; while (sysNext <= 0 && sysI < sysShown.Length) { char ch = sysShown[sysI++]; sysNext += ch == '…' ? 0.11f : "，。！？".IndexOf(ch) >= 0 ? 0.16f : 0.032f; } sysText.text = sysShown.Substring(0, sysI).Replace("<", "&lt;") + "<color=#8af0ff>▮</color>"; }
@@ -164,6 +191,10 @@ namespace ZeroStar.UI
             // 右下：技能冷卻、大招的能量星
             skillCdK = (float)Math.Max(0, P.SkillCd / P.SkillMax); skillWipe.MarkDirtyRepaint();
             skillT.text = P.SkillCd > 0.05 ? (P.SkillCd >= 1 ? Math.Ceiling(P.SkillCd).ToString() : P.SkillCd.ToString("0.0")) : "";
+            // 右下的 E／Q：手機、城鎮不顯示；1-1 還沒教到的先藏起來
+            pc.style.display = Touch || g.Town ? DisplayStyle.None : DisplayStyle.Flex;
+            pcSkill.style.visibility = Locked(g, "skill") ? Visibility.Hidden : Visibility.Visible;
+            ultHud.style.visibility = Locked(g, "ult") ? Visibility.Hidden : Visibility.Visible;
             pcSkill.style.unityBackgroundImageTintColor = P.Mp < Player.MP_COST ? new Color(0.55f, 0.55f, 0.6f) : Color.white;
             UltIcon.Draw(ultTex, ultBuf, g.Ult.On ? 0 : Math.Min(1, P.Mp / Ult.ULT_MP), Time.realtimeSinceStartup);
             ultHud.MarkDirtyRepaint();
@@ -178,15 +209,22 @@ namespace ZeroStar.UI
             if (g.Kills != lastKills) { if (lastKills >= 0) killShowT = 3; lastKills = g.Kills; }
             killBox.style.opacity = (killShowT -= dt) > 0 && !g.Town ? 1 : 0;
             killBox.text = $"擊倒 <color=#f2eefc><size=16>{g.Kills}</size></color>";
+            UpdateFx(g, dt, Touch);
+            Pad.Update(g, dt, Touch, talking, k => Locked(g, k));
         }
+        /// 按鈕跟著教學一個一個出現（1-1 的新玩家）：教過的記在 Taught；打過 1-1 的全部照舊顯示
+        static bool Locked(Game g, string k) => g.StageId == "1-1" && !g.Town && !g.Taught.Contains(k) && !g.Cleared_.Contains("1-1");
         void BuildForms(Game g)
         {
             forms.Clear(); formSlots.Clear();
             for (int i = 0; i < g.Carry.Length; i++)
             {
                 string f = g.Carry[i];
-                var slot = Box(forms); Size(slot, 46, 40); Nine(slot, "inset", 6, 6); slot.style.marginLeft = 6;
-                var por = Box(slot); Size(por, 40, 34); Abs(por, -3, -3); Img(por, "portrait-" + f);
+                var slot = Box(forms); slot.pickingMode = PickingMode.Position;
+                if (!Touch) { Size(slot, 46, 40); Nine(slot, "inset", 6, 6); slot.style.marginLeft = 6; }
+                else { Size(slot, 44, 40); Round(slot, 8); slot.style.marginBottom = 6; }
+                var por = Box(slot); Size(por, 40, 34); if (Touch) Abs(por, 2, 3); else Abs(por, -3, -3); Img(por, "portrait-" + f);
+                string fid = f; slot.RegisterCallback<PointerDownEvent>(e => { e.StopPropagation(); OnForm?.Invoke(fid); });
                 var k = Text(slot, (i + 1).ToString(), 12, "#ffd24a", true, 1); Abs(k, null, null, -4, -6);
                 formSlots.Add((f, slot));
             }

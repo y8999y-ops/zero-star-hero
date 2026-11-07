@@ -50,7 +50,7 @@ namespace ZeroStar
                 Player.Mp = Math.Min(Player.MaxMp, Player.Mp + n);
                 Sfx("pickup");
                 SceneLight.AddFlash(Player.X, Player.Y - 12, 60, 2, 0.4, "#46d4e8");
-                OnFeed?.Invoke($"魔力 +{Pf.Round(Player.Mp - before)}");
+                OnFeed?.Invoke(new FeedRow { Icon = "mana", Name = "藍水晶", Color = Items.RARITY[1].Color, Note = $"魔力 +{Pf.Round(Player.Mp - before)}" });
             };
             Props.OnBreakCrystal = c =>
             {
@@ -79,7 +79,7 @@ namespace ZeroStar
             {
                 Say = (m, sec) => Say.Push(m, sec),
                 Toast = (m, sec, icon) => Say.Show(m, sec),
-                Banner = (icon, title, eff, flavor) => { OnFeed?.Invoke(title + "：" + eff); Sfx("rare"); },
+                Banner = (icon, title, eff, flavor) => { OnResBanner?.Invoke(icon, title, eff, flavor); Sfx("rare"); },
                 Save = () => { },
                 Refresh = () => ApplyStats(),
                 Burst = (x, y, kind) =>

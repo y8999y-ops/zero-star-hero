@@ -121,6 +121,7 @@ namespace ZeroStar
             }
             it.New = true;
             Inv.Add(it);
+            OnFeed?.Invoke(new FeedRow { Icon = it.Icon, Name = it.Name, Color = it.Kind == "junk" ? "#8f8a9e" : Items.RARITY[it.Rarity].Color, Better = Items.Compare(it, Equip, Lv)?.better == true });
             if (it.Kind == "junk") QuestProgress("junk");
             if (it.Kind == "junk" && Rnd.Next() < 0.4) Say.Push(Items.JUNK.First(j => j.id == it.Junk).say, 2.4);
             Sfx(it.Rarity >= Items.RARE ? "rare" : "pickup");
@@ -161,7 +162,7 @@ namespace ZeroStar
             }
             else near.Hold = Math.Max(0, near.Hold - dt * 3);
         }
-        static readonly Dictionary<string, string> FORM_NAME = new Dictionary<string, string> { ["star"] = "星星", ["slime"] = "黏液星", ["bat"] = "蝠翼星", ["spike"] = "尖刺星", ["can"] = "鐵罐星" };
+        public static readonly Dictionary<string, string> FORM_NAME = new Dictionary<string, string> { ["star"] = "星星", ["slime"] = "黏液星", ["bat"] = "蝠翼星", ["spike"] = "尖刺星", ["can"] = "鐵罐星" };
         void Absorb(Item it)
         {
             bool unlocked = !FormsOwned.ContainsKey(it.Form);
@@ -174,17 +175,22 @@ namespace ZeroStar
             Fx.Shake(0.18, 2.5);
             if (unlocked)
             {
+                OnFormBanner?.Invoke(it.Form);
                 bool carried = Array.IndexOf(Carry, it.Form) >= 0;
                 Say.Show($"系統：吸收了{FORM_NAME[it.Form]}的靈核！新形態「{FORM_NAME[it.Form]}」。" + (carried ? (IsTouch ? "點右邊的【形態】就能變身。" : "按【1】～【3】就能變身。") : "已經帶滿 3 個了，不在戰鬥中時打開技能樹的【形態】頁就能換。"), 3.4, "forms");
                 Say.Unshift($"系統：你把{(it.Form == "slime" ? "史萊姆" : "垃圾桶")}的靈核吃掉了？不對，是吸收。好吧，差不多。", 2.8);
             }
             else
             {
-                OnFeed?.Invoke($"靈核 +1（{FORM_NAME[it.Form]}）");
+                OnFeed?.Invoke(new FeedRow { Icon = it.Icon, Name = it.Name, Color = Items.RARITY[3].Color, Note = $"靈核 +1（{FORM_NAME[it.Form]}有 {FormsOwned[it.Form]} 顆）" });
                 if (!SeenCoreTip) { SeenCoreTip = true; Say.Push("系統：重複的靈核也有用——在左上的【技能樹】用它點技能，兩顆還能換一次屬性。", 3.4); }
             }
         }
-        public Action<string> OnFeed;
+        /// 左邊那排「撿到東西」的訊息（loot.js 的 feed）：圖示、名字（稀有度的顏色）、比身上好的 ▲、附註
+        public struct FeedRow { public string Icon, Name, Color, Note; public bool Better; }
+        public Action<FeedRow> OnFeed;
+        public Action<string> OnFormBanner;                         // 獲得新形態：畫面中間的大字（main.js 的 formBanner）
+        public Action<string, string, string, string> OnResBanner;  // 重要資源的橫幅（icon, title, eff, flavor）
         public void ApplyStats() { var s = Items.ComputeStats(Equip, Lv); s.MaxMp = 100 + MpBonus; Player.SetStats(s); }
         Item MythOn(string id) { foreach (var it in Equip.Values) if (it?.Myth == id) return it; return null; }
         // 裝備效果的物件
@@ -286,7 +292,7 @@ namespace ZeroStar
         static readonly string[] METAL7 = { "#14161c", "#2a2e38", "#4a5468", "#6e7a90", "#9aa6ba", "#d0d8e6", "#ffffff" };
         public readonly List<Shot> Shots = new List<Shot>();
         public class Shot { public double X, Y, Dir, Vy, Life, Mult = 1; public string Form; public bool Small, Done; public FxRun Fx; public Enemy Skip; }
-        const double COMBO_T = 4.4, FORM_CD = 1;
+        public const double COMBO_T = 4.4; const double FORM_CD = 1;
         double formCdUntil = -9;
         public string PendingForm;   // 換形態（按鍵或操作錄影）
         public string[] Carry = { "star", "slime", "bat", "can", "spike" };   // 帶在身上的形態（階段 2：全部都有）
