@@ -46,6 +46,7 @@ namespace ZeroStar.UI
             hud.style.flexDirection = FlexDirection.Row; hud.style.alignItems = Align.FlexStart;
             hud.style.scale = new Scale(new Vector2(1.2f, 1.2f)); hud.style.transformOrigin = new TransformOrigin(0, 0);
             medal = Box(hud, "medal"); Size(medal, 76, 76); medal.style.flexShrink = 0; Img(medal, "medal-star");
+            medal.pickingMode = PickingMode.Position; medal.RegisterCallback<PointerDownEvent>(e => { e.StopPropagation(); OnMenu?.Invoke("hero"); });   // 點徽章＝打開背包
             var lvTab = Box(medal); Abs(lvTab, null, null, null, -4); lvTab.style.alignSelf = Align.Center; lvTab.style.left = new Length(50, LengthUnit.Percent); lvTab.style.translate = new Translate(new Length(-50, LengthUnit.Percent), 0);
             Nine(lvTab, "tab", 4, 4); lvTab.style.paddingLeft = lvTab.style.paddingRight = 9;
             lv = Text(lvTab, "Lv 1", 12, "#1a0e04", true); lv.style.unityTextAlign = TextAnchor.MiddleCenter; lv.style.whiteSpace = WhiteSpace.NoWrap;

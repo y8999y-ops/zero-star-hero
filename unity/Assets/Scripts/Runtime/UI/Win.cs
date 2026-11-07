@@ -57,8 +57,12 @@ namespace ZeroStar.UI
         }
 
         /// 打開視窗（已經開著就先把前一個「等關閉」送出去）；回傳的工作在關閉時完成
-        public Task Show(string title, string theme, string emblem, List<Tab> tabs, string tab = null)
+        bool showMoney = true;
+        /// 捲動區裡的每個東西（找節點、按鈕用）
+        public void BodyQuery(Action<VisualElement> f) => body.Content.Query<VisualElement>().ForEach(f);
+        public Task Show(string title, string theme, string emblem, List<Tab> tabs, string tab = null, bool money = true)
         {
+            showMoney = money;
             if (Open) { var r = done; done = null; r?.TrySetResult(true); }
             this.title = title; this.theme = theme; this.emblem = emblem; this.tabs = tabs; this.tab = tab ?? tabs[0].Id;
             Open = true; overlay.style.display = DisplayStyle.Flex;
@@ -95,11 +99,12 @@ namespace ZeroStar.UI
                     b.style.paddingLeft = 4; b.style.paddingRight = 10; b.style.paddingTop = b.style.paddingBottom = 2; b.style.marginLeft = b.style.marginRight = 2; Round(b, 12);
                     b.style.backgroundColor = on ? C(Acc) : C("#000000", 0.35f); Border(b, 2, on ? C("#ffffff", 0.5f) : C("#ffffff", 0.1f));
                     var ic = Box(b); Size(ic, 20, 20); Img(ic, "icons/" + x.Icon); ic.style.marginRight = 3;
-                    Text(b, x.Label, 12, on ? "#12080a" : "#b8acc8", true);
+                    Text(b, x.Label, 12, on ? "#12080a" : "#b8acc8", true).style.whiteSpace = WhiteSpace.NoWrap;
+                    if (tabs.Count > 4) { b.style.paddingRight = 6; b.style.marginLeft = b.style.marginRight = 1; }   // 分頁多（技能樹）：擠一點
                     string id = x.Id; b.AddManipulator(new Clickable(() => { tab = id; keepScroll = false; Sfx?.Invoke("ui"); Render(); }));
                 }
             var (coins, scrap) = Money?.Invoke() ?? (0, 0);
-            money.Clear();
+            money.Clear(); money.style.display = showMoney ? DisplayStyle.Flex : DisplayStyle.None;
             moneyChips[0] = Chip(money, "coin", coins.ToString()); moneyChips[1] = Chip(money, "scrap", scrap.ToString());
             moneyChips[0].style.marginRight = 4;
             for (int i = 0; i < 2; i++) moneyLabels[i] = moneyChips[i].Q<Label>();

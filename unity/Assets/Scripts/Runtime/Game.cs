@@ -114,6 +114,15 @@ namespace ZeroStar
         {
             if (d.Item.Kind == "formcore") return false;
             var it = d.Item;
+            // 自動拆解：關／只拆純垃圾／純垃圾和普通（比身上好的不拆）
+            bool better = Items.Compare(it, Equip, Lv)?.better == true;
+            bool auto = Auto == 1 ? it.Kind == "junk" : Auto == 2 ? it.Kind == "junk" || it.Rarity <= Items.COMMON : false;
+            if (auto && !better)
+            {
+                var r = Items.RARITY[it.Rarity]; Scrap += r.Scrap; Money += r.Coin;
+                OnFeed?.Invoke(new FeedRow { Icon = it.Icon, Name = it.Name, Color = it.Kind == "junk" ? "#8f8a9e" : r.Color, Note = $"自動拆解 +{r.Scrap} 星塵" });
+                return true;
+            }
             if (Inv.Count >= Items.BAG_SIZE)
             {
                 if (!d.Warned) { d.Warned = true; Say.Show("系統：背包滿了！打開右上角的【背包】整理一下。", 2.5, "bag"); }
@@ -191,7 +200,15 @@ namespace ZeroStar
         public Action<FeedRow> OnFeed;
         public Action<string> OnFormBanner;                         // 獲得新形態：畫面中間的大字（main.js 的 formBanner）
         public Action<string, string, string, string> OnResBanner;  // 重要資源的橫幅（icon, title, eff, flavor）
-        public void ApplyStats() { var s = Items.ComputeStats(Equip, Lv); s.MaxMp = 100 + MpBonus; if (Meal != null && MEALS.TryGetValue(Meal, out var m)) m.apply(s); Player.SetStats(s); }
+        // ---- 背包、技能樹用的存檔欄位
+        public readonly HashSet<Item> Locked = new HashSet<Item>();                      // 鎖定（不會被任何拆解拆掉）
+        public int Auto;                                                                 // 自動拆解：0 關、1 垃圾、2 普通以下
+        public readonly Dictionary<string, int> CoreSpent = new Dictionary<string, int>();      // 換屬性花掉的靈核
+        public readonly Dictionary<string, double> CoreBonus = new Dictionary<string, double>(); // 靈核換來的基礎屬性
+        public readonly Dictionary<string, bool[]> MapSeen = new Dictionary<string, bool[]>();  // 關卡地圖走過的格子
+        /// 總共吸過幾顆這個形態的靈核（背包星星周圍的粒子數）
+        public int FormGot(string f) => 1 + (FormsOwned.TryGetValue(f, out var p) ? p : 0);
+        public void ApplyStats() { var s = Items.ComputeStats(Equip, Lv, CoreBonus); s.MaxMp = 100 + MpBonus; if (Meal != null && MEALS.TryGetValue(Meal, out var m)) m.apply(s); Player.SetStats(s); }
         // ---- 旅館的料理（townui.js 的 MEALS）：吃了下一趟冒險有效（回到城鎮時用掉），一次只能一道
         public string Meal;
         public static readonly Dictionary<string, (string name, string icon, string buffIcon, string buff, int cost, Action<Stats> apply)> MEALS = new Dictionary<string, (string, string, string, string, int, Action<Stats>)>
@@ -395,7 +412,11 @@ namespace ZeroStar
             TipUse = f.TipUse; SeenSet = f.SeenSet; SeenCoreTip = f.SeenCoreTip;
             Taught.UnionWith(f.Taught); Reacted.UnionWith(f.Reacted); SysDone.UnionWith(f.SysDone); Cleared_.UnionWith(f.Cleared_);
             GuildRegistered = f.GuildRegistered; GuildDone = f.GuildDone; TGuide = f.TGuide;
-            Meal = f.Town || !Town ? f.Meal : null;   // 料理的效果只到這趟冒險結束（從關卡回城鎮時用掉）
+            Meal = f.Town || !Town ? f.Meal : null;
+            Locked.UnionWith(f.Locked); Auto = f.Auto;
+            foreach (var kv in f.CoreSpent) CoreSpent[kv.Key] = kv.Value;
+            foreach (var kv in f.CoreBonus) CoreBonus[kv.Key] = kv.Value;
+            foreach (var kv in f.MapSeen) MapSeen[kv.Key] = kv.Value;   // 料理的效果只到這趟冒險結束（從關卡回城鎮時用掉）
             Quests.Tracked.AddRange(f.Quests.Tracked);
             Quests.Active.AddRange(f.Quests.Active); Quests.Board.AddRange(f.Quests.Board); Quests.EnhanceMax = f.Quests.EnhanceMax; Quests.Meals = f.Quests.Meals; Quests.Rerolls = f.Quests.Rerolls;
         }

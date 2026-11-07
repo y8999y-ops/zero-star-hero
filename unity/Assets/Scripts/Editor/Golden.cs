@@ -119,5 +119,30 @@ namespace PixelFX.Tests
             }
             Debug.Log($"[Golden] 即時特效：寫出 {files} 個比對檔（{frames} 格）到 {outDir}（{watch.ElapsedMilliseconds} ms）");
         }
+
+        // RunOrbit：背包左欄主角圖（ZeroStar.UI.HeroOrbit.DrawHero）照 game/tools/unity-orbit-golden.mjs 的 manifest.json 畫一次，
+        //   composite（背景 null、光 0.6）存到 unity/Golden/orbit-unity/，再用 node game/tools/unity-orbit-golden.mjs --compare 比對。
+        //   執行：Unity.exe -batchmode -nographics -projectPath unity -executeMethod PixelFX.Tests.Golden.RunOrbit -quit
+        [MenuItem("零星工具/比對測試：輸出背包主角圖")]
+        public static void RunOrbit()
+        {
+            string root = Directory.GetParent(Application.dataPath).FullName;
+            string web = Path.Combine(root, "Golden", "orbit-web"), outDir = Path.Combine(root, "Golden", "orbit-unity");
+            Directory.CreateDirectory(outDir);
+            var manifest = (List<object>)ZeroStar.MiniJson.Parse(File.ReadAllText(Path.Combine(web, "manifest.json")));
+            var of = new Frame(ZeroStar.UI.HeroOrbit.OW, ZeroStar.UI.HeroOrbit.OH); var sf = new Frame(ZeroStar.UI.HeroOrbit.SW, ZeroStar.UI.HeroOrbit.SH);
+            int files = 0;
+            foreach (Dictionary<string, object> c in manifest)
+            {
+                var sl = (List<object>)c["slots"]; var cols = new string[7];
+                for (int i = 0; i < 7; i++) cols[i] = sl[i] as string;
+                var aura = new List<(string id, int n)>();
+                foreach (Dictionary<string, object> a in (List<object>)c["aura"]) aura.Add(((string)a["id"], (int)(double)a["n"]));
+                ZeroStar.UI.HeroOrbit.DrawHero(of, sf, (double)c["t"], (double)c["spin"], cols, aura, (string)c["form"]);
+                File.WriteAllBytes(Path.Combine(outDir, (string)c["name"] + ".bin"), of.Composite(null, null, 0.6));
+                files++;
+            }
+            Debug.Log($"[Golden] 背包主角圖：寫出 {files} 個比對檔到 {outDir}");
+        }
     }
 }

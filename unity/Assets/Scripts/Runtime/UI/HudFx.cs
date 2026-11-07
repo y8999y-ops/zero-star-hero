@@ -34,6 +34,8 @@ namespace ZeroStar.UI
         VisualElement absorbTip, absorbPc; Label absorbTc; VisualElement bubble; Label bubbleText; float bubbleK;
         // 戰鬥中：次要的 HUD 變淡
         float combatT, feedDim = 1; bool talking;
+        /// 戰鬥中（附近有敵人，離開 2 秒後才算脫離）：技能樹的形態頁不能換帶哪幾個
+        public bool InCombat => combatT > 0;
 
         void BuildFx(VisualElement root)
         {
