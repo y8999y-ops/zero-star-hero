@@ -45,7 +45,7 @@ namespace ZeroStar
         /// 沾上一個狀態（會先檢查反應）。depth：連鎖深度
         public void Apply(Enemy e, string id, int depth = 0)
         {
-            if (e == null || e.Dead) return;
+            if (e == null || e.Dead || e.IsBoss) return;   // 王先不吃狀態
             if (Allow != null && !Allow.Contains(id == "fire" ? "burn" : id)) return;
             var S = e.St ??= new StatusSet();
             if (id == "burn" || id == "fire")

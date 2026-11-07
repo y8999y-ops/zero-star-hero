@@ -54,6 +54,9 @@ namespace ZeroStar
         };
 
         public readonly EnemyKind K; public readonly string Kind; public readonly bool Elite; readonly Anim anim, white;
+        public virtual bool IsBoss => false;
+        /// 自己的光源（王才有；enemies.js 的怪沒有 lights）
+        public virtual void Lights(List<LightSrc> list) { }
         public double X0, Vx, Vy, Hp, MaxHp, Stun, FlashT, Face = 1, Clock, HopDir = 1, T, Speed, SqT, AwakeT, AlertT = -1;
         public double Xp, Yp;
         public bool Dead_, Awake, DeepSleep, FlungUp;
@@ -82,11 +85,14 @@ namespace ZeroStar
             if (K.Fly) { Mode = "hover"; ModeT = 1 + Pf.Rand(Seed, 5) * 2; Side = Pf.Rand(Seed, 6) < 0.5 ? -1 : 1; }
         }
 
+        /// 王（boss.js）用：不是 enemies.js 的怪，不動 Seed、不載動畫
+        protected Enemy(EnemyKind k, string kind, double x, double y) { K = k; Kind = kind; Xp = x; Yp = y; }
+
         /// 身體的碰撞框（世界座標）
-        public (double x0, double x1, double y0, double y1) Box() => K.Fly ? (Xp - K.W, Xp + K.W, Yp - K.H, Yp + K.H) : (Xp - K.W, Xp + K.W, Yp - K.H, Yp);
+        public virtual (double x0, double x1, double y0, double y1) Box() => K.Fly ? (Xp - K.W, Xp + K.W, Yp - K.H, Yp + K.H) : (Xp - K.W, Xp + K.W, Yp - K.H, Yp);
         public Box HitBox() { var b = Box(); return new Box(b.x0, b.x1, b.y0, b.y1); }
 
-        public void Update(double dt, Player player, IWorld world)
+        public virtual void Update(double dt, Player player, IWorld world)
         {
             Clock += dt;
             dt *= St != null && St.Slime > 0 ? 0.5 : 1;   // 黏液：動作、移動都變慢
@@ -258,7 +264,8 @@ namespace ZeroStar
             if (Yp > map.H + 40) { Yp = map.FloorAt(Xp, 0); Vy = 0; }
         }
 
-        public void Hit(Roll roll, double dir, HitOpts o, IWorld world)
+        /// area：打到的範圍（hitArea、hitOnce 才有；王用來判斷有沒有打到弱點）
+        public virtual void Hit(Roll roll, double dir, HitOpts o, IWorld world, Box? area = null)
         {
             double dmg = roll.Dmg * (MarkT > 0 ? 1.1 : 1); bool crit = roll.Crit;   // 尖刺星「破綻」：被標記的多受 10% 傷害
             if (crit && roll.Mark) MarkT = 3;
@@ -286,7 +293,7 @@ namespace ZeroStar
         }
 
         /// 狀態、反應造成的傷害：不會硬直、不會擊退，只跳數字（small＝持續傷害）
-        public void Tick(double dmg, IWorld w, bool small = false)
+        public virtual void Tick(double dmg, IWorld w, bool small = false)
         {
             if (Dead_) return;
             double d = Math.Max(1, Pf.Round(dmg));
@@ -314,7 +321,11 @@ namespace ZeroStar
             world.OnKill(this);
         }
 
-        public void Draw(Frame frame, FxSystem fx, double simMs)
+        public virtual void Draw(Frame frame, FxSystem fx, double simMs)
+        {
+            DrawEnemy(frame, fx, simMs);
+        }
+        void DrawEnemy(Frame frame, FxSystem fx, double simMs)
         {
             var snap = Status.TakeSnap(frame, this);   // 有元素狀態：先記下這塊畫面，畫完比對出身體的形狀
             double sx = 1, sy = 1, jx = 0;

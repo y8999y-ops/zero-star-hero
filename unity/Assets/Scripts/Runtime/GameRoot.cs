@@ -37,13 +37,13 @@ namespace ZeroStar
               for (int i = 0; i < 40; i++) { var it = Items.MakeItem(1 + i * 2, i % 6); Items.Compare(it, eq, 10); } Items.ComputeStats(eq, 10); Rnd.R = saved; }
             var sc = shotDir != null ? TraceScript.Load(TraceScript.DefaultPath()) : null;
             screen.Tick += OnTick;
-            screen.Draw += f => game.Render(f);
+            screen.Draw += f => { screen.Zoom = Game.Zoom; game.Render(f); };   // 王戰時鏡頭拉遠（Game.Zoom）
             screen.PostComposite += d => game.PostComposite(d);
             NewGame(sc?.stage ?? "1-1", null, sc != null ? TraceScript.DefaultPath() : null);
             touchMode = Input.touchSupported && Application.isMobilePlatform;
         }
 
-        static readonly string[] ORDER = { "1-1", "1-2", "1-3" };   // 1-4（王）在階段 3c
+        static readonly string[] ORDER = { "1-1", "1-2", "1-3", "1-4" };
         /// 開一關。from＝上一關（等級、裝備、背包、形態、技能樹這些帶過來）
         void NewGame(string stage, Game from, string tracePath = null)
         {
@@ -54,7 +54,7 @@ namespace ZeroStar
             game.Say.OnShow = (msg, sec, focus) => { sayText = msg; sayT = (float)(sec + msg.Length * 0.035); };
             if (from == null && tracePath == null) foreach (var f in game.Carry) game.FormsOwned[f] = 0;   // 開發用：形態全部都有（存檔、技能樹畫面在階段 4、5）
             game.OnPickup = it => { sayText = "撿到：" + it.Name; sayT = 1.6f; };
-            // 進傳送門：網頁版回碎星鎮、再從選關地圖選下一關（階段 3d）；這裡先直接到下一關（最後一關之後回 1-1）
+            // 進傳送門：網頁版回碎星鎮、再從選關地圖選下一關（階段 3d）；這裡先直接到下一關（1-4 打完回 1-1）
             game.OnLeave = () => game.After(380, () => pending = NextStage());
 #if UNITY_ANDROID || UNITY_IOS
             game.Vibrate = () => Handheld.Vibrate();   // 大招落地震一下（手機）
@@ -108,7 +108,7 @@ namespace ZeroStar
         {
             if (shotDir != null)
             {
-                while (si < script.Count && script[si].t == tickN) { var e = script[si++]; if (e.type == "f") game.SwitchForm(e.code); else if (e.type == "m") game.Player.Mp = game.Player.MaxMp; else if (e.type == "x") game.GainXp(int.Parse(e.code)); else if (e.type == "i") game.DropItem(game.Player.X + 40 * game.Player.Face, game.Player.Y - 12, int.Parse(e.code)); else if (e.type == "d") game.Input.KeyDown(e.code); else game.Input.KeyUp(e.code); }
+                while (si < script.Count && script[si].t == tickN) { var e = script[si++]; if (e.type == "f") game.SwitchForm(e.code); else if (e.type == "m") game.Player.Mp = game.Player.MaxMp; else if (e.type == "h") game.Player.Hp = int.Parse(e.code); else if (e.type == "x") game.GainXp(int.Parse(e.code)); else if (e.type == "i") game.DropItem(game.Player.X + 40 * game.Player.Face, game.Player.Y - 12, int.Parse(e.code)); else if (e.type == "d") game.Input.KeyDown(e.code); else game.Input.KeyUp(e.code); }
                 if (shotNo < shotAt.Length && tickN == shotAt[shotNo]) { ScreenCapture.CaptureScreenshot(Path.Combine(shotDir, $"play-{shotNo}.png")); shotNo++; }
                 if (tickN % 30 == 0) Debug.Log($"[Perf] 第 {tickN} 步{(game.Ult.On ? "（大招）" : "")}：{screen.Fps:F0} fps，平均 {screen.AvgMs:F2} ms，最慢 {screen.MaxMs:F2} ms，回收 {GC.CollectionCount(0)} 次");
                 if (shotNo >= shotAt.Length && tickN > Math.Max(shotAt[shotAt.Length - 1] + 20, scTicks)) { Debug.Log($"[Shot] 結束：{game.StageId} 主角 {game.Player.X:F1},{game.Player.Y:F1} 通關 {game.StageDone} 離開 {game.Leaving}"); Application.Quit(); }
@@ -197,6 +197,44 @@ namespace ZeroStar
             t.Apply();
             return t;
         }
+        // 王戰的 HUD（網頁版是 HTML：畫面下方的王血條、大招時四周變暗、大招名稱；暫時版，UI 在階段 4 重做）
+        float bossLag = 1; GUIStyle bossStyle;
+        void DrawBossHud(float u)
+        {
+            double now = game.SimMs;
+            // 大招：四周暗下來（5 秒：一開始淡入、最後淡出）
+            double du = (now - game.BossUltAt) / 5000;
+            if (du >= 0 && du < 1)
+            {
+                float a = (float)(du < 0.08 ? du / 0.08 : du < 0.75 ? 1 : (1 - du) / 0.25) * 0.55f;
+                float bw = Screen.width * 0.18f, bh = Screen.height * 0.18f; var c = new Color(0.04f, 0.03f, 0.02f, a);
+                Rect(0, 0, Screen.width, bh, c); Rect(0, Screen.height - bh, Screen.width, bh, c); Rect(0, bh, bw, Screen.height - 2 * bh, c); Rect(Screen.width - bw, bh, bw, Screen.height - 2 * bh, c);
+            }
+            if (bossStyle == null) bossStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
+            // 大招名（1.6 秒：放大縮回、最後淡出）
+            double nu = (now - game.BossUltAt) / 1600;
+            if (nu >= 0 && nu < 1 && game.BossUltName != null)
+            {
+                float a = (float)(nu < 0.15 ? nu / 0.15 : nu < 0.8 ? 1 : (1 - nu) / 0.2), sc = (float)(nu < 0.15 ? 1.8 - 0.8 * nu / 0.15 : 1);
+                bossStyle.fontSize = Mathf.RoundToInt(30 * u * sc); bossStyle.normal.textColor = new Color(1f, 0.96f, 0.75f, a);
+                GUI.Label(new UnityEngine.Rect(0, Screen.height * 0.3f, Screen.width, 50 * u), game.BossUltName, bossStyle);
+            }
+            if (!game.BossBarOn) { bossLag = 1; return; }
+            // 血條：白色的「剛剛被打掉的部分」慢一點跟上；三個階段換顏色；60%、30% 有刻度
+            float k = (float)game.BossBarK; bossLag = Mathf.Max(k, bossLag - Time.unscaledDeltaTime * 0.6f);
+            float w = Mathf.Min(460 * u, Screen.width * 0.7f), h = 10 * u, x = (Screen.width - w) / 2, y = Screen.height - 22 * u - h;
+            bossStyle.fontSize = Mathf.RoundToInt(11 * u); bossStyle.normal.textColor = new Color(0.91f, 0.94f, 0.63f);
+            GUI.Label(new UnityEngine.Rect(x, y - 16 * u, w, 16 * u), "大胃王史萊姆", bossStyle);
+            Rect(x - 2 * u, y - 2 * u, w + 4 * u, h + 4 * u, new Color(0.07f, 0.05f, 0.06f, 0.95f));
+            Rect(x, y, w, h, new Color(0.08f, 0.07f, 0.04f));
+            Rect(x, y, w * bossLag, h, new Color(1f, 0.94f, 0.88f));
+            Color fill = game.BossBarPhase == 1 ? new Color(0.6f, 0.75f, 0.16f) : game.BossBarPhase == 2 ? new Color(1f, 0.48f, 0.23f) : new Color(1f, 0.85f, 0.29f);
+            if (game.BossBarPhase == 3 && (int)(Time.unscaledTime / 0.25f) % 2 == 0) fill = new Color(1f, 0.98f, 0.88f);
+            Rect(x, y, w * k, h, fill);
+            Rect(x, y, w * k, 2 * u, new Color(1f, 1f, 1f, 0.35f));
+            foreach (float m in new[] { 0.6f, 0.3f }) Rect(x + w * m - u, y - u, 2 * u, h + 2 * u, new Color(0.07f, 0.05f, 0.06f));
+        }
+
         void OnGUI()
         {
             if (game == null) return;
@@ -230,6 +268,7 @@ namespace ZeroStar
                 nameStyle.fontSize = Mathf.RoundToInt(26 * u); nameStyle.normal.textColor = new Color(1f, 0.92f, 0.6f);
                 GUI.Label(new UnityEngine.Rect(0, Screen.height * 0.18f, Screen.width, 40 * u), game.Ult.Name, nameStyle);
             }
+            DrawBossHud(u);
             // 效能（右上角）：每秒幾格、每格算畫面花幾毫秒
             if (perfStyle == null) perfStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperRight, fontSize = Mathf.RoundToInt(10 * u) };
             perfStyle.normal.textColor = new Color(1, 1, 1, 0.55f);

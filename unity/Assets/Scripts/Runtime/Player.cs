@@ -266,6 +266,7 @@ namespace ZeroStar
                 // 技能樹「回收車」：路上的小怪被推著走
                 if (Rank("can", "c_truck") != 0) foreach (var e in w.EnemiesIn(new Box(X - 4, X + Face * 26, Y - 30, Y + 4)))   // 跟網頁版一樣不排序左右（往左時這個框是反的）
                 {
+                    if (e.IsBoss) continue;
                     if (!truck.Contains(e)) truck.Add(e);
                     e.Xp = X + Face * (16 + truck.Count * 3); e.Vx = Vx; e.Stun = Math.Max(e.Stun, 0.3);
                 }

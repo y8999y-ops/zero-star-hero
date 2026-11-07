@@ -161,7 +161,7 @@ namespace ZeroStar
         partial void DrawLowHp(Frame frame)
         {
             var v = ViewRect();
-            LowHp.Draw(frame, LowHpK, LowHpPulse, ZOOM, v.y0 - (H - H / ZOOM) / 2);
+            LowHp.Draw(frame, LowHpK, LowHpPulse, Zoom, v.y0 - (H - H / Zoom) / 2);
         }
     }
 }

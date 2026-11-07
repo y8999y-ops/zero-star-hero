@@ -15,7 +15,7 @@ namespace ZeroStar
         public class Cache { public double X, Y; public int N; }
         public class Altar { public double X; public double? Y; }
         public class Feature { public string T, Form; public double X, Y, W, H; public int I; public OrderedDict Raw; }
-        public class Arena { public double L, R, Floor; }
+        public class Arena { public double L, R, Floor; public RectD? Top, Hole; }   // Top＝王放大招站的高台（y＝台面）、Hole＝屋頂的破洞
         public string Id, Name; public bool Paced;
         public double StartX, StartY, ExitX, ExitY;
         public List<string> Intro = new List<string>();
@@ -64,7 +64,12 @@ namespace ZeroStar
                 if (G(d, "spawns") != null) s.Spawns = L(G(d, "spawns")).Select(o => { var a = (OrderedDict)o; var y = G(a, "y"); return new Spawn { K = S(G(a, "k")), X = D(G(a, "x")), Y = DN(y), Air = (y as string) == "air", Core = S(G(a, "core")), Deep = B(G(a, "deep")) }; }).ToList();
                 foreach (var o in L(G(d, "features"))) { var f = (OrderedDict)o; s.Features.Add(new Feature { Raw = f, T = S(G(f, "t")), X = D(G(f, "x")), Y = D(G(f, "y")), W = D(G(f, "w")), H = D(G(f, "h")), I = (int)D(G(f, "i")), Form = S(G(f, "form")) }); }
                 foreach (var o in L(G(d, "hazards"))) { var h = L(o); s.Hazards.Add(((string)h[0], D(h[1]), D(h[2]))); }
-                if (G(d, "arena") is OrderedDict ar) s.ArenaInfo = new Arena { L = D(G(ar, "l")), R = D(G(ar, "r")), Floor = D(G(ar, "floor")) };
+                if (G(d, "arena") is OrderedDict ar)
+                {
+                    s.ArenaInfo = new Arena { L = D(G(ar, "l")), R = D(G(ar, "r")), Floor = D(G(ar, "floor")) };
+                    if (G(ar, "top") is OrderedDict tp) s.ArenaInfo.Top = new RectD { X = D(G(tp, "x")), Y = D(G(tp, "y")), W = D(G(tp, "w")) };
+                    if (G(ar, "hole") is OrderedDict ho) s.ArenaInfo.Hole = new RectD { X = D(G(ho, "x")), Y = D(G(ho, "y")), W = D(G(ho, "w")), H = D(G(ho, "h")) };
+                }
                 foreach (var o in L(G(d, "events")))
                 {
                     var e = (OrderedDict)o;

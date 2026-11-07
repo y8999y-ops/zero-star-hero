@@ -57,7 +57,8 @@ namespace ZeroStar
         {
             double gy = Map.FloorAt(x, y != null ? y.Value - 4 : 0);
             double yy = air ? gy - 60 - Rnd.Next() * 30 : y ?? gy;
-            var e = new Enemy(kind, x, yy) { X0 = x };   // TODO 1-4：王（boss.js）在階段 3c
+            Enemy e = kind == "boss" ? new Boss(x, StageD.ArenaInfo?.Floor ?? Data.Floor, this) : new Enemy(kind, x, yy);
+            e.X0 = x;
             Enemies.Add(e);
             if (Started && !placing) Dust(e.X, e.K.Fly ? e.Y + 8 : e.Y, 4);
             return e;
@@ -74,7 +75,7 @@ namespace ZeroStar
         public int Alive((double l, double r)? lk)
         {
             int n = 0;
-            foreach (var e in Enemies) if (!(e.Dead || e.Kind == "gold" || (lk != null && (e.X < lk.Value.l || e.X > lk.Value.r || (StageD.ArenaInfo != null && e.Y < StageD.ArenaInfo.Floor - 220))))) n++;
+            foreach (var e in Enemies) if (!(e.Dead || e.Kind == "gold" || (lk != null && !e.IsBoss && (e.X < lk.Value.l || e.X > lk.Value.r || (StageD.ArenaInfo != null && e.Y < StageD.ArenaInfo.Floor - 220))))) n++;
             return n;
         }
         public void DropCache(double x, double y, int n)
@@ -88,7 +89,7 @@ namespace ZeroStar
             StageDone = true;
             Cleared_.Add(StageD.Id);
             QuestProgress("clear");
-            // TODO 1-4：打倒王之後在主角前面開傳送門（階段 3c）
+            if (PortalX == null) OpenBossPortal();   // 1-4：打倒王之後在主角前面開傳送門
             Say.Queue.Clear();
             Say.Show("系統：傳送門開了。走過去按互動，回碎星鎮。", 2.6);
         }
@@ -262,7 +263,7 @@ namespace ZeroStar
         {
             Deaths++;
             (double x, double y)? to = CheckpointAltar != null ? (CheckpointAltar.X, CheckpointAltar.Y) : (StageD.StartX, Map.FloorAt(StageD.StartX, 0));
-            // TODO 1-4：王戰中死掉（階段 3c）
+            to = BossDeath(to);   // 王戰中死掉：王和房裡的小怪收掉、解除封鎖；王融化中死掉：原地復活
             string col = FORM_COLOR.TryGetValue(Player.Form, out var cc) ? cc : "#ffd84a";
             OnShatter?.Invoke(Player.X, Player.Y, col);
             Fx.HitStop(0.12); Fx.Shake(0.35, 3); Sfx("crit");

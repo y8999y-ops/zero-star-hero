@@ -111,7 +111,7 @@ namespace ZeroStar
                     if (d >= -6 && d < BODY)
                     {
                         if (!hit.Contains(e)) { hit.Add(e); H.Hit(e, 7, side, new HitOpts { Launch = true, Push = 5, Elem = "slime" }); kit.Sfx("squish"); }
-                        { e.Xp += side * SPEED * dt * 0.85; e.Vx = side * 60; }   // 被浪推著走（e.isBoss 一律 false）
+                        if (!e.IsBoss) { e.Xp += side * SPEED * dt * 0.85; e.Vx = side * 60; }   // 被浪推著走
                     }
                 }
                 if (Math.Floor(t * 30) % 3 == 0)

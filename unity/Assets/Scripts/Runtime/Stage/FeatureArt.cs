@@ -1,4 +1,4 @@
-// game/src/feature-art.js 一行一行翻成 C#：形態機關＋一次性資源的畫法（drawPlug 是王房用的，沒翻）。
+// game/src/feature-art.js 一行一行翻成 C#：形態機關＋一次性資源的畫法（drawPlug＝王房屋頂破洞的垃圾塞子）。
 //   機關：crack 裂開的垃圾牆、wind 深淵氣流、shroom 黏液菇、seal 星光封印
 //   資源：ember 星之殘火、vein 星塵礦脈、fossil 魔物化石核、safe 被丟下來的寶箱、stele 星王的碑文
 // 每個 DrawXxx(frame, x, y, ..., t)：(x, y)＝底部中心（貼地）。
@@ -34,6 +34,37 @@ namespace ZeroStar
         {
             if (outline) for (int j = -1; j <= rows.Length; j++) for (int i = -1; i <= rows[0].Length; i++) if (!At(rows, i, j) && (At(rows, i + 1, j) || At(rows, i - 1, j) || At(rows, i, j + 1) || At(rows, i, j - 1))) Put(frame, x0 + i, y0 + j, OUT);
             for (int j = 0; j < rows.Length; j++) for (int i = 0; i < rows[j].Length; i++) { char ch = rows[j][i]; if (ch != '.') Put(frame, x0 + i, y0 + j, map[ch], glow.IndexOf(ch) >= 0); }
+        }
+
+        // ---------- 王房屋頂破洞的垃圾塞子（feature-art.js 的 drawPlug）：從上面砸下來（0.3 秒），上緣隆起一坨，底面一層黏液、落定後滴黏液
+        static readonly uint[] GOO_D = new[] { "#1a4a20", "#2a8a3a", "#4cc04a", "#8ee86a" }.Select(P).ToArray();
+        public static void DrawPlug(Frame frame, double x, double y, double w, double h, double t)
+        {
+            double drop = Math.Max(0, 1 - t / 0.3), oy = -Pf.Round(70 * drop * drop);
+            for (double i = -3; i < w + 3; i++)
+            {
+                double gooH = 1 + Pf.Round(Hash(Math.Floor((i + 3) / 3), 71) * 2);
+                double u = (i + 3) / (w + 6), top = -Pf.Round(10 * Pf.Pow(Pf.Sin(u * Math.PI), 0.6) + Hash(Math.Floor(i / 4), 51) * 3) + (i < 0 || i >= w ? 6 : 0);
+                for (double j = top; j < h + gooH; j++)
+                {
+                    double by = top, band = 0, bh = 6;
+                    while (true) { bh = 6 + Math.Floor(Hash(band, 61) * 5); if (j < by + bh) break; by += bh; band++; }
+                    double off = Math.Floor(Hash(band, 62) * 11);
+                    double bx = -3 - off, k = 0, bw = 0; while (true) { bw = 9 + Math.Floor(Hash(band, k, 63) * 10); if (i < bx + bw) break; bx += bw; k++; }
+                    double lx = i - bx, ly = j - by, id = band * 37 + k, kind = Hash(id, 64); var M = JUNK[(int)Math.Floor(Hash(id, 65) * JUNK.Length)];
+                    bool gap = lx == bw - 1 || ly == bh - 1 || ((lx == 0 || lx == bw - 2) && (ly == 0 || ly == bh - 2));
+                    uint c = gap ? OUT : ly == 0 ? M[2] : lx >= bw - 3 || ly >= bh - 2 ? M[0] : M[1];
+                    if (!gap && kind < 0.2 && (lx == ly || lx == bw - 2 - ly)) c = JUNK[2][0];
+                    if (!gap && kind > 0.9) { double d = Pf.Hypot(lx - (bw - 2) / 2, (ly - (bh - 2) / 2) * 1.4); c = d < 1.3 ? OUT : d < 2.4 ? JUNK[1][0] : JUNK[3][1]; }
+                    if (j >= h - 1) c = j == h - 1 ? GOO_D[3] : j == h ? GOO_D[2] : GOO_D[1];
+                    Put(frame, x + i, y + j + oy, c);
+                }
+            }
+            if (t > 0.3) for (int q = 0; q < 5; q++)
+            {
+                double dx = Pf.Round((q + 0.5) * w / 5 + (Hash(q, 41) - 0.5) * 6), len = 2 + Pf.Round(((t * (0.6 + Hash(q, 42)) + Hash(q, 43)) % 1.6) * 6);
+                for (int k = 0; k < len; k++) { Put(frame, x + dx, y + h + 2 + k, k == len - 1 ? GOO_D[3] : GOO_D[2]); if (k < len - 2) Put(frame, x + dx + 1, y + h + 2 + k, GOO_D[1]); }
+            }
         }
 
         // ---------- 裂開的垃圾牆：32×48，壓扁的垃圾一塊塊疊起來，裂縫照受傷程度變多（hp 0～1）

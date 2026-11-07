@@ -2252,4 +2252,5 @@ addEventListener("keydown", (e) => { if (!started && (e.code === "Enter" || e.co
 }
 window.__loadDone?.();   // 第 7 批：載入畫面淡掉
 // 開發用：主控台直接掉寶、加經驗
-Object.assign(window.__game, { dropItem, gainXp, R, toast, gems, coins, minis, refreshStats, world, strikes, trail, altars, get chest() { return chest; } });
+Object.assign(window.__game, { dropItem, gainXp, R, toast, gems, coins, minis, refreshStats, world, strikes, trail, altars });
+Object.defineProperty(window.__game, "chest", { get: () => chest });   // 開發用：Object.assign 會把 getter 的值抄死，王掉的星箱看不到 → 用 defineProperty

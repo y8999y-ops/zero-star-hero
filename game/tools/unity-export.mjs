@@ -81,6 +81,9 @@ const comboKeys = {};   // 形態 → [{ anim 名稱, 招式 }]
     ...Object.fromEntries(Object.entries(A).filter(([k, v]) => v?.frames).map(([k, v]) => [k, v])),
     slash0: A.slash[0], slash1: A.slash[1], slash2: A.slash[2],
   };
+  // 1-4 的王（boss.js 的 prepareBoss）：每個姿勢一組，名稱 boss:姿勢；fps 0、duration＝每張的秒數（0＝照 k 選張）
+  const { prepareBoss } = await import("../src/boss.js");
+  for (const [pose, b] of Object.entries(prepareBoss())) anims["boss:" + pose] = { fps: 0, loop: false, duration: b.dt ?? 0, frames: b.frames };
   for (const [form, F] of Object.entries(FORMS)) {
     comboKeys[form] = BAKED_COMBOS.COMBO_DEF[F.combo].map((s, i) => { const n = `atk:${form}:${i}`; anims[n] = slashAnim(s.mod, form); return n; });
   }

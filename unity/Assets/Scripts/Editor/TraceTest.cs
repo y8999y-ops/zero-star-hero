@@ -39,7 +39,8 @@ namespace ZeroStar.Tests
             int si = 0;
             for (int n = 0; n < sc.ticks; n++)
             {
-                while (si < sc.events.Count && sc.events[si].t == n) { var e = sc.events[si++]; if (e.type == "f") g.SwitchForm(e.code); else if (e.type == "m") g.Player.Mp = g.Player.MaxMp; else if (e.type == "x") g.GainXp(int.Parse(e.code)); else if (e.type == "i") g.DropItem(g.Player.X + 40 * g.Player.Face, g.Player.Y - 12, int.Parse(e.code)); else if (e.type == "d") g.Input.KeyDown(e.code); else g.Input.KeyUp(e.code); }
+              try {
+                while (si < sc.events.Count && sc.events[si].t == n) { var e = sc.events[si++]; if (e.type == "f") g.SwitchForm(e.code); else if (e.type == "m") g.Player.Mp = g.Player.MaxMp; else if (e.type == "h") g.Player.Hp = int.Parse(e.code); else if (e.type == "x") g.GainXp(int.Parse(e.code)); else if (e.type == "i") g.DropItem(g.Player.X + 40 * g.Player.Face, g.Player.Y - 12, int.Parse(e.code)); else if (e.type == "d") g.Input.KeyDown(e.code); else g.Input.KeyUp(e.code); }
                 var stepWatch = System.Diagnostics.Stopwatch.StartNew();
                 bool one = Environment.GetEnvironmentVariable("PROF_TICK") == n.ToString();
                 Dictionary<string, double> saved = null;
@@ -86,6 +87,7 @@ namespace ZeroStar.Tests
                     Directory.CreateDirectory(Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Golden", "unity"));
                     File.WriteAllBytes(Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Golden", "unity", "dump.bin"), raw);
                 }
+              } catch (Exception ex) { Debug.LogError($"[Trace] 第 {n} 步出錯，先存到這裡：{ex}"); break; }
             }
             string outDir = Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Golden", "unity");
             Directory.CreateDirectory(outDir);

@@ -337,6 +337,7 @@ namespace ZeroStar
         public Game(string stage = "1-1", Game from = null)
         {
             StageId = stage;
+            Zoom = ZOOM;
             Enemy.ResetStatics();
             SceneLight.Reset();
             Fresh = Items.StarterGear();
@@ -401,7 +402,7 @@ namespace ZeroStar
             foreach (var e in Enemies.ToArray()) if (!e.Dead && box.Overlaps(e.HitBox()))
             {
                 var r = dmg(); bool poisoned = e.St != null && e.St.Poison > 0;
-                e.Hit(r, dir, o, this); n++;
+                e.Hit(r, dir, o, this, box); n++;
                 OnCritHit(e, r);
                 // 技能樹「嗜血爪」（蝠翼星）：打中毒的敵人回復傷害的 3%
                 if (poisoned && Player.Form == "bat" && Rank("bat", "b_blood") != 0) Player.Hp = Math.Min(Player.MaxHp, Player.Hp + r.Dmg * 0.03);
@@ -416,7 +417,7 @@ namespace ZeroStar
             Props.Hit(bt, dir);
             Features.Hit(bt);
             Scenery.Hit(bt, dir);
-            foreach (var e in Enemies.ToArray()) if (!e.Dead && !hit.Contains(e) && box.Overlaps(e.HitBox())) { hit.Add(e); var r = dmg(); e.Hit(r, dir, o, this); OnCritHit(e, r); n++; }
+            foreach (var e in Enemies.ToArray()) if (!e.Dead && !hit.Contains(e) && box.Overlaps(e.HitBox())) { hit.Add(e); var r = dmg(); e.Hit(r, dir, o, this, box); OnCritHit(e, r); n++; }
             if (n > 0) { AddCombo(n); Fx.HitStop(0.05); Fx.Shake(0.15, 2); }
             return n;
         }
@@ -598,9 +599,11 @@ namespace ZeroStar
         public void Sfx(string name) { OnSfx?.Invoke(name); }
 
         // ---- 看得到的範圍（畫布座標）：放大 ZOOM 倍後四周被裁掉
+        public const double ZOOM_BOSS = 1.2;   // 王戰時鏡頭稍微拉遠（王房比一個畫面寬）
+        public static double Zoom = ZOOM;       // 現在的放大倍率（王戰時慢慢變成 ZOOM_BOSS）
         public static (double x0, double y0, double w, double h) ViewRect()
         {
-            double vw = W / ZOOM, vh = H / ZOOM, my = (H - vh) / 2;
+            double vw = W / Zoom, vh = H / Zoom, my = (H - vh) / 2;
             return ((W - vw) / 2, my + Math.Min(VIEW_DY, my), vw, vh);
         }
         void SnapCam()
@@ -620,6 +623,9 @@ namespace ZeroStar
         }
         void FollowCam(double dt)
         {
+            // 王戰時慢慢拉遠、打完慢慢拉回來
+            double zt = Director?.Lock != null && StageD.ArenaInfo != null ? ZOOM_BOSS : ZOOM;
+            if (Zoom != zt) Zoom += Math.Sign(zt - Zoom) * Math.Min(Math.Abs(zt - Zoom), 0.5 * dt);
             var v = ViewRect();
             CamX = DeadFollow(CamX + W / 2.0, Player.X + LookAhead(dt, 36), 14, 5, dt) - W / 2.0;
             CamX = Math.Max(-v.x0, Math.Min(Data.W - v.x0 - v.w, CamX));
@@ -644,7 +650,7 @@ namespace ZeroStar
                 for (int j = i + 1; j < Enemies.Count; j++)
                 {
                     var b = Enemies[j];
-                    if (a.K.Fly != b.K.Fly) continue;
+                    if (a.K.Fly != b.K.Fly || a.IsBoss || b.IsBoss) continue;
                     double dx = b.Xp - a.Xp, dy = b.Yp - a.Yp, min = a.K.W + b.K.W - 4;
                     if (Math.Abs(dx) < min && Math.Abs(dy) < (a.K.Fly ? 16 : 6))
                     {
@@ -728,8 +734,9 @@ namespace ZeroStar
             { var v = ViewRect(); Director?.Update(dt, Player, CamX + v.x0, v.w); }
             // 戰鬥區封鎖：主角出不去
             if (Director?.Lock != null) Player.X = Math.Max(Director.Lock.Value.l + 10, Math.Min(Director.Lock.Value.r - 10, Player.X));
-            foreach (var e in Enemies)
+            for (int ei = 0; ei < Enemies.Count; ei++)   // 照 JS 的 for…of：迴圈中新加的怪（王分裂）同一格也會跑到
             {
+                var e = Enemies[ei];
                 if (e.Dead) continue;
                 e.Update(dt, Player, this);
                 bool rolling = e.Hog == "roll";   // 刺蝟滾過來比較痛；撞到人就停下來展開
@@ -743,6 +750,7 @@ namespace ZeroStar
             Separate(dt);
             UpdateCoreFx(dt);
             UpdateAltars();
+            UpdatePlug(dt);
             UpdateStageObjectsLate(dt);   // 形態機關（features）
             foreach (var e in Enemies)
             {
@@ -858,6 +866,7 @@ namespace ZeroStar
             sceneClock += 1 / 60.0;
             var lights = Art.SceneLights(CamX, W, sceneClock);
             lights.Add(new LightSrc(Player.X, Player.Y - 10, 64, 1.6, "#ffcf6a"));
+            foreach (var e in Enemies) e.Lights(lights);
             foreach (var e in Enemies) if (e.Elite && !e.Dead) lights.Add(new LightSrc(e.X, e.Y - 10, 36, 1.2, "#ff4a3a"));
             foreach (var s in Shots) lights.Add(new LightSrc(s.X, s.Y, 64, 3, (SHOT_PAL.ContainsKey(s.Form) ? SHOT_PAL[s.Form] : SHOT_PAL["star"]).light));
             foreach (var d in Drops.List) if (d.Landed && d.Item.Rarity >= Items.RARE) lights.Add(new LightSrc(d.X, d.Y - 10, d.Item.Rarity == Items.LEGEND ? 48 : 30, 2, Items.RARITY[d.Item.Rarity].Color));
@@ -872,6 +881,7 @@ namespace ZeroStar
             Art.DrawAtmosphere(frame, sceneClock);
             Prof.Mark("大氣");
             foreach (var a in Altars) if (Math.Abs(a.X - CamX - W / 2.0) < W) DrawAltar(frame, a);
+            DrawPlug(frame);   // 王房屋頂的垃圾塞子
             DrawStageObjects(frame, lv);   // features、props、scenery、hazards
             if (UseT != null) DrawBang(frame, UseT.X, UseT.Top);
             if (Chest != null && !Chest.Opened && Math.Abs(Chest.X - CamX - W / 2.0) < W) DrawChestSolid(frame);

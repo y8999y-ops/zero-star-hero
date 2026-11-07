@@ -204,7 +204,7 @@ function botTick(n) {
   const BK = ROUTE[leg]?.back;   // back＝[x0, x1, y]：在 x0～x1 之間掉到 y 以下＝這一段失敗了，回上一段重來
   if (BK && p.x > BK[0] && p.x < BK[1] && p.y >= BK[2] && p.grounded) leg--;
   if (ROUTE[leg]) target = ROUTE[leg].x;
-  else if (ch && !ch.opened && ch.x > p.x - 8 && Math.abs(ch.y - p.y) < 40) target = ch.x;
+  else if (ch && !ch.opened && (ch.x > p.x - 8 || SC.stage === "1-4") && Math.abs(ch.y - p.y) < 40) target = ch.x;   // 1-4：王掉的星箱可能在背後
   else if (P.stageDone) target = P.x;
   for (const [jx, jy, run] of ROUTE[leg]?.jumps ?? []) if (p.grounded && Math.abs(p.x - jx) < 10 && Math.abs(p.y - jy) < 3 && n - lastForced > 60) { lastForced = n; coastAt = run != null ? n + run : -1; tap("Space", 14); later.push([n + 16, "d2", "Space"]); }
   if (coastAt >= 0 && n >= coastAt) { if (p.grounded && n > coastAt + 4) coastAt = -1; else target = p.x; }   // 二段跳只往前按 run 步，之後放開，落在平台上
@@ -215,8 +215,8 @@ function botTick(n) {
   const vein = (G.features?.items ?? []).some((f) => f.t === "vein" && !f.done && Math.abs(f.x - p.x) < 18 && Math.abs(f.y - p.y) < 20);
   hold("KeyJ", near.length > 0 || vein);
   if (ahead.length >= 3 && p.mp >= 25 && n % 30 === 0) tap("KeyE");
-  if (near.length >= 2 && p.mp >= 100 && n % 45 === 0) tap("KeyQ");
-  if (E.some((e) => e.mode === "swoop" && Math.abs(e.x - p.x) < 60 && Math.abs(e.y - p.y) < 50) && n % 20 === 0) tap("KeyK");
+  if ((near.length >= 2 || near.some((e) => e.isBoss)) && p.mp >= 100 && n % 45 === 0) tap("KeyQ");
+  if (!ROUTE[leg]?.nodash && E.some((e) => e.mode === "swoop" && Math.abs(e.x - p.x) < 60 && Math.abs(e.y - p.y) < 50) && n % 20 === 0) tap("KeyK");
   // 機關：裂牆（換鐵罐星衝撞）、封印（換星星射星屑彈）；魔力不夠就補滿（m）
   const FI = G.features?.items ?? [];
   const crack = FI.find((f) => f.t === "crack" && !f.done && f.x - p.x > 0 && f.x - p.x < 44 && Math.abs(f.y - p.y) < 30);
@@ -255,6 +255,7 @@ for (let n = 0; n < TICKS; n++) {
     const p = G.player;
     if (type === "f") G.switchForm(code);
     else if (type === "m") p.mp = p.maxMp;
+    else if (type === "h") p.hp = +code;   // 測試用：把血設成這個數（測王戰中死掉）
     else if (type === "x") G.gainXp(+code);
     else if (type === "i") G.dropItem(p.x + 40 * p.face, p.y - 12, +code);
     else ev(type === "d" ? "keydown" : "keyup", code);
@@ -272,6 +273,6 @@ const SUF = TAG + (VARIANT ? "-" + VARIANT : "");
 writeFileSync(join(OUT, `trace${SUF}.txt`), lines.join("\n") + "\n");
 writeFileSync(join(OUT, `trace-frames${SUF}.bin`), Buffer.concat(frames));
 if (BOT && process.env.BOT_OUT) { writeFileSync(join(dirname(fileURLToPath(import.meta.url)), process.env.BOT_OUT), JSON.stringify({ ...SC, note: SC.note + "（後半段是機器人玩到通關時按的鍵）", ticks: TICKS, events: [...SC.events, ...botEv] }, null, 1)); console.log("存了機器人的按鍵：", process.env.BOT_OUT, botEv.length, "個"); }
-console.log("機關：", (G.features?.items ?? []).map((f) => f.t + (f.done ? "✓" : "✗")).join(" ")); console.log("關卡：事件", G.director?.next, "祭壇", G.altars.map((a) => a.lit ? 1 : 0).join(""), "寶箱", G.chest?.opened ? "開" : "沒開", "傳送門", JSON.stringify(G.portal), "擊殺", G.stats.kills, "死亡", G.stats.deaths);
+console.log("機關：", (G.features?.items ?? []).map((f) => f.t + (f.done ? "✓" : "✗")).join(" ")); console.log("關卡：事件", G.director?.next, "祭壇", G.altars.map((a) => a.lit ? 1 : 0).join(""), "寶箱", G.chest ? (G.chest.opened ? "開" : "沒開") + "@" + G.chest.x + "," + G.chest.y : "無", "傳送門", JSON.stringify(G.portal), "擊殺", G.stats.kills, "死亡", G.stats.deaths);
 console.log(`網頁版（完整 main.js）：${TICKS} 步、${frames.length} 張畫面 → ${OUT}`);
 console.log("最後：", lines[lines.length - 1].split(" ").slice(0, 12).join(" "));
