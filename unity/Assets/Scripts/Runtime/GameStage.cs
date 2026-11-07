@@ -127,6 +127,12 @@ namespace ZeroStar
                 default: return false;   // 城鎮的條件（登記、工坊、旅館）在關卡裡不會變
             }
         }
+        /// 開場動畫播過了：1-1 一開始的台詞（轉生成功、種族星靈）不用再講，直接接第一句教學（main.js 的 STAGE.intro = []）
+        public void SkipStageIntro()
+        {
+            Say.Queue.RemoveAll(q => StageD.Intro.Contains(q.msg));
+            foreach (var m in StageD.Intro) if (m.StartsWith("系統：") && Say.Sys == m.Substring(3)) { Say.Sys = null; Say.SysT = Say.ToastT = 0; }
+        }
         /// 主線追蹤：還沒完成的第一個主線的名稱（全部完成＝null）
         public string MainQuestTitle() { foreach (var s in SYSTEM) if (!SysDone.Contains(s.id)) return s.title; return null; }
         /// 跟 QuestProgress 一樣，但在對話中：主線完成的台詞回傳回來讓對話當場講（main.js 的 questProgress(ev, d, true)）

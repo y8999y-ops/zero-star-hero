@@ -19,6 +19,7 @@ namespace ZeroStar
             ["ground-slam"] = PixelFX.Fx.GroundSlam.Def, ["star-fall"] = PixelFX.Fx.StarFall.Def, ["level-up"] = PixelFX.Fx.LevelUp.Def, ["poof"] = PixelFX.Fx.Poof.Def, ["splash"] = PixelFX.Fx.Splash.Def, ["treasure-chest"] = PixelFX.Fx.TreasureChest.Def,
             ["shooting-stars"] = PixelFX.Fx.ShootingStars.Def, ["frog"] = PixelFX.Fx.Frog.Def, ["town-rain"] = PixelFX.Fx.TownRain.Def,
             ["parry"] = PixelFX.Fx.Parry.Def, ["quest-complete"] = PixelFX.Fx.QuestComplete.Def, ["coin-collect"] = PixelFX.Fx.CoinCollect.Def,
+            ["meteor"] = PixelFX.Fx.Meteor.Def, ["star-meteor"] = PixelFX.Fx.Meteor.StarDef, ["slime"] = PixelFX.Fx.Slime.Def,   // 開場動畫用
         };
         /// 名字對應的即時特效定義（自己建 FxRun 用，例如城鎮的夜空、雨）
         public static FxDef Def(string name) => DEFS[name];

@@ -331,6 +331,21 @@ namespace PixelFX.Fx
                     if (col != 0) { c[i] = col; a[i] = (float)al; tag[i] = 255; }
                 }
         }
+        /// 外框（每一邊自己選顏色）：fn(x, y, nx, ny) 用本地座標和朝外的方向（四鄰加起來）決定顏色，回傳 0＝留空（史萊姆用）
+        public void Outline(Func<double, double, int, int, uint> fn, double al = 1)
+        {
+            var src = (uint[])c.Clone();
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    int i = y * w + x;
+                    if (src[i] != 0) continue;
+                    bool l = x > 0 && src[i - 1] != 0, r = x < w - 1 && src[i + 1] != 0, u = y > 0 && src[i - w] != 0, d = y < h - 1 && src[i + w] != 0;
+                    if (!(l || r || u || d)) continue;
+                    uint col = fn(x0 + x, y0 + y, (l ? 1 : 0) - (r ? 1 : 0), (u ? 1 : 0) - (d ? 1 : 0));
+                    if (col != 0) { c[i] = col; a[i] = (float)al; tag[i] = 255; }
+                }
+        }
         /// 放到畫筆上，移動 (dx, dy)：不透明的照 fade 打網點，半透明的混色
         public void Draw(Painter p, double fade = 1, double dx = 0, double dy = 0)
         {

@@ -81,6 +81,7 @@ namespace ZeroStar.UI
 
             // ---- 右上：設定（齒輪）、形態
             set = Box(root, "btnSet"); Abs(set, null, 8, 10); Size(set, 34, 34); Nine(set, "inset", 6, 6);
+            set.pickingMode = PickingMode.Position; set.RegisterCallback<PointerDownEvent>(e => { e.StopPropagation(); OnMenu?.Invoke("set"); });   // 齒輪＝設定
             var gear = Box(set); Size(gear, 20, 20); Abs(gear, 1, 1); Img(gear, "ic-gear");
             forms = Box(root, "forms"); Abs(forms, null, 62, 10); forms.style.flexDirection = FlexDirection.Row;
 

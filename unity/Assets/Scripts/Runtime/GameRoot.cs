@@ -41,9 +41,16 @@ namespace ZeroStar
             screen.Tick += OnTick;
             screen.Draw += f => { screen.Zoom = Game.Zoom; game.Render(f); };   // 王戰時鏡頭拉遠（Game.Zoom）；地圖開著時後面照樣畫（暫停中）
             screen.PostComposite += d => game.PostComposite(d);
-            screen.Paused = () => map != null || (win != null && win.Open) || (inv != null && inv.Open);
+            screen.Paused = () => map != null || (win != null && win.Open) || (inv != null && inv.Open) || (settings != null && settings.Open) || (title != null && title.Open) || (intro != null && intro.Playing);
             { var uiGo = new GameObject("UI"); uiGo.transform.SetParent(transform); var uiRoot = ZeroStar.UI.Ui.CreateRoot(uiGo); hud = new ZeroStar.UI.Hud(uiRoot); dlg = new ZeroStar.UI.Dialog(uiRoot, () => game.Player.Form);
-              win = new ZeroStar.UI.Win(uiRoot); inv = new ZeroStar.UI.Inventory(uiRoot); mapWin = new ZeroStar.UI.MapWin(uiRoot); uiFx = new ZeroStar.UI.UiFx(uiRoot); }
+              win = new ZeroStar.UI.Win(uiRoot); inv = new ZeroStar.UI.Inventory(uiRoot); mapWin = new ZeroStar.UI.MapWin(uiRoot);
+              title = new ZeroStar.UI.Title(uiRoot); intro = new ZeroStar.UI.Intro(uiRoot); settings = new ZeroStar.UI.Settings(uiRoot); loading = new ZeroStar.UI.Loading(uiRoot); uiFx = new ZeroStar.UI.UiFx(uiRoot); }   // 疊的順序：主畫面、開場 < 設定 < 載入畫面 < 介面特效   // 4e：設定、主畫面、開場、載入畫面
+            settings.Sfx = s => game.Sfx(s); title.Sfx = s => game.Sfx(s); intro.Sfx = s => game.Sfx(s);
+            settings.OnIntro = () => _ = ReplayIntro();
+            settings.OnTitle = BackToTitle;
+            settings.OnGoHome = async () => { if (game.Town || dlg.Open) return; if (await dlg.Ask("系統", "要放棄這趟回碎星鎮嗎？撿到的東西都會留著，但這關要重來。", new[] { ("回城鎮", "y"), ("繼續打", "n") }) == "y") pending = "town"; };
+            title.OnStart = () => _ = StartOrIntro();
+            title.OnSettings = () => settings.Show(false);
             inv.Fx = uiFx; inv.Sfx = s => game.Sfx(s);
             ZeroStar.UI.TownWins.OpenBag = () => inv.Show(game);   // 介面特效蓋在最上面
             mapWin.OnGo = MapGo;
@@ -53,21 +60,64 @@ namespace ZeroStar
             ZeroStar.UI.TownWins.W = win; ZeroStar.UI.TownWins.Fx = uiFx;
             hud.OnTrack = () => { if (!dlg.Open && !win.Open && !game.TownBusy) { game.Sfx("ui"); _ = ZeroStar.UI.TownWins.OpenQuests(game, false, game.Quests.Tracked.Count > 0 ? "guild" : "sys"); } };
             hud.CanvasToScreen = screen.CanvasToScreen;
-            hud.OnMenu = k => { if (Busy()) return; if (k == "bag" || k == "hero") inv.Show(game); else if (k == "tree") OpenTree(); else if (k == "map") OpenLevelMap(); };
+            hud.OnMenu = k => { if (k == "set") { if (!dlg.Open) settings.Toggle(!game.Town); return; } if (Busy()) return; if (k == "bag" || k == "hero") inv.Show(game); else if (k == "tree") OpenTree(); else if (k == "map") OpenLevelMap(); };
             hud.OnForm = f => { if (!game.Town) game.PendingForm = f; };
             NewGame(sc?.stage ?? "1-1", null, sc != null ? TraceScript.DefaultPath() : null);
             touchMode = Input.touchSupported && Application.isMobilePlatform || Array.IndexOf(args, "-touch") >= 0;   // -touch：開發用，電腦上看手機的排法
+            // 開遊戲：載入畫面 → 主畫面（自動玩、地圖截圖直接開始）
+            for (int i = 0; i < args.Length - 1; i++) if (args[i] == "-titleshot") titleShot = args[i + 1];   // 開發用：截主畫面、說明、設定、開場、通關載入畫面
+            if (titleShot != null) { Directory.CreateDirectory(titleShot); PlayerPrefs.DeleteKey("seenIntro"); }
+            if (shotDir != null || mapShot != null) started = true;
+            else { title.Form = game.Player.Form; title.Show("開始冒險"); loading.Show(); loading.Done(); }
             if (mapShot != null) { Directory.CreateDirectory(mapShot); game.Cleared_.UnionWith(new[] { "1-1", "1-2" }); OpenMap(false); }
         }
         string mapShot; int mapShotN;
-        ZeroStar.UI.Inventory inv;
+        ZeroStar.UI.Inventory inv; ZeroStar.UI.Settings settings; ZeroStar.UI.Title title; ZeroStar.UI.Intro intro; ZeroStar.UI.Loading loading;
+        bool started;
+        // -titleshot：依時間截圖（主畫面 → 操作說明 → 設定 → 開場 → 通關的載入畫面）
+        string titleShot; float tsT; int tsN;
+        static readonly (float t, string name)[] TS = { (2.5f, "title"), (4, "help"), (5.5f, "settings"), (9, "intro-03"), (12, "intro-06"), (17, "intro-11"), (23, "intro-17"), (28, "intro-22"), (31, "intro-25"), (36, "intro-30"), (41, "intro-35"), (48, "intro-42"), (55, "game"), (57, "report") };
+        void TitleShot(float dt)
+        {
+            float prev = tsT; tsT += dt;
+            bool At(float x) => prev < x && tsT >= x;
+            if (At(3.2f)) title.Help(true);
+            if (At(4.6f)) { title.Help(false); settings.Show(false); }
+            if (At(6)) { settings.Close(); _ = StartOrIntro(); }
+            if (At(55.6f)) { game.StageDone = true; loading.Show(new[] { "通關！1-1 墜落之底", "時間 3:21　擊倒 42　最高連擊 18　一次都沒死", "一次都沒死？……好吧，我對你改觀了。一點點。" }); }
+            foreach (var (t, n) in TS) if (At(t)) ScreenCapture.CaptureScreenshot(Path.Combine(titleShot, $"{tsN++:00}-{n}.png"));
+            if (tsT > 58.5f) Application.Quit();
+        }   // 按過「開始冒險」（主畫面、開場、載入畫面都過了）
+        // ---- 主畫面 → 開場（新遊戲第一次進 1-1，只播一次）→ 遊戲
+        async System.Threading.Tasks.Task StartOrIntro()
+        {
+            if (started || intro.Playing) return;
+            if (game.Town || game.StageId != "1-1" || PlayerPrefs.GetInt("seenIntro", 0) == 1) { StartGame(); return; }
+            title.MenuVisible = false;
+            await intro.Play();
+            PlayerPrefs.SetInt("seenIntro", 1);
+            game.SkipStageIntro();   // 開場已經講過「轉生成功、種族星靈」，1-1 直接接第一句教學
+            StartGame();
+        }
+        void StartGame() { started = true; title.Hide(); title.MenuVisible = true; }
+        /// 設定裡的「重看開場動畫」：在原地播（遊戲暫停），播完回到原本的畫面
+        async System.Threading.Tasks.Task ReplayIntro() { if (intro.Playing) return; await intro.Play(); }
+        /// 「回主畫面」：關卡中回去的話，下次從碎星鎮繼續；還沒到過鎮上的新玩家從原本的關卡
+        void BackToTitle()
+        {
+            bool toTown = game.Town || game.Cleared_.Count > 0 || game.GuildRegistered;
+            started = false;
+            if (toTown && !game.Town) NewGame("town", game); else if (!toTown) NewGame(game.StageId, game);   // 重新開始這一關（網頁版是重新載入頁面）
+            title.Form = game.Player.Form; title.Show(toTown ? "繼續冒險" : "開始冒險");
+        }
         /// 有對話、視窗、背包、地圖開著
-        bool Busy() => dlg.Open || win.Open || inv.Open || map != null || game.TownBusy;
+        bool Busy() => dlg.Open || win.Open || inv.Open || map != null || game.TownBusy || settings.Open || !started;
         void OpenTree() { game.Sfx("ui"); _ = ZeroStar.UI.TreeWin.Open(game, hud.InCombat, null, game.Player.Form); }
         /// 地圖：關卡裡＝這一關走過的地方（mapview.js）；碎星鎮沒有關卡地圖，打開選關地圖
         void OpenLevelMap() { if (game.Town) OpenMap(false); else { game.Sfx("open"); _ = ZeroStar.UI.LevelMap.Open(game); } }
         ZeroStar.UI.Hud hud; ZeroStar.UI.Dialog dlg; ZeroStar.UI.Win win; ZeroStar.UI.UiFx uiFx; ZeroStar.UI.MapWin mapWin; int winTicks;
-        void LateUpdate() { if (hud == null || game == null) return; hud.Touch = touchMode; mapWin.Touch = touchMode; hud.Dim = dlg.Open; hud.Update(game, Time.unscaledDeltaTime); mapWin.Update(Time.unscaledDeltaTime); dlg.Update(Time.unscaledDeltaTime); win.Update(Time.unscaledDeltaTime); inv.Update(Time.unscaledDeltaTime); uiFx.Update(Time.unscaledDeltaTime); }
+        void LateUpdate() { if (hud == null || game == null) return; if (titleShot != null) TitleShot(Time.unscaledDeltaTime); hud.Touch = touchMode; mapWin.Touch = touchMode; hud.Dim = dlg.Open; hud.Update(game, Time.unscaledDeltaTime); mapWin.Update(Time.unscaledDeltaTime); dlg.Update(Time.unscaledDeltaTime); win.Update(Time.unscaledDeltaTime); inv.Update(Time.unscaledDeltaTime); settings.Update(Time.unscaledDeltaTime); title.Update(Time.unscaledDeltaTime); intro.Update(Time.unscaledDeltaTime); loading.Update(Time.unscaledDeltaTime); uiFx.Update(Time.unscaledDeltaTime);
+            hud.Visible = started; }
 
         static readonly string[] ORDER = { "1-1", "1-2", "1-3", "1-4" };
 
@@ -100,6 +150,19 @@ namespace ZeroStar
         /// 開一關。from＝上一關（等級、裝備、背包、形態、技能樹這些帶過來）
         void NewGame(string stage, Game from, string tracePath = null)
         {
+            // 換場景：載入畫面蓋一下；踩傳送門通關的話，在載入畫面播通關成績（loading.js）
+            if (from != null && shotDir == null && loading != null)
+            {
+                string[] rep = null;
+                if (from.StageDone && !from.Town)
+                {
+                    int tt = (int)Math.Round(from.StatTime); bool ch = from.StageId == "1-4";
+                    rep = new[] { $"{(ch ? "第一章　完。" : "通關！")}{from.StageId} {(QuestBook.LAYOUT_NAME.TryGetValue(from.StageId, out var ln) ? ln : "")}",
+                        $"時間 {tt / 60}:{tt % 60:00}　擊倒 {from.Kills}　最高連擊 {from.BestCombo}　{(from.Deaths > 0 ? "死了 " + from.Deaths + " 次" : "一次都沒死")}",
+                        ch ? "第一章　墜星之谷　完。前面就是碎星鎮了。" : from.Deaths == 0 ? "一次都沒死？……好吧，我對你改觀了。一點點。" : "過是過了。死了幾次這件事我會幫你保密。" };
+                }
+                loading.Show(rep); loading.Done();
+            }
             game = new Game(stage, from);
             if (tracePath != null) TraceScript.Apply(game, tracePath);   // 自動玩：照比對腳本的存檔
             Debug.Log($"[Stage] 開始 {stage}（Lv {game.Lv}）");
@@ -135,6 +198,7 @@ namespace ZeroStar
         void Update()
         {
             if (shotDir != null) return;
+            if (!started || intro.Playing) { if (Input.GetKeyDown(KeyCode.Escape)) settings.Close(); return; }   // 主畫面、開場：遊戲的按鍵不動作
             if (map != null) { MapInput(); return; }
             var inp = game.Input;
             foreach (var (k, code) in KEYS)
@@ -162,7 +226,8 @@ namespace ZeroStar
             if (Input.GetKeyDown(KeyCode.M)) { if (win.Open && !game.Town) win.Close(); else if (!Busy()) OpenLevelMap(); }
             // 背包：I／B／Tab 開關（main.js）
             if (Input.GetKeyDown(KeyCode.I) || Input.GetKeyDown(KeyCode.B) || Input.GetKeyDown(KeyCode.Tab)) { if (inv.Open) inv.Close(); else if (!dlg.Open && !win.Open && map == null) inv.Show(game); }
-            if (Input.GetKeyDown(KeyCode.Escape) && inv.Open) inv.Close();
+            if (Input.GetKeyDown(KeyCode.Escape) && settings.Open) settings.Close();
+            else if (Input.GetKeyDown(KeyCode.Escape) && inv.Open) inv.Close();
             else if (Input.GetKeyDown(KeyCode.Escape) && win.Open) win.Close();
             else if (Input.GetKeyDown(KeyCode.Escape) && !Application.isEditor) Application.Quit();
         }
@@ -228,7 +293,8 @@ namespace ZeroStar
             }
             if (uiDemo) UiDemo();
             // 視窗開著：遊戲暫停，系統的話照樣播（main.js：isWinOpen 時只跑 updateSay）。自動玩：開 4 秒後自己關（截圖用）
-            if (win.Open || inv.Open)
+            if (!started || intro.Playing || loading.Showing && shotDir == null) { if (started) game.Hud(Game.STEP); tickN++; return; }   // 主畫面、開場、載入畫面：遊戲還沒開始
+            if (win.Open || inv.Open || settings.Open)
             {
                 game.Hud(Game.STEP); tickN++;
                 if (shotDir != null && ++winTicks > 240) { winTicks = 0; win.Close(); inv.Close(); }
@@ -304,7 +370,7 @@ namespace ZeroStar
         void Rect(float x, float y, float w, float h, Color c) { var o = GUI.color; GUI.color = c; GUI.DrawTexture(new UnityEngine.Rect(x, y, w, h), Texture2D.whiteTexture); GUI.color = o; }
         void OnGUI()
         {
-            if (game == null) return;
+            if (game == null || !started || intro.Playing) return;   // 主畫面、開場不顯示效能
             float u = Mathf.Max(1, Screen.height / 360f);
             // 效能（下方中間，跟網頁版的 #fps 一樣）：每秒幾格、每格算畫面花幾毫秒
             if (perfStyle == null) perfStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.LowerCenter, fontSize = Mathf.RoundToInt(9 * u) };

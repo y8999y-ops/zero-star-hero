@@ -58,7 +58,8 @@ if (ONLY_STAGE) process.exit(0);
     if (Array.isArray(v)) v.forEach((q, i) => names.push([`${k}#${i}`, q]));
     else names.push([k, v]);
   }
-  names.push(["portrait", { eyes: "squint", look: 1, core: 2 }]);   // 大招特寫帶的臉（ult.js 的 PORTRAIT）
+  names.push(["portrait", { eyes: "squint", look: 1, core: 2 }]);
+  POSES.idle.forEach((q, i) => names.push([`title#${i}`, { ...q, scarf: 1 }]));   // 主畫面的主角（title.js：待機＋領巾被風吹）   // 大招特寫帶的臉（ult.js 的 PORTRAIT）
   const w = new W();
   const forms = ["star", "slime", "bat", "can", "spike"];
   w.str("ZHR1").i32(names.length * forms.length);

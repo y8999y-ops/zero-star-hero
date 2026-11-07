@@ -41,6 +41,9 @@ const FX = {
   parry: "impacts/parry.js",
   "quest-complete": "ui/quest-complete.js",
   "coin-collect": "ui/coin-collect.js",
+  meteor: "fire/meteor.js",
+  "star-meteor": "../../../game/fx/fire/star-meteor.js",
+  slime: "critters/slime.js",
 };
 
 const STAR_BOOM = ["#3a1608", "#6e3a0c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"];
@@ -94,6 +97,17 @@ CASES.push(
   { name: "quest-complete-alt", fx: "quest-complete", opts: { text: "Stage Clear!", seed: 31, light: 0.4, ribbon: ["#06121e", "#0e2a45", "#1a4a7a", "#2a6aad", "#4390d8", "#7ab8f2", "#b7dcff"] }, speed: 1.2 },
   { name: "coin-collect", fx: "coin-collect", opts: { count: 8, light: 0.4 }, speed: 1 },
   { name: "coin-collect-12", fx: "coin-collect", opts: { count: 12, from: 95, seed: 17 }, speed: 1.1 },
+);
+
+// 開場動畫（intro.js）：C 幕撞進洞窟的金色流星、B 幕遠方不冒煙的那顆（clean）、E 幕探頭的史萊姆
+const INTRO_GOLD = ["#3a1a06", "#6e3a0c", "#a8601a", "#d8902a", "#f4c040", "#ffe27a", "#fff2b0", "#fffbe8", "#ffffff"];
+CASES.push(
+  { name: "meteor", fx: "meteor", opts: {}, speed: 1.6 },
+  { name: "meteor-intro", fx: "meteor", opts: { palette: INTRO_GOLD, light: 0.6, seed: 5 }, speed: 1.3 },
+  { name: "star-meteor", fx: "star-meteor", opts: {}, speed: 1.7 },
+  { name: "star-meteor-clean", fx: "star-meteor", opts: { palette: INTRO_GOLD, light: 0.5, clean: true }, speed: 1.2 },
+  { name: "slime", fx: "slime", opts: {}, speed: 1, steps: 120 },
+  { name: "slime-intro", fx: "slime", opts: { light: 0.3, seed: 4, hop: 18 }, speed: 0.8, steps: 160 },
 );
 
 const manifest = [];

@@ -41,7 +41,7 @@ namespace ZeroStar
         public double CamX, CamY;
         double lookX, sceneClock;
         double? camRefY, camLand;
-        public int Kills, Coins, Combo; public double ComboT;
+        public int Kills, Coins, Combo, BestCombo; public double ComboT;
         public readonly Status Status;
         public readonly Ult Ult;
         double ultCd;
@@ -470,6 +470,7 @@ namespace ZeroStar
             int gain = (int)(Math.Floor((Combo + n) / 10.0) - Math.Floor(Combo / 10.0));
             if (gain > 0 && Player.Mp < Player.MaxMp) Player.Mp = Math.Min(Player.MaxMp, Player.Mp + gain * Player.COMBO_MP);
             Combo += n;
+            BestCombo = Math.Max(BestCombo, Combo);   // 通關成績的「最高連擊」
             ComboT = COMBO_T;
         }
         public void SpawnFireball(double x, double y, double dir, string form, double vy = 0)
