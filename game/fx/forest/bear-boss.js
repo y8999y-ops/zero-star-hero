@@ -47,68 +47,81 @@ const D = meta.duration;
 const h1 = (n, s = 0) => { const v = Math.sin(n * 127.1 + s * 311.7) * 43758.5453; return v - Math.floor(v); };
 const LX = -0.5, LY = -0.75, LZ = 0.45;
 
-// 姿勢（畫面方向）：lean＝上身往前（右）壓多少；hip＝屁股離地多高；n/f＝近手（右邊、在前）／遠手（左邊、在後）
-//   的肩膀角度 s、手肘再彎 e（0＝往下垂、正＝往右、π＝往上、負＝往左）；stepN/stepF＝兩腳往前後跨；
+// 姿勢（畫面座標，地面 y＝0、往右是前面）：lean＝上身繞屁股往前（右）轉幾度（弧度）；hip＝屁股離地多高；
+//   nH/fH＝近手／遠手要放的位置（手肘自己算，nB/fB＝手肘往哪邊彎）；stepN/stepF＝兩腳往前後跨；
 //   jaw＝嘴張開；up＝抬頭；dip＝低頭；sit＝坐地；prop＝拿什麼
+// 透視（三分之二朝右）：遠的腳踩在比較後面（畫面上高 3 格）、遠的手腳細一點暗一點。
+const L2 = (a, b, k) => [lerp(a[0], b[0], k), lerp(a[1], b[1], k)];
 function pose(o, t) {
   const m = o.mode, b = Math.sin((t / D) * TAU);
-  let P = { lean: 0.04, hip: 22 + b * 0.7, nS: 2.1 + b * 0.06, nE: 0.7, fS: -2.05 - b * 0.06, fE: -0.7, stepN: 0, stepF: 0, jaw: 0.3 + 0.08 * b, up: 0, dip: 0.3, sit: 0, prop: null };
+  let P = { lean: 0.06, hip: 22 + b * 0.8, nH: [40, -76 + b * 1.2], fH: [-36, -79 + b * 1.2], nB: 1, fB: -1, stepN: 0, stepF: 0, jaw: 0.3 + 0.08 * b, up: 0, dip: 0.4, sit: 0, prop: null };
   if (m === "rear") {
     const k = ease.outQuad(seg(t, 0, 0.6));
-    P = { ...P, lean: lerp(0.04, -0.1, k), hip: 22 + k * 2, nS: lerp(2.1, 2.8, k), nE: lerp(0.7, 0.15, k), fS: lerp(-2.05, -2.8, k), fE: lerp(-0.7, -0.15, k), jaw: 0.3 + 0.7 * k, up: k, dip: 0 };
+    P = { ...P, lean: lerp(0.06, -0.2, k), hip: 22 + k * 2, nH: L2(P.nH, [24, -92], k), fH: L2(P.fH, [-34, -86], k), jaw: 0.3 + 0.7 * k, up: k, dip: lerp(0.4, 0, k), stepN: 3 * k, stepF: -2 * k };
   } else if (m === "slam") {
+    // 單掌重拍：近手整個砸到地上、遠手往後甩平衡、身體往前蹲
     const k = ease.inQuad(seg(t, 0, 0.16));
-    P = { ...P, lean: lerp(-0.1, 0.38, k), hip: lerp(24, 14, k), nS: lerp(2.8, 0.75, k), nE: lerp(0.15, -0.35, k), fS: lerp(-2.8, 0.35, k), fE: lerp(-0.15, -0.1, k), jaw: lerp(1, 0.7, k), up: lerp(1, 0.3, k), dip: 0 };
+    P = { ...P, lean: lerp(-0.2, 0.7, k), hip: lerp(24, 11, k), nH: L2([24, -92], [48, -6], k), fH: L2([-34, -86], [-8, -66], k), jaw: lerp(1, 0.8, k), up: lerp(1, 0, k), dip: 0, stepN: lerp(3, 10, k), stepF: lerp(-2, -6, k) };
   } else if (m === "charge") {
+    // 往前撲：頭在最前面帶路、上身壓低、大步跑
     const w = Math.sin((t / D) * 3 * TAU);
-    P = { ...P, lean: 0.5, hip: 19 - Math.abs(w) * 2, nS: -0.2 + 0.35 * w, nE: 1.1, fS: 1.0 - 0.35 * w, fE: 0.7, stepN: 8 * w, stepF: -8 * w, jaw: 0.5, dip: 0.4 };
+    P = { ...P, lean: 0.75, hip: 18 - Math.abs(w) * 2, nH: [52 + 9 * w, -14 - Math.abs(w) * 3], fH: [30 - 9 * w, -40], nB: -1, fB: -1, stepN: 9 * w, stepF: -9 * w, jaw: 0.6, dip: 0 };
   } else if (m === "throw") {
-    if (t < 0.6) { const k = ease.outQuad(seg(t, 0, 0.6)); P = { ...P, lean: lerp(0.04, -0.12, k), nS: lerp(2.1, 3.4, k), nE: lerp(0.7, 0.05, k), fS: lerp(-2.05, 1.2, k), fE: lerp(-0.7, 0.4, k), jaw: 0.3 + 0.4 * k, dip: 0, prop: "hive" }; }
-    else if (t < 0.72) { const k = ease.outExpo(seg(t, 0.6, 0.72)); P = { ...P, lean: lerp(-0.12, 0.32, k), nS: lerp(3.4, 1.3, k), nE: lerp(0.05, 0.1, k), fS: lerp(1.2, -0.6, k), fE: 0.4, jaw: 0.9, dip: 0.4, prop: t < 0.66 ? "hive" : null, stepN: 5 }; }
-    else { const k = ease.inOutSine(seg(t, 0.72, 1.2)); P = { ...P, lean: lerp(0.32, 0.04, k), nS: lerp(1.3, 2.1, k), nE: lerp(0.1, 0.7, k), fS: lerp(-0.6, -2.05, k), fE: lerp(0.4, -0.7, k), jaw: lerp(0.9, 0.3, k), stepN: lerp(5, 0, k) }; }
+    if (t < 0.6) { const k = ease.outQuad(seg(t, 0, 0.6)); P = { ...P, lean: lerp(0.06, -0.2, k), nH: L2(P.nH, [-2, -88], k), fH: L2(P.fH, [-40, -50], k), jaw: 0.3 + 0.4 * k, dip: lerp(0.4, 0, k), prop: "hive", stepF: -4 * k }; }
+    else if (t < 0.72) { const k = ease.outExpo(seg(t, 0.6, 0.72)); P = { ...P, lean: lerp(-0.2, 0.45, k), hip: 22 - 2 * k, nH: L2([-2, -88], [58, -56], k), fH: L2([-40, -50], [-6, -42], k), jaw: 0.9, dip: 0.2, prop: t < 0.66 ? "hive" : null, stepN: 6 * k, stepF: -4 }; }
+    else { const k = ease.inOutSine(seg(t, 0.72, 1.2)); P = { ...P, lean: lerp(0.45, 0.06, k), hip: 20 + 2 * k, nH: L2([58, -56], P.nH, k), fH: L2([-6, -42], P.fH, k), jaw: lerp(0.9, 0.3, k), stepN: lerp(6, 0, k), stepF: lerp(-4, 0, k) }; }
   } else if (m === "eat") {
     const g = Math.sin((t / D) * TAU * 2);
-    P = { ...P, lean: -0.06, hip: 9, sit: 1, jaw: 0.75 + 0.2 * g, dip: 0, up: 0.8 + 0.1 * g, prop: "pot" };
+    P = { ...P, lean: -0.18, hip: 9, sit: 1, jaw: 0.75 + 0.2 * g, dip: 0, up: 0.8 + 0.1 * g, prop: "pot" };
   }
   return P;
 }
 
-// 毛流雜訊：用部位自己的座標算，部位移動時毛不會亂閃
-const strand = (u, v, id) => { const c = Math.round(u / 2); return h1(c + id * 13, Math.floor((v + h1(c, id) * 4) / 4)) - 0.5; };
-// 有體積、會收細的肢體（r0 → r1），亮暗交界有毛流
-function seg3(g, a, b, r0, r1, far, id) {
+// 毛的畫法（使用者 2026-11-10：紋理太雜亂）：不用亂數雜點，改成有規律的「一撮一撮」：
+//   亮暗交界做成鋸齒（一撮約 4 格寬），外框只在側面和下面有毛尖、頭頂和肩膀上面保持乾淨。
+const tri = (v, P) => Math.abs((((v % P) + P) % P) - P / 2) / (P / 2);   // 0..1 的三角波
+// 有體積、會收細的肢體（r0 → r1）
+function seg3(g, a, b, r0, r1, far) {
   const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, n = Math.max(2, Math.ceil(len * 2));
   const tx = (b[0] - a[0]) / len, ty = (b[1] - a[1]) / len;
   for (let i = 0; i <= n; i++) {
     const u = i / n, x = lerp(a[0], b[0], u), y = lerp(a[1], b[1], u), r = lerp(r0, r1, u);
     g.shade(x - r - 1, y - r - 1, x + r + 1, y + r + 1, (px, py) => {
-      const dx = px - x, dy = py - y, d = Math.hypot(dx, dy);
-      const lx = px - a[0], ly = py - a[1], al = lx * tx + ly * ty, ac = -lx * ty + ly * tx;
-      if (d > r + 0.3 + (d > r - 1 ? strand(ac, al, id + 5) * 1.6 : 0)) return 0;
+      const dx = px - x, dy = py - y;
+      if (Math.hypot(dx, dy) > r + 0.3) return 0;
       const side = (dx * -ty + dy * tx) / Math.max(1, r), nz = Math.sqrt(Math.max(0, 1 - side * side));
-      const lit = -ty * side * LX + tx * side * LY + nz * LZ - (far ? 0.42 : 0) + strand(ac, al, id) * 0.2;
-      return lit > 0.7 ? FUR[6] : lit > 0.4 ? FUR[5] : lit > 0.08 ? FUR[4] : lit > -0.25 ? FUR[3] : FUR[2];
+      const lit = -ty * side * LX + tx * side * LY + nz * LZ - (far ? 0.4 : 0);
+      return lit > 0.72 ? FUR[6] : lit > 0.42 ? FUR[5] : lit > 0.08 ? FUR[4] : lit > -0.28 ? FUR[3] : FUR[2];
     });
   }
 }
-// 毛茸茸的大球（肚子、胸口、頭）：外框一撮一撮、左上亮
-function ball(g, cx, cy, rx, ry, C, id, dark = 0) {
-  const R = Math.max(rx, ry);
+// 毛茸茸的大球（肚子、胸口、頭）：左上亮
+function ball(g, cx, cy, rx, ry, C, dark = 0, tufts = true) {
+  const R = Math.max(rx, ry), X = Math.round(cx);
   g.shade(cx - rx - 2, cy - ry - 2, cx + rx + 2, cy + ry + 3, (x, y) => {
     const nx = (x - cx) / rx, ny = (y - cy) / ry, d = Math.hypot(nx, ny);
-    const ang = Math.atan2(ny, nx), tuft = h1(Math.floor((ang + 4) * R / 2.6), id) - 0.5;
-    if (d > 1 + tuft * (3.2 / R) + (ny > 0 ? 1.2 / R : 0)) return 0;
-    const lit = -nx * 0.42 - ny * 0.78 - dark + strand(x - cx, y - cy, id) * 0.2 - (d > 0.9 ? 0.15 : 0);
-    return lit > 0.72 ? C[6] : lit > 0.38 ? C[5] : lit > 0.02 ? C[4] : lit > -0.38 ? C[3] : C[2];
+    const tuft = tufts && ny > -0.35 ? (tri(Math.round((Math.atan2(ny, nx) + 4) * R), 4) - 0.35) * 2.4 / R : 0;
+    if (d > 1 + tuft) return 0;
+    const lit = -nx * 0.42 - ny * 0.78 - dark - (d > 0.92 ? 0.12 : 0);
+    return lit > 0.74 ? C[6] : lit > 0.4 ? C[5] : lit > 0.02 ? C[4] : lit > -0.38 ? C[3] : C[2];
   });
 }
-function paw(g, x, y, ang, r, far, id) {
-  ball(g, x, y, r, r * 0.88, far ? FUR.map((c, i) => FUR[Math.max(0, i - 1)]) : FUR, id);
+const DARKER = FUR.map((c, i) => FUR[Math.max(0, i - 1)]);
+function paw(g, x, y, ang, r, far) {
+  ball(g, x, y, r, r * 0.88, far ? DARKER : FUR, 0, false);
   for (let i = -1; i <= 1; i++) {                       // 三根彎爪，朝手臂伸出去的方向
     const a = ang + i * 0.45;
     for (let k = 0; k < 3.6; k += 0.6) { const c = k > 2.4 ? CLAW : far ? CLAW2 : CLAW; g.set(x + Math.sin(a) * (r + k) + Math.cos(a) * k * 0.15, y + Math.cos(a) * (r + k) - Math.sin(a) * k * 0.15, c); }
   }
 }
+// 兩段手腳的關節：給根部 a、末端 h、兩段長度，算出手肘／膝蓋（side 決定往哪邊彎）
+function ik(a, h, l1, l2, side) {
+  let dx = h[0] - a[0], dy = h[1] - a[1], d = Math.hypot(dx, dy) || 1;
+  if (d > l1 + l2 - 0.5) { const k = (l1 + l2 - 0.5) / d; dx *= k; dy *= k; d = l1 + l2 - 0.5; h = [a[0] + dx, a[1] + dy]; }
+  const c = Math.max(-1, Math.min(1, (l1 * l1 + d * d - l2 * l2) / (2 * l1 * d))), ang = Math.atan2(dy, dx) + side * Math.acos(c);
+  return [[a[0] + Math.cos(ang) * l1, a[1] + Math.sin(ang) * l1], h];
+}
+
 // 腰間的蜂蜜罐：布蓋子綁繩、蜂蜜從罐口溢出來
 function honeyPot(g, x, y, t, tilt = 0, sc = 1) {
   g.shade(x - 9, y - 11, x + 9, y + 10, (px, py) => {
@@ -128,52 +141,57 @@ function honeyPot(g, x, y, t, tilt = 0, sc = 1) {
 function bear(g, o, t, S) {
   const q = pose(o, t);
   g.clear();
-  const hx = 0, hy = -q.hip, ln = q.lean;
-  const at = (dx, dy) => [hx + dx - dy * ln, hy + dy];          // 上身的點：越高越往前壓
+  const hx = 0, hy = -q.hip, ca = Math.cos(q.lean), sa = Math.sin(q.lean);
+  const at = (dx, dy) => [hx + dx * ca - dy * sa, hy + dx * sa + dy * ca];   // 上身的點：整個上身繞屁股轉
   const bc = at(3, -17), ch = at(0, -37);
-  const shN = at(21, -41), shF = at(-18, -43);
-  const head = at(4, -58 + q.dip * 5 - q.up * 2);
-  const arm = (s, e, base) => {
-    const el = [base[0] + Math.sin(s) * 13, base[1] + Math.cos(s) * 13];
-    const hand = [el[0] + Math.sin(s + e) * 12, el[1] + Math.cos(s + e) * 12];
-    if (q.sit === 0 && hand[1] > -5) hand[1] = -5;
-    return [base, el, hand, s + e];
-  };
+  const shN = at(21, -41), shF = at(-17, -43);
+  const head = at(4, -58 + q.dip * 4 - q.up * 2);
+  const [hX, hY] = [Math.round(head[0]), Math.round(head[1])];
+  const jo = q.jaw * 5.5, mx = hX + 11, my = hY + 4;
+  // 吃蜂蜜：罐子舉到頭頂、兩手抓在罐子兩邊
+  const potC = [hX + 9, hY - 24];
+  const nT = q.prop === "pot" ? [potC[0] + 12, potC[1] + 2] : q.nH, fT = q.prop === "pot" ? [potC[0] - 12, potC[1] + 2] : q.fH;
+  const arm = (sh, T, side) => { const [el, hand] = ik(sh, T, 14, 13, side); return [sh, el, hand, Math.atan2(hand[0] - el[0], hand[1] - el[1])]; };
+  const aF = arm(shF, fT, q.prop === "pot" ? -1 : q.fB), aN = arm(shN, nT, q.prop === "pot" ? 1 : q.nB);
   const leg = (dx, step, far) => {
-    const top = [hx + dx, hy + 2];
-    let foot = [hx + dx * 1.35 + step, -1], knee = [(top[0] + foot[0]) / 2 + dx * 0.2, (top[1] + foot[1]) / 2];
-    if (q.sit) { foot = [hx + dx * 0.7 + 18, -4]; knee = [hx + dx * 0.9 + 12, hy - 4]; }
-    seg3(g, top, knee, 12, 10, far, far ? 31 : 41);
-    seg3(g, knee, foot, 10, 8.5, far, far ? 32 : 42);
-    g.ellipse(foot[0] + 4, foot[1] - 2.6, 8.5, 3.6, (nx, ny) => (ny < -0.25 ? FUR[far ? 3 : 5] : ny < 0.35 ? FUR[far ? 2 : 3] : FUR[1]));   // 大腳掌，朝右
-    for (let i = 0; i < 3; i++) { g.set(foot[0] + 12.5, foot[1] - 4.5 + i * 1.5, CLAW); g.set(foot[0] + 13.5, foot[1] - 4 + i * 1.5, CLAW2); }
+    const top = [hx + dx, hy + 2], sole = far ? -3 : 0;
+    let ankle = [hx + dx * 1.45 + step, sole - 3.5];
+    if (q.sit) ankle = [hx + (far ? 20 : 30), sole - 5];
+    const [knee, an] = ik(top, ankle, 9.5, 8.5, -1), k = far ? 0.88 : 1;
+    seg3(g, top, knee, 12 * k, 10 * k, far);
+    seg3(g, knee, an, 10 * k, 8.5 * k, far);
+    if (q.sit) {                                             // 坐著：腳底板朝前、看得到肉球
+      g.ellipse(an[0] + 3, an[1] - 1, 4, 6.5 * k, (nx, ny) => (nx < -0.3 ? FUR[far ? 2 : 3] : far ? BELLY[1] : BELLY[2]));
+      return;
+    }
+    g.ellipse(an[0] + 4, sole - 2.6, 8.5 * k, 3.6, (nx, ny) => (ny < -0.25 ? FUR[far ? 3 : 5] : ny < 0.35 ? FUR[far ? 2 : 3] : FUR[1]));   // 大腳掌，朝右
+    for (let i = 0; i < 3; i++) { g.set(an[0] + 12.5 * k, sole - 4.5 + i * 1.5, far ? CLAW2 : CLAW); g.set(an[0] + 13.5 * k, sole - 4 + i * 1.5, CLAW2); }
   };
-  const drawArm = (pts, far, id) => {
-    ball(g, pts[0][0], pts[0][1], 10, 9, far ? FUR.map((c, i) => FUR[Math.max(0, i - 1)]) : FUR, id + 3, 0);   // 圓圓的大肩膀
-    seg3(g, pts[0], pts[1], 9.5, 8.5, far, id);
-    seg3(g, pts[1], pts[2], 8.5, 6.2, far, id + 1);
-    if (q.prop !== "pot") paw(g, pts[2][0], pts[2][1], pts[3], 7, far, id + 2);
+  const drawArm = (pts, far, withPaw = true) => {
+    ball(g, pts[0][0], pts[0][1], far ? 9 : 10, far ? 8 : 9, far ? DARKER : FUR, 0, false);   // 圓圓的大肩膀
+    seg3(g, pts[0], pts[1], far ? 8.5 : 9.5, far ? 7.5 : 8.5, far);
+    seg3(g, pts[1], pts[2], far ? 7.5 : 8.5, far ? 5.6 : 6.2, far);
+    if (withPaw) paw(g, pts[2][0], pts[2][1], pts[3], far ? 6.3 : 7, far);
   };
+  const pot = q.prop === "pot";
   // 遠的手、兩隻腳（大肚子會垂下來蓋住大腿上半）
-  let aF = arm(q.fS, q.fE, shF);
-  if (q.prop !== "pot") drawArm(aF, true, 10);
-  leg(-11, q.stepF, true);
-  leg(11, q.stepN, false);
+  drawArm(aF, true, !pot);
+  leg(-13, q.stepF, true);
+  leg(13, q.stepN, false);
   // 胸口（肩膀那一圈厚毛）、大肚子
-  ball(g, ch[0], ch[1], 22, 14, FUR, 51);
-  ball(g, bc[0], bc[1], 26, 24, FUR, 52);
-  // 淺色的肚皮：偏右（三分之二朝前），邊緣是一撮一撮的毛
-  const pc = [bc[0] + 6, bc[1] + 1];
+  ball(g, ch[0], ch[1], 22, 14, FUR);
+  ball(g, bc[0], bc[1], 26, 24, FUR);
+  // 淺色的肚皮：偏右（三分之二朝前），邊緣一撮一撮
+  const pc = [Math.round(bc[0] + 6), Math.round(bc[1] + 1)];
   g.shade(pc[0] - 18, pc[1] - 22, pc[0] + 18, pc[1] + 22, (x, y) => {
     if (!g.get(x, y)) return 0;
     const nx = (x - pc[0]) / 15.5, ny = (y - pc[1]) / 19.5, d = Math.hypot(nx, ny);
-    const tuft = h1(Math.floor((Math.atan2(ny, nx) + 4) * 6), 7) - 0.5;
-    if (d > 1 + tuft * 0.16) return 0;
-    const lit = -nx * 0.45 - ny * 0.7 + strand(x - pc[0], y - pc[1], 9) * 0.15 - (d > 0.88 ? 0.25 : 0);
+    if (d > 1 + (tri(Math.round((Math.atan2(ny, nx) + 4) * 12), 5) - 0.4) * 0.07) return 0;
+    const lit = -nx * 0.45 - ny * 0.7 - (d > 0.86 ? 0.3 : 0);
     return lit > 0.5 ? BELLY[4] : lit > 0.1 ? BELLY[3] : lit > -0.35 ? BELLY[2] : BELLY[1];
   });
   // 吞下去的星星碎片：卡在肚子上，四周的毛裂開發光
-  const sx = Math.round(pc[0] - 3), sy = Math.round(pc[1] - 3);
+  const sx = pc[0] - 3, sy = pc[1] - 3;
   for (const [ax, ay, L] of [[-1, -0.7, 9], [1, -0.4, 8], [0.4, 1, 9], [-0.9, 0.6, 7], [0.2, -1, 6]]) {
     let x = sx, y = sy;
     for (let k = 0; k < L; k++) { x += ax + (h1(k, ax * 9) - 0.5) * 0.9; y += ay + (h1(k, ay * 7) - 0.5) * 0.9; if (g.get(x, y)) g.set(x, y, k < 3 ? S[2] : S[1]); }
@@ -182,32 +200,23 @@ function bear(g, o, t, S) {
     .forEach((row, j) => [...row].forEach((c2, i) => { if (c2 !== ".") g.set(sx - 4 + i, sy - 4 + j, c2 === "0" ? S[3] : S[+c2]); }));
   // 肚皮上沾到的蜂蜜（貪吃）
   for (const [dx, dy, L] of [[9, -12, 4], [12, -9, 3], [4, -14, 2]]) for (let j = 0; j < L; j++) g.set(pc[0] + dx, pc[1] + dy + j, j === 0 ? HONEY[3] : HONEY[2]);
-  // 腰間的繩子＋蜂蜜罐（坐下來吃的時候拿在手上）
-  for (let x = -24; x <= 26; x++) { const y = bc[1] + 19 + (x * x) * 0.004 - x * 0.06; if (g.get(hx + x, y)) { g.set(hx + x, y, ROPE[1]); g.set(hx + x, y - 1, (x & 3) === 0 ? ROPE[2] : ROPE[0]); } }
-  if (q.prop !== "pot") honeyPot(g, ...at(-22, -2), t, 0.6);
-  // 近手舉到頭後面（丟蜂窩的預兆）：手和蜂窩在頭的後面，先畫
-  let aN = arm(q.nS, q.nE, shN), aF2 = null;
-  const behind = q.prop !== "pot" && aN[2][1] < shN[1] - 4;
+  // 腰間的繩子＋蜂蜜罐（坐下來吃的時候拿在手上）：繩子跟著上身轉
+  for (let x = -26; x <= 28; x += 0.5) { const [X, Y] = at(x + 3, 2 + x * x * 0.004 - x * 0.06); if (g.get(X, Y)) { g.set(X, Y, ROPE[1]); g.set(X, Y - 1, (Math.round(x) & 3) === 0 ? ROPE[2] : ROPE[0]); } }
+  if (!pot) honeyPot(g, ...at(-22, -2), t, 0.6);
+  // 手舉得比肩膀高 → 手（和蜂窩、罐子）畫在頭的後面，臉永遠看得到
+  const behind = pot || aN[2][1] < shN[1] - 4;
   const drawHive = () => {
     const [x, y] = aN[2];
     g.shade(x - 8, y - 13, x + 8, y + 4, (px, py) => { const nx = (px - x) / 7, ny = (py - y + 5) / 8.5; if (nx * nx + ny * ny > 1) return 0; const band = Math.floor((py - y + 20) / 2.6) % 2; return band ? HIVE[3] : nx < -0.2 ? HIVE[2] : HIVE[1]; });
     g.ellipse(x + 1, y - 3, 1.8, 1.4, INK);
   };
-  if (behind) { drawArm(aN, false, 20); if (q.prop === "hive") drawHive(); }
-  if (q.prop === "pot") {                                   // 兩手捧罐子：手先畫，頭再畫
-    const hd = head, px = hd[0] + 9, py = hd[1] - 24;      // 罐子舉到頭頂上、倒過來
-    aF = [shF, [shF[0] - 7, shF[1] - 11], [px - 12, py + 2], 3.6];
-    aN = [shN, [shN[0] + 9, shN[1] - 9], [px + 12, py + 2], 2.6];
-    for (const [pts, far] of [[aF, true], [aN, false]]) { seg3(g, pts[0], pts[1], 9.5, 8.5, far, far ? 10 : 20); seg3(g, pts[1], pts[2], 8.5, 6.2, far, far ? 11 : 21); }
-  }
+  if (behind) { drawArm(aN, false, !pot); if (q.prop === "hive") drawHive(); }
   // 頭：大、三分之二朝右，兩隻小眼睛、凶眉、嘴筒在右邊
-  const [hX, hY] = head;
-  ball(g, hX - 10, hY - 11, 5, 4.6, FUR, 61, 0.35); g.ellipse(hX - 10, hY - 10.5, 2.4, 2.2, FUR[1]);
-  ball(g, hX + 6, hY - 13, 5, 4.6, FUR, 62); g.ellipse(hX + 6, hY - 12.5, 2.4, 2.2, FUR[2]);
-  ball(g, hX, hY, 15, 13.5, FUR, 63);
-  for (const s2 of [-1, 1]) ball(g, hX + (s2 < 0 ? -11 : 9), hY + 6, 5.5, 4.5, FUR, 64 + s2, s2 < 0 ? 0.3 : 0);   // 鼓鼓的臉頰毛
-  const jo = q.jaw * 5.5, mx = hX + 11, my = hY + 4;
-  ball(g, mx - 1, my + 3.5 + jo * 0.6, 7.5, 3.6, FUR, 66, 0.1);                           // 下巴
+  ball(g, hX - 10, hY - 11, 5, 4.6, FUR, 0.35, false); g.ellipse(hX - 10, hY - 10.5, 2.4, 2.2, FUR[1]);
+  ball(g, hX + 6, hY - 13, 5, 4.6, FUR, 0, false); g.ellipse(hX + 6, hY - 12.5, 2.4, 2.2, FUR[2]);
+  ball(g, hX, hY, 15, 13.5, FUR);
+  for (const s2 of [-1, 1]) ball(g, hX + (s2 < 0 ? -11 : 9), hY + 6, 5.5, 4.5, FUR, s2 < 0 ? 0.3 : 0);   // 鼓鼓的臉頰毛
+  ball(g, mx - 1, my + 3.5 + jo * 0.6, 7.5, 3.6, FUR, 0.1, false);                           // 下巴
   if (q.jaw > 0.2) {
     g.ellipse(mx - 1, my + 1.6 + jo * 0.3, 7, 0.9 + jo * 0.5, MOUTH);
     if (jo > 3) g.ellipse(mx - 2, my + 1.6 + jo * 0.55, 4, 1.4, TONGUE);
@@ -225,10 +234,10 @@ function bear(g, o, t, S) {
   // 嘴角滴蜂蜜（口水）
   if (q.prop !== "pot") { const dk = wrap(t / D * 1.5, 1), L = 2 + Math.floor(dk * 5); for (let j = 0; j < L; j++) g.set(mx - 7, my + 2 + j, j === L - 1 ? HONEY[3] : HONEY[2]); }
   // 近的手（右邊、在最前面）
-  if (!behind && q.prop !== "pot") { drawArm(aN, false, 20); if (q.prop === "hive") drawHive(); }
+  if (!behind) { drawArm(aN, false); if (q.prop === "hive") drawHive(); }
   let potAt = null;
   if (q.prop === "pot") {                                   // 兩手抱著蜂蜜罐舉到嘴邊、往嘴裡倒
-    const x = hX + 9, y = hY - 24, ang = 2.7, ca = Math.cos(ang), sa = Math.sin(ang);
+    const [x, y] = potC, ang = 2.7, ca = Math.cos(ang), sa = Math.sin(ang);
     const rim = [x - sa * 11.5, y + ca * 11.5];                 // 罐口：往下、朝著嘴
     // 蜂蜜一條粗粗地從罐口流進張開的嘴
     const dk = (t / D) * 6;
@@ -240,7 +249,7 @@ function bear(g, o, t, S) {
       const lit = -dx / 9.5 * 0.5 - dy / 10.5 * 0.5;
       return Math.abs(v + 1) < 0.8 ? ROPE[1] : lit > 0.35 ? POT[3] : lit > 0 ? POT[2] : lit > -0.4 ? POT[1] : POT[0];
     });
-    paw(g, aF[2][0], aF[2][1], aF[3], 6.5, true, 72); paw(g, aN[2][0], aN[2][1], aN[3], 6.5, false, 71);
+    paw(g, aF[2][0], aF[2][1], aF[3], 6.3, true); paw(g, aN[2][0], aN[2][1], aN[3], 7, false);
     potAt = rim;
   }
   g.outline((x, y, nx, ny) => (ny > 0 ? FUR[0] : mix(FUR[0], FUR[1], 0.5)));
