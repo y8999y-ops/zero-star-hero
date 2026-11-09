@@ -1,6 +1,7 @@
 // 關鍵格比較圖：把自製特效在指定的幾個時間點畫出來，一列一個選項組合，排成一張放大的 PNG（比較草稿用）。
 //   node game/tools/keyframes.mjs <特效檔> <輸出.png> '<JSON>'
 //   JSON：{ "rows": [ [ {選項}, 時間1, 時間2, … ], … ], "zoom": 3, "crop": [x0, y0, x1, y1] }
+//   或 { "cells": [ [ {選項}, 時間 ], … ], "cols": 3 }：每格各自的選項，排成 cols 欄。
 //   crop 是特效畫布座標（不給就整張）；每格之間空 4 格。
 import { writeFileSync } from "node:fs";
 import { resolve, dirname, basename } from "node:path";
@@ -10,7 +11,9 @@ import { encodePNG } from "../../pixelfx/tools/lib/png.mjs";
 const [file, out, spec] = process.argv.slice(2);
 const S = JSON.parse(spec), zoom = S.zoom ?? 3, gap = 4;
 const fx = await loadEffect(basename(file, ".js"), dirname(resolve(file)));
-const cells = S.rows.map(([opts, ...times]) => {
+if (S.cells) { const c = S.cols ?? 3; S.rows = []; for (let i = 0; i < S.cells.length; i += c) S.rows.push(S.cells.slice(i, i + c)); }
+const one = (opts, t) => { const r = renderFrames(fx, { options: opts }); return { f: r.frames[Math.min(r.n - 1, Math.round(t * r.fps))], w: r.w, h: r.h }; };
+const cells = S.cells ? S.rows.map((row) => row.map(([o, t]) => one(o, t))) : S.rows.map(([opts, ...times]) => {
   const r = renderFrames(fx, { options: opts });
   return times.map((t) => r.frames[Math.min(r.n - 1, Math.round(t * r.fps))]).map((f) => ({ f, w: r.w, h: r.h }));
 });
