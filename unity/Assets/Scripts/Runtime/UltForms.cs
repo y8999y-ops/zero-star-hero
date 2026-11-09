@@ -470,7 +470,7 @@ namespace ZeroStar
             if (t >= BACK && !burst)
             {
                 burst = true; kit.Shake(0.4, 3); kit.HitStop(0.08); kit.Sfx("crit");
-                foreach (var e in struck.List) if (!e.Dead) { H.Hit(e, 2, e.X < x0 ? -1 : 1, new HitOpts { Launch = true, Push = 3, Elem = "poison" }); kit.Spawn("poison-cloud", Pf.Round(e.X), Pf.Round(e.Y), new FxOptions { Light = 0.4 }, 1.6); }
+                foreach (var e in struck.List) if (!e.Dead) { H.Hit(e, 2, e.X < x0 ? -1 : 1, new HitOpts { Launch = true, Push = 3, Elem = "poison" }); var cloud = kit.Spawn("poison-cloud", Pf.Round(e.X), Pf.Round(e.Y), new FxOptions { Light = 0.4 }, 1.6); kit.G.After(1300, () => cloud?.Stop()); }   // 毒霧是循環特效：1.3 秒後淡掉（原本沒停，會永遠留著）
                 double heal = Math.Min(0.3, hits * 0.012);
                 if (heal > 0) { H.Heal(heal); kit.Flash(x0, y0 - 12, 70, 2, 0.4, "#c48cff"); }
             }

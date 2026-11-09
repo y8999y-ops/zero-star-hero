@@ -303,7 +303,7 @@ const bat = {
     player.ultPose(P.finish, dt);
     if (t >= BT.back && !U.burst) {
       U.burst = true; kit.shake(0.4, 3); kit.hitStop(0.08); kit.sfx("crit");
-      for (const e of U.struck) if (!e.dead) { H.hit(e, 2, e.x < U.x0 ? -1 : 1, { launch: true, push: 3, elem: "poison" }); if (kit.fx.poison) kit.spawn(kit.fx.poison, { x: Math.round(e.x), y: Math.round(e.y), light: 0.4 }, { speed: 1.6 }); }
+      for (const e of U.struck) if (!e.dead) { H.hit(e, 2, e.x < U.x0 ? -1 : 1, { launch: true, push: 3, elem: "poison" }); if (kit.fx.poison) { const cloud = kit.spawn(kit.fx.poison, { x: Math.round(e.x), y: Math.round(e.y), light: 0.4 }, { speed: 1.6 }); setTimeout(() => cloud?.stop(), 1300); } }   // 毒霧是循環特效：1.3 秒後淡掉（原本沒停，會永遠留著）
       const heal = Math.min(0.3, U.hits * 0.012);
       if (heal > 0) { H.heal(heal); kit.flash(U.x0, U.y0 - 12, 70, 2, 0.4, "#c48cff"); }
     }
