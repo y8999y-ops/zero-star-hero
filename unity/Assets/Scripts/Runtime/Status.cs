@@ -202,6 +202,13 @@ namespace ZeroStar
         public class Snap { public int X0, Y0, W, H; public uint[] Px; }
         const int MARGIN = 12;
         /// 敵人畫上去之前先記下那一塊畫面（畫完比對出身體的形狀）
+        static readonly Snap snapBuf = new Snap { Px = new uint[1024] };
+        // 畫元素狀態用的暫存（每格重複用，不產生新的）
+        static byte[] mBuf = new byte[1024];
+        static readonly List<Pt> tops = new List<Pt>(), sides = new List<Pt>(), edges = new List<Pt>(), lower = new List<Pt>(), fronts = new List<Pt>(), drips = new List<Pt>(), roots = new List<Pt>();
+        static readonly List<int> xsBuf = new List<int>();
+        static readonly (int, int)[] BEAD = { (0, -2), (-1, -1), (2, -1), (-1, 0), (2, 0), (-1, 1), (2, 1), (0, 2), (1, 2) };
+        static uint[] oilC0, oilC1, wetC, gooC, toxC;
         public static Snap TakeSnap(Frame frame, Enemy e)
         {
             var S = e.St;
@@ -210,9 +217,10 @@ namespace ZeroStar
             int x0 = (int)Math.Max(0, Pf.Round(b.x0 - MARGIN) - frame.Ox), y0 = (int)Math.Max(0, Pf.Round(b.y0 - MARGIN) - frame.Oy);
             int x1 = (int)Math.Min(frame.W, Pf.Round(b.x1 + MARGIN) - frame.Ox), y1 = (int)Math.Min(frame.H, Pf.Round(b.y1 + 3) - frame.Oy);
             if (x1 <= x0 || y1 <= y0) return null;
-            int w = x1 - x0, h = y1 - y0; var px = new uint[w * h];
+            int w = x1 - x0, h = y1 - y0; var sn = snapBuf; if (sn.Px.Length < w * h) sn.Px = new uint[Math.Max(w * h, sn.Px.Length * 2)];   // 重複用同一塊（一次只畫一隻怪）
+            var px = sn.Px;
             for (int y = 0; y < h; y++) Array.Copy(frame.Color, (y0 + y) * frame.W + x0, px, y * w, w);
-            return new Snap { X0 = x0, Y0 = y0, W = w, H = h, Px = px };
+            sn.X0 = x0; sn.Y0 = y0; sn.W = w; sn.H = h; return sn;
         }
 
         struct Pt { public int X, Y; public bool Front; public Pt(int x, int y, bool f = false) { X = x; Y = y; Front = f; } }
@@ -224,12 +232,13 @@ namespace ZeroStar
             if (S == null || e.Dead || snap == null) return;
             int x0 = snap.X0, y0 = snap.Y0, w = snap.W, h = snap.H; var px = snap.Px;
             int W = frame.W; uint[] Cc = frame.Color; double t = e.Clock; double sd = Pf.Round(e.X * 0.37);
-            var m = new byte[w * h];
+            if (mBuf.Length < w * h) mBuf = new byte[Math.Max(w * h, mBuf.Length * 2)];
+            var m = mBuf; Array.Clear(m, 0, w * h);
             int top = h, bot = -1;
             for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (Cc[(y0 + y) * W + x0 + x] != px[y * w + x]) { m[y * w + x] = 1; if (y < top) top = y; if (y > bot) bot = y; }
             if (bot < 0) return;
             bool At(int x, int y) => x >= 0 && y >= 0 && x < w && y < h && m[y * w + x] == 1;
-            var tops = new List<Pt>(); var sides = new List<Pt>(); var edges = new List<Pt>();
+            tops.Clear(); sides.Clear(); edges.Clear();
             for (int y = top; y <= bot; y++) for (int x = 0; x < w; x++)
             {
                 if (!At(x, y)) continue;
@@ -249,7 +258,7 @@ namespace ZeroStar
                 int outd = q.X < w / 2.0 ? -1 : 1; int x = q.Front ? q.X : q.X + outd, yy0 = q.Y;
                 void Bead(double bx, double by)
                 {
-                    foreach (var (dx, dy) in new[] { (0, -2), (-1, -1), (2, -1), (-1, 0), (2, 0), (-1, 1), (2, 1), (0, 2), (1, 2) }) P2(bx + dx, by + dy, DRIP_EDGE);
+                    foreach (var (dx, dy) in BEAD) P2(bx + dx, by + dy, DRIP_EDGE);
                     P2(bx, by - 1, cols[1]); P2(bx + 1, by - 1, cols[0], glowIt); P2(bx, by, cols[0], glowIt); P2(bx + 1, by, cols[1]); P2(bx, by + 1, cols[1]); P2(bx + 1, by + 1, cols[2]);
                     P2(bx, by - 1, DRIP_HI);
                 }
@@ -266,30 +275,30 @@ namespace ZeroStar
                     else { P2(x - 1, bot, cols[0]); P2(x + 1, bot, cols[0]); P2(x - 2, bot - 1, cols[1]); P2(x + 2, bot - 1, cols[1]); P2(x - 3, bot - 2, cols[2]); P2(x + 3, bot - 2, cols[2]); }
                 }
             }
-            var lower = sides.Where(q => (bot - q.Y) / (double)hgt < 0.75).ToList();
-            var fronts = new List<Pt>();
+            lower.Clear(); foreach (var q in sides) if ((bot - q.Y) / (double)hgt < 0.75) lower.Add(q);
+            fronts.Clear();
             for (int k = 0; k < 6; k++)
             {
-                int yy = (int)Pf.Round(top + hgt * (0.45 + 0.08 * k)); var xs = new List<int>();
+                int yy = (int)Pf.Round(top + hgt * (0.45 + 0.08 * k)); var xs = xsBuf; xs.Clear();
                 for (int x = 0; x < w; x++) if (At(x, yy) && At(x - 2, yy) && At(x + 3, yy)) xs.Add(x);
                 if (xs.Count > 0) fronts.Add(new Pt(xs[(int)Math.Floor(Hash(k, sd + 7) * xs.Count)], yy, true));
             }
             var baseList = lower.Count > 0 ? lower : sides;
-            var drips = new List<Pt>(); for (int i = 0; i < baseList.Count; i++) if (i % 3 == 0) drips.Add(baseList[i]); drips.AddRange(fronts);
+            drips.Clear(); for (int i = 0; i < baseList.Count; i++) if (i % 3 == 0) drips.Add(baseList[i]); drips.AddRange(fronts);
             if (S.Oil > 0)
             {
-                for (int k = 0; k < 4; k++) Drip(drips, k, 51, 1.6, 4, new[] { OIL_P[k % 2 != 0 ? 3 : 4], OIL_P[2], OIL_P[1] });
+                for (int k = 0; k < 4; k++) Drip(drips, k, 51, 1.6, 4, k % 2 != 0 ? oilC1 ??= new[] { OIL_P[3], OIL_P[2], OIL_P[1] } : oilC0 ??= new[] { OIL_P[4], OIL_P[2], OIL_P[1] });
                 for (int x = -4; x <= 4; x++) Put(frame, e.X + x, e.Box().y1, Math.Abs(x) == 4 ? OIL_P[1] : x == -1 ? OIL_P[4] : OIL_P[0]);
             }
-            if (S.Wet > 0) for (int k = 0; k < 5; k++) Drip(drips, k, 61, 0.9, 2, new[] { WET_P[3], WET_P[2], WET_P[1] });
+            if (S.Wet > 0) for (int k = 0; k < 5; k++) Drip(drips, k, 61, 0.9, 2, wetC ??= new[] { WET_P[3], WET_P[2], WET_P[1] });
             if (S.Slime > 0 || S.Stuck > 0)
             {
-                for (int k = 0; k < 5; k++) Drip(drips, k, 71, 1.4, 5, new[] { GOO_P[2], GOO_P[1], GOO_P[0] }, true);
+                for (int k = 0; k < 5; k++) Drip(drips, k, 71, 1.4, 5, gooC ??= new[] { GOO_P[2], GOO_P[1], GOO_P[0] }, true);
                 if (S.Stuck > 0) for (int k = 0; k < 3; k++) { var q = Pick(edges, Math.Floor(t * 14) + k * 7, 81); if (q != null) P2(q.Value.X, q.Value.Y, VOLT_P[3], true); }
             }
             if (S.Poison > 0)
             {
-                for (int k = 0; k < 4; k++) Drip(drips, k, 95, 1.2, 3, new[] { TOX_P[2], TOX_P[1], TOX_P[3] }, true);
+                for (int k = 0; k < 4; k++) Drip(drips, k, 95, 1.2, 3, toxC ??= new[] { TOX_P[2], TOX_P[1], TOX_P[3] }, true);
                 for (int k = 0; k < 3; k++)
                 {
                     double life = 1.1, cyc = Math.Floor((t + k * 0.37) / life), p = ((t + k * 0.37) % life) / life; var qq = Pick(tops, k + cyc * 3, 91); if (qq == null) continue;
@@ -302,7 +311,9 @@ namespace ZeroStar
             if (S.Burn > 0)
             {
                 bool big = S.Big; double slot = Math.Floor(t * 3);
-                var roots = tops.Where(q => Hash(q.X + slot * 7, sd) < (big ? 0.5 : 0.32)).Concat(sides.Where(q => (bot - q.Y) / (double)hgt > 0.3 && Hash(q.Y + slot * 5, q.X + sd) < (big ? 0.25 : 0.12))).ToList();
+                roots.Clear();
+                foreach (var q in tops) if (Hash(q.X + slot * 7, sd) < (big ? 0.5 : 0.32)) roots.Add(q);
+                foreach (var q in sides) if ((bot - q.Y) / (double)hgt > 0.3 && Hash(q.Y + slot * 5, q.X + sd) < (big ? 0.25 : 0.12)) roots.Add(q);
                 foreach (var r in roots)
                 {
                     int x = r.X, y = r.Y;

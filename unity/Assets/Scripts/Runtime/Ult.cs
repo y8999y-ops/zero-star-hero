@@ -276,7 +276,7 @@ namespace ZeroStar
             var tint = Mod?.Tint; double tk = (1 - kc) * 0.9;
             // 每個像素各算各的：切成 8 條同時算。數值都是 0～255 的正數，直接截成整數（跟 JS 的 << 一樣）
             const int BANDS = 8; int per = (n + BANDS - 1) / BANDS;
-            System.Threading.Tasks.Parallel.For(0, BANDS, band =>
+            PixelFX.Par.For(BANDS, band =>
             {
                 int i0 = band * per, i1 = Math.Min(n, i0 + per);
                 if (tint != null)

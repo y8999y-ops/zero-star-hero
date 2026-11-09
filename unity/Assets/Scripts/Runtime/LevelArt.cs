@@ -66,7 +66,7 @@ namespace ZeroStar
             var V = Vignette(frame.W);
             const int BANDS = 8;
             int per = (H + BANDS - 1) / BANDS;
-            System.Threading.Tasks.Parallel.For(0, BANDS, k =>
+            PixelFX.Par.For(BANDS, k =>
             {
                 int y0 = k * per, y1 = Math.Min(H, (k + 1) * per);
                 for (int y = y0; y < y1; y++) DrawRow(frame, lv, V, y);

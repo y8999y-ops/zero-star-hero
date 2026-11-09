@@ -14,10 +14,15 @@ namespace ZeroStar
         public static bool On;
         public static readonly Dictionary<string, double> Ms = new Dictionary<string, double>();
         static readonly System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+        /// 每一段產生了多少暫存資料（位元組；手機上清這些垃圾時會頓一下）
+        public static readonly Dictionary<string, double> Bytes = new Dictionary<string, double>();
+        static long lastBytes;
         public static void Mark(string name)
         {
             if (!On) return;
-            if (name != null) { Ms.TryGetValue(name, out var v); Ms[name] = v + sw.Elapsed.TotalMilliseconds; }
+            long b = GC.GetTotalMemory(false);
+            if (name != null) { Ms.TryGetValue(name, out var v); Ms[name] = v + sw.Elapsed.TotalMilliseconds; Bytes.TryGetValue(name, out var bv); Bytes[name] = bv + Math.Max(0, b - lastBytes); }   // 中間剛好清過垃圾（變少）就不算
+            lastBytes = b;
             sw.Restart();
         }
     }
@@ -736,11 +741,11 @@ namespace ZeroStar
             if (Fx.ShakeT > 0) Fx.ShakeT -= dt;
             if (Fx.Freeze > 0) { Fx.Freeze -= dt; return; }
             if (!Started) return;
-            Combat.Update(dt);
-            if (Town) { TownTick(dt); return; }
+            Prof.Mark("L:按鍵"); Combat.Update(dt); Prof.Mark("L:戰鬥");
+            if (Town) { TownTick(dt); Prof.Mark("L:城鎮"); return; }
             SceneLight.Update(dt);
             Status.Update(dt);
-            UpdateStageObjectsEarly(dt);   // 元素場景物件、死亡碎片
+            Prof.Mark("L:狀態"); UpdateStageObjectsEarly(dt); Prof.Mark("L:場景物件前");   // 元素場景物件、死亡碎片
             LowHpK = Player.Hp > 0 && !(Player.HideT > 0) ? Player.Hp / Player.MaxHp : 1;
             if (LowHpK < 0.3) { LowHpPhase += dt * (1.2 + 1.2 * (1 - LowHpK / 0.3)); if (LowHpPhase >= 1) { LowHpPhase -= 1; Sfx("heart"); } LowHpPulse = HeartBeat(LowHpPhase); } else { LowHpPhase = 0.99; LowHpPulse = 0; }
             if (NoManaT > 0) NoManaT -= dt;
@@ -773,15 +778,16 @@ namespace ZeroStar
                 return;
             }
             UseInput();
-            Player.Update(dt, this);
-            UpdateStageObjectsPlayer(dt);   // 草叢、木箱（props）、小生物（scenery）
+            Prof.Mark("L:其他"); Player.Update(dt, this); Prof.Mark("L:主角");
+            UpdateStageObjectsPlayer(dt); Prof.Mark("L:草叢木箱");   // 草叢、木箱（props）、小生物（scenery）
             UpdateUniques(dt);
             UpdateChest(dt);
             UpdateGems(dt);
             Drops.Update(dt, Player, 16, Map, PickUp);
-            UpdateAbsorb(dt);
+            UpdateAbsorb(dt); Prof.Mark("L:寶箱掉落吸收");
             if (Endless) SpawnEnemies(dt);
             else { StatTime += dt; var v = ViewRect(); Director?.Update(dt, Player, CamX + v.x0, v.w); }
+            Prof.Mark("L:出怪");
             // 戰鬥區封鎖：主角出不去
             if (Director?.Lock != null) Player.X = Math.Max(Director.Lock.Value.l + 10, Math.Min(Director.Lock.Value.r - 10, Player.X));
             for (int ei = 0; ei < Enemies.Count; ei++)   // 照 JS 的 for…of：迴圈中新加的怪（王分裂）同一格也會跑到
@@ -797,11 +803,11 @@ namespace ZeroStar
                     if (rolling) e.RollHit = true;
                 }
             }
-            Separate(dt);
+            Prof.Mark("L:怪"); Separate(dt); Prof.Mark("L:推開");
             UpdateCoreFx(dt);
             UpdateAltars();
             UpdatePlug(dt);
-            UpdateStageObjectsLate(dt);   // 形態機關（features）
+            UpdateStageObjectsLate(dt); Prof.Mark("L:機關祭壇");   // 形態機關（features）
             foreach (var e in Enemies)
             {
                 if (e.Dead) continue;
@@ -854,7 +860,7 @@ namespace ZeroStar
                     if (s.Form == "slime" && Player.KingT > 0) foreach (var e in EnemiesIn(new Box(s.X - R, s.X + R, s.Y - 40, s.Y + 40))) Status.Apply(e, "burn");
                 }
             }
-            Shots.RemoveAll(s => s.Done);
+            Shots.RemoveAll(s => s.Done); Prof.Mark("L:怪後＋技能彈");
             // 技能樹「星光斬」：往前飛，穿過敵人、每隻打一次
             foreach (var w in Waves)
             {
@@ -891,7 +897,7 @@ namespace ZeroStar
             // 金幣：先噴出去，再被吸過來
             int got = CoinList.Update(dt, Player, Map);
             if (got > 0) { Coins += got; Money += got; Sfx("coin"); }
-            Fx.Update(dt);
+            Prof.Mark("L:技能樹金幣"); Fx.Update(dt); Prof.Mark("L:特效更新");
             if ((ComboT -= dt) <= 0 && Combo != 0) Combo = 0;
             HitTune = Math.Pow(2, Math.Min(8, Math.Floor(Combo / 5.0)) / 12);   // 連擊越高打擊音越高（每 5 連擊升半音，最多 8 個半音）
             FollowCam(dt);
@@ -924,7 +930,7 @@ namespace ZeroStar
             Ult.Lights(lights);
             StageLights(lights);   // props、scenery、features
             foreach (var a in Altars) lights.Add(a.Lit ? new LightSrc(a.X, a.Y - 18, 70, 2.4, "#ffd060") : new LightSrc(a.X, a.Y - 14, 26, 0.8, "#7488aa"));
-            Prof.Mark(null);
+            Prof.Mark("邏輯");
             var lv = SceneLight.Compute(frame, lights);
             Prof.Mark("光源");
             if (Town) TownArt.Draw(frame, lv, sceneClock);
@@ -933,11 +939,11 @@ namespace ZeroStar
             if (!Town) Art.DrawAtmosphere(frame, sceneClock);
             Prof.Mark("大氣");
             foreach (var a in Altars) if (Math.Abs(a.X - CamX - W / 2.0) < W) DrawAltar(frame, a);
-            DrawPlug(frame);   // 王房屋頂的垃圾塞子
+            Prof.Mark("S:祭壇"); DrawPlug(frame);   // 王房屋頂的垃圾塞子
             DrawStageObjects(frame, lv);   // features、props、scenery、hazards
             if (Town) DrawTownPeople(frame);
             else if (UseT != null) DrawBang(frame, UseT.X, UseT.Top);
-            if (Chest != null && !Chest.Opened && Math.Abs(Chest.X - CamX - W / 2.0) < W) DrawChestSolid(frame);
+            Prof.Mark("S:人"); if (Chest != null && !Chest.Opened && Math.Abs(Chest.X - CamX - W / 2.0) < W) DrawChestSolid(frame); Prof.Mark("S:寶箱");
             Prof.Mark("場景物件");
             if (!Ult.On) Fx.Draw(frame, true);
             Drops.Draw(frame, sceneClock);

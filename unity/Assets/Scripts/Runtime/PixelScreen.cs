@@ -37,6 +37,11 @@ namespace ZeroStar
         public double AvgMs { get; private set; }
         public double Fps { get; private set; }
         public double MaxMs { get; private set; }   // 最近 0.5 秒最慢的一格
+        /// 最近 0.5 秒平均每格產生多少暫存資料（KB，整個遊戲，含介面；手機清這些垃圾時會頓一下）
+        public double AllocKb { get; private set; }
+        /// 效能那一行字（0.5 秒更新一次，不用每格重組字串）
+        public string PerfText { get; private set; } = "";
+        long lastHeap; double allocSum;   // 每格之間 C# 記憶體增加多少（中間剛好清過垃圾、變少的那格不算）
         double perfMax;
         double perfMs, perfT; int perfN;
         readonly System.Diagnostics.Stopwatch watch = new System.Diagnostics.Stopwatch();
@@ -84,7 +89,8 @@ namespace ZeroStar
             PostComposite?.Invoke(rgba);
             double ms = watch.Elapsed.TotalMilliseconds;
             perfMs += ms; perfN++; perfMax = Math.Max(perfMax, ms);
-            if ((perfT += Time.unscaledDeltaTime) >= 0.5) { AvgMs = perfMs / perfN; Fps = perfN / perfT; MaxMs = perfMax; perfMs = 0; perfN = 0; perfT = 0; perfMax = 0; }
+            { long heap = GC.GetTotalMemory(false); if (lastHeap > 0 && heap > lastHeap) allocSum += heap - lastHeap; lastHeap = heap; }   // 上一格整個遊戲產生的暫存資料（位元組）
+            if ((perfT += Time.unscaledDeltaTime) >= 0.5) { AvgMs = perfMs / perfN; Fps = perfN / perfT; MaxMs = perfMax; AllocKb = allocSum / perfN / 1024; PerfText = $"{Fps:F0} fps  {AvgMs:F1} ms（最慢 {MaxMs:F0}）  暫存 {AllocKb:F0} KB/格  {W}×216"; perfMs = 0; perfN = 0; perfT = 0; perfMax = 0; allocSum = 0; }
             // 沒畫到的地方（透明）在網頁上會露出黑底：這裡直接補成不透明
             for (int i = 3; i < rgba.Length; i += 4) rgba[i] = 255;
             tex.SetPixelData(rgba, 0);

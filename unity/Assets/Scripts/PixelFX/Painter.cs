@@ -28,7 +28,22 @@ namespace PixelFX
         public uint[] Light { get { if (Q.Count > 0) Flush(); return light; } }
         public uint[] LightRaw => light;   // 不先 Flush（只給會自己顧好順序的地方用）
         public Frame(int w, int h, int ox = 0, int oy = 0) { W = w; H = h; Ox = ox; Oy = oy; Color = new uint[w * h]; light = new uint[w * h]; }
-        public Frame Clear() { Q.Clear(); Array.Clear(Color, 0, Color.Length); Array.Clear(light, 0, light.Length); return this; }
+        public Frame Clear() { Q.Clear(); ReleaseBufs(); Array.Clear(Color, 0, Color.Length); Array.Clear(light, 0, light.Length); return this; }
+        // ShadePar 記光用的暫存格子：跟這張畫布借、光畫完（Flush）就還，下次重複用（每格不產生新的）
+        readonly System.Collections.Generic.List<(uint[] c, double[] k)> bufFree = new System.Collections.Generic.List<(uint[], double[])>(), bufUsed = new System.Collections.Generic.List<(uint[], double[])>();
+        public (uint[] c, double[] k) RentBuf(int n)
+        {
+            lock (bufFree)
+            {
+                int best = -1;
+                for (int i = 0; i < bufFree.Count; i++) if (bufFree[i].k.Length >= n && (best < 0 || bufFree[i].k.Length < bufFree[best].k.Length)) best = i;
+                (uint[] c, double[] k) b;
+                if (best >= 0) { b = bufFree[best]; bufFree.RemoveAt(best); Array.Clear(b.k, 0, n); }
+                else b = (new uint[n], new double[n]);
+                bufUsed.Add(b); return b;
+            }
+        }
+        void ReleaseBufs() { lock (bufFree) { if (bufUsed.Count == 0) return; bufFree.AddRange(bufUsed); bufUsed.Clear(); } }
 
         // ---- 光暈先記下來、晚點一起畫（Defer＝true 時）
         // 光暈只加到 Light，不碰 Color。記下來的光暈照原本的順序，在 Flush 時把畫面切成幾條同時畫：
@@ -47,7 +62,7 @@ namespace PixelFX
         long qWork;
         public void Push(GlowCmd q)
         {
-            if (!Defer) { if (Q.Count > 0) Flush(); Run(q); return; }
+            if (!Defer) { if (Q.Count > 0) Flush(); Run(q); ReleaseBufs(); return; }
             Q.Add(q); qWork += (long)(q.x1 - q.x0 + 1) * (q.y1 - q.y0 + 1);
         }
         /// 不延後時：直接畫；大的切成 4 條同時畫（跟原本一樣）
@@ -56,22 +71,23 @@ namespace PixelFX
             int n = q.y1 - q.y0 + 1;
             if (n * (q.x1 - q.x0 + 1) < 2500) { ExecRows(ref q, q.y0, q.y1); return; }
             const int B = 4; int per = (n + B - 1) / B;
-            System.Threading.Tasks.Parallel.For(0, B, b => { int ya = q.y0 + b * per, yb = Math.Min(q.y1, ya + per - 1); if (ya <= yb) ExecRows(ref q, ya, yb); });
+            PixelFX.Par.For(B, b => { int ya = q.y0 + b * per, yb = Math.Min(q.y1, ya + per - 1); if (ya <= yb) ExecRows(ref q, ya, yb); });
         }
         public void Flush()
         {
             int nq = Q.Count; if (nq == 0) return;
             long __t = PfProf.T0(); try {
-            var arr = Q.ToArray(); Q.Clear(); long work = qWork; qWork = 0;
+            if (qArr.Length < nq) qArr = new GlowCmd[Math.Max(nq, qArr.Length * 2)];   // 重複用同一個陣列（每格不產生新的）
+            var arr = qArr; Q.CopyTo(arr); Q.Clear(); long work = qWork; qWork = 0;
             if (work < 4000) { for (int i = 0; i < nq; i++) ExecRows(ref arr[i], arr[i].y0, arr[i].y1); return; }
             // 切條：照每一列要算的格數平均分給幾條（光暈常常擠在畫面同一塊）
             int B = Math.Max(1, Math.Min(8, Environment.ProcessorCount));
-            var acc = new long[H + 1];
+            var acc = accBuf ??= new long[H + 1]; Array.Clear(acc, 0, acc.Length);
             for (int i = 0; i < nq; i++) { long wd = arr[i].x1 - arr[i].x0 + 1; acc[arr[i].y0 - Oy] += wd; acc[arr[i].y1 - Oy + 1] -= wd; }
             long run = 0, tot = 0; for (int y = 0; y < H; y++) { run += acc[y]; tot += run; acc[y] = tot; }   // acc[y]＝第 0～y 列加起來
-            var cut = new int[B + 1]; cut[B] = H;
+            var cut = cutBuf != null && cutBuf.Length == B + 1 ? cutBuf : (cutBuf = new int[B + 1]); cut[B] = H;
             for (int b = 1, y = 0; b < B; b++) { long want = tot * b / B; while (y < H - 1 && acc[y] < want) y++; cut[b] = y; }
-            System.Threading.Tasks.Parallel.For(0, B, b =>
+            PixelFX.Par.For(B, b =>
             {
                 int ya = Oy + cut[b], yb = Oy + cut[b + 1] - 1;
                 if (ya > yb) return;
@@ -81,8 +97,9 @@ namespace PixelFX
                     if (a0 <= a1) ExecRows(ref arr[i], a0, a1);
                 }
             });
-            } finally { PfProf.T1("Flush", __t); }
+            } finally { ReleaseBufs(); PfProf.T1("Flush", __t); }
         }
+        GlowCmd[] qArr = new GlowCmd[64]; long[] accBuf; int[] cutBuf;
         [ThreadStatic] static double[] dxBuf;
         // 這一格加光（跟 Add 同一個算法；kk > 0.004，值都是 0～255 的正數，直接截成整數）
         static void AddPx(uint[] Lb, int i, uint cr, uint cg, uint cb, double kk)
@@ -194,7 +211,7 @@ namespace PixelFX
             const int BANDS = 8;
             int per = (H + BANDS - 1) / BANDS;
             var outp = o;
-            System.Threading.Tasks.Parallel.For(0, BANDS, k =>
+            PixelFX.Par.For(BANDS, k =>
             {
                 int a = k * per * W, b = Math.Min(n, (k + 1) * per * W);
                 if (a < b) CompositeRange(outp, a, b, bg, lightK);
@@ -244,7 +261,7 @@ namespace PixelFX
             Flush();
             int n = W * H; o = o ?? new byte[n * 4];
             var outp = o; int per = (n + 7) / 8;
-            System.Threading.Tasks.Parallel.For(0, 8, band => { for (int i = band * per, e = Math.Min(n, i + per); i < e; i++) CompositeBgPx(outp, bgArr, lightK, i); });   // 每一格各算各的：切成 8 段同時算，結果一樣
+            PixelFX.Par.For(8, band => { for (int i = band * per, e = Math.Min(n, i + per); i < e; i++) CompositeBgPx(outp, bgArr, lightK, i); });   // 每一格各算各的：切成 8 段同時算，結果一樣
             return o;
         }
         void CompositeBgPx(byte[] o, uint[] bgArr, double lightK, int i)
@@ -575,7 +592,7 @@ namespace PixelFX
                         if (o.c != 0) Put(sx, sy, o.c, o.a);
                         if (o.k > 0)
                         {
-                            if (lb.k == null) lock (lb) if (lb.k == null) { lb.c = new uint[nx * ny]; lb.k = new double[nx * ny]; }
+                            if (lb.k == null) lock (lb) if (lb.k == null) { var bf = Frame.RentBuf(nx * ny); lb.c = bf.c; lb.k = bf.k; }
                             int j = (sy - sy0) * nx + sx - sx0; lb.c[j] = o.l != 0 ? o.l : o.c; lb.k[j] = o.k;
                         }
                     }
@@ -584,7 +601,7 @@ namespace PixelFX
             else
             {
                 int B = Math.Max(1, Math.Min(8, Environment.ProcessorCount)); int per = (ny + B - 1) / B;
-                System.Threading.Tasks.Parallel.For(0, B, b => { int ya = sy0 + b * per, yb = Math.Min(sy1, ya + per - 1); if (ya <= yb) Rows(ya, yb); });
+                PixelFX.Par.For(B, b => { int ya = sy0 + b * per, yb = Math.Min(sy1, ya + per - 1); if (ya <= yb) Rows(ya, yb); });
             }
             if (lb.k == null) return;
             double fl = Fade * LightK; uint[] Lb = L; int W_ = w, H_ = h, OX = ox, OY = oy;

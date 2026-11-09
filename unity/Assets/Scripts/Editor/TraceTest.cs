@@ -107,6 +107,9 @@ namespace ZeroStar.Tests
             prof.Append($"（{profN} 步）最慢一步 {maxMs:F1} ms（第 {maxAt} 步）");
             Prof.On = false;
             Debug.Log("[Trace] 每步平均（毫秒）：" + prof);
+            var al = new StringBuilder(); double tot = 0;
+            foreach (var kv in Prof.Bytes.OrderByDescending(k => k.Value)) { tot += kv.Value; if (kv.Value > 0) al.Append($"{kv.Key} {kv.Value / Math.Max(1, profN):F0}　"); }
+            Debug.Log($"[Alloc] 每步產生的暫存資料（位元組）共 {tot / Math.Max(1, profN):F0}：" + al); Prof.Bytes.Clear();
             var pp = new StringBuilder(); foreach (var kv in PixelFX.PfProf.Ms) pp.Append($"{kv.Key} {kv.Value / Math.Max(1, profN):F2}　");
             Debug.Log("[Trace] 畫筆：" + pp); PixelFX.PfProf.Ms.Clear(); PixelFX.PfProf.On = false;
             Debug.Log($"[Trace] {sc.ticks} 步 → {outDir}（{watch.ElapsedMilliseconds} ms，平均每步含畫面 {watch.ElapsedMilliseconds / (double)sc.ticks:F2} ms）");

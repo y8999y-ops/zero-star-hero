@@ -83,7 +83,8 @@ namespace ZeroStar.UI
             for (int y = 0; y < mh; y++) for (int x = 0; x < mw; x++) { var c = px[y * mw + x]; for (int b = 0; b < S; b++) for (int a = 0; a < S; a++) Put(x * S + a, y * S + b, c); }
             var marks = Marks(g).Where(m => m.always || IsSeen((int)Math.Floor(m.x / K), (int)Math.Floor(m.y / K))).OrderBy(m => m.icon == "player" ? 1 : 0).ToList();
             foreach (var m in marks) Stamp(Put, m.dim ? "done" : m.icon, m.x / K * S, m.y / K * S, m.icon == "player" ? 2 : 1);
-            var tex = new Texture2D(tw, thh, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point }; tex.SetPixels32(buf); tex.Apply(false);
+            if (last != null && (last.width != tw || last.height != thh)) { UnityEngine.Object.Destroy(last); last = null; }   // 每次打開重畫在同一張圖上，不會越開越多張
+            var tex = last ??= new Texture2D(tw, thh, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point }; tex.SetPixels32(buf); tex.Apply(false);
             pct = (int)Math.Round(seen.Count(b => b) * 100.0 / seen.Length, MidpointRounding.AwayFromZero);
             return tex;
         }
@@ -109,11 +110,14 @@ namespace ZeroStar.UI
                 for (int b = 0; b < s; b++) for (int a = 0; a < s; a++) put(x0 + i * s + a, y0 + j * s + b, c);
             }
         }
+        static Texture2D last;
+        static readonly Dictionary<string, Texture2D> icons = new Dictionary<string, Texture2D>();
         static Texture2D IconTex(string name)
         {
+            if (icons.TryGetValue(name, out var had) && had != null) return had;   // 圖例的小圖示做一次就好
             var buf = new Color32[9 * 9];
             Stamp((x, y, c) => { if (x >= 0 && y >= 0 && x < 9 && y < 9) buf[(8 - y) * 9 + x] = H(c); }, name, 4.5, 8, 1);
-            var t = new Texture2D(9, 9, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point }; t.SetPixels32(buf); t.Apply(false); return t;
+            var t = new Texture2D(9, 9, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point }; t.SetPixels32(buf); t.Apply(false); return icons[name] = t;
         }
 
         public static Task Open(Game g)

@@ -104,6 +104,7 @@ namespace PixelFX.Fx
         }
 
         /// 跟 Rows 一樣，但切成幾段同時算（只能用在 fn 只填 R、每一列只寫自己那一列的地方；R.l 每段各一份，fn 每列都會自己設好用到的 R.l）
+        static readonly Row[] rowPool = new Row[8];
         public static void RowsPar(Painter p, FxDef meta, double y0, double y1, Action<double, Row> fn)
         {
             if (p.SN != 0) { Rows(p, meta, y0, y1, fn); return; }
@@ -113,9 +114,11 @@ namespace PixelFX.Fx
             if (y0 > y1) return;
             int W = p.Frame.W, Hh = p.Frame.H, OX = p.Frame.Ox, OY = p.Frame.Oy; double fx = p.FX;
             int nRows = (int)(y1 - y0) + 1, per = (nRows + 7) / 8;
-            System.Threading.Tasks.Parallel.For(0, 8, band =>
+            PixelFX.Par.For(8, band =>
             {
-                var R = new Row { w = w, c = new uint[w], a = new float[w], b = new byte[w], l = new uint[w], k = new float[w] };
+                // 每段一份、重複用（每格不產生新的）；R.l 在每段開始清掉，跟原本每次新做一份一樣
+                var R = rowPool[band]; if (R == null || R.w != w) R = rowPool[band] = new Row { w = w, c = new uint[w], a = new float[w], b = new byte[w], l = new uint[w], k = new float[w] };
+                else Array.Clear(R.l, 0, w);
                 for (int r = band * per, e = Math.Min(nRows, r + per); r < e; r++)
                 {
                     double y = y0 + r;

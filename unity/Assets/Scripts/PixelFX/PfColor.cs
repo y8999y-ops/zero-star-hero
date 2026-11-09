@@ -16,7 +16,17 @@ namespace PixelFX
         public static int A(uint c) => (int)(c >> 24);
 
         /// "#rgb" 或 "#rrggbb" 轉成顏色。
+        /// 解析過的顏色記起來：特效每畫一格都會解析色階，每次重新解析會產生一堆暫存字串
+        static readonly System.Collections.Generic.Dictionary<string, uint> hexCache = new System.Collections.Generic.Dictionary<string, uint>();
         public static uint Hex(string h)
+        {
+            lock (hexCache)
+            {
+                if (hexCache.TryGetValue(h, out var v)) return v;
+                return hexCache[h] = HexParse(h);
+            }
+        }
+        static uint HexParse(string h)
         {
             string s = h.Replace("#", "");
             if (s.Length == 3) s = "" + s[0] + s[0] + s[1] + s[1] + s[2] + s[2];

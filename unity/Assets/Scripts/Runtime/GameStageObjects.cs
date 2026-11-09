@@ -135,10 +135,10 @@ namespace ZeroStar
         }
         partial void DrawStageObjects(Frame frame, float[] lv)
         {
-            Features.Draw(frame, sceneClock);
-            Props.Draw(frame, lv);
-            Scenery.Draw(frame, lv, sceneClock);
-            Hazards.Draw(frame);
+            Prof.Mark("S:前"); Features.Draw(frame, sceneClock); Prof.Mark("S:機關");
+            Props.Draw(frame, lv); Prof.Mark("S:草叢木箱");
+            Scenery.Draw(frame, lv, sceneClock); Prof.Mark("S:小生物裝飾");
+            Hazards.Draw(frame); Prof.Mark("S:地面元素");
         }
         uint[] chestSnap = new uint[0];
         /// 還沒開的寶箱：寶箱自己的柔光不要把箱子本體照成一片（畫完之後本體的光壓到 2 成）

@@ -22,7 +22,7 @@ namespace ZeroStar.UI
         public bool Open { get; private set; }
         float t, last = -1, skyLast;
         // 天空（starsky.js：shooting-stars 疊在漸層上）
-        FxRun sky; Frame skyFrame; uint[] skyBg; byte[] skyRgba;
+        NightSky sky;
         // 天上的星星、往上飄的星屑（固定亂數）
         readonly (double x, double y, double v, double p)[] dust = new (double, double, double, double)[26];
 
@@ -86,19 +86,7 @@ namespace ZeroStar.UI
         {
             far = Img.Load("Art/town/far"); mid = Img.Load("Art/town/mid"); ground = Img.Load("Art/town/ground"); fg = Img.Load("Art/town/fg"); logo = Img.Load("Art/ui/logo");
             if (logo != null) { white = new Img(logo.W, logo.H); for (int i = 0; i < logo.Px.Length; i++) { var c = Pix2D.Hex("#fffbe8"); c.a = logo.Px[i].a; white.Px[i] = c; } }
-            // 夜空
-            skyFrame = new Frame(320, 180);
-            var o = new FxOptions { X = 160, Y = 180, Seed = 4 }; o.Ramps["sky"] = new[] { "#120c26", "#2a1e4a", "#4a3878", "#9a88d0", "#e8e0ff" };
-            sky = new FxRun(FxSystem.Def("shooting-stars"), o);
-            (double t, int[] c)[] GR = { (0, new[] { 8, 6, 24 }), (0.4, new[] { 20, 13, 48 }), (0.75, new[] { 44, 22, 78 }), (1, new[] { 86, 40, 100 }) };
-            skyBg = new uint[320 * 180];
-            for (int y = 0; y < 180; y++)
-            {
-                double tt = y / 179.0; int[] c = GR[GR.Length - 1].c;
-                for (int i = 1; i < GR.Length; i++) if (tt <= GR[i].t) { double k = (tt - GR[i - 1].t) / (GR[i].t - GR[i - 1].t); c = new int[3]; for (int j = 0; j < 3; j++) c[j] = (int)Math.Round(GR[i - 1].c[j] + (GR[i].c[j] - GR[i - 1].c[j]) * k); break; }
-                uint v = 0xff000000u | ((uint)c[2] << 16) | ((uint)c[1] << 8) | (uint)c[0]; for (int x = 0; x < 320; x++) skyBg[y * 320 + x] = v;
-            }
-            skyRgba = new byte[320 * 180 * 4];
+            sky = new NightSky(); skyImg = new Img(NightSky.W, NightSky.H);   // 夜空（共用 NightSky）
             // 固定亂數（seed 7）：先抽 70 顆星星（標題畫面沒用到，照順序抽掉）再抽星屑
             double seed = 7; double Rnd() => (seed = (seed * 16807) % 2147483647) / 2147483647;
             for (int i = 0; i < 70; i++) { Rnd(); Rnd(); Rnd(); Rnd(); Rnd(); }
@@ -137,8 +125,7 @@ namespace ZeroStar.UI
             g.Clear(); g.Lighter = false; g.Alpha = 1;
             // 1. 天空（慢慢飄）
             sky.Update(Math.Min(0.1, t - skyLast)); skyLast = t;
-            skyFrame.Clear(); sky.Draw(skyFrame); skyFrame.CompositeBg(skyRgba, skyBg);
-            skyImg = Img.FromFrame(skyFrame, skyRgba);
+            sky.CopyTo(skyImg);
             g.Fill(Pix2D.Hex("#2c1a48"));
             g.Tile(skyImg, -t * 2, 0);
             // 2. 遠景＋墜落的巨星：固定在左邊三分之一，星光柔和地呼吸

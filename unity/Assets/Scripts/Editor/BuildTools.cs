@@ -26,9 +26,28 @@ namespace ZeroStar.EditorTools
             Debug.Log("[Build] 主場景：" + MAIN);
         }
 
+        /// 字型只留用到的字（Tools/font-subset.py；需要 Python＋fontTools）。跑不了就照用上次產生的字型，不擋打包
+        [MenuItem("零星工具/更新字型（只留用到的字）")]
+        public static void SubsetFont()
+        {
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo("python", "\"" + Path.GetFullPath("Tools/font-subset.py") + "\"")
+                { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true, StandardOutputEncoding = System.Text.Encoding.UTF8, StandardErrorEncoding = System.Text.Encoding.UTF8 };
+                using (var p = System.Diagnostics.Process.Start(psi))
+                {
+                    string o = p.StandardOutput.ReadToEnd(), e = p.StandardError.ReadToEnd(); p.WaitForExit();
+                    if (p.ExitCode == 0) Debug.Log("[Build] " + o.Trim()); else Debug.LogWarning("[Build] 字型沒更新（照用上次的）：" + e.Trim());
+                }
+                AssetDatabase.ImportAsset("Assets/Resources/Fonts/NotoSansTC.ttf", ImportAssetOptions.ForceUpdate);
+            }
+            catch (System.Exception ex) { Debug.LogWarning("[Build] 字型沒更新（找不到 Python？照用上次的）：" + ex.Message); }
+        }
+
         static void Common()
         {
             if (!File.Exists(MAIN)) MakeScene();
+            SubsetFont();
             PlayerSettings.companyName = "y8999y";
             PlayerSettings.productName = "轉生成星星碎片的我";
             PlayerSettings.bundleVersion = "0.5.0";

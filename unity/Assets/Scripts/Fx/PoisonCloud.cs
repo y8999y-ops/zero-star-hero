@@ -81,7 +81,7 @@ namespace PixelFX.Fx
             else
             {
                 const int B = 8; int per = (nx + B - 1) / B;
-                System.Threading.Tasks.Parallel.For(0, B, b => { for (int i = b * per, e = Math.Min(nx, i + per); i < e; i++) Column(-X + i); });
+                PixelFX.Par.For(B, b => { for (int i = b * per, e = Math.Min(nx, i + per); i < e; i++) Column(-X + i); });
             }
             // 氣舌前端往前爬時捲起來
             foreach (var g in T)

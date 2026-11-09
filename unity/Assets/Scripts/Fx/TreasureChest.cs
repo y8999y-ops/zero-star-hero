@@ -48,6 +48,7 @@ namespace PixelFX.Fx
         static readonly uint[] RUBY = Col.Ramp(new[] { "#5a0c18", "#b81c3c", "#ff5a6a", "#ffd0d6" });
         static readonly string[] STAR_LOCK = { "...a...", "..aba..", "abbbbba", ".abcba.", ".ab.ba.", "a.....a" };
         static readonly string[] SHARD = { "..a....", ".ab....", ".abb.a.", "abbcab.", "abbcbbc", ".bcccc." };
+        static readonly int[] T65432 = { 6, 5, 4, 3, 2 }, T54321 = { 5, 4, 3, 2, 1 }, T65543 = { 6, 5, 5, 4, 3 }, T76543 = { 7, 6, 5, 4, 3 };   // 色階（每格不再新做陣列）
         static uint Tone(uint[] R, double l, int[] steps) => R[steps[l > 0.6 ? 0 : l > 0.25 ? 1 : l > -0.1 ? 2 : l > -0.45 ? 3 : 4]];
 
         /// 一個寶箱的畫法（JS 是模組層的全域變數，這裡每個箱子一份；每次畫前都先 setShape，結果一樣）
@@ -59,7 +60,15 @@ namespace PixelFX.Fx
 
             class Row { public int row; public double al, dep, lit; public bool @out, crest, seam; }
             // 蓋子在角度 th 時的每一列：顯示曲面上哪一點、哪一面、多亮；轉到箱口以下（後牆後面）的點看不到
+            // 同一個角度、同一個形狀算出來的每一列都一樣：記住上一次的（關著的箱子每格角度都一樣）
+            List<Row> lastRows; double lastTh = double.NaN, lastLA, lastLB, lastHB;
             List<Row> LidRows(double th)
+            {
+                if (lastRows != null && th == lastTh && LA == lastLA && LB == lastLB && HB == lastHB) return lastRows;
+                lastTh = th; lastLA = LA; lastLB = LB; lastHB = HB;
+                return lastRows = LidRowsCalc(th);
+            }
+            List<Row> LidRowsCalc(double th)
             {
                 var best = new Dictionary<int, Row>(); double ct = Cos(th), st = Sin(th);
                 for (int i = 0; i <= 260; i++)
@@ -116,20 +125,21 @@ namespace PixelFX.Fx
                     double u = r.al;
                     for (int x = -HW; x < HW; x++)
                     {
-                        bool strap = STRAPS.Any(s => x == s || x == s + 1), left = STRAPS.Any(s => x == s); double side = (x + HW + 0.5) / (2 * HW);
+                        bool strap = false, left = false; foreach (int s in STRAPS) { if (x == s || x == s + 1) strap = true; if (x == s) left = true; }
+                        double side = (x + HW + 0.5) / (2 * HW);
                         bool corner = x == -HW || x == HW - 1;
                         uint c;
                         if (r.@out)
                         {
                             if (r.row == top && corner && th < 0.6) continue;
                             double l = r.lit + 0.2 - side * 0.35 - (r.row == top ? 0.45 : 0);
-                            if (u < 0.3 || (u < 0.55 && x >= -2 && x <= 1)) c = SH.rim == "wood" ? Tone(W, l + 0.2, new[] { 6, 5, 4, 3, 2 }) : SH.rim == "iron" ? Tone(IRON, l + 0.2, new[] { 5, 4, 3, 2, 1 }) : Tone(C, l + (x >= -2 && x <= 1 ? 0.15 : 0.1), new[] { 6, 5, 5, 4, 3 });
+                            if (u < 0.3 || (u < 0.55 && x >= -2 && x <= 1)) c = SH.rim == "wood" ? Tone(W, l + 0.2, T65432) : SH.rim == "iron" ? Tone(IRON, l + 0.2, T54321) : Tone(C, l + (x >= -2 && x <= 1 ? 0.15 : 0.1), T65543);
                             else if (corner) c = SH.corner == "wood" ? W[x < 0 ? 5 : 2] : SH.corner == "gold" ? C[x < 0 ? 6 : 3] : x < 0 ? IRON[4] : IRON[2];
-                            else if (strap) c = SH.goldStraps ? Tone(C, l + (left ? 0.3 : -0.3), SH.glow ? new[] { 7, 6, 5, 4, 3 } : new[] { 6, 5, 4, 3, 2 }) : Tone(IRON, l + (left ? 0.3 : -0.3), new[] { 5, 4, 3, 2, 1 });
+                            else if (strap) c = SH.goldStraps ? Tone(C, l + (left ? 0.3 : -0.3), SH.glow ? T76543 : T65432) : Tone(IRON, l + (left ? 0.3 : -0.3), T54321);
                             else if (r.seam) c = W[0];
                             else
                             {
-                                c = r.crest && side < 0.62 ? W[6] : Tone(W, l, new[] { 5, 4, 3, 2, 1 });
+                                c = r.crest && side < 0.62 ? W[6] : Tone(W, l, T54321);
                                 if (Rand(x >> 1, ToInt32(Round(u * 6)), 11) < 0.2) c = W[Math.Max(0, Array.IndexOf(W, c) - 1)];
                             }
                         }

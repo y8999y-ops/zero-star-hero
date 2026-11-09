@@ -42,6 +42,7 @@ namespace ZeroStar.UI
             if (frame == null || frame.W != w || frame.H != h)
             {
                 frame = new Frame(w, h); rgba = new byte[w * h * 4];
+                if (tex != null) UnityEngine.Object.Destroy(tex);   // 視窗大小變了：舊的圖清掉
                 tex = new Texture2D(w, h, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
                 layer.style.backgroundImage = tex; layer.style.backgroundSize = new BackgroundSize(Length.Percent(100), Length.Percent(100));
             }

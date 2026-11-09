@@ -104,14 +104,19 @@ namespace ZeroStar.UI
             e.style.backgroundSize = new BackgroundSize(BackgroundSizeType.Contain);
         }
         /// 程式產生的小圖（漸層、暗角這些 CSS 背景）：f(x, y) 給顏色，y＝0 是上面；平滑放大
+        ///   一樣的圖只做一張（介面每次打開都會叫，不重複做才不會越用越吃記憶體）
         public static Texture2D Gen(int w, int h, System.Func<int, int, Color> f)
         {
-            var t = new Texture2D(w, h, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
-            var px = new Color[w * h];
+            var px = new Color32[w * h];
             for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) px[(h - 1 - y) * w + x] = f(x, y);
-            t.SetPixels(px); t.Apply(false);
-            return t;
+            ulong k = 14695981039346656037UL ^ (ulong)w * 31 ^ (ulong)h << 20;
+            foreach (var c in px) { k = (k ^ c.r) * 1099511628211UL; k = (k ^ c.g) * 1099511628211UL; k = (k ^ c.b) * 1099511628211UL; k = (k ^ c.a) * 1099511628211UL; }
+            if (genCache.TryGetValue((w, h, k), out var old) && old != null) return old;
+            var t = new Texture2D(w, h, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
+            t.SetPixels32(px); t.Apply(false);
+            return genCache[(w, h, k)] = t;
         }
+        static readonly Dictionary<(int, int, ulong), Texture2D> genCache = new Dictionary<(int, int, ulong), Texture2D>();
         /// 背景圖拉滿整個元素（CSS 的 background-size: 100% 100%）
         public static void Stretch(VisualElement e, Texture2D t)
         {

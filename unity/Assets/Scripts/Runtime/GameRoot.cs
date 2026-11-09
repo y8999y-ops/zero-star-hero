@@ -457,7 +457,7 @@ namespace ZeroStar
             // 效能（下方中間，跟網頁版的 #fps 一樣）：每秒幾格、每格算畫面花幾毫秒
             if (perfStyle == null) perfStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.LowerCenter, fontSize = Mathf.RoundToInt(9 * u) };
             perfStyle.normal.textColor = new Color(0.65f, 0.62f, 0.74f, 0.6f);
-            GUI.Label(new UnityEngine.Rect(Screen.width / 2f - 150 * u, Screen.height - 18 * u, 300 * u, 16 * u), $"{screen.Fps:F0} fps  {screen.AvgMs:F1} ms（最慢 {screen.MaxMs:F0}）  {screen.W}×216", perfStyle);
+            GUI.Label(new UnityEngine.Rect(Screen.width / 2f - 150 * u, Screen.height - 18 * u, 300 * u, 16 * u), screen.PerfText, perfStyle);
         }
     }
 

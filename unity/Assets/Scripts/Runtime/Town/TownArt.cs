@@ -83,30 +83,16 @@ namespace ZeroStar
 
         // ---- 夜空（starsky.js）：shooting-stars 疊在由上往下深藍→紫的漸層上
         public const int SKY_W = 320, SKY_H = 180;
-        static FxRun skyFx; static Frame skyFrame; static uint[] skyBg, skyPx; static byte[] skyRgba;
-        static readonly (double t, int[] c)[] GRAD = { (0, new[] { 8, 6, 24 }), (0.4, new[] { 20, 13, 48 }), (0.75, new[] { 44, 22, 78 }), (1, new[] { 86, 40, 100 }) };
-        static int[] GradAt(double t)
-        {
-            for (int i = 1; i < GRAD.Length; i++) if (t <= GRAD[i].t) { var (a, ca) = GRAD[i - 1]; var (b, cb) = GRAD[i]; double k = (t - a) / (b - a); return ca.Select((v, j) => (int)Pf.Round(v + (cb[j] - v) * k)).ToArray(); }
-            return GRAD[GRAD.Length - 1].c;
-        }
+        static NightSky sky; static uint[] skyPx;   // 夜空（共用 NightSky）
         static void SkyInit()
         {
-            skyFrame = new Frame(SKY_W, SKY_H);
-            var o = new FxOptions { X = SKY_W / 2, Y = SKY_H, Seed = 4 }; o.Ramps["sky"] = new[] { "#120c26", "#2a1e4a", "#4a3878", "#9a88d0", "#e8e0ff" };
-            skyFx = new FxRun(FxSystem.Def("shooting-stars"), o);
-            skyBg = new uint[SKY_W * SKY_H];
-            for (int y = 0; y < SKY_H; y++) { var c = GradAt(y / (double)(SKY_H - 1)); uint v = 0xff000000u | ((uint)c[2] << 16) | ((uint)c[1] << 8) | (uint)c[0]; for (int x = 0; x < SKY_W; x++) skyBg[y * SKY_W + x] = v; }
-            skyRgba = new byte[SKY_W * SKY_H * 4]; skyPx = new uint[SKY_W * SKY_H];
+            sky = new NightSky(); skyPx = new uint[SKY_W * SKY_H];
             SkyUpdate(0);
         }
         static void SkyUpdate(double dt)
         {
-            skyFx.Update(dt);
-            skyFrame.Clear();
-            skyFx.Draw(skyFrame);
-            skyFrame.CompositeBg(skyRgba, skyBg);
-            Buffer.BlockCopy(skyRgba, 0, skyPx, 0, skyRgba.Length);
+            sky.Update(dt);
+            Buffer.BlockCopy(sky.Rgba, 0, skyPx, 0, sky.Rgba.Length);
         }
 
         // ---- 雨（fx-town-rain.js）：三塊接起來，固定在世界上
@@ -125,11 +111,7 @@ namespace ZeroStar
         static readonly uint[] SKY = new[] { "#0e0a24", "#130e2e", "#181238", "#1e1642", "#261a4c", "#301e56", "#3c225e", "#4c2864", "#5e2e68" }.Select(Col.Hex).ToArray();
         static readonly double[][] DAY_SKY = { new double[] { 74, 138, 216 }, new double[] { 104, 164, 228 }, new double[] { 146, 194, 238 }, new double[] { 190, 220, 242 }, new double[] { 232, 226, 206 } };
         static readonly double[][] DUSK_SKY = { new double[] { 58, 48, 120 }, new double[] { 128, 72, 140 }, new double[] { 214, 104, 120 }, new double[] { 250, 150, 96 }, new double[] { 255, 196, 120 } };
-        static double[] Ramp(double[][] st, double f)
-        {
-            double k = Math.Max(0, Math.Min(st.Length - 1.001, f * (st.Length - 1))); int i = (int)Math.Floor(k); double t = k - i;
-            return st[i].Select((v, j) => v + (st[i + 1][j] - v) * t).ToArray();
-        }
+        static readonly double[] NIGHT = { 34, 36, 52 }, rowClear = new double[H * 3], rowCloud = new double[H * 3];
         static int Wrap(int x, int w) => ((x % w) + w) % w;
 
         /// 雨（在主角、居民之後，前景之前畫）
@@ -156,7 +138,7 @@ namespace ZeroStar
         {
             int W = frame.W, cx = frame.Ox, cy = frame.Oy; var outc = frame.Color; var LB = frame.Light; float[] TR = SceneLight.Tr, TG = SceneLight.Tg, TB = SceneLight.Tb;
             int of = (int)Math.Floor(cx * 0.12), om = (int)Math.Floor(cx * 0.35), os = (int)Math.Floor(cx * 0.04);
-            SkyUpdate(skyT == null ? 0 : Math.Max(0, Math.Min(0.1, time - skyT.Value)));
+            Prof.Mark("T:前"); SkyUpdate(skyT == null ? 0 : Math.Max(0, Math.Min(0.1, time - skyT.Value))); Prof.Mark("T:流星天空");
             var SKYP = skyPx;
             var di = DayInfo(); var wi = WeatherInfo();
             double DAY0 = di.d, DUSK0 = di.dusk, RAINK = wi.rain, CLOUD = wi.cloud;
@@ -165,27 +147,35 @@ namespace ZeroStar
             double kR = mR * dim * (1 - 0.06 * RAINK), kG = mG * dim, kB = mB * dim * (1 + 0.04 * RAINK);
             bool noLift = DAY + DUSK + CLOUD < 0.01;
             uint Lift(uint v) => noLift ? v : unchecked((uint)(unchecked((int)0xff000000) | (Pf.ToInt32(Math.Min(255, ((v >> 16) & 255) * kB + aB)) << 16) | (Pf.ToInt32(Math.Min(255, ((v >> 8) & 255) * kG + aG)) << 8) | Pf.ToInt32(Math.Min(255, (v & 255) * kR + aR))));
-            var rows = new (double[] clear, double sk, double[] cloud)[H];
+            // 每一列天空的顏色（晴天＋黃昏混合、陰天的雲色）：放在固定的陣列裡，每格不用產生新的
+            var RC = rowClear; var RD = rowCloud; double SK = Math.Min(1, DAY + DUSK);
             for (int y = 0; y < H; y++)
             {
-                double f = y / (H * 0.62); var a = Ramp(DAY_SKY, f); var b = Ramp(DUSK_SKY, f); double w = DUSK / Math.Max(0.01, DAY + DUSK);
-                double ff = Math.Min(1, f); var day = new[] { 150 - 30 * (1 - ff), 160 - 30 * (1 - ff), 176 - 26 * (1 - ff) }; var night = new double[] { 34, 36, 52 };
-                var c = day.Select((v, j) => night[j] + (v - night[j]) * DAY0).ToArray();
-                rows[y] = (a.Select((v, j) => v + (b[j] - v) * w).ToArray(), Math.Min(1, DAY + DUSK), c);
+                double f = y / (H * 0.62); double w = DUSK / Math.Max(0.01, DAY + DUSK);
+                double ka = Math.Max(0, Math.Min(DAY_SKY.Length - 1.001, f * (DAY_SKY.Length - 1))); int ia = (int)Math.Floor(ka); double ta = ka - ia;
+                double kb = Math.Max(0, Math.Min(DUSK_SKY.Length - 1.001, f * (DUSK_SKY.Length - 1))); int ib = (int)Math.Floor(kb); double tb = kb - ib;
+                double ff = Math.Min(1, f);
+                for (int j = 0; j < 3; j++)
+                {
+                    double a = DAY_SKY[ia][j] + (DAY_SKY[ia + 1][j] - DAY_SKY[ia][j]) * ta, b = DUSK_SKY[ib][j] + (DUSK_SKY[ib + 1][j] - DUSK_SKY[ib][j]) * tb;
+                    double day = j == 0 ? 150 - 30 * (1 - ff) : j == 1 ? 160 - 30 * (1 - ff) : 176 - 26 * (1 - ff), night = NIGHT[j];
+                    RD[y * 3 + j] = night + (day - night) * DAY0;
+                    RC[y * 3 + j] = a + (b - a) * w;
+                }
             }
             uint DaySky(uint v, int wy)
             {
-                var R = rows[Math.Max(0, Math.Min(H - 1, wy))];
-                if (R.sk < 0.01 && CLOUD < 0.01) return v;
+                int ry = Math.Max(0, Math.Min(H - 1, wy)) * 3;
+                if (SK < 0.01 && CLOUD < 0.01) return v;
                 double r = v & 255, g = (v >> 8) & 255, b = (v >> 16) & 255;
-                r += (R.clear[0] - r) * R.sk; g += (R.clear[1] - g) * R.sk; b += (R.clear[2] - b) * R.sk;
+                r += (RC[ry] - r) * SK; g += (RC[ry + 1] - g) * SK; b += (RC[ry + 2] - b) * SK;
                 double ck = CLOUD * 0.85;
-                r += (R.cloud[0] - r) * ck; g += (R.cloud[1] - g) * ck; b += (R.cloud[2] - b) * ck;
+                r += (RD[ry] - r) * ck; g += (RD[ry + 1] - g) * ck; b += (RD[ry + 2] - b) * ck;
                 return unchecked((uint)(unchecked((int)0xff000000) | (Pf.ToInt32(Pf.Round(b)) << 16) | (Pf.ToInt32(Pf.Round(g)) << 8) | Pf.ToInt32(Pf.Round(r))));
             }
-            skyT = time;
+            skyT = time; Prof.Mark("T:天色");
             // 每一格只寫自己那一格（顏色、光）：切成 8 段同時算，結果一樣
-            System.Threading.Tasks.Parallel.For(0, 8, band => { for (int y = band * 27, ye = Math.Min(H, y + 27); y < ye; y++) PixelRow(y); });
+            PixelFX.Par.For(8, band => { for (int y = band * 27, ye = Math.Min(H, y + 27); y < ye; y++) PixelRow(y); });
             void PixelRow(int y)
             {
                 int wy = y + cy, row = y * W;
@@ -207,6 +197,7 @@ namespace ZeroStar
                     else outc[i] = DaySky(SKYP[sy * SKY_W + Wrap(x + os, SKY_W)], wy);
                 }
             }
+            Prof.Mark("T:像素");
             void Add(int x, int y, double r, double g, double b, double k)
             {
                 if (x < 0 || y < 0 || x >= W || y >= frame.H) return;

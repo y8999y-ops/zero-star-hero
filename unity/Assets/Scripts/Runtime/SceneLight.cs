@@ -40,6 +40,8 @@ namespace ZeroStar
 
         /// 整個畫面一起變亮（大招），0～1，每格由外面設定
         public static double GlobalLv; public static string GlobalCol = "#fff0c0";
+        static readonly List<LightSrc> allBuf = new List<LightSrc>();
+        static readonly List<(double sx, double sy, double r, double lv, double cr, double cg, double cb, double r2, double ir, int x0, int x1, int y0, int y1)> lsBuf = new List<(double, double, double, double, double, double, double, double, double, int, int, int, int)>();
         public static float[] Compute(Frame frame, List<LightSrc> list)
         {
             int W = frame.W, H = frame.H, n = W * H;
@@ -52,14 +54,14 @@ namespace ZeroStar
                 for (int i = 0; i < n; i++) { Buf[i] = fb; Tr[i] = fr; Tg[i] = fg; Tb[i] = fbl; }
             }
             else { Array.Clear(Buf, 0, n); Array.Clear(Tr, 0, n); Array.Clear(Tg, 0, n); Array.Clear(Tb, 0, n); }
-            var all = new List<LightSrc>(list);
+            var all = allBuf; all.Clear(); all.AddRange(list);   // 重複用同一個清單（每格不產生新的）
             foreach (var f in flashes)
             {
                 double k = f.Ttl / f.Life;
                 all.Add(new LightSrc(f.X, f.Y, f.R * (0.5 + 0.5 * k), f.Lv * k, f.Col));
             }
             // 先算好每個光源的範圍，再把畫面切成幾條同時算：每個像素還是照光源的順序一個一個加（小數捨入跟網頁版一樣）
-            var Ls = new List<(double sx, double sy, double r, double lv, double cr, double cg, double cb, double r2, double ir, int x0, int x1, int y0, int y1)>();
+            var Ls = lsBuf; Ls.Clear();
             foreach (var L in all)
             {
                 double sx = L.X - frame.Ox * L.Par, sy = L.Y - frame.Oy, r = L.R, lv = L.Lv;
@@ -71,7 +73,7 @@ namespace ZeroStar
             const int BANDS = 8;
             int per = (H + BANDS - 1) / BANDS;
             float[] buf = Buf, tr = Tr, tg = Tg, tb = Tb;
-            System.Threading.Tasks.Parallel.For(0, BANDS, band =>
+            PixelFX.Par.For(BANDS, band =>
             {
                 int ya = band * per, yb = Math.Min(H, (band + 1) * per);
                 foreach (var L in Ls)

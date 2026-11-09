@@ -705,32 +705,13 @@ namespace ZeroStar.UI
             FadeTo(g, tc < 0.3 ? 1 - tc / 0.3 : t > END - 0.8 ? (t - (END - 0.8)) / 0.8 : 0);
         }
 
-        // ================= 夜空（starsky.js 的 createSky：shooting-stars 疊在由上往下深藍→紫的漸層上，320×180） =================
+        // ================= 夜空（共用 NightSky）：開場用的圖 =================
         class Sky
         {
-            public const int SKY_W = 320, SKY_H = 180;
-            static readonly (double t, int[] c)[] GRAD = { (0, new[] { 8, 6, 24 }), (0.4, new[] { 20, 13, 48 }), (0.75, new[] { 44, 22, 78 }), (1, new[] { 86, 40, 100 }) };
-            readonly FxRun fx; readonly Frame f = new Frame(SKY_W, SKY_H); readonly uint[] bg = new uint[SKY_W * SKY_H]; readonly byte[] rgba = new byte[SKY_W * SKY_H * 4];
-            public readonly Img Img = new Img(SKY_W, SKY_H);
-            public Sky()
-            {
-                var o = new FxOptions { X = SKY_W / 2, Y = SKY_H, Seed = 4 }; o.Ramps["sky"] = new[] { "#120c26", "#2a1e4a", "#4a3878", "#9a88d0", "#e8e0ff" };
-                fx = new FxRun(FxSystem.Def("shooting-stars"), o);
-                for (int y = 0; y < SKY_H; y++)
-                {
-                    double t = y / (double)(SKY_H - 1); int[] c = GRAD[GRAD.Length - 1].c;
-                    for (int i = 1; i < GRAD.Length; i++) if (t <= GRAD[i].t) { double k = (t - GRAD[i - 1].t) / (GRAD[i].t - GRAD[i - 1].t); c = new int[3]; for (int j = 0; j < 3; j++) c[j] = (int)Pf.Round(GRAD[i - 1].c[j] + (GRAD[i].c[j] - GRAD[i - 1].c[j]) * k); break; }
-                    uint v = 0xff000000u | ((uint)c[2] << 16) | ((uint)c[1] << 8) | (uint)c[0];
-                    for (int x = 0; x < SKY_W; x++) bg[y * SKY_W + x] = v;
-                }
-                Update(0);
-            }
-            public void Update(double dt)
-            {
-                fx.Update(dt);
-                f.Clear(); fx.Draw(f); f.CompositeBg(rgba, bg);
-                for (int i = 0; i < Img.Px.Length; i++) Img.Px[i] = new Color(rgba[i * 4] / 255f, rgba[i * 4 + 1] / 255f, rgba[i * 4 + 2] / 255f, 1);
-            }
+            readonly NightSky ns = new NightSky();
+            public readonly Img Img = new Img(NightSky.W, NightSky.H);
+            public Sky() { Update(0); }
+            public void Update(double dt) { ns.Update(dt); ns.CopyTo(Img); }
         }
     }
 }

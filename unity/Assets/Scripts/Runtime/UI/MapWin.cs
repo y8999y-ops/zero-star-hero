@@ -48,8 +48,12 @@ namespace ZeroStar.UI
             map = m; shownSel = null; openT = 0; msgT = 0;
             overlay.style.display = DisplayStyle.Flex;
             closeX.style.display = canClose ? DisplayStyle.Flex : DisplayStyle.None;
-            tex = new Texture2D(m.Frame.W, m.Frame.H, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
-            rgba = new byte[m.Frame.W * m.Frame.H * 4];
+            if (tex == null || tex.width != m.Frame.W || tex.height != m.Frame.H)   // 同樣大小就沿用上次的圖（不會每開一次多一張）
+            {
+                if (tex != null) UnityEngine.Object.Destroy(tex);
+                tex = new Texture2D(m.Frame.W, m.Frame.H, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+                rgba = new byte[m.Frame.W * m.Frame.H * 4];
+            }
             mapEl.style.backgroundImage = tex; mapEl.style.backgroundSize = new BackgroundSize(Length.Percent(100), Length.Percent(100));
             mapEl.style.scale = new Scale(Vector2.one);
         }
@@ -139,8 +143,10 @@ namespace ZeroStar.UI
             return t;
         }
         // 第 2 章沒有關卡畫面：直接截地圖上那團霧（116×78）
+        Texture2D fogTex;
         Texture2D FogTex()
         {
+            if (fogTex != null) return fogTex;   // 截一次就好
             var c = map.D.Nodes["ch2"]; int x0 = (int)c.x - 58, y0 = (int)c.y - 30, W = map.Frame.W, H = map.Frame.H;
             var t = new Texture2D(116, 78, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point };
             var px = new Color32[116 * 78];
@@ -150,7 +156,7 @@ namespace ZeroStar.UI
                 int j = (sy * W + sx) * 4; px[(77 - y) * 116 + x] = new Color32(rgba[j], rgba[j + 1], rgba[j + 2], rgba[j + 3]);
             }
             t.SetPixels32(px); t.Apply(false);
-            return t;
+            return fogTex = t;
         }
     }
 }
