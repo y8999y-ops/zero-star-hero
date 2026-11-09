@@ -16,9 +16,38 @@ namespace ZeroStar.UI
         public static bool Mute { get => PlayerPrefs.GetInt("vol.mute", 0) == 1; set => PlayerPrefs.SetInt("vol.mute", value ? 1 : 0); }
     }
 
+    /// 電腦版的視窗：全螢幕開關（設定的按鈕、F11、Alt+Enter）；第一次打開照螢幕大小開一個合適的視窗
+    ///   之後的視窗大小、是否全螢幕，Unity 自己會記住（下次打開照舊）
+    public static class WindowMode
+    {
+        public static bool Desktop => !Application.isMobilePlatform && !Application.isEditor;
+        public static bool Full => Screen.fullScreenMode != FullScreenMode.Windowed;
+        public static void Toggle()
+        {
+            if (!Desktop) return;
+            if (Full) Screen.SetResolution(PlayerPrefs.GetInt("win.w", 1152), PlayerPrefs.GetInt("win.h", 648), FullScreenMode.Windowed);
+            else
+            {
+                PlayerPrefs.SetInt("win.w", Screen.width); PlayerPrefs.SetInt("win.h", Screen.height);   // 退出全螢幕時回到原本的視窗大小
+                Screen.SetResolution(Display.main.systemWidth, Display.main.systemHeight, FullScreenMode.FullScreenWindow);
+            }
+        }
+        /// 第一次打開：視窗高＝螢幕高的 75%（16:9），不會在大螢幕上小小一塊、小筆電上超出螢幕
+        public static void FirstLaunch()
+        {
+            if (!Desktop || PlayerPrefs.GetInt("win.init", 0) == 1) return;
+            if (Array.IndexOf(Environment.GetCommandLineArgs(), "-screen-width") >= 0) return;   // 指定了大小（測試用）：照指定的
+            PlayerPrefs.SetInt("win.init", 1);
+            int sw = Display.main.systemWidth, sh = Display.main.systemHeight; if (sw <= 0 || sh <= 0) return;
+            int h = Mathf.RoundToInt(sh * 0.75f), w = Mathf.RoundToInt(h * 16f / 9);
+            if (w > sw * 0.9f) { w = Mathf.RoundToInt(sw * 0.9f); h = Mathf.RoundToInt(w * 9f / 16); }
+            Screen.SetResolution(w, h, FullScreenMode.Windowed);
+        }
+    }
+
     public class Settings
     {
-        readonly VisualElement overlay, panel, homeRow; readonly Label musicV, sfxV, muteL; readonly VisualElement musicBar, sfxBar;
+        readonly VisualElement overlay, panel, homeRow; readonly Label musicV, sfxV, muteL, fullL; readonly VisualElement musicBar, sfxBar;
         public Action OnIntro, OnTitle, OnGoHome, OnExport, OnImport; public Action<string> Sfx;
         public bool Open { get; private set; }
         float openT = 9;
@@ -32,7 +61,9 @@ namespace ZeroStar.UI
             var t = Text(panel, "設定", 14, "#ffd24a", true); t.style.letterSpacing = 3; t.style.marginBottom = 8;
             musicBar = Slider(panel, "音樂", out musicV, v => { Volume.Music = v; Sync(); ZeroStar.Synth.ApplySaved(); });
             sfxBar = Slider(panel, "音效", out sfxV, v => { Volume.Sfx = v; Sync(); ZeroStar.Synth.ApplySaved(); Sfx?.Invoke("coin"); });
-            muteL = Btn(Row(panel), "全部靜音：關", "plain", () => { Volume.Mute = !Volume.Mute; Sync(); ZeroStar.Synth.ApplySaved(); Sfx?.Invoke("ui"); }).Q<Label>();
+            var r1 = Row(panel);
+            muteL = Btn(r1, "全部靜音：關", "plain", () => { Volume.Mute = !Volume.Mute; Sync(); ZeroStar.Synth.ApplySaved(); Sfx?.Invoke("ui"); }).Q<Label>();
+            if (WindowMode.Desktop) fullL = Btn(r1, "全螢幕：關", "plain", () => { WindowMode.Toggle(); Sfx?.Invoke("ui"); }).Q<Label>();   // 電腦版才有
             var r2 = Row(panel); Btn(r2, "重看開場動畫", "plain", () => { Close(); OnIntro?.Invoke(); }); Btn(r2, "回主畫面", "plain", () => { Close(); OnTitle?.Invoke(); });
             // 存檔：複製成代碼（備份、換裝置）、從剪貼簿匯入（網頁版「匯出存檔」的代碼）
             var r3 = Row(panel); Btn(r3, "匯出存檔", "plain", () => OnExport?.Invoke()); Btn(r3, "從剪貼簿匯入", "plain", () => { Close(); OnImport?.Invoke(); });
@@ -85,6 +116,7 @@ namespace ZeroStar.UI
         public void Update(float dt)
         {
             if (!Open) return;
+            if (fullL != null) fullL.text = "全螢幕：" + (WindowMode.Full ? "開" : "關");   // F11、Alt+Enter 切換時也跟著變
             openT += dt; float p = Steps(7)(Mathf.Clamp01(openT / 0.42f));
             panel.style.scale = new Scale(p < 0.35f ? new Vector2(Mathf.Lerp(0.6f, 1, p / 0.35f), 0.02f) : new Vector2(1, Mathf.Lerp(0.02f, 1, (p - 0.35f) / 0.65f)));
         }

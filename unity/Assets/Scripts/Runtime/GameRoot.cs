@@ -31,6 +31,8 @@ namespace ZeroStar
             Game.W = screen.W;
             screen.Resized += w => Game.W = w;
             var args = Environment.GetCommandLineArgs();
+            ZeroStar.UI.WindowMode.FirstLaunch();   // 電腦版第一次打開：照螢幕大小開視窗
+            if (Array.IndexOf(args, "-mute") >= 0) AudioListener.volume = 0;   // 開發用：測試時不出聲
             for (int i = 0; i < args.Length - 1; i++) if (args[i] == "-shot") shotDir = args[i + 1];
             for (int i = 0; i < args.Length - 1; i++) if (args[i] == "-mapshot") mapShot = args[i + 1];
             for (int i = 0; i < args.Length - 1; i++) if (args[i] == "-shotat") shotAt = Array.ConvertAll(args[i + 1].Split(','), int.Parse);   // 開發用：自動玩時在第幾步截圖（逗號分開）   // 開發用：打開地圖、換幾個地點各截一張圖
@@ -175,6 +177,7 @@ namespace ZeroStar
         void LateUpdate()
         {
             if (hud == null || game == null) return;
+            ZeroStar.UI.Ui.Refit();   // 電腦版：介面跟著視窗大小
             FitSafeArea();
             bool open = win.Open || inv.Open; if (wasOpen && !open) Save(); wasOpen = open;   // 關掉背包、視窗：存檔
             if (titleShot != null) TitleShot(Time.unscaledDeltaTime);
@@ -267,6 +270,7 @@ namespace ZeroStar
         void Update()
         {
             if (shotDir != null) return;
+            if (Input.GetKeyDown(KeyCode.F11)) ZeroStar.UI.WindowMode.Toggle();   // 全螢幕開關（Alt+Enter 也可以）
             if (!started || intro.Playing) { if (Input.GetKeyDown(KeyCode.Escape)) settings.Close(); return; }   // 主畫面、開場：遊戲的按鍵不動作
             if (map != null) { MapInput(); return; }
             var inp = game.Input;

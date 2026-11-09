@@ -26,7 +26,7 @@ namespace ZeroStar.UI
         {
             var ps = ScriptableObject.CreateInstance<PanelSettings>();
             ps.scaleMode = PanelScaleMode.ConstantPixelSize;
-            ps.scale = Scale();
+            ps.scale = Scale(); panels.Add(ps);
             ps.sortingOrder = sort;
             ps.clearColor = false;
             var doc = host.AddComponent<UIDocument>();
@@ -38,11 +38,22 @@ namespace ZeroStar.UI
             root.style.color = C("#f2eefc");
             return root;
         }
-        /// 網頁版 1 CSS px 在這裡放大幾倍：電腦照 Windows 的縮放（96 dpi＝1），手機照螢幕密度（160 dpi＝1，像 Android 的 dp）
+        /// 網頁版 1 CSS px 在這裡放大幾倍：
+        ///   手機照螢幕密度（160 dpi＝1，像 Android 的 dp）；
+        ///   電腦跟著視窗大小：1152×648 當 1 倍，整個介面跟遊戲畫面一起等比例放大縮小（4K 全螢幕≈3.3 倍，視窗再小也不低於 0.6 倍）
         public static float Scale()
         {
-            float dpi = Screen.dpi > 0 ? Screen.dpi : 96;
-            return Application.isMobilePlatform ? Mathf.Max(1, dpi / 160f) : Mathf.Max(1, dpi / 96f);
+            if (Application.isMobilePlatform) { float dpi = Screen.dpi > 0 ? Screen.dpi : 160; return Mathf.Max(1, dpi / 160f); }
+            if (Screen.width <= 0 || Screen.height <= 0) return 1;
+            return Mathf.Clamp(Mathf.Min(Screen.width / 1152f, Screen.height / 648f), 0.6f, 6f);
+        }
+        static readonly List<PanelSettings> panels = new List<PanelSettings>();
+        static float lastScale = -1;
+        /// 視窗大小變了：所有介面換新的倍數（GameRoot 每格呼叫）
+        public static void Refit()
+        {
+            float s = Scale(); if (Mathf.Abs(s - lastScale) < 0.001f) return; lastScale = s;
+            foreach (var p in panels) if (p != null) p.scale = s;
         }
 
         // ---- 小工具
