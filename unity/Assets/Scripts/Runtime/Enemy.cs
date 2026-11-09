@@ -21,6 +21,8 @@ namespace ZeroStar
                 ["gold"] = new EnemyKind { Name = "gold", Anim = "slimeGold", White = "slimeWhite", Poof = "poofGold", Hp = 60, Dmg = 0, W = 15, H = 22, Coin0 = 14, Coin1 = 20 },
                 ["bat"] = new EnemyKind { Name = "bat", Anim = "bat", White = "batWhite", Poof = "poofBat", Hp = 22, Dmg = 7, W = 10, H = 9, Coin0 = 1, Coin1 = 2, Fly = true },
                 ["hog"] = new EnemyKind { Name = "hog", Anim = "hogWalk", White = "hogWhite", Curl = "hogCurl", Roll = "hogRoll", WhiteCurl = "hogWhiteCurl", WhiteRoll = "hogWhiteRoll", Hp = 40, Dmg = 7, RollDmg = 14, W = 10, H = 14, Coin0 = 2, Coin1 = 4, Poof = "poofHog" },
+                // 毒菇怪（第 2 章，只有 Unity 版）：慢慢走過來，靠近就蹲下鼓氣、噴一團毒雲。噴毒借用撲咬的欄位（Bite＝噴毒動畫）
+                ["shroom"] = new EnemyKind { Name = "shroom", Anim = "shroomWalk", White = "shroomWhite", Bite = "shroomPuff", WhiteBite = "shroomWhitePuff", Hp = 38, Dmg = 6, BiteDmg = 4, W = 10, H = 22, Coin0 = 2, Coin1 = 4, Poof = "poofShroom" },
                 ["trash"] = new EnemyKind { Name = "trash", Anim = "trashWalk", White = "trashWhite", Bite = "trashBite", WhiteBite = "trashWhiteBite", Hp = 70, Dmg = 5, BiteDmg = 13, W = 11, H = 30, Coin0 = 3, Coin1 = 6, Poof = "poofTrash" },
             };
             EnemyKind E(string b, Action<EnemyKind> f) { var k = d[b].Clone(); k.Base = b; k.Elite = true; f(k); return k; }
@@ -39,6 +41,7 @@ namespace ZeroStar
         const double HOG_CURL = 0.5, HOG_ROLL = 1.3, HOG_UNCURL = 0.4, HOG_DAZE = 0.8, HOG_ROLL_V = 205;
         const double BITE_LUNGE = 0.3, BITE_HIT0 = 0.38, BITE_HIT1 = 0.48, BITE_END = 0.8;
         const double SQ_T = 0.18;
+        const double PUFF_AT = 0.55, PUFF_END = 1.0;   // 毒菇怪：第 0.55 秒噴（跟動畫用力一壓那格對齊），1 秒做完
         public const double HP_MUL = 3;
         public static int Seed = 1;
         static double alertSfxT = -1e9;   // 一次醒很多隻：提示音 0.3 秒內只響一次
@@ -50,6 +53,7 @@ namespace ZeroStar
             ["slime"] = new[] { "#0b2f2b", "#12594a", "#1f8f4f", "#47c752", "#a6f06a", "#f0ffd2", "#ffffff" },
             ["gold"] = new[] { "#4a2e06", "#8c5a0c", "#d49a14", "#ffd23a", "#fff09a", "#ffffff", "#ffffff" },
             ["bat"] = new[] { "#1f1629", "#382645", "#5b3f66", "#866089", "#b88fb0", "#e8cfe0", "#ffffff" },
+            ["shroom"] = new[] { "#2a0e3a", "#4a1a5e", "#6c2a82", "#9242a6", "#b86ac6", "#c8f05a", "#ffffff" },
             ["trash"] = new[] { "#1f272c", "#313d42", "#485a5c", "#667a78", "#8ea29c", "#c4d4cc", "#ffffff" },
         };
 
@@ -227,6 +231,26 @@ namespace ZeroStar
                     Face = toward;
                     Vx = toward * 34;
                     if (Math.Abs(player.X - Xp) < 50 && Math.Abs(player.Y - Yp) < 30 && BiteCd <= 0) { Biting = true; BiteT = 0; BitDone = false; Vx = 0; }
+                }
+                else Vx *= 1 - 4 * dt;
+                Vy += GRAV * dt;
+                Land(dt, world);
+            }
+            else if (Kind == "shroom")
+            {
+                BiteCd -= dt;
+                if (Biting)   // 噴毒：蹲下鼓氣（被打會延後）→ 噴 → 回復
+                {
+                    double bt = (BiteT += stunned ? 0 : dt);
+                    Vx *= 1 - 10 * dt;
+                    if (bt >= PUFF_AT && !BitDone) { BitDone = true; (world as Game)?.SporePuff(Xp, Yp, K.BiteDmg, Elite); }
+                    if (bt >= PUFF_END) { Biting = false; BiteCd = 2.2 + Pf.Rand(Pf.ToInt32(Clock), 9) * 1.2; }
+                }
+                else if (!stunned)
+                {
+                    Face = toward;
+                    Vx = toward * 24;
+                    if (Math.Abs(player.X - Xp) < 58 && Math.Abs(player.Y - Yp) < 34 && BiteCd <= 0) { Biting = true; BiteT = 0; BitDone = false; Vx = 0; world.Sfx("inhale:0"); }
                 }
                 else Vx *= 1 - 4 * dt;
                 Vy += GRAV * dt;

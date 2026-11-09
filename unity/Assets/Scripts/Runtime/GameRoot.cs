@@ -378,10 +378,10 @@ namespace ZeroStar
             game.Tick(game.SlowT > 0 ? dt * 0.35 : dt);   // 慢動作（傳說掉落、打倒菁英）
             game.SlowT -= dt;
             if (!game.Endless) ZeroStar.UI.LevelMap.UpdateSeen(game, (float)dt);
-            if (mapShot != null && game.Endless && ++endlessN % 600 == 0)   // 無限討伐的截圖：每 10 秒一張，四張後結束
+            if (mapShot != null && game.Endless && ++endlessN % 150 == 0)   // 無限討伐的截圖：每 2.5 秒一張，40 秒後結束
             {
-                ScreenCapture.CaptureScreenshot(Path.Combine(mapShot, $"endless-{endlessN / 600}.png"));
-                Debug.Log($"[Endless] {endlessN} 步：怪 {System.Linq.Enumerable.Count(game.Enemies, e => !e.Dead)} 隻，擊倒 {game.Kills}，死了 {game.Deaths} 次，主角 {game.Player.X:F0},{game.Player.Y:F0}");
+                ScreenCapture.CaptureScreenshot(Path.Combine(mapShot, $"endless-{endlessN / 150:00}.png"));
+                Debug.Log($"[Endless] {endlessN} 步：怪 {System.Linq.Enumerable.Count(game.Enemies, e => !e.Dead)} 隻（毒菇 {System.Linq.Enumerable.Count(game.Enemies, e => !e.Dead && e.Kind == "shroom")}），主角血 {game.Player.Hp:F0}，擊倒 {game.Kills}，死了 {game.Deaths} 次，主角 {game.Player.X:F0},{game.Player.Y:F0}");
                 if (endlessN >= 2400) Application.Quit();
             }   // 關卡地圖：看得到的範圍算走過
             if (CanSave && (saveT += (float)dt) > 20) { saveT = 0; Save(); }   // 每 20 秒存一次

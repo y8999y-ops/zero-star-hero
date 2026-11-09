@@ -88,6 +88,19 @@ const comboKeys = {};   // 形態 → [{ anim 名稱, 招式 }]
   // 碎星鎮的居民、路人（npcs.js）：npc:id（待機）、npc:id:walk（走路）
   const { npcAnim, NPC_IDS } = await import("../src/npcs.js");
   for (const id of NPC_IDS) { anims["npc:" + id] = npcAnim(id); anims["npc:" + id + ":walk"] = npcAnim(id, true); }
+  // 第 2 章的新魔物（只做在 Unity 版，網頁版沒有）：毒菇怪（game/fx/forest/poison-shroom.js）
+  {
+    const { bake } = await import("../src/bake.js");
+    const shroom = await import("../fx/forest/poison-shroom.js");
+    const poof = await import("../../pixelfx/src/fx/spawn/poof.js");
+    const FL = ["#5a5868", "#8a8898", "#b4b2c2", "#d6d4e2", "#ecebf4", "#f6f5fb", "#ffffff"], fl = (k) => FL.slice(-k);
+    const WH = { white: true, palette: fl(7), stem: fl(5), spot: fl(4), shard: fl(4), light: 0 };
+    anims.shroomWalk = bake(shroom, { light: 0.52 });
+    anims.shroomPuff = { ...bake(shroom, { mode: "puff", light: 0.52 }), loop: false };
+    anims.shroomWhite = bake(shroom, WH);
+    anims.shroomWhitePuff = { ...bake(shroom, { ...WH, mode: "puff" }), loop: false };
+    anims.poofShroom = bake(poof, { palette: ["#2a0e3a", "#4a1a5e", "#6c2a82", "#9242a6", "#b86ac6", "#c8f05a"], light: 0.4 });
+  }
   for (const [form, F] of Object.entries(FORMS)) {
     comboKeys[form] = BAKED_COMBOS.COMBO_DEF[F.combo].map((s, i) => { const n = `atk:${form}:${i}`; anims[n] = slashAnim(s.mod, form); return n; });
   }

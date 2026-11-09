@@ -26,7 +26,7 @@ namespace ZeroStar.Tests
             Rnd.R = new Rng(12345);
             Prof.On = true; Prof.Ms.Clear();
             string ultOnly = Environment.GetEnvironmentVariable("ULT_PROF"); int profN = 0; double maxMs = 0; int maxAt = 0;
-            Game.W = 384;
+            Game.W = 384; Game.LegacySpawns = true;   // 無限討伐照網頁版的怪
             string variant = Environment.GetEnvironmentVariable("TRACE_VARIANT") ?? "";
             TownArt.DayOverride = null; TownArt.WeatherOverride = null;
             var g = new Game(sc.stage);

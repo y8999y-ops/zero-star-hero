@@ -516,6 +516,17 @@ namespace ZeroStar
             return true;
         }
 
+        /// 毒（毒菇怪的毒雲）：每一下扣一點血，不會被擊退、不會無敵（衝刺中躲得掉）；防禦照算
+        public void PoisonTick(double dmg, IWorld w)
+        {
+            if (State == "dash" || Hp <= 0) return;
+            double def = S.Def * (DentT > 0 ? 1.5 : 1);
+            dmg = Math.Max(1, Pf.Round(dmg * (1 - def / (def + 60))));
+            Hp = Math.Max(0, Hp - dmg); Flash = 0.05;
+            w.Sfx("hitL");
+            w.OnPlayerHurt(dmg);
+        }
+
         string PoseNow()
         {
             switch (State)

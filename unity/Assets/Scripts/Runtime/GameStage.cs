@@ -55,6 +55,8 @@ namespace ZeroStar
         }
         // ---- 無限討伐（main.js 的 spawnEnemies）：畫面附近一直冒怪，時間越久同時越多（8 隻起、每 5 秒多 1 隻，最多 28）
         double spawnT; public int MaxEnemies = 28;
+        /// 比對測試用：無限討伐只出網頁版有的怪（跟網頁版一樣才比得了）
+        public static bool LegacySpawns;
         void SpawnEnemies(double dt)
         {
             StatTime += dt;
@@ -70,7 +72,9 @@ namespace ZeroStar
             }
             x = Math.Max(16 + 20, Math.Min(Data.W - 16 - 20, x));   // WALL＝16
             double r = Rnd.Next();
-            var e = r < 0.04 ? new Enemy("gold", x, Data.Floor) : r < 0.36 ? new Enemy("bat", x, 50 + Rnd.Next() * 60) : new Enemy("slime", x, Data.Floor);
+            // 新魔物（只有 Unity 版）也會出來；比對測試（LegacySpawns）照網頁版只出史萊姆、蝙蝠、金幣史萊姆
+            var e = r < 0.04 ? new Enemy("gold", x, Data.Floor) : r < (LegacySpawns ? 0.36 : 0.30) ? new Enemy("bat", x, 50 + Rnd.Next() * 60)
+                : !LegacySpawns && r < 0.50 ? new Enemy("shroom", x, Data.Floor) : new Enemy("slime", x, Data.Floor);
             e.Awake = true;   // 一出來就追
             Enemies.Add(e);
             Dust(e.X, e.K.Fly ? e.Y + 8 : e.Y, 4);

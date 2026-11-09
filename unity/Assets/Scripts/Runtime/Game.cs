@@ -74,8 +74,8 @@ namespace ZeroStar
         public readonly Dictionary<string, int> FormsOwned = new Dictionary<string, int> { ["star"] = 0 };   // 吸收過的形態 → 多出來的靈核
         public readonly Drops Drops = new Drops();
         public readonly Coins CoinList = new Coins();
-        static readonly Dictionary<string, double> KILL_XP = new Dictionary<string, double> { ["slime"] = 5, ["bat"] = 5, ["trash"] = 12, ["gold"] = 20, ["hog"] = 9 };
-        static readonly Dictionary<string, double> DROP_RATE = new Dictionary<string, double> { ["slime"] = 0.1, ["bat"] = 0.1, ["trash"] = 0.35, ["gold"] = 1, ["hog"] = 0.2 };
+        static readonly Dictionary<string, double> KILL_XP = new Dictionary<string, double> { ["slime"] = 5, ["bat"] = 5, ["trash"] = 12, ["gold"] = 20, ["hog"] = 9, ["shroom"] = 8 };
+        static readonly Dictionary<string, double> DROP_RATE = new Dictionary<string, double> { ["slime"] = 0.1, ["bat"] = 0.1, ["trash"] = 0.35, ["gold"] = 1, ["hog"] = 0.2, ["shroom"] = 0.15 };
         const double ABSORB_T = 1;
         double? absorbHp; double absorbTick; public Drops.Drop AbsorbNear;
         int IlvlNow(int bonus = 0) => Lv + bonus + (int)Math.Floor(Rnd.Next() * 2);
@@ -586,7 +586,7 @@ namespace ZeroStar
         public void Land(double x, double y, bool hard) { Sfx(hard ? "land:true" : "land"); Combat.Dust("land", x, y, hard); Props.Landing(x, y, hard); Scenery.Landing(x, y, hard); }
         public void Dust(double x, double y, int n) { Fx.Spawn(Baked.Anim("dust"), Pf.Round(x), Pf.Round(y), Rnd.Next() < 0.5, speed: 1.8); }
         public void DropCoins(double x, double y, int n) { CoinList.Drop(x, y, n); }
-        static readonly Dictionary<string, string> CORE_FROM = new Dictionary<string, string> { ["slime"] = "slime", ["bat"] = "bat", ["trash"] = "can", ["hog"] = "spike" };
+        static readonly Dictionary<string, string> CORE_FROM = new Dictionary<string, string> { ["slime"] = "slime", ["bat"] = "bat", ["trash"] = "can", ["hog"] = "spike", ["shroom"] = "bat" };   // 毒菇怪：毒的核拿來升級蝠翼星（第 2 章小怪不給新形態）
         /// forms.js 的 coreChance：還沒有這個形態時比較容易掉
         (string id, double p) CoreChance(string kind)
         {
@@ -636,6 +636,28 @@ namespace ZeroStar
                 HitArea(new Box(e.X - rx, e.X + rx, cy - rx, cy + rx), () => Player.RollDmg(1.2), e.X < Player.X ? -1 : 1, new HitOpts { Launch = true, Push = 2 });
                 Fx.Shake(0.2, 2);
                 boomDepth--;
+            }
+        }
+        // ---- 毒菇怪噴的毒雲：留 2.6 秒，主角站在裡面每 0.5 秒扣一次血
+        class SporeCloud { public double X, Y, T, Tick, Dmg, R; }
+        readonly List<SporeCloud> spores = new List<SporeCloud>();
+        public void SporePuff(double x, double y, double dmg, bool elite)
+        {
+            double R = elite ? 46 : 34;
+            var fx = SpawnLive("poison-cloud", Pf.Round(x), Pf.Round(y), new FxOptions { Light = 0.35, Seed = Pf.ToInt32(Rnd.Next() * 99) }.Set("spread", R / 80), 1.2);
+            After(2300, () => fx?.Stop());
+            spores.Add(new SporeCloud { X = x, Y = y, T = 2.6, Tick = 0.25, Dmg = dmg * (elite ? 1.5 : 1), R = R });
+            SceneLight.AddFlash(x, y - 10, 50, 1.6, 0.3, "#c8f05a");
+            Sfx("squish");
+        }
+        void UpdateSpores(double dt)
+        {
+            for (int i = spores.Count - 1; i >= 0; i--)
+            {
+                var c = spores[i];
+                c.T -= dt;
+                if ((c.Tick -= dt) <= 0) { c.Tick = 0.5; if (Math.Abs(Player.X - c.X) < c.R && Player.Y > c.Y - 40 && Player.Y < c.Y + 10) Player.PoisonTick(c.Dmg, this); }
+                if (c.T <= 0) spores.RemoveAt(i);
             }
         }
         public void OnPlayerHurt(double dmg)
@@ -803,7 +825,7 @@ namespace ZeroStar
                     if (rolling) e.RollHit = true;
                 }
             }
-            Prof.Mark("L:怪"); Separate(dt); Prof.Mark("L:推開");
+            Prof.Mark("L:怪"); UpdateSpores(dt); Separate(dt); Prof.Mark("L:推開");
             UpdateCoreFx(dt);
             UpdateAltars();
             UpdatePlug(dt);
