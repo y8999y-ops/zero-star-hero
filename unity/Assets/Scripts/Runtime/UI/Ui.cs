@@ -40,12 +40,12 @@ namespace ZeroStar.UI
         }
         /// 網頁版 1 CSS px 在這裡放大幾倍：
         ///   手機照螢幕密度（160 dpi＝1，像 Android 的 dp）；
-        ///   電腦跟著視窗大小：1152×648 當 1 倍，整個介面跟遊戲畫面一起等比例放大縮小（4K 全螢幕≈3.3 倍，視窗再小也不低於 0.6 倍）
+        ///   電腦跟著視窗大小：960×540 當 1 倍（2026-11-12：原本 1152×648，介面和字整體放大 2 成），整個介面跟遊戲畫面一起等比例放大縮小（4K 全螢幕≈3.3 倍，視窗再小也不低於 0.6 倍）
         public static float Scale()
         {
             if (Application.isMobilePlatform) { float dpi = Screen.dpi > 0 ? Screen.dpi : 160; return Mathf.Max(1, dpi / 160f); }
             if (Screen.width <= 0 || Screen.height <= 0) return 1;
-            return Mathf.Clamp(Mathf.Min(Screen.width / 1152f, Screen.height / 648f), 0.6f, 6f);
+            return Mathf.Clamp(Mathf.Min(Screen.width / 960f, Screen.height / 540f), 0.6f, 6f);
         }
         static readonly List<PanelSettings> panels = new List<PanelSettings>();
         static float lastScale = -1;
@@ -75,6 +75,8 @@ namespace ZeroStar.UI
             parent?.Add(l);
             return l;
         }
+        /// 疊在遊戲畫面上的字（沒有底框的）：加一圈深色描邊，亮的背景上也看得清楚
+        public static Label Outline(Label l, float w = 1.2f, string col = "#140c22") { l.style.unityTextOutlineWidth = w; l.style.unityTextOutlineColor = C(col); return l; }
         public static void Abs(VisualElement e, float? left = null, float? top = null, float? right = null, float? bottom = null)
         {
             e.style.position = Position.Absolute;

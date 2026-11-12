@@ -86,13 +86,13 @@ namespace ZeroStar.UI
             forms = Box(root, "forms"); Abs(forms, null, 62, 10); forms.style.flexDirection = FlexDirection.Row;
 
             // ---- 系統台詞（上方中間）
-            sys = Box(root, "sys"); Abs(sys, null, 10); sys.style.left = new Length(50, LengthUnit.Percent); sys.style.translate = new Translate(new Length(-50, LengthUnit.Percent), 0);
+            sys = Box(root, "sys"); Abs(sys, 0, 10);   // 左右位置每格算（Update）：置中，但不蓋到左上的圖示
             Nine(sys, "panel-sys2", 8, 8); sys.style.paddingLeft = 8 + 50; sys.style.paddingRight = 8 + 10; sys.style.paddingTop = 8 + 2; sys.style.paddingBottom = 8 + 4;
             sys.style.minHeight = 44 + 16; sys.style.maxWidth = 400; sys.style.opacity = 0;
             sysFace = Box(sys); Size(sysFace, 40, 40); Abs(sysFace, 2 + 8, null); sysFace.style.top = new Length(50, LengthUnit.Percent); sysFace.style.marginTop = -20;
             var head = Text(sys, "■ SYSTEM // 系統", 12, "#6ad8ff", true); head.style.letterSpacing = 2;
             sysText = Text(sys, "", 14, "#e8fbff", true, 1, "#04101e"); sysText.style.whiteSpace = WhiteSpace.Normal; sysText.enableRichText = true;
-            toast = Text(root, "", 18, "#f2eefc", true, 2); Abs(toast, null, null); toast.style.top = new Length(30, LengthUnit.Percent); toast.style.left = new Length(50, LengthUnit.Percent);
+            toast = Outline(Text(root, "", 18, "#f2eefc", true, 2)); Abs(toast, null, null); toast.style.top = new Length(30, LengthUnit.Percent); toast.style.left = new Length(50, LengthUnit.Percent);
             toast.style.translate = new Translate(new Length(-50, LengthUnit.Percent), 0); toast.style.whiteSpace = WhiteSpace.NoWrap; toast.style.opacity = 0;
 
             // ---- 右下：技能（E）、大招（Q）
@@ -153,6 +153,15 @@ namespace ZeroStar.UI
         {
             var P = g.Player;
             if (lastTouch != Touch) { lastTouch = Touch; LayTouch(Touch); }
+            {
+                // 系統台詞：畫面置中；左上的血條和圖示比較寬時往右讓，右邊留給形態格
+                float pw = root.layout.width, sw = sys.layout.width, hr = menuBox.worldBound.xMax;
+                if (!float.IsNaN(pw) && pw > 0 && !float.IsNaN(sw) && !float.IsNaN(hr))
+                {
+                    sys.style.maxWidth = Mathf.Clamp(pw - hr - 8 - 190, 220, 400);
+                    sys.style.left = Mathf.Max(hr + 8, (pw - sw) / 2);
+                }
+            }
             hud.style.opacity = talking ? 0.2f : Touch ? 0.85f : 1; set.style.opacity = talking ? 0.2f : Touch ? 0.85f : 1; forms.style.opacity = talking ? 0.2f : 1;
             // 血條：被打掉的那段先留白，0.25 秒後再慢慢縮
             float hpK = (float)Math.Max(0, P.Hp / P.MaxHp);

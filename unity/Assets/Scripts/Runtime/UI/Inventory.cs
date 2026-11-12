@@ -136,8 +136,10 @@ namespace ZeroStar.UI
             cmpEl.style.backgroundColor = C("#0c081a", 0.86f); Border(cmpEl, 2, C("#c9a258", 0.7f)); cmpEl.style.display = DisplayStyle.None; cmpEl.pickingMode = PickingMode.Position;
             cmpEl.RegisterCallback<PointerDownEvent>(e => { e.StopPropagation(); sel = null; Render(); });
             // 關閉鈕
-            var x = Box(box, "invClose"); Abs(x, null, -4, -4); Size(x, 32, 32); x.style.backgroundColor = C("#1d1730"); Border(x, 2, C("#0a0810")); x.pickingMode = PickingMode.Position;
-            var xi = Box(x); Abs(xi, 0, 0, 0, 0); Img(xi, "ic-close"); x.AddManipulator(new Clickable(Close));
+            // 2026-11-12：跟其他視窗同一種關閉鈕（深色圓底＋小叉），不再用紅色大叉
+            var x = Box(box, "invClose"); Abs(x, null, -8, -2); Size(x, 30, 30); Round(x, 15); x.style.backgroundColor = C("#151127"); Border(x, 2, C("#e8b84a")); x.pickingMode = PickingMode.Position;
+            x.style.alignItems = Align.Center; x.style.justifyContent = Justify.Center;
+            var xi = Box(x); Size(xi, 18, 18); Img(xi, "icons/close"); x.AddManipulator(new Clickable(Close));
             // 拖動時跟著手指的圖示
             ghost = Box(overlay, "dragGhost"); Abs(ghost); Size(ghost, 36, 36); ghost.style.display = DisplayStyle.None; ghost.style.translate = new Translate(Length.Percent(-50), Length.Percent(-50));
             overlay.RegisterCallback<PointerMoveEvent>(DragMove, TrickleDown.TrickleDown);
