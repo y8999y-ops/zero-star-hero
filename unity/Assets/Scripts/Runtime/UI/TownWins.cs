@@ -93,7 +93,7 @@ namespace ZeroStar.UI
                         g.Money += r.Coins; g.Scrap += r.Scrap; if (r.Xp > 0) g.GainXp(r.Xp);
                         g.Sfx("levelup"); W.Msg("交付完成！"); g.QuestProgress("tick"); W.Render();
                         // 交付特效：視窗中間蓋一條「任務完成！」緞帶，金幣飛向右上的錢
-                        W.Stamp("任務完成！");
+                        Fx?.At(W.BoxCenter(), "quest-complete-zh", new FxOptions { Seed = g.GuildDone });
                         if (r.Coins > 0) Fx?.At(W.MoneyCenter(), "coin-collect", new FxOptions { Seed = g.GuildDone }.Set("count", 8));
                     });
                 else if (atGuild) W.IBtn(act, "close", "", () => { Q.Abandon(q.Id); g.Sfx("close"); W.Msg("放棄了任務", false); W.Render(); }, "bad", true);

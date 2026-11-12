@@ -315,7 +315,7 @@ namespace ZeroStar
                 // 碎星鎮：依序打開任務（公會）、工坊、旅館、主線、地圖（每個 4 秒後自動關）
                 if (tickN == 30) { game.GuildRegistered = true; game.Money = 900; game.Scrap = 120; game.Equip["weapon"] = Items.MakeItem(20, 3, "weapon"); game.Equip["head"] = Items.MakeItem(12, 2, "head"); game.Quests.RefreshBoard(game.UnlockedStages()); game.Quests.Accept(game.Quests.Board[0].Id); game.Quests.Active[0].Have = game.Quests.Active[0].Need; game.Quests.Tracked.Add(game.Quests.Active[0].Id); }
                 if (tickN == 40) _ = ZeroStar.UI.TownWins.OpenQuests(game, true);
-                if (tickN == 110) { win.Stamp("任務完成！"); uiFx.At(win.MoneyCenter(), "coin-collect", new FxOptions { Seed = 1 }.Set("count", 8)); }
+                if (tickN == 110) { uiFx.At(win.BoxCenter(), "quest-complete-zh", new FxOptions { Seed = 1 }); uiFx.At(win.MoneyCenter(), "coin-collect", new FxOptions { Seed = 1 }.Set("count", 8)); }
                 if (tickN == 330) _ = ZeroStar.UI.TownWins.OpenForge(game);
                 if (tickN == 400) uiFx.At(win.BoxCenter(), "parry", new FxOptions { Palette = new[] { "#3a1a06", "#8a4a10", "#e0901c", "#ffc83a", "#ffe98a", "#fff8d8", "#ffffff" }, Light = 0.5, Seed = 3 });
                 if (tickN == 620) _ = ZeroStar.UI.TownWins.OpenInn(game, () => System.Threading.Tasks.Task.CompletedTask);
