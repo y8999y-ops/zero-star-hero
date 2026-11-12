@@ -21,7 +21,39 @@ namespace ZeroStar
         const double AMB = 0.42, FAR1 = 0.4, FAR2 = 0.36, COOL1 = 0.42, COOL2 = 0.3, RIM = 1.5, UNDER = 0.55, LIT_MAX = 1.7;
         static readonly int[] COOL = { 26, 36, 72 };
 
-        public LevelArt(LevelData d) { D = d; LW = d.W; MH = d.H; }
+        public LevelArt(LevelData d) { D = d; LW = d.W; MH = d.H; BuildDepth(); BuildHaze(); }
+
+        // ---- 2026-11-12 美術優化（照 Ori 的層次）：越遠越亮越淡（逆光的霧）、近景壓暗、地面深處壓暗，遊玩層對比最高。Unity 版自己的，不跟網頁版比對。
+        byte[] depth;                       // 遊玩層每一格離表面多深（上下取近的那邊）
+        void BuildDepth()
+        {
+            var PF = D.PF; depth = new byte[LW * MH];
+            for (int x = 0; x < LW; x++)
+            {
+                int d = 0;
+                for (int y = 0; y < MH; y++) { int i = y * LW + x; if (PF[i] != 0) { if (d < 255) d++; } else d = 0; depth[i] = (byte)d; }
+                d = 0;
+                for (int y = MH - 1; y >= 0; y--) { int i = y * LW + x; if (PF[i] != 0) { if (d < 255) d++; } else d = 0; if (d < depth[i]) depth[i] = (byte)d; }
+            }
+        }
+        double hzR, hzG, hzB;               // 這一關霧的顏色
+        readonly double[] hazeBack = new double[H], hazeFar = new double[H], hazeMid = new double[H];
+        void BuildHaze()
+        {
+            (hzR, hzG, hzB) = D.Stage == "1-2" ? (96.0, 78.0, 104.0) : D.Stage == "1-3" ? (62.0, 70.0, 134.0) : D.Stage == "1-4" ? (78.0, 92.0, 100.0) : (52.0, 88.0, 122.0);
+            for (int y = 0; y < H; y++)
+            {
+                double band = Math.Exp(-Math.Pow((y - 100) / 62.0, 2));   // 畫面中段一條亮的霧光帶
+                hazeBack[y] = 0.30 + 0.34 * band; hazeFar[y] = 0.20 + 0.26 * band; hazeMid[y] = 0.08 + 0.14 * band;
+            }
+        }
+        static uint MixF(uint c, double r, double g, double b, double t) =>
+            0xff000000u | ((uint)(int)(((c >> 16) & 255) * (1 - t) + b * t) << 16) | ((uint)(int)(((c >> 8) & 255) * (1 - t) + g * t) << 8) | (uint)(int)((c & 255) * (1 - t) + r * t);
+        static uint DesatF(uint c, double t)
+        {
+            double r = c & 255, g = (c >> 8) & 255, b = (c >> 16) & 255, gray = r * 0.3 + g * 0.59 + b * 0.11;
+            return 0xff000000u | ((uint)(int)(b + (gray - b) * t) << 16) | ((uint)(int)(g + (gray - g) * t) << 8) | (uint)(int)(r + (gray - r) * t);
+        }
 
         static int Wrap(int x, int w) => ((x % w) + w) % w;
         static uint Shade(uint c, double k) =>
@@ -124,13 +156,24 @@ namespace ZeroStar
                     if (f1t >= 0) v = F1.Px[f1t + cF];
                     if (v == 0) v = f1b >= 0 ? F1.Px[f1b + cF] : ufr >= 0 ? UF.Px[ufr + cUF] : 0;
                 }
-                if (v == 0) { uint bv = B.Px[bRow + cB]; outc[i] = bv != 0 ? bv : BACK_COLOR; continue; }
+                if (v == 0) { uint bv = B.Px[bRow + cB]; outc[i] = MixF(bv != 0 ? bv : BACK_COLOR, hzR, hzG, hzB, hazeBack[y] * (1 - V[i] * 0.5)); continue; }
                 if (layer == 4 && PFE[pfRow + gx] != 0) { outc[i] = v; continue; }
                 double l = lv[i], k;
-                if (layer <= 2) { k = (layer == 1 ? FAR1 : FAR2) * (1 - V[i] * 0.2) * (1 + 0.25 * Math.Min(1, l)); v = CoolF(v, layer == 1 ? COOL1 : COOL2); }
+                if (layer <= 2)
+                {
+                    k = (layer == 1 ? FAR1 : FAR2) * (1 - V[i] * 0.2) * (1 + 0.25 * Math.Min(1, l)); v = CoolF(v, layer == 1 ? COOL1 : COOL2);
+                    outc[i] = MixF(ShadeF(v, k), hzR, hzG, hzB, (layer == 1 ? hazeFar[y] : hazeMid[y]) * (1 - V[i] * 0.5));   // 遠的往霧色靠，比近的亮
+                    continue;
+                }
                 else
                 {
                     k = LAYER_DIM[layer] * (1 - V[i] * 0.35) * (AMB + (1 - AMB) * Math.Min(LIT_MAX, l / 1.1));
+                    if (layer == 3) { v = DesatF(v, 0.4); k *= 0.72; }   // 近景裝飾：降彩、壓暗，不跟可以打的東西搶
+                    else
+                    {
+                        int dp = depth[pfRow + gx];
+                        if (dp > 5) { double dk = Math.Min(1, (dp - 5) / 28.0); v = DesatF(v, 0.45 * dk); k *= 1 - 0.5 * dk; }   // 地面深處：越深越暗越灰，表面那一圈最清楚
+                    }
                     if (layer == 4)
                     {
                         bool up = wy > 0 && PF[pfRow - LW + gx] == 0, up2 = wy > 1 && PF[pfRow - 2 * LW + gx] == 0, dn = wy < MH - 1 && PF[pfRow + LW + gx] == 0;

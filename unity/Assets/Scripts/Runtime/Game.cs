@@ -972,7 +972,10 @@ namespace ZeroStar
             Drops.Draw(frame, sceneClock);
             foreach (var d in Drops.List) if (d.Item.Kind == "formcore" && d.Hold > 0 && d.HasCenter) CoreArt.DrawBeams(frame, d.Cx, d.Cy, Player.X, Player.Y - 12, sceneClock, d.Item.Form, d.Hold);
             Prof.Mark("背景特效");
+            // 2026-11-12：怪物描一圈深色外框＋左上邊緣光，跟水晶、草、其他怪疊在一起時還分得出來
+            if (!Town) TownArt.SnapPeople(frame);
             foreach (var e in Enemies) e.Draw(frame, Fx, SimMs);
+            if (!Town) TownArt.OutlineActors(frame, 0.34, 0xff200c0e);
             Status.DrawBolts(frame);
             foreach (var w in Waves) StarWave.Draw(frame, w);
             foreach (var m in Minis) MiniBat.Draw(frame, m);

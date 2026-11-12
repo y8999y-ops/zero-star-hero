@@ -288,7 +288,8 @@ namespace ZeroStar
         public delegate void PutFn(double x, double y, uint[] pal, double t, double emissive = 0);
 
         /// 畫：跟遊玩層一樣，色階位置加上光照（lv 是畫布座標的亮度，可以是 null）
-        public void Draw(Frame frame, float[] lv)
+        /// part：-1 全部、0 草、1 木箱和水晶、2 碎片
+        public void Draw(Frame frame, float[] lv, int part = -1)
         {
             int Wf = frame.W, Hf = frame.H; var C = frame.Color; int ox = frame.Ox, oy = frame.Oy;
             PutFn put = (x, y, pal, t, emissive) =>
@@ -299,7 +300,7 @@ namespace ZeroStar
                 C[i] = pal[(int)Math.Max(0, Math.Min(7, Pf.Round(t + Math.Min(2.5, l) * (emissive != 0 ? 0.4 : 0.9) + emissive)))];
             };
             double x0 = ox - 30, x1 = ox + Wf + 30;
-            foreach (var t in Tufts)
+            if (part <= 0) foreach (var t in Tufts)
             {
                 if (t.x < x0 || t.x > x1) continue;
                 foreach (var b in t.blades)
@@ -314,6 +315,7 @@ namespace ZeroStar
                     }
                 }
             }
+            if (part == 0 || part == 2) goto Bits;
             foreach (var b in Boxes)
             {
                 if (b.broken || b.x < x0 || b.x > x1) continue;
@@ -329,6 +331,8 @@ namespace ZeroStar
                 if (c.dimT > 0) { DrawCrystal((x, y, pal, t, e) => put(x, y, pal, t - 2, 0), c.x + sx, c.y, c.big, CYAN, 0, c.hp); continue; }
                 DrawCrystal(put, c.x + sx, c.y, c.big, c.col == "gold" ? GOLD : CYAN, c.glow, c.hp);
             }
+        Bits:
+            if (part == 1) return;
             foreach (var q in bits)
             {
                 bool blink = q.life < 0.3 && Math.Floor(q.life * 20) % 2 != 0;   // 快消失時閃一下

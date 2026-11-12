@@ -401,11 +401,21 @@ namespace ZeroStar
             if (snap == null || snap.Length != n) { snap = new uint[n]; pmask = new byte[n]; }
             Array.Copy(frame.Color, snap, n);
         }
-        public static void OutlinePeople(Frame frame)
+        public static void OutlinePeople(Frame frame) => OutlineActors(frame, 0.18 + 0.27 * DayInfo().d, 0xff3e1e2c);
+        /// rim＝邊緣光的強度、outline＝外框顏色（關卡裡的怪物也用這個）
+        /// lift＞0：暗的像素往上提亮（越暗提越多，亮的不動）——可以互動的物件在暗處也要看得到
+        public static void OutlineActors(Frame frame, double rim, uint outline, double lift = 0)
         {
             if (snap == null || snap.Length != frame.W * frame.H) return;
             int W = frame.W, Hh = frame.H; var C = frame.Color; var M = pmask;
-            double rim = 0.18 + 0.27 * DayInfo().d;
+            if (lift > 0)
+                for (int i = 0; i < C.Length; i++)
+                {
+                    uint c = C[i]; if (c == snap[i]) continue;
+                    double r = c & 255, g = (c >> 8) & 255, b = (c >> 16) & 255, mx = Math.Max(r, Math.Max(g, b)), d = 1 - mx / 255;
+                    double k = 1 + lift * d * Math.Sqrt(d);
+                    C[i] = Pack(Math.Min(255, r * k + 6 * lift * d), Math.Min(255, g * k + 6 * lift * d), Math.Min(255, b * k + 8 * lift * d));
+                }
             for (int i = 0; i < M.Length; i++)
             {
                 uint c = C[i];
@@ -425,7 +435,7 @@ namespace ZeroStar
                     if ((a == 1 || b2 == 1 || c2 == 1 || d == 1) && a != 2 && b2 != 2 && c2 != 2 && d != 2) M[i] = 3;   // 外框（原本就有深色邊的地方不重複）
                 }
             }
-            for (int i = 0; i < M.Length; i++) if (M[i] == 3) C[i] = 0xff3e1e2c;
+            for (int i = 0; i < M.Length; i++) if (M[i] == 3) C[i] = outline;
         }
         /// 居民／路人（npcs.js 的 paintNpc）：x 腳底中間、y 腳底
         public static void PaintNpc(Frame frame, string id, double t, double x, double y, bool flip = false, bool walk = false) =>

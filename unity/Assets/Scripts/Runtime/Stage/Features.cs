@@ -187,14 +187,20 @@ namespace ZeroStar
             }
             return false;
         }
-        public void Draw(Frame frame, double t)
+        /// part：-1 全部、0 氣流和碎片、1 物件本體、2 發光粒子（分開畫，本體才能單獨描外框）
+        public void Draw(Frame frame, double t, int part = -1)
         {
             foreach (var f in Items)
             {
                 double tt = t + f.t0;
-                if (f.debris != null) FeatureArt.DrawDebris(frame, f.debris);
+                if (part <= 0)
+                {
+                    if (f.debris != null) FeatureArt.DrawDebris(frame, f.debris);
+                    if (f.t == "wind") FeatureArt.DrawWind(frame, f.x, f.y, f.w.Value, f.h.Value, tt);
+                }
+                if (part == 0) continue;
+                if (part == 2) { if (!f.done && GLOW_OF.TryGetValue(f.t, out var g2)) ObjGlow.Draw(frame, g2, f.x, f.y, tt, f.t == "fossil" ? api.FormColor?.Invoke(f.form) : null); continue; }
                 if (f.t == "crack" && !f.done) FeatureArt.DrawCrack(frame, f.x, f.y, f.hp >= 3 ? 1 : 0.4, tt, f.h ?? 48);
-                else if (f.t == "wind") FeatureArt.DrawWind(frame, f.x, f.y, f.w.Value, f.h.Value, tt);
                 else if (f.t == "shroom") FeatureArt.DrawShroom(frame, f.x, f.y, f.squash, tt);
                 else if (f.t == "seal" && f.open < 1) FeatureArt.DrawSeal(frame, f.x, f.y, f.lit, Math.Max(0, f.open), tt, f.h ?? 48);
                 else if (f.t == "ember" && !f.done) FeatureArt.DrawEmber(frame, f.x, f.y, tt);
@@ -203,7 +209,7 @@ namespace ZeroStar
                 else if (f.t == "safe") FeatureArt.DrawSafe(frame, f.x, f.y, f.done, tt);
                 else if (f.t == "stele") FeatureArt.DrawStele(frame, f.x, f.y, f.done, tt);
                 // 還沒拿的重要東西身上有發光粒子
-                if (!f.done && GLOW_OF.TryGetValue(f.t, out var g)) ObjGlow.Draw(frame, g, f.x, f.y, tt, f.t == "fossil" ? api.FormColor?.Invoke(f.form) : null);
+                if (part < 0 && !f.done && GLOW_OF.TryGetValue(f.t, out var g)) ObjGlow.Draw(frame, g, f.x, f.y, tt, f.t == "fossil" ? api.FormColor?.Invoke(f.form) : null);
             }
         }
         public void Lights(List<LightSrc> list)

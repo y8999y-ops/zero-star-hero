@@ -130,13 +130,26 @@ namespace ZeroStar
         }
         partial void DrawAltar(Frame frame, Altar a)
         {
+            if (!Town) TownArt.SnapPeople(frame);
             ZeroStar.Altar.Draw(frame, a.X, a.Y, a.Lit, sceneClock, a.Pulse);
+            if (!Town) TownArt.OutlineActors(frame, OBJ_RIM, OBJ_OUTLINE, OBJ_LIFT);
             ObjGlow.Draw(frame, a.Lit ? "altarOn" : "altarOff", a.X, a.Y, sceneClock + a.X * 0.01);
         }
+        // 2026-11-12：可以互動的東西（機關、木箱、水晶、祭壇）不能暗或不明顯——暗處提亮、描深色外框、左上加邊緣光
+        const double OBJ_RIM = 0.3, OBJ_LIFT = 0.7; const uint OBJ_OUTLINE = 0xff200c0e;
         partial void DrawStageObjects(Frame frame, float[] lv)
         {
-            Prof.Mark("S:前"); Features.Draw(frame, sceneClock); Prof.Mark("S:機關");
-            Props.Draw(frame, lv); Prof.Mark("S:草叢木箱");
+            Prof.Mark("S:前");
+            if (Town) { Features.Draw(frame, sceneClock); Props.Draw(frame, lv); }
+            else
+            {
+                Features.Draw(frame, sceneClock, 0); Props.Draw(frame, lv, 0);
+                TownArt.SnapPeople(frame);
+                Features.Draw(frame, sceneClock, 1); Props.Draw(frame, lv, 1);
+                TownArt.OutlineActors(frame, OBJ_RIM, OBJ_OUTLINE, OBJ_LIFT);
+                Features.Draw(frame, sceneClock, 2); Props.Draw(frame, lv, 2);
+            }
+            Prof.Mark("S:草叢木箱");
             Scenery.Draw(frame, lv, sceneClock); Prof.Mark("S:小生物裝飾");
             Hazards.Draw(frame); Prof.Mark("S:地面元素");
         }
