@@ -204,6 +204,8 @@ namespace PixelFX
 
         /// Color 疊在背景上再加光，輸出 RGBA 位元組。bg：null＝透明。照 fx.js 的 composite。
         /// 畫面切成幾條同時算（每個像素各算各的，結果跟一條一條算完全一樣）。
+        /// 2026-11-12：光疊在已經很亮的像素上時少加一點（底色越亮加越少），角色和怪物站在光裡不會整隻變白。只有遊戲主畫面開。
+        public bool SoftLight;
         public byte[] Composite(byte[] o = null, uint? bg = null, double lightK = 1)
         {
             Flush();
@@ -229,6 +231,13 @@ namespace PixelFX
                 {
                     // 最常見：不透明。沒有光直接複製；有光＝加上去（上限 255）再四捨五入（剛好 .5 取偶數）
                     if (l == 0) { o[j] = (byte)c; o[j + 1] = (byte)(c >> 8); o[j + 2] = (byte)(c >> 16); o[j + 3] = 255; continue; }
+                    if (SoftLight)
+                    {
+                        uint cr = c & 255, cg = (c >> 8) & 255, cb = (c >> 16) & 255;
+                        o[j] = AddRound(cr, (l & 255) * lightK * (1 - cr * (0.85 / 255))); o[j + 1] = AddRound(cg, ((l >> 8) & 255) * lightK * (1 - cg * (0.85 / 255)));
+                        o[j + 2] = AddRound(cb, ((l >> 16) & 255) * lightK * (1 - cb * (0.85 / 255))); o[j + 3] = 255;
+                        continue;
+                    }
                     o[j] = AddRound(c & 255, (l & 255) * lightK); o[j + 1] = AddRound((c >> 8) & 255, ((l >> 8) & 255) * lightK);
                     o[j + 2] = AddRound((c >> 16) & 255, ((l >> 16) & 255) * lightK); o[j + 3] = 255;
                     continue;

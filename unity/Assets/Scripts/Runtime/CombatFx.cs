@@ -194,7 +194,7 @@ namespace ZeroStar
             foreach (var q in list)
             {
                 string text = ((long)q.Total).ToString() + (q.Crit ? "!" : "");
-                bool big = q.Crit || q.Heavy || q.Hits >= 3;
+                bool big = q.Crit || q.Heavy;   // 2026-11-12：只有爆擊和重擊放大；連續打中累加的數字維持小字，不然幾乎每個數字都是大的
                 int s = big ? 2 : 1, gap = 1;
                 int wpx = -gap; foreach (char ch in text) wpx += GLYPH[ch][0].Length * s + gap;
                 int hpx = 5 * s;
@@ -204,7 +204,7 @@ namespace ZeroStar
                 foreach (var p in placed) if (x < p.x + p.w + 2 && x + wpx + 2 > p.x && y < p.y + p.h + 2 && y + hpx + 2 > p.y) y = p.y - hpx - 3;
                 y = (int)Math.Max(Math.Ceiling(v.y0) + 2, y);
                 placed.Add((x, y, wpx, hpx));
-                var cols = q.Crit ? NUM_C : q.Heavy || q.Hits >= 3 ? NUM_H : NUM_N;
+                var cols = q.Crit ? NUM_C : q.Heavy ? NUM_H : NUM_N;
                 var pixels = new List<(int, int, bool)>();
                 int cx = x;
                 foreach (char ch in text)

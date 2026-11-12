@@ -85,7 +85,7 @@ namespace ZeroStar
             if (Paused?.Invoke() == true) { Fit(); return; }   // 地圖、視窗開著：遊戲暫停，畫面停在最後一格（不用每格重畫）
             Frame.Clear();
             Draw?.Invoke(Frame);
-            Frame.Composite(rgba, null, 0.8);
+            Frame.SoftLight = true; Frame.Composite(rgba, null, 0.8);
             PostComposite?.Invoke(rgba);
             double ms = watch.Elapsed.TotalMilliseconds;
             perfMs += ms; perfN++; perfMax = Math.Max(perfMax, ms);
