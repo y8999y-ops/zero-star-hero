@@ -79,7 +79,7 @@ namespace ZeroStar.UI
 
         public Inventory(VisualElement parent)
         {
-            overlay = Box(parent, "inv"); Abs(overlay, 0, 0, 0, 0); overlay.style.backgroundColor = C("#06040c", 0.72f); overlay.style.display = DisplayStyle.None;
+            overlay = Box(parent, "inv"); Abs(overlay, 0, 0, 0, 0); overlay.style.backgroundColor = C("#06040c", 0.9f); overlay.style.display = DisplayStyle.None;
             overlay.pickingMode = PickingMode.Position;
             overlay.RegisterCallback<PointerDownEvent>(e => { if (e.target == overlay) Close(); });
             box = Box(overlay, "invBox"); Size(box, 760, 360); Abs(box); box.style.left = Length.Percent(50); box.style.top = Length.Percent(50);
@@ -107,8 +107,11 @@ namespace ZeroStar.UI
             var bt = Row(bag); Text(bt, "背包", 15, "#ffd24a", true, 2).style.letterSpacing = 2; bagN = Text(bt, "", 14, "#a59fbd"); bagN.style.marginLeft = 8;
             var cur = Row(bt); cur.style.marginLeft = StyleKeyword.Auto; Win.Ico(cur, "coin", 14).style.marginRight = 3; coinsEl = Text(cur, "", 12, "#f2eefc"); coinsEl.style.marginRight = 6;
             Win.Ico(cur, "scrap", 14).style.marginRight = 3; scrapEl = Text(cur, "", 12, "#f2eefc");
-            filterPart = Row(bag); filterPart.style.justifyContent = Justify.Center; filterPart.style.marginTop = 6;
-            filterRar = Row(bag); filterRar.style.justifyContent = Justify.Center; filterRar.style.marginTop = 2; filterRar.style.marginBottom = 6;
+            // 2026-11-12：兩排篩選鈕前面各加一個小標示（部位／稀有），看得出各自是篩什麼
+            var fpRow = Row(bag); fpRow.style.justifyContent = Justify.Center; fpRow.style.marginTop = 6; { var fl = Text(fpRow, "部位", 11, "#a59fbd"); fl.style.marginRight = 4; fl.style.whiteSpace = WhiteSpace.NoWrap; fl.style.flexShrink = 0; }
+            filterPart = Row(fpRow);
+            var frRow = Row(bag); frRow.style.justifyContent = Justify.Center; frRow.style.marginTop = 2; frRow.style.marginBottom = 6; { var fl = Text(frRow, "稀有", 11, "#a59fbd"); fl.style.marginRight = 4; fl.style.whiteSpace = WhiteSpace.NoWrap; fl.style.flexShrink = 0; }
+            filterRar = Row(frRow);
             foreach (var (k, ic, n) in PARTS) { string key = k; FBtn(filterPart, ic, ic == null ? "全" : null, null, () => { fPart = key; Render(); }).userData = "p:" + k; }
             FBtn(filterRar, null, "全", null, () => { fRar = -1; Render(); }).userData = "r:-1";
             for (int i = 0; i < Items.RARITY.Length; i++) { int r = i; FBtn(filterRar, null, null, Items.RARITY[i].Color, () => { fRar = r; Render(); }).userData = "r:" + i; }
@@ -462,7 +465,22 @@ namespace ZeroStar.UI
                 Empty($"批量分解\n\n已選 <b><color=#f2eefc>{picked.Count}</color></b> 件\n星塵 +{sc}　金幣 +{co}\n\n<size=11>點格子打勾／取消\n「全選」＝選目前篩選的全部\n鎖定的不會被選到</size>");
                 detailScroll.Update(); return;
             }
-            if (it == null) { Empty("點一下物品看詳細資料\n再點一次就穿上\n\n<size=11>▲ 比身上的好　! 新撿到的\n鎖頭＝鎖定（不會被拆）</size>"); detailScroll.Update(); return; }
+            if (it == null)
+            {
+                // 2026-11-12：沒選東西時不要整欄空白，改成列出全部屬性，下面再放操作說明
+                var st0 = Items.ComputeStats(g.Equip, g.Lv, g.CoreBonus);
+                var hd = Text(detail, "屬性總覽", 13, "#ffd24a", true); hd.style.letterSpacing = 2; hd.style.marginBottom = 4;
+                foreach (var row in STAT_ROWS)
+                {
+                    double v = row.v(st0);
+                    var r = Row(detail); r.style.justifyContent = Justify.SpaceBetween; r.style.height = 17; r.style.borderBottomWidth = 1; r.style.borderBottomColor = C("#2a2244");
+                    var left = Row(r); if (STAT_ICON.TryGetValue(row.k, out var ic)) Win.Ico(left, ic, 12).style.marginRight = 4;
+                    Text(left, row.n, 12, v != 0 ? "#c9c2dc" : "#6f6888");
+                    var val = Text(r, row.f(v), 12, v != 0 ? "#f2eefc" : "#6f6888", true); val.enableRichText = true;
+                }
+                var tip = Text(detail, "點物品看詳細，再點一次穿上\n▲ 比身上的好　! 新撿到的\n鎖頭＝鎖定（不會被拆）", 11, "#a59fbd"); tip.style.whiteSpace = WhiteSpace.Normal; tip.style.marginTop = 8;
+                detailScroll.Update(); return;
+            }
             ItemCard(detail, it);
             if (it.Unique != null && UNIQUE_TEXT.TryGetValue(it.Unique, out var u)) Lore(detail, u.lore);
             // 神話：五種形態各自的效果（目前的形態亮）、覺醒階段與進度、解鎖的故事

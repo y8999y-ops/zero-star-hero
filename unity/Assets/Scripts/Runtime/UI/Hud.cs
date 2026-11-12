@@ -241,7 +241,7 @@ namespace ZeroStar.UI
             {
                 var r = Box(qtrack); r.style.flexDirection = FlexDirection.Row; r.style.alignItems = Align.Center; r.style.minHeight = 19;
                 var ic = Box(r); Size(ic, 16, 16); Img(ic, "icons/" + icon); ic.style.marginRight = 3; ic.style.flexShrink = 0;
-                var l = Text(r, text, 12, col, true, 1); l.enableRichText = true;
+                var l = Text(r, text, 13, col, true, 1); l.enableRichText = true;
                 return r;
             }
             if (main != null) Line("xp", main, "#a8f0ff");

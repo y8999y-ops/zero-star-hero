@@ -52,6 +52,11 @@ namespace ZeroStar.UI
             body.Content.style.paddingTop = 6; body.Content.style.paddingLeft = body.Content.style.paddingRight = 2; body.Content.style.paddingBottom = 2;
             msgEl = Text(box, "", 14, null, true); Abs(msgEl, null, null, null, 6); msgEl.style.left = Length.Percent(50); msgEl.style.translate = new Translate(Length.Percent(-50), 0);
             msgEl.style.paddingLeft = msgEl.style.paddingRight = 14; msgEl.style.paddingTop = msgEl.style.paddingBottom = 3; Round(msgEl, 12); msgEl.style.opacity = 0; msgEl.style.whiteSpace = WhiteSpace.NoWrap;
+            // 蓋在視窗中間的一條紅緞帶大字（任務完成！）
+            stamp = Box(box, "stamp"); Abs(stamp, 0, null, 0); stamp.style.top = Length.Percent(40); stamp.style.height = 46; stamp.style.backgroundColor = C("#a82432", 0.96f);
+            stamp.style.borderTopWidth = stamp.style.borderBottomWidth = 2; stamp.style.borderTopColor = stamp.style.borderBottomColor = C("#ffd24a");
+            stamp.style.alignItems = Align.Center; stamp.style.justifyContent = Justify.Center; stamp.style.display = DisplayStyle.None;
+            stampText = Text(stamp, "", 26, "#fff0b0", true, 2, "#4a0c14"); stampText.style.letterSpacing = 8;
             fxLayer = Box(box, "tfx"); Abs(fxLayer, -16, -16, -16, -16); fxLayer.style.overflow = Overflow.Hidden;
             fade = Box(parent, "fade"); Abs(fade, 0, 0, 0, 0); fade.style.backgroundColor = C("#000000"); fade.style.display = DisplayStyle.None;
         }
@@ -76,7 +81,7 @@ namespace ZeroStar.UI
         public void Close()
         {
             if (!Open) return;
-            Open = false; overlay.style.display = DisplayStyle.None;
+            Open = false; overlay.style.display = DisplayStyle.None; stampT = 9; stamp.style.display = DisplayStyle.None;
             Sfx?.Invoke("close");
             var r = done; done = null; r?.TrySetResult(true);
         }
@@ -141,6 +146,18 @@ namespace ZeroStar.UI
             fade.style.opacity = fadeT < 0.3f ? fadeT / 0.3f : fadeT < fadeLen ? 1 : Mathf.Clamp01(1 - (fadeT - fadeLen) / 0.4f);
         }
 
+        // ---- 視窗中間的大字緞帶：跳出來、停 1.2 秒、淡掉（2026-11-12：取代英文的 QUEST COMPLETE）
+        readonly VisualElement stamp; readonly Label stampText; float stampT = 9;
+        public void Stamp(string text) { stampText.text = text; stampT = 0; stamp.style.display = DisplayStyle.Flex; }
+        void UpdateStamp(float dt)
+        {
+            if (stampT > 1.6f) { stamp.style.display = DisplayStyle.None; return; }
+            stampT += dt;
+            float p = Mathf.Clamp01(stampT / 0.15f), sc = Mathf.Lerp(1.5f, 1, EaseOut(p));
+            stamp.style.scale = new Scale(new Vector2(1, Mathf.Lerp(0.2f, 1, p))); stampText.style.scale = new Scale(new Vector2(sc, sc));
+            stamp.style.opacity = stampT < 1.3f ? 1 : Mathf.Clamp01(1 - (stampT - 1.3f) / 0.3f);
+        }
+
         // ---- 結果的一行（綠＝好、紅＝不好），2.2 秒後淡掉
         float msgT;
         public void Msg(string text, bool good = true)
@@ -194,6 +211,7 @@ namespace ZeroStar.UI
         {
             UpdateFade(dt);
             if (!Open) return;
+            UpdateStamp(dt);
             body.Update();
             // 結果那一行
             msgT -= dt;

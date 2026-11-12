@@ -92,8 +92,8 @@ namespace ZeroStar.UI
                         g.GuildDone++;
                         g.Money += r.Coins; g.Scrap += r.Scrap; if (r.Xp > 0) g.GainXp(r.Xp);
                         g.Sfx("levelup"); W.Msg("交付完成！"); g.QuestProgress("tick"); W.Render();
-                        // 交付特效：視窗中間蓋一條「QUEST COMPLETE」緞帶，金幣飛向右上的錢
-                        Fx?.At(W.BoxCenter(), "quest-complete", new FxOptions { Seed = g.GuildDone });
+                        // 交付特效：視窗中間蓋一條「任務完成！」緞帶，金幣飛向右上的錢
+                        W.Stamp("任務完成！");
                         if (r.Coins > 0) Fx?.At(W.MoneyCenter(), "coin-collect", new FxOptions { Seed = g.GuildDone }.Set("count", 8));
                     });
                 else if (atGuild) W.IBtn(act, "close", "", () => { Q.Abandon(q.Id); g.Sfx("close"); W.Msg("放棄了任務", false); W.Render(); }, "bad", true);
@@ -276,8 +276,8 @@ namespace ZeroStar.UI
         static string Fmt(double v) => v.ToString("0.##");
         static VisualElement BigCard(VisualElement body, string kind)
         {
-            var big = Win.Card(body, kind, false); big.style.alignItems = Align.Center; big.style.alignSelf = Align.Center; big.style.minWidth = 240;
-            big.style.paddingTop = big.style.paddingBottom = 12 + 10; big.style.marginTop = 4;
+            var big = Win.Card(body, kind, false); big.style.alignItems = Align.Center; big.style.alignSelf = Align.Center; big.style.minWidth = 340;
+            big.style.paddingTop = big.style.paddingBottom = 12 + 22; big.style.marginTop = 26;
             return big;
         }
 
@@ -288,7 +288,7 @@ namespace ZeroStar.UI
             {
                 W.Say(body, "菇媽", "累了就睡一晚吧～");
                 var big = BigCard(body, "inn");
-                Win.Ico(big, "moon", 48).style.marginBottom = 6;
+                Win.Ico(big, "moon", 64).style.marginBottom = 10;
                 var perks = Row(big); perks.style.marginBottom = 6;
                 foreach (var (ic, t) in new[] { ("heart", "生命全滿"), ("check", "存檔"), ("paper", "任務板換新") }) { var s = Row(perks); s.style.marginLeft = s.style.marginRight = 5; Win.Ico(s, ic).style.marginRight = 2; Text(s, t, 12, "#e8f4d8"); }
                 W.IBtn(big, "moon", "睡一晚", async () => { W.Close(); await rest(); });

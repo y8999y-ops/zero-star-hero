@@ -63,8 +63,8 @@ namespace ZeroStar.UI
             rbIcon = Box(rbIn); Size(rbIcon, 48, 48); rbIcon.style.marginRight = 14;
             var rbText = Box(rbIn); rbText.style.flexDirection = FlexDirection.Column;
             rbTitle = Text(rbText, "", 22, "#ffd84a", true, 2, "#4a2a08"); rbTitle.style.letterSpacing = 6; rbTitle.style.marginBottom = 2;
-            rbEff = Text(rbText, "", 14, "#ffffff", true, 1); rbEff.style.marginBottom = 2;
-            rbFlavor = Text(rbText, "", 11, "#b8a8d0");
+            rbEff = Text(rbText, "", 16, "#ffffff", true, 1); rbEff.style.marginBottom = 2;
+            rbFlavor = Text(rbText, "", 13, "#b8a8d0");
             resBanner.style.opacity = 0;
 
             // 新形態：中間大字＋後面轉的光芒
@@ -101,7 +101,7 @@ namespace ZeroStar.UI
             // 居民的自言自語泡泡
             bubble = Box(root, "bubble"); Abs(bubble); Nine(bubble, "bubble", 8, 8); bubble.style.translate = new Translate(Length.Percent(-50), Length.Percent(-100));
             bubble.style.paddingLeft = bubble.style.paddingRight = 8 + 6; bubble.style.paddingTop = bubble.style.paddingBottom = 8 + 2; bubble.style.opacity = 0;
-            bubbleText = Text(bubble, "", 12, "#2a1626", true); bubbleText.style.whiteSpace = WhiteSpace.NoWrap;
+            bubbleText = Text(bubble, "", 14, "#2a1626", true); bubbleText.style.whiteSpace = WhiteSpace.NoWrap;
             var tail = Box(bubble); Abs(tail, null, null, null, -6); Size(tail, 14, 8); tail.style.left = Length.Percent(50); tail.style.marginLeft = -7; Img(tail, "bubble-tail");
         }
         static Label TipText(VisualElement p, string s) { var l = Text(p, s, 13, "#fff2c8", true, 1); l.style.whiteSpace = WhiteSpace.NoWrap; return l; }
