@@ -92,7 +92,7 @@ namespace ZeroStar.UI
             sysFace = Box(sys); Size(sysFace, 40, 40); Abs(sysFace, 2 + 8, null); sysFace.style.top = new Length(50, LengthUnit.Percent); sysFace.style.marginTop = -20;
             var head = Text(sys, "■ SYSTEM // 系統", 12, "#6ad8ff", true); head.style.letterSpacing = 2;
             sysText = Text(sys, "", 14, "#e8fbff", true, 1, "#04101e"); sysText.style.whiteSpace = WhiteSpace.Normal; sysText.enableRichText = true;
-            toast = Outline(Text(root, "", 18, "#f2eefc", true, 2)); Abs(toast, null, null); toast.style.top = new Length(30, LengthUnit.Percent); toast.style.left = new Length(50, LengthUnit.Percent);
+            toast = Text(root, "", 18, "#f2eefc", true, 2); toast.style.textShadow = new TextShadow { offset = new Vector2(0, 2), blurRadius = 3, color = C("#0a0614") }; Abs(toast, null, null); toast.style.top = new Length(30, LengthUnit.Percent); toast.style.left = new Length(50, LengthUnit.Percent);
             toast.style.translate = new Translate(new Length(-50, LengthUnit.Percent), 0); toast.style.whiteSpace = WhiteSpace.NoWrap; toast.style.opacity = 0;
 
             // ---- 右下：技能（E）、大招（Q）
