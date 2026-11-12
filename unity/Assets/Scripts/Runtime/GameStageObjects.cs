@@ -42,7 +42,7 @@ namespace ZeroStar
             foreach (var h in Hazards.List) { avoid.Add(h.x - 14); avoid.Add(h.x); avoid.Add(h.x + 14); }
             avoid.Add(StageD.ExitX - 120); avoid.Add(StageD.ExitX + 26); avoid.Add(StageD.StartX);
             foreach (var p in Scenery.Puddles) { avoid.Add(p.x - p.w / 4); avoid.Add(p.x); avoid.Add(p.x + p.w / 4); }
-            if (Town) { avoid.Clear(); avoid.AddRange(TownArt.NPCS.Select(n => n.x)); avoid.Add(924); }   // 城鎮：居民、路標前面不要擺東西
+            if (Town) { avoid.Clear(); avoid.AddRange(TownArt.NPCS.Select(n => n.x)); avoid.Add(TownArt.SIGNPOST_X); }   // 城鎮：居民、路標前面不要擺東西
             Props = new Props(new Props.Opts { Floor = Data.Floor, W = Data.W, Platforms = Data.Platforms, Town = Town, Runs = runs, FloorFn = bare ? (Func<double, double, double>)Map.FloorAt : null, BigCrystals = Data.BigCrystals, Avoid = avoid, Fx = Fx, Sfx = Sfx, Blip = (f, t, ms) => Synth.Blip(f, t, ms / 1000.0), HitFx = (x, y, d, h) => Combat.Hit(x, y, d, h) });
             // 藍水晶打一下＝補魔力（最大魔力的 25%，大水晶 35%）
             Props.OnMana = c =>

@@ -25,7 +25,7 @@ namespace ZeroStar
         public Action<Near> OnTalk;   // 按互動：對話、視窗（階段 4b、4c 接上）
         public bool TownBusy;         // 對話或視窗開著：主角不動
 
-        static readonly double[] GUIDE_TARGET = { 186, 186, 404, 752, 924 }, GUIDE_HEAD = { 40, 40, 62, 58, 44 };
+        static readonly double[] GUIDE_TARGET = { 198, 198, 510, 932, 1150 }, GUIDE_HEAD = { 40, 40, 62, 58, 44 };
         static readonly string[] GUIDE_LINE = { null, null, "系統：下一站，岩叔的工坊。", "系統：再來是菇媽的旅館。", "系統：準備好了就去最右邊的路標。" };
         static readonly Dictionary<string, string[]> AMBIENT = new Dictionary<string, string[]>
         {
@@ -123,10 +123,17 @@ namespace ZeroStar
         }
 
         /// 城鎮的畫（main.js render 的 TOWN 分支）：居民、路人、引導的「!」、可以對話的「！」
+        bool townPeopleDrawn;
         void DrawTownPeople(Frame frame)
         {
+            // 腳下的影子 → 記下畫面（之後幫角色描外框、加邊緣光）→ 居民、路人
+            foreach (var n in TownArt.NPCS) TownArt.Shadow(frame, n.x, (int)(TownArt.NpcSize(n.id).w * 0.36));
+            foreach (var o in Folk.List) TownArt.Shadow(frame, o.X, (int)(TownArt.NpcSize(o.Id).w * 0.36));
+            { double air = Math.Max(0, Math.Min(1, (TownArt.FLOOR - Player.Y) / 40.0)); TownArt.Shadow(frame, Player.X, (int)Pf.Round(9 - 4 * air), 0.3 - 0.15 * air); }
+            TownArt.SnapPeople(frame);
             TownArt.DrawNpcs(frame, sceneClock);
             Folk.Draw(frame);
+            townPeopleDrawn = true;
             // 引導：要去的地方頭上跳一個「!」
             if (!TownBusy)
             {

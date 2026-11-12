@@ -625,7 +625,7 @@ window.__game.weather = setWeather;   // 開發用：__game.weather("rain" / "cl
 }
 const props = createProps({
   floor: FLOOR, w: geo.w, platforms: TOWN ? [] : PLATFORMS, town: TOWN, runs: RUNS, floorFn: BARE ? floorAt : null, bigCrystals: TOWN ? [] : BIG_CRYSTALS,
-  avoid: TOWN ? [...NPCS.map((n) => n.x), 924] : [...TORCHES, ...altars.map((a) => a.x), ...(STAGE.features ?? []).map((f) => f.x), ...hazards.list.flatMap((h) => [h.x - 14, h.x, h.x + 14]), STAGE.exitX - 120, STAGE.exitX + 26, STAGE.start.x, ...scenery.puddles.flatMap((p) => [p.x - p.w / 4, p.x, p.x + p.w / 4])],
+  avoid: TOWN ? [...NPCS.map((n) => n.x), 1150] : [...TORCHES, ...altars.map((a) => a.x), ...(STAGE.features ?? []).map((f) => f.x), ...hazards.list.flatMap((h) => [h.x - 14, h.x, h.x + 14]), STAGE.exitX - 120, STAGE.exitX + 26, STAGE.start.x, ...scenery.puddles.flatMap((p) => [p.x - p.w / 4, p.x, p.x + p.w / 4])],
 });
 // 8d：形態機關＋一次性資源
 const FX_PAL = { crack: ["#140a18", "#5a2a20", "#8a3e24", "#b05a2a", "#d27c3c", "#e4b072", "#fff6c4", "#ffffff"], ember: ["#1e1206", "#4a2c08", "#86520c", "#c48412", "#f0b424", "#ffe066", "#fff6c4", "#ffffff"],
@@ -1020,7 +1020,7 @@ let prevAtk = false, near = null, busy = false, stuckT = 0;
 const folk = TOWN ? createFolk(FLOOR) : null;   // 路人
 window.__game.folk = folk;
 if (TOWN) {
-  spawn(frogFx, { x: 548, y: FLOOR, seed: 3, light: 0.2 }, { keep: true, layer: "back" });
+  spawn(frogFx, { x: 742, y: FLOOR, seed: 3, light: 0.2 }, { keep: true, layer: "back" });
 }
 // ---- 任務：進度、獎勵、左上的追蹤框
 function grant(r) {
@@ -1106,7 +1106,7 @@ addEventListener("keydown", (e) => { if (e.code === "KeyT") openTreeNow(); });
 // ---- 使用者 2026-11-06：城鎮各功能的引導，一次只引導一件事：波波（登記）→ 任務板 → 岩叔的工坊 → 菇媽的旅館 → 路標（世界地圖）
 //   profile.tguide：0 找波波、1 任務板、2 工坊、3 旅館、4 路標、5 講完了。要去的地方頭上跳一個「!」；第一次打開那個視窗時主要按鈕閃一下
 //   舊存檔（已經登記、交過任務）直接當作講完了
-const GUIDE_TARGET = [186, 186, 404, 752, 924], GUIDE_HEAD = [40, 40, 62, 58, 44];   // 引導中的那個人不講閒聊泡泡（會蓋住「!」）
+const GUIDE_TARGET = [198, 198, 510, 932, 1150], GUIDE_HEAD = [40, 40, 62, 58, 44];   // 引導中的那個人不講閒聊泡泡（會蓋住「!」）
 const GUIDE_LINE = [null, null, "系統：下一站，岩叔的工坊。", "系統：再來是菇媽的旅館。", "系統：準備好了就去最右邊的路標。"];
 profile.tguide ??= profile.guild.registered && profile.guild.done > 0 ? 5 : profile.guild.registered ? 1 : 0;
 const guideStep = () => profile.tguide;

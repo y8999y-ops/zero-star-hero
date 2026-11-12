@@ -32,7 +32,7 @@ namespace ZeroStar
         public Folk(double floor)
         {
             this.floor = floor;
-            var defs = new[] { ("kid", 230.0, 120.0, 340.0), ("turtle", 480, 330, 720), ("pebble", 450, 360, 560), ("shroom", 820, 640, 900) };
+            var defs = new[] { ("kid", 300.0, 240.0, 420.0), ("turtle", 700, 660, 790), ("pebble", 590, 548, 650), ("shroom", 1030, 968, 1110) };
             for (int i = 0; i < defs.Length; i++) { var (id, x, mn, mx) = defs[i]; List.Add(new O { Id = id, X = x, Min = mn, Max = mx, Info = INFO[id], Dir = i % 2 != 0 ? -1 : 1, T = 2 + i }); }
             var lead = List.First(o => o.Id == "shroom");
             List.Add(new O { Id = "shroom2", Info = INFO["shroom"], X = lead.X - 14, Dir = lead.Dir, Follow = lead });

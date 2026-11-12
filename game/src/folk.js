@@ -32,10 +32,10 @@ export const FOLK_INFO = {
 /** 建立路人：每個在自己的範圍裡走來走去；菇菇寶寶兩顆，後面那顆跟著前面那顆 */
 export function createFolk(floor) {
   const list = [
-    { id: "kid", x: 230, min: 120, max: 340 },
-    { id: "turtle", x: 480, min: 330, max: 720 },
-    { id: "pebble", x: 450, min: 360, max: 560 },
-    { id: "shroom", x: 820, min: 640, max: 900 },
+    { id: "kid", x: 300, min: 240, max: 420 },
+    { id: "turtle", x: 700, min: 660, max: 790 },
+    { id: "pebble", x: 590, min: 548, max: 650 },
+    { id: "shroom", x: 1030, min: 968, max: 1110 },
   ].map((o, i) => ({ ...o, info: FOLK_INFO[o.id], dir: i % 2 ? -1 : 1, state: "walk", t: 2 + i, talking: false, talkN: 0 }));
   const lead = list.find((o) => o.id === "shroom");
   const follower = { id: "shroom2", info: FOLK_INFO.shroom, x: lead.x - 14, dir: lead.dir, state: "walk", follow: lead, talking: false };

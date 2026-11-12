@@ -379,7 +379,7 @@ namespace ZeroStar
             StageId = stage;
             Town = stage == "town"; Endless = stage == "endless";
             VIEW_DY = (int)Pf.Round((Town ? 0.10 : 0.05) * H / ZOOM);
-            Zoom = ZOOM;
+            Zoom = Town ? TOWN_ZOOM : ZOOM;   // 2026-11-12：城鎮鏡頭拉遠，一個畫面看得到兩棟店
             Enemy.ResetStatics();
             SceneLight.Reset();
             Fresh = Items.StarterGear();
@@ -403,7 +403,7 @@ namespace ZeroStar
             var brazier = Baked.Anim("brazier");
             foreach (var t in Data.Torches) Fx.Spawn(brazier, t.x, t.y, back: true, keep: true).Update(Rnd.Next() * 3);
             if (PortalX != null) Fx.Spawn(Baked.Anim("portal"), PortalX.Value, PortalY, back: true, keep: true);
-            if (Town) { Folk = new Folk(TownArt.FLOOR); var fo = new FxOptions { Seed = 3, Light = 0.2 }; Fx.SpawnLive("frog", 548, TownArt.FLOOR, fo, 1, back: true, keep: true); }   // 路人、青蛙
+            if (Town) { Folk = new Folk(TownArt.FLOOR); var fo = new FxOptions { Seed = 3, Light = 0.2 }; Fx.SpawnLive("frog", 742, TownArt.FLOOR, fo, 1, back: true, keep: true); }   // 路人、青蛙
         }
         /// 場景物件（props、scenery、hazards、features）：搬好之後在這裡建立
         partial void InitStageObjects();
@@ -674,6 +674,7 @@ namespace ZeroStar
         public void Sfx(string name) { OnSfx?.Invoke(name); }
 
         // ---- 看得到的範圍（畫布座標）：放大 ZOOM 倍後四周被裁掉
+        public const double TOWN_ZOOM = 1.0;
         public const double ZOOM_BOSS = 1.2;   // 王戰時鏡頭稍微拉遠（王房比一個畫面寬）
         public static double Zoom = ZOOM;       // 現在的放大倍率（王戰時慢慢變成 ZOOM_BOSS）
         public static (double x0, double y0, double w, double h) ViewRect()
@@ -987,6 +988,7 @@ namespace ZeroStar
             if (Ult.On) { Ult.DimScene(frame); Prof.Mark("暗場"); Fx.Draw(frame, true); Prof.Mark("背景特效"); }   // 大招：先畫怪再暗場，法陣這些背景特效畫在暗場之後才會亮
             if (Player.KingT > 0) SetFx.DrawKingBack(frame, Player.X, Player.Y - 12, sceneClock);   // 星王化：光芒在主角後面
             Player.Draw(frame);
+            if (Town && townPeopleDrawn) { TownArt.OutlinePeople(frame); townPeopleDrawn = false; }
             DrawDeathFx(frame);
             if (Player.KingT > 0) SetFx.DrawKingFront(frame, Player.X, Player.Y - 12, sceneClock);
             Prof.Mark("主角");

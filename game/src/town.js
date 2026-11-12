@@ -24,15 +24,15 @@ let skyT = null;
 const ART = await loadArt(["town/far", "town/mid", "town/ground", "town/fg", "town/guild", "town/workshop", "town/inn", "props/town-deco", "props/flowers", "props/grass"]);
 
 const C = (s) => hex(s) >>> 0;
-export const TOWN_W = 1000;
+export const TOWN_W = 1240;   // 2026-11-12 美術優化：建築之間拉開（看得到後面的山坡住家），鎮變寬
 
 export const NPCS = [
-  { id: "clerk", name: "公會櫃檯・波波", x: 186, place: "guild" },
-  { id: "golem", name: "工坊老闆・岩叔", x: 404, place: "workshop" },
-  { id: "mushroom", name: "旅館老闆娘・菇媽", x: 752, place: "inn", flip: true },
+  { id: "clerk", name: "公會櫃檯・波波", x: 198, place: "guild" },
+  { id: "golem", name: "工坊老闆・岩叔", x: 510, place: "workshop" },
+  { id: "mushroom", name: "旅館老闆娘・菇媽", x: 932, place: "inn", flip: true },
 ];
-export const SIGNPOST = { x: 924 };
-const LAMPS = [42, 330, 560, 836];
+export const SIGNPOST = { x: 1150 };
+const LAMPS = [388, 716];   // 2026-11-12：4 支 → 2 支，放在建築之間的空地
 const LIGHTS = [];   // [x, y, r, lv, col]：建造時把窗戶、碎片記下來
 
 // ---- 色票
@@ -97,11 +97,11 @@ function shard(p, x, y, h, w, ramp, emit = true) {
 }
 
 // 店的位置（左上角 x）：門口對準居民站的地方
-const SHOPS = [["town/guild", 58], ["town/workshop", 344], ["town/inn", 620]];
+const SHOPS = [["town/guild", 70], ["town/workshop", 450], ["town/inn", 800]];
 // 裝飾（props/town-deco 的格子：0 木桶 1 疊木箱 2 柵欄 3 路標 4 星星路燈 5 盆栽蘑菇 6 麻袋 7 長椅）的中心 x
-const DECO = [[0, 592], [1, 612], [6, 796], [7, 882], [2, 962], [2, 1002]];
-const BLOOMS = [[0, 20], [3, 334], [2, 548], [7, 788], [4, 862], [5, 912]];        // 花、蘑菇（props/flowers 的格子）
-const TUFTS = [[1, 10], [4, 48], [0, 322], [6, 352], [2, 540], [5, 600], [7, 640], [3, 776], [1, 846], [6, 906], [0, 940]];   // 草叢
+const DECO = [[0, 668], [6, 1000], [7, 1070], [2, 1206]];   // 2026-11-12：裝飾減半
+const BLOOMS = [[0, 30], [3, 362], [7, 760], [4, 1040]];        // 花、蘑菇（props/flowers 的格子）
+const TUFTS = [[1, 16], [0, 340], [6, 412], [2, 690], [5, 742], [3, 980], [1, 1100]];   // 草叢
 function build() {
   if (!ART["town/far"]) return;   // 沒有瀏覽器（預覽工具）時不畫
   blit(FAR, FAR_W, H, ART["town/far"], 0, 0);
@@ -271,7 +271,7 @@ export function drawTown(frame, lv, time) {
   }
   // 工坊煙囪的煙
   for (let n = 0; n < 6; n++) {
-    const t = (time * 0.3 + n / 6) % 1, sx = 501 + Math.round(Math.sin(t * 6 + n) * 3 + t * 12) - cx, sy = FLOOR - 128 - Math.round(t * 50) - cy, R = 3 + Math.round(t * 6);
+    const t = (time * 0.3 + n / 6) % 1, sx = 607 + Math.round(Math.sin(t * 6 + n) * 3 + t * 12) - cx, sy = FLOOR - 128 - Math.round(t * 50) - cy, R = 3 + Math.round(t * 6);
     for (let y = -R; y <= R; y++) for (let x = -R; x <= R; x++) { const f = 1 - Math.hypot(x, y) / R; if (f > 0) add(sx + x, sy + y, 120, 110, 140, f * (1 - t) * 0.45); }
   }
 }
