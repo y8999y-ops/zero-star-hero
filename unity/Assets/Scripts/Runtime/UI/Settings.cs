@@ -1,4 +1,5 @@
-// 設定面板（index.html 的 #setPanel、main.js 的聲音設定）：右上齒輪或主畫面的「設定」打開，右上角一塊。
+// 設定面板（index.html 的 #setPanel、main.js 的聲音設定）：右上齒輪或主畫面的「設定」打開。
+// 2026-11-14：原本是右上角一小塊，改成畫面中央的視窗（後面壓暗、字和按鈕放大），跟其他視窗一致。
 //   音樂、音效音量（拉桿）、全部靜音；重看開場動畫、回主畫面；放棄這趟回城鎮（關卡裡才有）；關閉。
 //   開著時遊戲暫停；點面板外面任何地方就關掉（那一下不會變成攻擊或移動）。
 //   音量先記在 PlayerPrefs（聲音在階段 5 才搬，到時候直接讀這裡）。
@@ -56,9 +57,10 @@ namespace ZeroStar.UI
         {
             overlay = Box(parent, "setLayer"); Abs(overlay, 0, 0, 0, 0); overlay.style.display = DisplayStyle.None; overlay.pickingMode = PickingMode.Position;
             overlay.RegisterCallback<PointerDownEvent>(e => { if (e.target == overlay) { e.StopPropagation(); Close(); } });
-            panel = Box(overlay, "setPanel"); Abs(panel, null, 56, 10); panel.style.width = 230; Nine(panel, "panel", 12, 12);
-            panel.style.paddingLeft = panel.style.paddingRight = 12 + 10; panel.style.paddingTop = 12 + 6; panel.style.paddingBottom = 12 + 8; panel.pickingMode = PickingMode.Position;
-            var t = Text(panel, "設定", 14, "#ffd24a", true); t.style.letterSpacing = 3; t.style.marginBottom = 8;
+            overlay.style.backgroundColor = C("#06040c", 0.62f); overlay.style.alignItems = Align.Center; overlay.style.justifyContent = Justify.Center;
+            panel = Box(overlay, "setPanel"); panel.style.width = 340; Nine(panel, "panel", 12, 12);
+            panel.style.paddingLeft = panel.style.paddingRight = 12 + 16; panel.style.paddingTop = 12 + 10; panel.style.paddingBottom = 12 + 10; panel.pickingMode = PickingMode.Position;
+            var t = Text(panel, "設定", 18, "#ffd24a", true); t.style.letterSpacing = 6; t.style.marginBottom = 12; t.style.alignSelf = Align.Center;
             musicBar = Slider(panel, "音樂", out musicV, v => { Volume.Music = v; Sync(); ZeroStar.Synth.ApplySaved(); });
             sfxBar = Slider(panel, "音效", out sfxV, v => { Volume.Sfx = v; Sync(); ZeroStar.Synth.ApplySaved(); Sfx?.Invoke("coin"); });
             var r1 = Row(panel);
@@ -74,9 +76,9 @@ namespace ZeroStar.UI
         static VisualElement Btn(VisualElement p, string label, string kind, Action on)
         {
             string skin = kind == "red" ? "b-bad" : kind == "plain" ? "b-plain" : "b-go";
-            var b = Box(p); b.style.flexGrow = 1; b.style.height = 30; Nine(b, skin + "-n", 8, 8); b.style.paddingLeft = b.style.paddingRight = 8 + 4; b.style.marginRight = 3;
+            var b = Box(p); b.style.flexGrow = 1; b.style.flexBasis = 0; b.style.height = 36; Nine(b, skin + "-n", 8, 8); b.style.paddingLeft = b.style.paddingRight = 8 + 4; b.style.marginRight = 3;
             b.style.alignItems = Align.Center; b.style.justifyContent = Justify.Center; b.pickingMode = PickingMode.Position;
-            var l = Text(b, label, 12, kind == "red" ? "#fff2ec" : kind == "plain" ? "#f4eeff" : "#3a1c04", true, 1, kind == "red" ? "#5a0c1a" : kind == "plain" ? "#261c44" : "#fff6c880"); l.style.whiteSpace = WhiteSpace.NoWrap;
+            var l = Text(b, label, 14, kind == "red" ? "#fff2ec" : kind == "plain" ? "#f4eeff" : "#3a1c04", true, 1, kind == "red" ? "#5a0c1a" : kind == "plain" ? "#261c44" : "#fff6c880"); l.style.whiteSpace = WhiteSpace.NoWrap;
             b.RegisterCallback<PointerEnterEvent>(e => Nine(b, skin + "-h", 8, 8)); b.RegisterCallback<PointerLeaveEvent>(e => Nine(b, skin + "-n", 8, 8));
             b.AddManipulator(new Clickable(on));
             return b;
@@ -84,13 +86,13 @@ namespace ZeroStar.UI
         /// 拉桿（0～100，每格 5）：一條深色軌道、金色填滿、圓頭
         VisualElement Slider(VisualElement p, string name, out Label val, Action<float> set)
         {
-            var r = Box(p); r.style.flexDirection = FlexDirection.Row; r.style.alignItems = Align.Center; r.style.marginBottom = 8;
-            Text(r, name, 14, "#f2eefc").style.marginRight = 8;
+            var r = Box(p); r.style.flexDirection = FlexDirection.Row; r.style.alignItems = Align.Center; r.style.marginBottom = 12;
+            Text(r, name, 15, "#f2eefc").style.marginRight = 8;
             var track = Box(r); track.style.flexGrow = 1; track.style.height = 16; track.pickingMode = PickingMode.Position; track.style.justifyContent = Justify.Center;
             var bg = Box(track); bg.style.height = 6; bg.style.backgroundColor = C("#2a2040"); Round(bg, 3); Border(bg, 1, C("#000000"));
             var fill = Box(bg); fill.style.height = Length.Percent(100); fill.style.backgroundColor = C("#ffd24a"); Round(fill, 3); fill.name = "fill";
             var knob = Box(track); Abs(knob); Size(knob, 14, 14); Round(knob, 7); knob.style.backgroundColor = C("#fff6c8"); Border(knob, 2, C("#6a4a10")); knob.name = "knob"; knob.style.top = 1;
-            val = Text(r, "", 12, "#a59fbd"); val.style.width = 30; val.style.unityTextAlign = TextAnchor.MiddleRight; val.style.marginLeft = 8;
+            val = Text(r, "", 14, "#c9c2dc"); val.style.width = 34; val.style.unityTextAlign = TextAnchor.MiddleRight; val.style.marginLeft = 8;
             int id = -1;
             void At(Vector2 pos) { var w = track.worldBound; float v = Mathf.Clamp01((pos.x - w.xMin) / Mathf.Max(1, w.width)); set(Mathf.Round(v * 20) / 20); }
             track.RegisterCallback<PointerDownEvent>(e => { id = e.pointerId; track.CapturePointer(id); At(e.position); });

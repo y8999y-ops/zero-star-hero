@@ -127,19 +127,33 @@ namespace ZeroStar.UI
             {
                 var tex = Render(g, out int pct);
                 var top = Box(body); top.style.flexDirection = FlexDirection.Row; top.style.justifyContent = Justify.FlexEnd; top.style.marginBottom = 4;
-                Text(top, $"探索 {pct}%", 12, "#a8f0ff");
-                // 地圖：寬度塞進視窗（最多原尺寸 2 倍以內，像素整齊）
-                var wrap = Box(body); wrap.style.alignItems = Align.Center;
-                float maxW = 560, k = Mathf.Max(1, Mathf.Floor(Mathf.Min(maxW / tex.width, 250f / tex.height) * 2) / 2f);
-                var m = Box(wrap); Size(m, tex.width * k, tex.height * k); m.style.backgroundImage = tex; m.style.backgroundSize = new BackgroundSize(Length.Percent(100), Length.Percent(100)); Border(m, 2, C("#1a1226"));
+                Text(top, $"探索 {pct}%", 13, "#a8f0ff");
+                // 2026-11-14：關卡是很長的一條，整張塞進視窗會小到看不清楚。改成放大到高度撐滿（最多 3 倍），
+                // 只露出視窗寬度的一段、一開始對準主角，按住左右拖可以看其他地方。
+                float k = Mathf.Clamp(Mathf.Floor(230f / tex.height * 2) / 2f, 1, 3), mapW = tex.width * k;
+                var wrap = Box(body); wrap.style.height = tex.height * k; wrap.style.overflow = Overflow.Hidden; Border(wrap, 2, C("#1a1226")); wrap.style.backgroundColor = C(FOG); wrap.pickingMode = PickingMode.Position;
+                var m = Box(wrap); Abs(m, 0, 0); Size(m, mapW, tex.height * k); m.style.backgroundImage = tex; m.style.backgroundSize = new BackgroundSize(Length.Percent(100), Length.Percent(100));
+                float off = float.NaN, px0 = (float)(g.Player.X / K * 2) * k;
+                void Place(float want)
+                {
+                    float vw = wrap.contentRect.width; if (float.IsNaN(vw) || vw <= 0) return;
+                    off = mapW <= vw ? (vw - mapW) / 2 : Mathf.Clamp(want, vw - mapW, 0);
+                    m.style.left = Mathf.Round(off);
+                }
+                wrap.RegisterCallback<GeometryChangedEvent>(e => Place(float.IsNaN(off) ? wrap.contentRect.width / 2 - px0 : off));
+                int drag = -1; float dragX = 0, dragOff = 0;
+                wrap.RegisterCallback<PointerDownEvent>(e => { if (float.IsNaN(off)) return; drag = e.pointerId; wrap.CapturePointer(drag); dragX = e.position.x; dragOff = off; });
+                wrap.RegisterCallback<PointerMoveEvent>(e => { if (e.pointerId == drag) Place(dragOff + (e.position.x - dragX) * wrap.contentRect.width / Mathf.Max(1, wrap.worldBound.width)); });
+                wrap.RegisterCallback<PointerUpEvent>(e => { if (e.pointerId == drag) { wrap.ReleasePointer(drag); drag = -1; } });
+                if (mapW > 480) Text(body, "按住地圖左右拖，可以看其他地方", 11, "#8f88a8").style.alignSelf = Align.Center;
                 // 圖例
                 var leg = Box(body); leg.style.flexDirection = FlexDirection.Row; leg.style.flexWrap = Wrap.Wrap; leg.style.justifyContent = Justify.Center; leg.style.marginTop = 6;
                 var L = new List<(string, string)> { ("player", "你"), ("altarOn", "祭壇"), g.StageId == "1-4" ? ("boss", "王房") : ("exit", "出口"), ("ember", "星之殘火"), ("vein", "礦脈"), ("fossil", "化石核"), ("safe", "寶箱"), ("stele", "碑文"), ("crack", "裂牆"), ("seal", "封印"), ("shroom", "黏液菇"), ("wind", "氣流") };
                 foreach (var (ic, lb) in L)
                 {
                     var s = Box(leg); s.style.flexDirection = FlexDirection.Row; s.style.alignItems = Align.Center; s.style.marginRight = 10; s.style.marginBottom = 2;
-                    var i = Box(s); Size(i, 18, 18); i.style.backgroundImage = IconTex(ic); i.style.backgroundSize = new BackgroundSize(Length.Percent(100), Length.Percent(100)); i.style.marginRight = 3;
-                    Text(s, lb, 12, "#c8bedc");
+                    var i = Box(s); Size(i, 20, 20); i.style.backgroundImage = IconTex(ic); i.style.backgroundSize = new BackgroundSize(Length.Percent(100), Length.Percent(100)); i.style.marginRight = 3;
+                    Text(s, lb, 13, "#c8bedc");
                 }
             }
             return TownWins.W.Show("地圖　" + name, "sys", "map", new List<Win.Tab> { new Win.Tab { Id = "map", Label = "地圖", Icon = "map", Render = Body } }, null, false);

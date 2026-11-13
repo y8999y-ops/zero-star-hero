@@ -25,7 +25,7 @@ namespace ZeroStar.UI
             box = Box(overlay, "wmBox"); Nine(box, "win-guild", 16, 16); box.style.paddingLeft = box.style.paddingRight = 16 + 2; box.style.paddingBottom = 16 + 2;
             var head = Box(box); head.style.flexDirection = FlexDirection.Row; head.style.alignItems = Align.Center; head.style.paddingBottom = 4;
             var ttl = Text(head, "墜星之谷", 15, "#ffe7a0", true, 2); ttl.style.letterSpacing = 3; ttl.style.marginRight = 10;
-            tip = Text(head, "", 12, "#a89cc0"); tip.style.flexGrow = 1;
+            tip = Text(head, "", 13, "#c9c2dc"); tip.style.flexGrow = 1;
             closeX = Box(head); Size(closeX, 28, 28); Round(closeX, 14); closeX.style.backgroundColor = C("#000000", 0.4f); Border(closeX, 2, C("#ffffff", 0.15f));
             closeX.style.alignItems = Align.Center; closeX.style.justifyContent = Justify.Center; closeX.pickingMode = PickingMode.Position;
             Win.Ico(closeX, "close"); closeX.AddManipulator(new Clickable(() => OnClose?.Invoke()));

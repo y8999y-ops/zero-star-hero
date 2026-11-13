@@ -337,6 +337,7 @@ namespace ZeroStar
             if (tickN == 840) { inv.Close(); _ = ZeroStar.UI.TreeWin.Open(game, false, null, "slime"); }
             if (tickN == 1090) { win.Close(); _ = ZeroStar.UI.TreeWin.Open(game, false, null, "carry"); }
             if (tickN == 1340) { win.Close(); _ = ZeroStar.UI.LevelMap.Open(game); }
+            if (tickN == 1500) { win.Close(); settings.Show(true); }
             if (tickN == 120) hud.FormBanner("slime");
             if (tickN == 300) hud.ResBanner("fire", "星之殘火", "攻擊力 +3%（永久）", "從星星上剝落的一小塊火。還溫溫的。");
             if (tickN == 420) { hud.Feed(new Game.FeedRow { Icon = "dagger", Name = "生鏽的小刀", Color = Items.RARITY[2].Color, Better = true }); hud.Feed(new Game.FeedRow { Icon = "mana", Name = "藍水晶", Color = Items.RARITY[1].Color, Note = "魔力 +25" }); hud.ShowHint("往上滑＝跳，在空中再滑一次＝二段跳", 3); }
