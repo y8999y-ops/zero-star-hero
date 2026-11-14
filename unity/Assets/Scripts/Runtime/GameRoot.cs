@@ -462,12 +462,12 @@ namespace ZeroStar
         }
     }
 
-    /// 比對測試的那串按鍵（game/tools/unity-trace-script.json）
+    /// 比對測試的那串按鍵（game/tools/unity/unity-trace-script.json）
     public class TraceScript
     {
         public int ticks, frameEvery; public string tree, stage = "1-1";
         public List<(int t, string type, string code)> events = new List<(int, string, string)>();
-        public static string DefaultPath() => Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "game", "tools", Environment.GetEnvironmentVariable("TRACE_SCRIPT") ?? "unity-trace-script.json"));
+        public static string DefaultPath() => Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "game", "tools", "unity", Environment.GetEnvironmentVariable("TRACE_SCRIPT") ?? "unity-trace-script.json"));
         public static TraceScript Load(string path)
         {
             var s = new TraceScript();

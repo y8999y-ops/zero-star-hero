@@ -5,7 +5,7 @@ import { encodePNG } from "../../../pixelfx/tools/lib/png.mjs";
 import { readPNG } from "./pngread.mjs";
 import { genLayer, THEME_LAYERS } from "../../src/bg-art.js";
 import { genUpper } from "../../src/upper-art.js";
-const load = (n) => { const p = readPNG(new URL(`../../art/approved/valley/${n}.png`, import.meta.url)); const px = new Uint32Array(p.w * p.h); for (let i = 0; i < px.length; i++) { const a = p.rgba[i * 4 + 3]; px[i] = a ? ((a << 24) | (p.rgba[i * 4 + 2] << 16) | (p.rgba[i * 4 + 1] << 8) | p.rgba[i * 4]) >>> 0 : 0; } return { w: p.w, h: p.h, px }; };
+const load = (n) => { const p = readPNG(new URL(`../../art/3-已通過/valley/${n}.png`, import.meta.url)); const px = new Uint32Array(p.w * p.h); for (let i = 0; i < px.length; i++) { const a = p.rgba[i * 4 + 3]; px[i] = a ? ((a << 24) | (p.rgba[i * 4 + 2] << 16) | (p.rgba[i * 4 + 1] << 8) | p.rgba[i * 4]) >>> 0 : 0; } return { w: p.w, h: p.h, px }; };
 const hx = (s) => { const n = parseInt(s.slice(1), 16); return (0xff000000 | ((n & 255) << 16) | (n & 0xff00) | (n >>> 16)) >>> 0; };
 const toPx = (a) => { const out = new Uint32Array(a.w * a.h); a.px.forEach((c, i) => { if (c) out[i] = hx(c); }); return { w: a.w, h: a.h, px: out }; };
 const H = 216, MAP_H = 648, FW = 320, S = 2, VPAR = { 1: 0.7, 2: 0.85, 3: 1 }, PIN = 100, UH = Math.ceil((MAP_H - H) * 0.75) + 16, FG_DROP = 26;

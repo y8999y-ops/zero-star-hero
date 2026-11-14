@@ -1,4 +1,4 @@
-// 讀網頁版匯出的資料（game/tools/unity-export.mjs → Assets/Resources/Baked/*.bytes，gzip 壓過的二進位）：
+// 讀網頁版匯出的資料（game/tools/unity/unity-export.mjs → Assets/Resources/Baked/*.bytes，gzip 壓過的二進位）：
 //   場景（遊玩層像素、各圖層、光源、地形）、主角每個姿勢的像素、烘焙好的動畫（史萊姆、火把、煙、刀光）。
 // 這些都是網頁版載入時算好的東西，直接拿來用，所以每個像素跟網頁版一樣。
 using System;
@@ -89,7 +89,7 @@ namespace ZeroStar
         static byte[] Load(string name)
         {
             var t = Resources.Load<TextAsset>("Baked/" + name);
-            if (t == null) throw new Exception("找不到匯出資料 Resources/Baked/" + name + ".bytes（先跑 node game/tools/unity-export.mjs）");
+            if (t == null) throw new Exception("找不到匯出資料 Resources/Baked/" + name + ".bytes（先跑 node game/tools/unity/unity-export.mjs）");
             return t.bytes;
         }
 

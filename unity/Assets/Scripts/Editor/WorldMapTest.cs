@@ -1,5 +1,5 @@
-// 比對測試（Unity 這一邊）：選關世界地圖。照 game/tools/unity-worldmap-cases.json 跑幾種進度、選幾個地點，
-// 每 every 格存一張合成好的畫面到 unity/Golden/unity/worldmap-<名稱>.bin，再用 node game/tools/unity-worldmap-golden.mjs compare 比。
+// 比對測試（Unity 這一邊）：選關世界地圖。照 game/tools/unity/unity-worldmap-cases.json 跑幾種進度、選幾個地點，
+// 每 every 格存一張合成好的畫面到 unity/Golden/unity/worldmap-<名稱>.bin，再用 node game/tools/unity/unity-worldmap-golden.mjs compare 比。
 // 執行：Unity.exe -batchmode -nographics -projectPath unity -executeMethod ZeroStar.Tests.WorldMapTest.Run -quit
 using System.Collections.Generic;
 using System.IO;
@@ -15,7 +15,7 @@ namespace ZeroStar.Tests
         public static void Run()
         {
             string root = Directory.GetParent(Application.dataPath).FullName;
-            var cfg = (OrderedDict)MiniJson.Parse(File.ReadAllText(Path.Combine(root, "..", "game", "tools", "unity-worldmap-cases.json")));
+            var cfg = (OrderedDict)MiniJson.Parse(File.ReadAllText(Path.Combine(root, "..", "game", "tools", "unity", "unity-worldmap-cases.json")));
             int every = (int)(double)cfg["every"];
             string outDir = Path.Combine(root, "Golden", "unity"); Directory.CreateDirectory(outDir);
             foreach (OrderedDict c in (List<object>)cfg["cases"])

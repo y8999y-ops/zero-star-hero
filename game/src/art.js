@@ -1,6 +1,6 @@
-// 美術素材（game/art/approved 的 PNG）：載入成 Uint32 像素陣列，格式跟畫面緩衝區一樣（0xAABBGGRR），
+// 美術素材（art/3-已通過 的 PNG）：載入成 Uint32 像素陣列，格式跟畫面緩衝區一樣（0xAABBGGRR），
 // 可以直接一格一格貼進城鎮、關卡的圖層。透明的像素是 0（alpha 0），貼的時候跳過。
-const BASE = new URL("../art/approved/", import.meta.url);
+const BASE = new URL("../../art/3-已通過/", import.meta.url);
 
 function decode(img) {
   const c = document.createElement("canvas");

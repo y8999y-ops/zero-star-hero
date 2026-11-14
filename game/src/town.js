@@ -1,5 +1,5 @@
 // 碎星鎮（M6，2026-11-04 依世界觀重畫）：建在大隕石坑內側台地上的小鎮，各種族一起住。
-// 設計（docs/素材參考.md「碎星鎮（重畫）」）：
+// 設計（docs/美術/素材參考.md「碎星鎮（重畫）」）：
 //   - 背景：坑底半埋著一顆巨大的墜落星星，往上冒光柱；坑壁上插著發光的水晶碎片；滿天星星會閃（這裡叫碎星鎮）
 //   - 中景：坑壁上鑿出來的住家（圓窗亮著燈）、長在台階上的蘑菇屋、屋子之間掛著一串串小燈 → 大坑壁對比小房子（大小對比）
 //   - 三棟店各照住的種族蓋：
@@ -17,7 +17,7 @@ import { FLOOR, H } from "./level.js";
 import { paintNpc } from "./npcs.js";
 import { loadArt, cell, baseRow, blit, glows, glowClusters } from "./art.js";
 
-// 美術素材（game/art/approved，Aseprite 重繪稿）：天空、遠景、中景、地面、前景、三棟店、城鎮裝飾、花草
+// 美術素材（art/3-已通過，Aseprite 重繪稿）：天空、遠景、中景、地面、前景、三棟店、城鎮裝飾、花草
 import { createSky, SKY_W as STARSKY_W, SKY_H as STARSKY_H } from "./starsky.js";
 const NIGHT = createSky();   // pixelfx 的流星夜空
 let skyT = null;
@@ -144,7 +144,7 @@ function build() {
   blit(FG, FG_W, H, ART["town/fg"], 0, H - ART["town/fg"].h);
 }
 build();
-/** Unity 轉移用（game/tools/unity-export.mjs）：載入時畫好的圖層、會發光的像素、光源。網頁版不會用到。 */
+/** Unity 轉移用（game/tools/unity/unity-export.mjs）：載入時畫好的圖層、會發光的像素、光源。網頁版不會用到。 */
 export const BAKED_TOWN = () => ({ FAR, MID, MAIN, FG, EMIT, LIGHTS, FAR_W, MID_W, FG_W, LAMPS, SHOPS });
 
 // ---- 白天與晚上（使用者 2026-11-06「城鎮中加入白天與夜晚」）

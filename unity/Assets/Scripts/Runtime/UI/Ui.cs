@@ -1,6 +1,6 @@
 // 介面的基礎（階段 4b）：用 UI Toolkit 照網頁版的 HTML/CSS 排（網頁版是 HTML 疊在畫布上，這裡是 UI Toolkit 疊在畫面上）。
 //   字型：Noto Sans TC（思源黑體；網頁版在 Windows 用微軟正黑體，長得很像）
-//   像素素材：網頁版 ui-art.js 畫的（node game/tools/unity-ui-export.mjs 匯出到 Resources/UI），當 9 宮格背景用（CSS 的 border-image）
+//   像素素材：網頁版 ui-art.js 畫的（node game/tools/unity/unity-ui-export.mjs 匯出到 Resources/UI），當 9 宮格背景用（CSS 的 border-image）
 //   大小：網頁版的 CSS px＝這裡的 1 單位（電腦上 1 單位＝1 螢幕像素；Windows 放大字型、手機照螢幕密度放大）
 using System.Collections.Generic;
 using UnityEngine;

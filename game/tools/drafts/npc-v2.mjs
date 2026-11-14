@@ -1,5 +1,5 @@
 // NPC 第二版（照 PixelFX 小生物的畫法）草稿：上排新版、下排舊版，同樣倍數。
-//   node game/tools/drafts/npc-v2.mjs docs/NPC草稿-v2.png
+//   node game/tools/drafts/npc-v2.mjs docs/美術/圖/角色/NPC草稿-v2.png
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { encodePNG } from "../../../pixelfx/tools/lib/png.mjs";

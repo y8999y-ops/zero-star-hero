@@ -1,6 +1,6 @@
 // 刷寶資料：稀有度、欄位、底材、屬性（主屬性＋副屬性），以及「掉一件裝備」的隨機產生。
 // 2026-11-04 改成星星主題：武器欄 → 星核（鑲在身體裡的寶石，提供攻擊力）；攻擊方式改由「形態」決定（forms.js）。
-// 2026-11-05 裝備改版第 1 批（docs/裝備系統企劃.md）：6 階稀有度、1 條主屬性＋最多 4 條副屬性（原神聖遺物式）、
+// 2026-11-05 裝備改版第 1 批（docs/企劃/裝備系統企劃.md）：6 階稀有度、1 條主屬性＋最多 4 條副屬性（原神聖遺物式）、
 //   屬性換成 14 種（取消攻速、附加火焰、擊殺爆炸、金幣、吸物範圍；擊殺回復改吸血；技能／大招傷害分開；新增充能效率）。
 // 這裡只有資料和純函式，不碰畫面。欄位 id 沿用舊的（weapon、head…）。
 
@@ -114,7 +114,7 @@ export const UNIQUES = {
   hardhat: { kind: "head", name: "爆炸頭礦工帽", icon: "leg_hardhat", text: "擊殺時 25% 機率爆炸", lore: "矮人礦工頭的遺物。坑道施工中，請勿靠近。" },
 };
 
-// ---- 神話（第 6 批，docs/裝備系統企劃.md 第 8 章）：效果隨目前的形態改變；穿著累積擊殺會覺醒（3 階），每一階解鎖一段星王的故事
+// ---- 神話（第 6 批，docs/企劃/裝備系統企劃.md 第 8 章）：效果隨目前的形態改變；穿著累積擊殺會覺醒（3 階），每一階解鎖一段星王的故事
 export const MYTHS = {
   starking: {
     kind: "head", name: "星王之冠", icon: "myth_crown",
@@ -132,7 +132,7 @@ export const MYTHS = {
 export const AWAKEN = [0, 300, 1000];   // 第 1、2、3 階需要的擊殺數
 export const awakenStage = (it) => (it.awaken?.kills ?? 0) >= AWAKEN[2] ? 3 : (it.awaken?.kills ?? 0) >= AWAKEN[1] ? 2 : 1;
 
-// ---- 史詩套裝（第 5 批，docs/裝備系統企劃.md 3.1）：不跟形態綁；同一套穿 2 件、4 件有效果（stats.js 算 2 件的數值，4 件的效果在 player.js／main.js）
+// ---- 史詩套裝（第 5 批，docs/企劃/裝備系統企劃.md 3.1）：不跟形態綁；同一套穿 2 件、4 件有效果（stats.js 算 2 件的數值，4 件的效果在 player.js／main.js）
 export const SETS = {
   meteor: { name: "流星獵手", short: "流星", color: "#ff9a4a", emblem: "set_meteor", two: "暴擊率 +8%", four: "暴擊打中的敵人被標上流星記號；5 秒內再暴擊牠，天上掉一顆小流星砸下去（攻擊力 80%）" },
   reson: { name: "星辰共鳴", short: "共鳴", color: "#7ae8ff", emblem: "set_reson", two: "魔力回復 +15%", four: "放完大招後 10 秒內，技能冷卻 -30%、技能傷害 +25%" },
@@ -161,7 +161,7 @@ export const plusMul = (p) => 1 + 0.05 * (p ?? 0);
 // ---- 強化（第 2 批，2026-11-05）：上限看稀有度（普通 +5 … 傳說、神話 +25）；每 +5 提升一條副屬性，
 // 副屬性還沒滿 4 條時改成新增一條（原神聖遺物式）。+10 以前不會失敗，+11 以後可能失敗（失敗只扣材料）。
 export const MAX_PLUS = [5, 10, 15, 20, 25, 25];
-// 8a（docs/關卡與星核改版企劃.md 第 2 章）：星核上限是別人的兩倍，每 10 級開一次副屬性
+// 8a（docs/企劃/關卡與星核改版企劃.md 第 2 章）：星核上限是別人的兩倍，每 10 級開一次副屬性
 export const isCore = (item) => item?.kind === "weapon";
 export const maxPlus = (item) => (MAX_PLUS[item.rarity] ?? 5) * (isCore(item) ? 2 : 1);
 export const subStep = (item) => (isCore(item) ? 10 : 5);

@@ -9,7 +9,7 @@
 // 畫面：遊戲解析度（高 216）的像素畫布（Pix2D），放大蓋滿螢幕；畫布上的字（開機紀錄、警告框）交給 UI 疊在上面（字要清楚）。
 // 台詞框（系統樣式）＝UI；網頁版最後的 CSS 把它放在上面中間、跳過鍵放右下（下面是主角掉下來的地方），這裡照那個。
 // 音效、音樂都交給 Sfx（名字跟網頁版的 sfx 一樣；音樂是 "music:intro"、"music:end"）。
-// 主角的姿勢：開場用到幾種特別的（換眼睛、看手、正面待機），由 node game/tools/unity-intro-export.mjs 匯出成 Resources/Baked/intro-hero.bytes。
+// 主角的姿勢：開場用到幾種特別的（換眼睛、看手、正面待機），由 node game/tools/unity/unity-intro-export.mjs 匯出成 Resources/Baked/intro-hero.bytes。
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -160,7 +160,7 @@ namespace ZeroStar.UI
             // 主角的姿勢（intro-hero.bytes：格式跟 Baked 的 hero.bytes 一樣）
             heroInfo = new Dictionary<string, (int, int, int)>();
             var ta = Resources.Load<TextAsset>("Baked/intro-hero");
-            if (ta == null) { Debug.LogWarning("找不到 Resources/Baked/intro-hero.bytes（先跑 node game/tools/unity-intro-export.mjs）"); return; }
+            if (ta == null) { Debug.LogWarning("找不到 Resources/Baked/intro-hero.bytes（先跑 node game/tools/unity/unity-intro-export.mjs）"); return; }
             byte[] b; using (var ms = new MemoryStream(ta.bytes)) using (var z = new GZipStream(ms, CompressionMode.Decompress)) using (var o = new MemoryStream()) { z.CopyTo(o); b = o.ToArray(); }
             int p = 0;
             int I32() { int v = BitConverter.ToInt32(b, p); p += 4; return v; }

@@ -1,5 +1,5 @@
 // 存檔測試：讀一份網頁版的存檔（SAVE_IN）→ 套到遊戲 → 存成 JSON（寫到 SAVE_OUT）→ 再讀回來再存一次，兩次要一模一樣。
-// 網頁版的存檔和 Unity 存出來的欄位比對交給 game/tools/unity-save-compare.mjs。
+// 網頁版的存檔和 Unity 存出來的欄位比對交給 game/tools/unity/unity-save-compare.mjs。
 using System;
 using System.IO;
 using UnityEngine;

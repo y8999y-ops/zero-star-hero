@@ -1,6 +1,6 @@
-// 比對測試（Unity 這一邊）：操作錄影。用 game/tools/unity-trace-script.json 的同一串按鍵跑 Game，
+// 比對測試（Unity 這一邊）：操作錄影。用 game/tools/unity/unity-trace-script.json 的同一串按鍵跑 Game，
 // 每一步記下主角、怪、鏡頭的數值，每 frameEvery 步存一張合成好的畫面，寫到 unity/Golden/unity/。
-// 再用 node game/tools/unity-trace-compare.mjs 跟網頁版（node game/tools/unity-trace-full.mjs，跑真正的 main.js）逐步比對。
+// 再用 node game/tools/unity/unity-trace-compare.mjs 跟網頁版（node game/tools/unity/unity-trace-full.mjs，跑真正的 main.js）逐步比對。
 // 執行（不用開編輯器）：Unity.exe -batchmode -nographics -projectPath unity -executeMethod ZeroStar.Tests.TraceTest.Run -quit
 using System;
 using System.Collections.Generic;

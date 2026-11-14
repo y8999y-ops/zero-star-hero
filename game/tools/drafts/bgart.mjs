@@ -4,7 +4,7 @@ import { writeFileSync } from "node:fs";
 import { encodePNG } from "../../../pixelfx/tools/lib/png.mjs";
 import { readPNG } from "./pngread.mjs";
 import { genLayer, THEME_LAYERS } from "../../src/bg-art.js";
-const load = (n) => { const p = readPNG(new URL(`../../art/approved/valley/${n}.png`, import.meta.url)); const px = new Uint32Array(p.w * p.h); for (let i = 0; i < px.length; i++) { const a = p.rgba[i * 4 + 3]; px[i] = a ? ((a << 24) | (p.rgba[i * 4 + 2] << 16) | (p.rgba[i * 4 + 1] << 8) | p.rgba[i * 4]) >>> 0 : 0; } return { w: p.w, h: p.h, px }; };
+const load = (n) => { const p = readPNG(new URL(`../../art/3-已通過/valley/${n}.png`, import.meta.url)); const px = new Uint32Array(p.w * p.h); for (let i = 0; i < px.length; i++) { const a = p.rgba[i * 4 + 3]; px[i] = a ? ((a << 24) | (p.rgba[i * 4 + 2] << 16) | (p.rgba[i * 4 + 1] << 8) | p.rgba[i * 4]) >>> 0 : 0; } return { w: p.w, h: p.h, px }; };
 const V = { back: load("back"), far: load("far"), mid: load("mid"), near: load("near") };
 const DIM = { far: 0.78, mid: 0.66, near: 0.6 }, PAR = { back: 0.05, far: 0.12, mid: 0.3, near: 0.6 };
 const themes = ["valley", "junk", "cave"], cams = [0, 700], FW = 320, FH = 216, S = 2;

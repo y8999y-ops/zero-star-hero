@@ -1,8 +1,8 @@
 // game/src/heroorbit.js（drawOrbit、blit2x）＋ game/src/heroaura.js（drawAura）＋ inventory.js 的 drawHero 翻成 C#：
 // 背包左欄的主角圖（113×104，放大 2 倍顯示）：星星站在中間（畫 2 倍大），7 件裝備在外圈軌道上慢慢繞，
 // 吸收過的形態各一圈粒子繞著星星轉。運算順序照原本的 JS（Pf.* 的 fdlibm 數學），每一格像素跟網頁版一樣。
-// 比對：node --no-use-std-math-pow game/tools/unity-orbit-golden.mjs → Unity 的 PixelFX.Tests.Golden.RunOrbit
-//       → node game/tools/unity-orbit-golden.mjs --compare
+// 比對：node --no-use-std-math-pow game/tools/unity/unity-orbit-golden.mjs → Unity 的 PixelFX.Tests.Golden.RunOrbit
+//       → node game/tools/unity/unity-orbit-golden.mjs --compare
 using System;
 using System.Collections.Generic;
 using PixelFX;

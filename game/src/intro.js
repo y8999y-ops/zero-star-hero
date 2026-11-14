@@ -22,7 +22,7 @@ import * as starMeteor from "../fx/fire/star-meteor.js";   // 同一顆流星的
 const GOLD = ["#3a1a06", "#6e3a0c", "#a8601a", "#d8902a", "#f4c040", "#ffe27a", "#fff2b0", "#fffbe8", "#ffffff"];
 
 const H = 216;
-const ART = new URL("../art/approved/", import.meta.url).href;
+const ART = new URL("../../art/3-已通過/", import.meta.url).href;
 const IMG = {};
 const load = (k, p) => new Promise((ok) => { const im = new Image(); im.onload = () => { IMG[k] = im; ok(); }; im.onerror = ok; im.src = ART + p; });
 

@@ -1,5 +1,5 @@
 // 比較圖：現在的居民＋路人（npcs.js）和 PixelFX 的小生物（frog、slime、ghost、eyeball），同樣倍數排在一起。
-//   node game/tools/drafts/npc-compare.mjs docs/NPC-比較.png
+//   node game/tools/drafts/npc-compare.mjs docs/美術/圖/角色/NPC-比較.png
 import { writeFileSync } from "node:fs";
 import { encodePNG } from "../../../pixelfx/tools/lib/png.mjs";
 import { loadEffect, renderFrames } from "../../../pixelfx/tools/lib/fxlib.mjs";

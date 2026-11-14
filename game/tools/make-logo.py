@@ -3,7 +3,7 @@
 #   第一行 18px：米白字，「星星碎片」金色；1px 深色外框＋1px 紫色外圈。
 #   第二行 30px：金色分階漸層（硬邊、不抖色）、往下 2 格立體厚度、上緣白色反光，「最強」換成紅橘色漸層；同樣雙層外框。
 #   最下面一行自己畫的 3×5 像素英文。
-# 輸出 game/art/ui/logo.png（遊戲解析度 1 倍）和 docs/主畫面-標題字預覽.png。執行：python game/tools/make-logo.py
+# 輸出 game/art/ui/logo.png（遊戲解析度 1 倍）和 docs/美術/圖/介面與圖示/主畫面-標題字預覽.png。執行：python game/tools/make-logo.py
 from PIL import Image, ImageDraw, ImageFont
 import os
 
@@ -121,5 +121,5 @@ for y in range(Y0, Y1 + 1):
 out.save(OUT)
 big = out.resize((out.width * 4, out.height * 4), Image.NEAREST)
 bg = Image.new("RGBA", big.size, (30, 22, 60, 255)); bg.alpha_composite(big)
-bg.save(os.path.join(HERE, "..", "..", "docs", "主畫面-標題字預覽.png"))
+bg.save(os.path.join(HERE, "..", "..", "docs", "美術", "圖", "介面與圖示", "主畫面-標題字預覽.png"))
 print("logo", out.size)

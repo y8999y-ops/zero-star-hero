@@ -1,6 +1,6 @@
 // 第一章的關卡場景：深淵·垃圾山（層次＋光影版）。地形照 stages.js 的這一關（寬、平台、火把、主題）烘焙：
 //   abyss＝1-1 墜落之底、junk＝1-2 垃圾山（垃圾更多、平台是木板鐵架、偏鏽色）、cave＝1-3 蝙蝠洞窟（更暗、水晶更多）
-// 參考絲之歌、Ori 的「技法」（不是畫面）＋ SLYNYRD 的像素視差教學，見 docs/素材參考.md：
+// 參考絲之歌、Ori 的「技法」（不是畫面）＋ SLYNYRD 的像素視差教學，見 docs/美術/素材參考.md：
 //   6 層：天空霧光（逆光，中下段最亮）→ 遠景 → 中遠景（巨大垃圾剪影）→ 中景（鎖鏈、水晶）→ 遊玩層 → 前景剪影
 //   越遠越接近霧色、越近越暗；遊玩層對比最高；前景幾乎全黑，框住畫面。
 // 每個環境像素存「色票編號＋明暗階」，畫的時候依光源（light.js）把明暗階往上加，所以場景會被火把、
@@ -35,7 +35,7 @@ export const TORCHES = LAYOUT.torches.map((t) => t.x ?? t);
 // 8b：火把可以放在任何一層（{ x, y }），舊關卡只寫 x＝插在地板上
 export const TORCH_POS = LAYOUT.torches.map((t) => ({ x: t.x ?? t, y: t.y ?? FLOOR }));
 
-// ---- 美術素材（game/art/approved/valley＋道具，Aseprite 重繪稿）
+// ---- 美術素材（art/3-已通過/valley＋道具，Aseprite 重繪稿）
 // 圖層（視差）：最遠背景 back（0.05）→ 遠景 far（0.12）→ 中景 mid（0.3）→ 近景 near（0.6）→ 遊玩層（1）→ 前景 fg（1.35）
 const ART = await loadArt(["valley/back", "valley/far", "valley/mid", "valley/near", "valley/fg", "valley/ground", "valley/platform",
   "props/rocks", "props/junk", "props/crystals", "props/grass", "props/flowers", "props/moss"]);
@@ -314,7 +314,7 @@ export function sceneLights(camX, W, time) {
 }
 
 
-/** Unity 轉移用（game/tools/unity-export.mjs）：把載入時烘好的場景資料交出去。網頁版不會用到。 */
+/** Unity 轉移用（game/tools/unity/unity-export.mjs）：把載入時烘好的場景資料交出去。網頁版不會用到。 */
 export const BAKED_LEVEL = () => ({
   PF, PFE, CRYSTAL_LIGHTS, PROP_LIGHTS, BIG_CRYSTALS, UP_FAR, UP_MID, UH, PIN, TALL,
   layers: { back: ART["valley/back"], far: layerArt("far"), mid: layerArt("mid"), near: layerArt("near"), fg: ART["valley/fg"] },

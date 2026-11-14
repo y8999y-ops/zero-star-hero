@@ -1,5 +1,5 @@
 // 比較圖：原本的史萊姆（PixelFX critters/slime）和王草稿，放大到同樣倍數排在一起。
-//   node game/tools/drafts/boss-compare.mjs docs/王草稿-比較.png
+//   node game/tools/drafts/boss-compare.mjs docs/美術/圖/王與怪物/王草稿-比較.png
 import { writeFileSync } from "node:fs";
 import { encodePNG } from "../../../pixelfx/tools/lib/png.mjs";
 import { loadEffect, renderFrames } from "../../../pixelfx/tools/lib/fxlib.mjs";

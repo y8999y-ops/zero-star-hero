@@ -1,5 +1,5 @@
-// 比對測試（Unity 這一邊）：裝備產生與數值計算。跟 game/tools/unity-items-golden.mjs 同一個種子、同一個步驟，
-// 寫到 unity/Golden/unity/items.txt；再用 node game/tools/unity-items-golden.mjs --compare 比對。
+// 比對測試（Unity 這一邊）：裝備產生與數值計算。跟 game/tools/unity/unity-items-golden.mjs 同一個種子、同一個步驟，
+// 寫到 unity/Golden/unity/items.txt；再用 node game/tools/unity/unity-items-golden.mjs --compare 比對。
 using System;
 using System.Collections.Generic;
 using System.Globalization;

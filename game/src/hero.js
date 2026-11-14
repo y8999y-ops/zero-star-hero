@@ -1,7 +1,7 @@
 // 主角外型（重畫版）：一張自己畫的 24×38 站姿原圖，貼到 PixelFX 骨架上。
 // 骨架每畫一個像素，都會告訴我們它對應原圖的哪一格（posed().src），所以跑、跳、各種武器招式
 // 都會自動穿上這套衣服；明暗則用骨架算出來的光影（4 階），光源固定在左上。
-// 參考：Classic Hero、MV Platformer Male、Ars Notoria hero（見 docs/素材參考.md）。
+// 參考：Classic Hero、MV Platformer Male、Ars Notoria hero（見 docs/美術/素材參考.md）。
 // 不依賴瀏覽器，node 的預覽工具也能用：node game/tools/preview.mjs hero out.png
 import { posed, skeleton, hex, DUMMY_PAL } from "../../pixelfx/src/core/index.js";
 

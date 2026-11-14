@@ -1,10 +1,10 @@
 // 地形（8c 深淵、9 批垃圾山與洞窟，照 pixelfx skill 畫→看→修）：實心方塊照「離空氣多遠」自動畫成地表、牆面、天花板、轉角，不用手排圖塊。
-// 色盤取自山谷地面素材（art/approved/valley/ground）：草 #d4ec60～#2a4a10、石頭 #12122a～#7480a4、水晶青。
+// 色盤取自山谷地面素材（art/3-已通過/valley/ground）：草 #d4ec60～#2a4a10、石頭 #12122a～#7480a4、水晶青。
 // 參考：3×3 自動拼接圖塊的邊角做法（Bluematt platform autotiles、GrimeGrass 16×16 的草邊與轉角、RottingPixels 洞窟圖塊），
 //       Ori 的「靠近邊緣的地方細節多、深處暗下去」。光從左上來：朝左／朝上的面亮，朝右／朝下的面暗。
 // paintTerrain(solid, w, h, put, glow)：solid(x, y) 這一格是不是實心；put(x, y, "#rrggbb") 畫一格；glow(x, y, c) 自己發光的格子（水晶）
 // 草稿：game/tools/drafts/terrain.mjs
-// 9 批：三個主題（色盤取自 art/approved 的山谷地面、垃圾、水晶、苔蘚素材）
+// 9 批：三個主題（色盤取自 art/3-已通過 的山谷地面、垃圾、水晶、苔蘚素材）
 //   top＝地表那層（5 階，暗→亮）、stone＝外框／縫／明暗（6 階）、mats＝石塊的材質（每塊隨機挑一種，6 階）、
 //   crys＝水晶（null＝沒有）、blade＝地表上方長的東西、hang＝天花板垂下來的東西
 export const TERRAIN = {

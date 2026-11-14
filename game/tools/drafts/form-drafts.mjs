@@ -1,6 +1,6 @@
 // 形態草稿：黏液星（S1～S3）、鐵罐星（C1～C3）。以胖星正面為底，換材質、加零件。
 //   node game/tools/drafts/form-drafts.mjs out.png
-// 參考（docs/素材參考.md「形態：黏液星、鐵罐星」）：
+// 參考（docs/美術/素材參考.md「形態：黏液星、鐵罐星」）：
 //   黏液：PixelFX critters/slime（綠色果凍、亮核、白色高光點、腳下黏液）、itch.io Pixelaria 史萊姆 devlog（同色系深淺、上亮下暗、小白點＝濕亮）、
 //         Concept Cookie 評語（果凍不只一個高光）。
 //   鐵罐：自己畫的垃圾桶怪（縱向亮帶、凸紋一亮一暗、鏽斑、蓋子）、OpenGameArt 金屬圓柱討論（用條紋不用漸層、不抖色、高光沿著圓柱的長邊）。

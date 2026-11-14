@@ -1,5 +1,5 @@
 // 王（第二版，照原本史萊姆的畫法）：各個姿勢排一張，左邊放一隻野外史萊姆比大小。
-//   node game/tools/drafts/boss-v2.mjs docs/王草稿-v2.png
+//   node game/tools/drafts/boss-v2.mjs docs/美術/圖/王與怪物/王草稿-v2.png
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { encodePNG } from "../../../pixelfx/tools/lib/png.mjs";

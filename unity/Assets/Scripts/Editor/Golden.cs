@@ -1,9 +1,9 @@
-// 比對測試（Unity 這一邊）：用跟 game/tools/unity-golden.mjs 一樣的規則，把五個普攻模組一格一格畫出來，
-// 存到 unity/Golden/unity/，再用 node game/tools/unity-compare.mjs 跟網頁版逐像素比對。
+// 比對測試（Unity 這一邊）：用跟 game/tools/unity/unity-golden.mjs 一樣的規則，把五個普攻模組一格一格畫出來，
+// 存到 unity/Golden/unity/，再用 node game/tools/unity/unity-compare.mjs 跟網頁版逐像素比對。
 // 執行（不用開編輯器）：Unity.exe -batchmode -nographics -projectPath unity -executeMethod PixelFX.Tests.Golden.Run -quit
 // 也可以在編輯器選單「零星工具／比對測試：輸出普攻特效」。
-// RunFx：pixelfx 即時特效（FxRun）照 game/tools/unity-fx-golden.mjs 的 manifest.json 播一次，存到 unity/Golden/fx-unity/，
-//   再用 node game/tools/unity-fx-compare.mjs 跟 unity/Golden/fx-web/ 逐像素比對。
+// RunFx：pixelfx 即時特效（FxRun）照 game/tools/unity/unity-fx-golden.mjs 的 manifest.json 播一次，存到 unity/Golden/fx-unity/，
+//   再用 node game/tools/unity/unity-fx-compare.mjs 跟 unity/Golden/fx-web/ 逐像素比對。
 //   執行：Unity.exe -batchmode -nographics -projectPath unity -executeMethod PixelFX.Tests.Golden.RunFx -quit
 using System;
 using System.Collections.Generic;
@@ -120,8 +120,8 @@ namespace PixelFX.Tests
             Debug.Log($"[Golden] 即時特效：寫出 {files} 個比對檔（{frames} 格）到 {outDir}（{watch.ElapsedMilliseconds} ms）");
         }
 
-        // RunOrbit：背包左欄主角圖（ZeroStar.UI.HeroOrbit.DrawHero）照 game/tools/unity-orbit-golden.mjs 的 manifest.json 畫一次，
-        //   composite（背景 null、光 0.6）存到 unity/Golden/orbit-unity/，再用 node game/tools/unity-orbit-golden.mjs --compare 比對。
+        // RunOrbit：背包左欄主角圖（ZeroStar.UI.HeroOrbit.DrawHero）照 game/tools/unity/unity-orbit-golden.mjs 的 manifest.json 畫一次，
+        //   composite（背景 null、光 0.6）存到 unity/Golden/orbit-unity/，再用 node game/tools/unity/unity-orbit-golden.mjs --compare 比對。
         //   執行：Unity.exe -batchmode -nographics -projectPath unity -executeMethod PixelFX.Tests.Golden.RunOrbit -quit
         [MenuItem("零星工具/比對測試：輸出背包主角圖")]
         public static void RunOrbit()

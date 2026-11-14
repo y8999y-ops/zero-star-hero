@@ -3,7 +3,7 @@
 // 中景碎星鎮（mid.png）→ 前景草地，主角（星星）站在右下方，肚子的光一閃一閃、領巾被風吹。
 // 偶爾有流星劃過、星屑往上飄。標題字（art/ui/logo.png，tools/make-logo.py 產生）在上方中間輕輕浮動，
 // 每隔幾秒一道斜光掃過字，字的邊上有十字星光一閃一閃。選單是 HTML（字要清楚），在標題下面置中。
-// 參考：大標題＋簡短選單置中、背景動作要慢（標題畫面要安靜不要吵）、標題字深色底配亮字＋反光（見 docs/素材參考.md）。
+// 參考：大標題＋簡短選單置中、背景動作要慢（標題畫面要安靜不要吵）、標題字深色底配亮字＋反光（見 docs/美術/素材參考.md）。
 import { starPixels, POSES } from "./star.js";
 import { createSky } from "./starsky.js";
 
@@ -11,6 +11,7 @@ const H = 216;
 const IMG = {};
 const load = (k, src) => new Promise((ok) => { const im = new Image(); im.onload = () => { IMG[k] = im; ok(); }; im.onerror = ok; im.src = src; });
 const ART = new URL("../art/", import.meta.url).href;
+const APPROVED = new URL("../../art/3-已通過/", import.meta.url).href;   // 已通過的美術放在專案根目錄 art/
 
 // 主角的待機（目前形態）畫成小 canvas，快取
 const heroCache = new Map();
@@ -31,8 +32,8 @@ function heroFrame(form, f) {
 /** 開始播主畫面。canvas：要畫的 <canvas>；form：主角目前的形態。回傳 stop()。 */
 export async function startTitle(canvas, { form = "star" } = {}) {
   await Promise.all([
-    load("far", ART + "approved/town/far.png"), load("mid", ART + "approved/town/mid.png"),
-    load("ground", ART + "approved/town/ground.png"), load("fg", ART + "approved/town/fg.png"), load("logo", ART + "ui/logo.png"),
+    load("far", APPROVED + "town/far.png"), load("mid", APPROVED + "town/mid.png"),
+    load("ground", APPROVED + "town/ground.png"), load("fg", APPROVED + "town/fg.png"), load("logo", ART + "ui/logo.png"),
   ]);
   const SKY = createSky();   // pixelfx 的流星夜空（weather/shooting-stars）
   IMG.sky = SKY.canvas();

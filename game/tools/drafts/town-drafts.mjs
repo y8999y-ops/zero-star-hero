@@ -1,7 +1,7 @@
 // 碎星鎮草稿：三個主要 NPC＋城鎮構圖（M6）。
 //   node game/tools/drafts/town-drafts.mjs npc.png town.png
 // NPC 遵守規則v2（1px 外框、硬邊、光從左上、精簡色盤）；城鎮的光暈是特效層，可以柔和。
-// 參考（docs/素材參考.md「碎星鎮」）：
+// 參考（docs/美術/素材參考.md「碎星鎮」）：
 //   史萊姆櫃檯：PixelFX critters/slime（圓頂、白色高光）、城裡的居民用藍色和野外的綠色狂化史萊姆區分。
 //   石頭魔像：OpenGameArt「[LPC] Golem」「16×16 golem」（方塊身體、肩膀最寬、大拳頭、胸口發光的核心）。
 //   蘑菇老闆娘：OpenGameArt「Mushroom G…」「Micro World」「Animated Mushroom」（蓋子佔一半高、蓋上斑點、臉在柄上、蓋子下緣一圈暗色菌褶）。
