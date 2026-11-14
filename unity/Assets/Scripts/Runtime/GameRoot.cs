@@ -477,6 +477,11 @@ namespace ZeroStar
             if (tm.Success) s.tree = tm.Groups[1].Value;
             var sm = System.Text.RegularExpressions.Regex.Match(txt, @"""stage""\s*:\s*""([\w-]+)""");
             if (sm.Success) s.stage = sm.Groups[1].Value;
+            // 截圖模式也吃腳本的城鎮時間、天氣（原本只有編輯器的 TraceTest 會設）
+            var dm = System.Text.RegularExpressions.Regex.Match(txt, @"""day""\s*:\s*([0-9.]+)");
+            if (dm.Success) ZeroStar.TownArt.DayOverride = double.Parse(dm.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+            var wm = System.Text.RegularExpressions.Regex.Match(txt, @"""weather""\s*:\s*""(\w+)""");
+            if (wm.Success) ZeroStar.TownArt.WeatherOverride = wm.Groups[1].Value;
             int i = txt.IndexOf("\"events\"");
             if (i >= 0)
             {
