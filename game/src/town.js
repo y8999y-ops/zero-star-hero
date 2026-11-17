@@ -97,7 +97,7 @@ function shard(p, x, y, h, w, ramp, emit = true) {
 }
 
 // 店的位置（左上角 x）：門口對準居民站的地方
-const SHOPS = [["town/guild", 70], ["town/workshop", 459], ["town/inn", 804]];   // 2026-11-17：工坊、旅館照原圖格子讀回後窄了一點，左上角往右移一半，中心不變
+const SHOPS = [["town/guild", 70], ["town/workshop", 459], ["town/inn", 807]];   // 2026-11-17：工坊、旅館照原圖格子讀回後窄了一點，左上角往右移一半，中心不變
 // 裝飾（props/town-deco 的格子：0 木桶 1 疊木箱 2 柵欄 3 路標 4 星星路燈 5 盆栽蘑菇 6 麻袋 7 長椅）的中心 x
 const DECO = [[0, 668], [6, 1000], [7, 1070], [2, 1206]];   // 2026-11-12：裝飾減半
 const BLOOMS = [[0, 30], [3, 362], [7, 760], [4, 1040]];        // 花、蘑菇（props/flowers 的格子）
