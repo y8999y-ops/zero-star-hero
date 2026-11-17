@@ -345,7 +345,7 @@
       "file": "town/sky.png",
       "aseprite": "town/sky.aseprite",
       "reference": "參考原圖/town/sky.png",
-      "script": "art/工具/redraw-town-sky-ground-fg-reference.lua",
+      "script": "art/工具/城鎮/redraw-town-sky-ground-fg-reference.lua",
       "approved": "2026-11-04",
       "sha256": "D79D8740AC772955B656B060A7EC8BFF7141A75C45EF851804936C1C3AB929EE"
     },
@@ -353,7 +353,7 @@
       "file": "town/ground.png",
       "aseprite": "town/ground.aseprite",
       "reference": "參考原圖/town/ground.png",
-      "script": "art/工具/redraw-town-sky-ground-fg-reference.lua",
+      "script": "art/工具/城鎮/redraw-town-sky-ground-fg-reference.lua",
       "approved": "2026-11-04",
       "sha256": "33364FAD4A753D630BF046DC34233FC42E8A1C60CB133DD9B2A3FEEFECB83B8A"
     },
@@ -361,7 +361,7 @@
       "file": "town/fg.png",
       "aseprite": "town/fg.aseprite",
       "reference": "參考原圖/town/fg.png",
-      "script": "art/工具/redraw-town-sky-ground-fg-reference.lua",
+      "script": "art/工具/城鎮/redraw-town-sky-ground-fg-reference.lua",
       "approved": "2026-11-04",
       "sha256": "AC81C724DB59F228198892FEBFE710B719C077DEA247563A9D8AF8C0A735DAF0"
     },
@@ -369,7 +369,7 @@
       "file": "props/flowers.png",
       "aseprite": "props/flowers.aseprite",
       "reference": "參考原圖/props/flowers.png",
-      "script": "art/工具/redraw-props-flowers-reference.lua",
+      "script": "art/工具/道具/redraw-props-flowers-reference.lua",
       "approved": "2026-11-04",
       "sha256": "085C55BF2E362EC3B3615A3F6C6B7650EA4FC168C5ACD3E98B3C0D0392E66640"
     },
@@ -377,7 +377,7 @@
       "file": "props/grass.png",
       "aseprite": "props/grass.aseprite",
       "reference": "參考原圖/props/grass.png",
-      "script": "art/工具/redraw-props-grass-reference.lua",
+      "script": "art/工具/道具/redraw-props-grass-reference.lua",
       "approved": "2026-11-04",
       "sha256": "DBEF587C7E431E6FED71EA657A47A52052F8B70298F911E8FFB666EB432EAD2B"
     },
@@ -385,7 +385,7 @@
       "file": "props/moss.png",
       "aseprite": "props/moss.aseprite",
       "reference": "參考原圖/props/moss.png",
-      "script": "art/工具/redraw-props-moss-reference.lua",
+      "script": "art/工具/道具/redraw-props-moss-reference.lua",
       "approved": "2026-11-04",
       "sha256": "963E6ACF095491A7E1F158EA79943E690EEA42F5752C539FE6A7712F6EAE0CBC"
     },
@@ -393,7 +393,7 @@
       "file": "props/crystals.png",
       "aseprite": "props/crystals.aseprite",
       "reference": "參考原圖/props/crystals.png",
-      "script": "art/工具/redraw-props-crystals-reference.lua",
+      "script": "art/工具/道具/redraw-props-crystals-reference.lua",
       "approved": "2026-11-04",
       "sha256": "308A8C17CB60C2892681A097984CC4AA7C344F7DF62D839E5528372D05D4437B"
     },
@@ -401,7 +401,7 @@
       "file": "props/junk.png",
       "aseprite": "props/junk.aseprite",
       "reference": "參考原圖/props/junk.png",
-      "script": "art/工具/redraw-props-junk-reference.lua",
+      "script": "art/工具/道具/redraw-props-junk-reference.lua",
       "approved": "2026-11-04",
       "note": "world scale ~7 source px per art px (reference was finer)",
       "sha256": "76B42BDD00024CD2CB8261AFF972E156DC0487D62DF44B5D32137D12AF4D0136"
@@ -410,7 +410,7 @@
       "file": "props/town-deco.png",
       "aseprite": "props/town-deco.aseprite",
       "reference": "參考原圖/props/town-deco.png",
-      "script": "art/工具/redraw-props-towndeco-reference.lua",
+      "script": "art/工具/道具/redraw-props-towndeco-reference.lua",
       "approved": "2026-11-04",
       "note": "world scale ~7 source px per art px",
       "sha256": "1CBD1430FAA4AB9E7BD634B26E859A03AD61459FACFD521AF655BFCDD1923FA2"
@@ -419,7 +419,7 @@
       "file": "props/rocks.png",
       "aseprite": "props/rocks.aseprite",
       "reference": "參考原圖/props/rocks.png",
-      "script": "art/工具/redraw-props-rocks-reference.lua",
+      "script": "art/工具/道具/redraw-props-rocks-reference.lua",
       "approved": "2026-11-04",
       "note": "seven remaining rocks, same scale/palette as largest-rock-64",
       "sha256": "CC5F8DBB32D3AE4BCA6AB86864164C2B1253C5A03CA0BB9DDEAF16B87FBB3D42"
@@ -428,7 +428,7 @@
       "file": "valley/back.png",
       "aseprite": "valley/back.aseprite",
       "reference": "參考原圖/valley/back.png",
-      "script": "art/工具/redraw-valley-reference.lua",
+      "script": "art/工具/場景/redraw-valley-reference.lua",
       "approved": "2026-11-04",
       "sha256": "7CA57F0E836D0D3677696E345B424C53A68DCC9C37FF78F4A4AD988FF6602208"
     },
@@ -436,7 +436,7 @@
       "file": "valley/far.png",
       "aseprite": "valley/far.aseprite",
       "reference": "參考原圖/valley/far.png",
-      "script": "art/工具/redraw-valley-reference.lua",
+      "script": "art/工具/場景/redraw-valley-reference.lua",
       "approved": "2026-11-04",
       "sha256": "722C542A87CAF115B1FB5168376833118A81D6D969B534F602754578969BF97E"
     },
@@ -444,7 +444,7 @@
       "file": "valley/mid.png",
       "aseprite": "valley/mid.aseprite",
       "reference": "參考原圖/valley/mid.png",
-      "script": "art/工具/redraw-valley-reference.lua",
+      "script": "art/工具/場景/redraw-valley-reference.lua",
       "approved": "2026-11-04",
       "sha256": "F77432F7604295417FA74371B2C13368E6CAF5A7CF62AE6293A733A75CA3D24D"
     },
@@ -452,7 +452,7 @@
       "file": "valley/near.png",
       "aseprite": "valley/near.aseprite",
       "reference": "參考原圖/valley/near.png",
-      "script": "art/工具/redraw-valley-reference.lua",
+      "script": "art/工具/場景/redraw-valley-reference.lua",
       "approved": "2026-11-04",
       "sha256": "652D139AB4F81F5CD5D118A957BEA5A88B982CE5F6C352144DA81C983F8CA510"
     },
@@ -460,7 +460,7 @@
       "file": "valley/fg.png",
       "aseprite": "valley/fg.aseprite",
       "reference": "參考原圖/valley/fg.png",
-      "script": "art/工具/redraw-valley-reference.lua",
+      "script": "art/工具/場景/redraw-valley-reference.lua",
       "approved": "2026-11-04",
       "sha256": "8BDCB34B428D9B8BDBF3425067247AFB28E0A5081F06CB35AAFE64017381610B"
     },
@@ -468,7 +468,7 @@
       "file": "valley/ground.png",
       "aseprite": "valley/ground.aseprite",
       "reference": "參考原圖/valley/ground.png",
-      "script": "art/工具/redraw-valley-reference.lua",
+      "script": "art/工具/場景/redraw-valley-reference.lua",
       "approved": "2026-11-04",
       "sha256": "0F7DD16F6677DC25386A36EC5F246D5E71F0D373B3B49AB9E3F2790B1A1147D9"
     },
@@ -476,7 +476,7 @@
       "file": "valley/platform.png",
       "aseprite": "valley/platform.aseprite",
       "reference": "參考原圖/valley/platform.png",
-      "script": "art/工具/redraw-valley-reference.lua",
+      "script": "art/工具/場景/redraw-valley-reference.lua",
       "approved": "2026-11-04",
       "sha256": "DCA3F2E8C7E299BFE3179D0387BE46B68B76B101BB571448811A91643E8AB8D9"
     }

@@ -1003,7 +1003,7 @@ namespace ZeroStar
             Ult.Draw(frame);
             Prof.Mark("大招畫");
             if (!Town) DrawLowHp(frame);
-            if (Town) { TownArt.DrawWeather(frame, sceneClock); TownArt.DrawFg(frame); }
+            if (Town) { TownPuddles.Player(Player.X, Player.Vx, Player.Grounded); TownArt.DrawWeather(frame, sceneClock); TownArt.DrawFg(frame); }
             if (Director?.Lock != null) DrawBarrier(frame, Director.Lock.Value);
             if (!Town) Art.DrawForeground(frame);
             Combat.DrawNumbers(frame, ViewRect());

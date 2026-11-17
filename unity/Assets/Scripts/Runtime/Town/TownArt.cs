@@ -160,6 +160,7 @@ namespace ZeroStar
             rain = new FxRun[3];
             for (int k = 0; k < 3; k++) { var o = new FxOptions { X = 0, Y = FLOOR }; o.Num["density"] = 1; rain[k] = new FxRun(FxSystem.Def("town-rain"), o); }
             rainT = null; skyT = null;
+            TownPuddles.Reset();
         }
 
         static readonly uint[] SKY = new[] { "#0e0a24", "#130e2e", "#181238", "#1e1642", "#261a4c", "#301e56", "#3c225e", "#4c2864", "#5e2e68" }.Select(Col.Hex).ToArray();
@@ -173,9 +174,11 @@ namespace ZeroStar
         {
             var wx = WeatherInfo(); double dt = rainT == null ? 0 : Math.Max(0, Math.Min(0.1, time - rainT.Value));
             rainT = time;
-            if (wx.rain < 0.03) return;
+            double wday = DayInfo().d * (1 - 0.45 * wx.cloud);
+            if (wx.rain < 0.03) { TownPuddles.Draw(frame, time, wx.rain, wday); return; }
             int bse = (int)Math.Floor(frame.Ox / 332.0) * 332 + 166;
             for (int k = 0; k < 3; k++) { var fx = rain[k]; fx.Update(dt); fx.Options.X = bse + k * 332; fx.Options.Y = FLOOR + 1; fx.Options.Num["density"] = wx.rain * 0.45; fx.Draw(frame); }
+            TownPuddles.Draw(frame, time, wx.rain, wday);   // 積水（Unity 版自己的）：畫在雨和貼地薄霧之後，才不會被霧蓋掉
         }
 
         /// 鎮上的固定光源
