@@ -23,13 +23,16 @@ ap.add_argument("--x", type=int, default=2); ap.add_argument("--only", type=int,
 ap.add_argument("--drawn", action="store_true"); ap.add_argument("--work", default=".")
 ap.add_argument("--gap", type=int, default=6, help="物件之間至少幾格空欄才算分開")
 ap.add_argument("--cell", type=float, help="整張圖共用的格子（例如 9.4）")
+ap.add_argument("--key", default="#ff00ff", help="底色（洋紅 #ff00ff、綠 #00ff00、藍 #0000ff）。只挖跟底色很接近的格子，紫、粉紅不會被當成底色")
 A = ap.parse_args()
 src_path = os.path.abspath(A.src)
 os.makedirs(A.work, exist_ok=True); os.chdir(A.work)
 
 a = opaque(Image.open(src_path))
-bg = magenta_mask(a) | (a[..., 3] == 0)
-rgb = a.copy(); rgb[bg] = (255, 0, 255, 255)
+KEY = np.array([int(A.key.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4)])
+near_key = lambda arr, d: np.abs(arr[..., :3].astype(int) - KEY).sum(-1) < d
+bg = (near_key(a, 120) if A.cell else magenta_mask(a)) | (a[..., 3] == 0)
+rgb = a.copy(); rgb[bg] = (*KEY, 255)
 src = Image.fromarray(rgb).convert("RGB")
 fg = ~bg
 def runs(mask, gap):
@@ -57,16 +60,15 @@ for i, (x0, x1, r0, r1) in enumerate(segs):
     crop = src.crop((x0 - p, y0 - p, x1 + p, y1 + p)); crop.save(f"{A.name}-{i}.png")
     out = f"L-{A.name}-{i}"; shutil.rmtree(out, ignore_errors=True)
     if A.cell:
-        P = max(2, round(A.cell)); c = np.asarray(crop.convert("RGBA")).copy(); c[magenta_mask(c)] = 0
+        P = max(2, round(A.cell)); c = np.asarray(crop.convert("RGBA")).copy(); c[near_key(c, 120)] = 0
         im = Image.fromarray(c)
         if abs(A.cell - P) > 0.01:
             im = im.resize((round(im.width * P / A.cell), round(im.height * P / A.cell)), Image.NEAREST)
         tmp = f"_s-{A.name}-{i}.png"; im.save(tmp); tmpd = f"_r-{A.name}-{i}"; shutil.rmtree(tmpd, ignore_errors=True)
         sh(PIXEL_REDUCE, "--input", tmp, "--output-dir", tmpd, "--force", "--period", P, "--method", "mode", "--colors", 48)
         o = np.asarray(Image.open(f"{tmpd}/{tmp}").convert("RGBA")).copy()
-        # 邊上混到洋紅的格子清掉
-        r_, g_, b_ = [o[..., k].astype(int) for k in range(3)]
-        o[(o[..., 3] > 0) & (r_ > 85) & (b_ > 100) & (g_ * 3 < np.minimum(r_, b_)) & ring(o[..., 3] > 0)] = 0
+        # 只清掉外圍一圈裡混到底色的格子（跟底色差距 < 150），不碰物件本身的紫、粉紅
+        o[(o[..., 3] > 0) & ring(o[..., 3] > 0) & near_key(o, 150)] = 0
         o = o[:, :, :]; bb = Image.fromarray(o).getbbox(); o = np.asarray(Image.fromarray(o).crop(bb)).copy()
         os.makedirs(out); Image.fromarray(o).save(f"{out}/{A.name}-{i}.png"); os.remove(tmp); shutil.rmtree(tmpd)
         # 外框線色＝外圍一圈裡最常見的暗色（給 props_finish 的完美一格線用）
