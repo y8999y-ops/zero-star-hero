@@ -51,7 +51,7 @@ const GRASS = P(["#16281e", "#20382a", "#2e4e36", "#3e6844", "#548652"]);
 const WARM = C("#ffc864"), WARM_HI = C("#fff0b0"), FRAME = C("#2a1e2a"), MULLION = C("#a06030");
 
 // ---- 緩衝區
-const FAR_W = 640, MID_W = 840, FG_W = 256, SKY_W = 480;
+const FAR_W = 723, MID_W = 724, FG_W = 724, SKY_W = 480;   // 2026-11-17：場景層照原圖自己的像素格讀回（pixel_reduce 每 3 格一格），寬度跟著原圖
 const FAR = new Uint32Array(FAR_W * H), MID = new Uint32Array(MID_W * H), MAIN = new Uint32Array(TOWN_W * H), FG = new Uint32Array(FG_W * H);
 const EMIT = new Uint8Array(TOWN_W * H);   // 自己會發光的像素（窗戶、碎片、火），光影不改它
 
@@ -97,7 +97,7 @@ function shard(p, x, y, h, w, ramp, emit = true) {
 }
 
 // 店的位置（左上角 x）：門口對準居民站的地方
-const SHOPS = [["town/guild", 70], ["town/workshop", 450], ["town/inn", 800]];
+const SHOPS = [["town/guild", 70], ["town/workshop", 459], ["town/inn", 804]];   // 2026-11-17：工坊、旅館照原圖格子讀回後窄了一點，左上角往右移一半，中心不變
 // 裝飾（props/town-deco 的格子：0 木桶 1 疊木箱 2 柵欄 3 路標 4 星星路燈 5 盆栽蘑菇 6 麻袋 7 長椅）的中心 x
 const DECO = [[0, 668], [6, 1000], [7, 1070], [2, 1206]];   // 2026-11-12：裝飾減半
 const BLOOMS = [[0, 30], [3, 362], [7, 760], [4, 1040]];        // 花、蘑菇（props/flowers 的格子）
@@ -141,7 +141,9 @@ function build() {
   for (const [k, cx] of TUFTS) { const d = cell(ART["props/grass"], k, 24, 24); blit(MAIN, TOWN_W, H, d, cx - 12, FLOOR + 1 - baseRow(d)); }
 
   // ================= 前景：比主角近的草叢與蘑菇（左右循環） =================
-  blit(FG, FG_W, H, ART["town/fg"], 0, H - ART["town/fg"].h);
+  // 2026-11-17：新前景（照原圖格子讀回）有 84 格高，整張貼會擋住角色；往下沉，只露出上面 FG_SHOW 格，蕨葉從畫面底部往上冒
+  const FG_SHOW = 46;
+  blit(FG, FG_W, H, ART["town/fg"], 0, H - Math.min(FG_SHOW, ART["town/fg"].h));
 }
 build();
 /** Unity 轉移用（game/tools/unity/unity-export.mjs）：載入時畫好的圖層、會發光的像素、光源。網頁版不會用到。 */
