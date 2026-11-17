@@ -12,7 +12,7 @@ from oklab import oklab, unoklab
 from PIL import Image
 BLACK = np.array([0x11, 0x10, 0x2e], np.uint8); DARK = 0.25
 src, dst, name = sys.argv[1:4]; os.makedirs(dst, exist_ok=True)
-files = sorted(glob.glob(f"{src}/{name}-?.png")) or [f"{src}/{name}.png"]
+files = sorted(f for f in glob.glob(f"{src}/{name}-*.png") if f[:-4].rsplit("-", 1)[1].isdigit()) or [f"{src}/{name}.png"]
 pal = {}
 for f in files:
     a = np.asarray(Image.open(f).convert("RGBA"))
@@ -55,6 +55,6 @@ for f in files:
         if new: stats["new_colours"].add(tuple(col))
     Image.fromarray(out).save(f"{dst}/{os.path.basename(f)}")
 allc = set()
-for f in (glob.glob(f"{dst}/{name}-?.png") or [f"{dst}/{name}.png"]):
+for f in ([f for f in glob.glob(f"{dst}/{name}-*.png") if f[:-4].rsplit("-", 1)[1].isdigit()] or [f"{dst}/{name}.png"]):
     a = np.asarray(Image.open(f).convert("RGBA")); allc |= {tuple(q) for q in a[a[..., 3] > 0][:, :3]}
 print(name, "outer ring → black", stats["outer"], "| inner black → material dark", stats["inner"], "| new shades", len(stats["new_colours"]), "| colours", len(allc))

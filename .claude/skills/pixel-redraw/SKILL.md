@@ -23,7 +23,13 @@ description: 把 AI 生的「假像素」參考原圖重畫成遊戲用的像素
   - 自己看截圖覺得「可以」不可靠。
   - 使用者用手機看，說明用繁體中文、短句。
 
-## 1. 小物件表（一排 6～8 個物件的圖）
+## 0b. 生新圖：尺規參考圖
+
+- AI 不會照尺規要求的像素大小畫。例如要它畫 11 px 一格，它實際畫成約 9.4 px，細節更細。所以尺規的方塊大小要設成 AI 自然會畫的大小（約 9 px），**物件的畫布預留 32×32**（使用者 2026-11-17：「大一點沒關係」）。
+- 尺規圖裡放一個**已經通過的同類物件**（放大成同樣的方塊大小），讓每一批都對齊同一個像素大小。不要每批換一個新的尺。
+- 提示詞與尺規放在 `docs/美術/提示詞-道具.md`、`art/1-參考原圖/items/`。
+
+## 1. 小物件表（一排或幾排物件的圖）
 
 ```bash
 python scripts/props_read.py --src art/1-參考原圖/props/rocks.png --name rocks --work art/2-草稿/xxx
@@ -31,13 +37,24 @@ python scripts/props_finish.py --name rocks --colors 16 --work art/2-草稿/xxx 
 python scripts/props_finish.py --name moss --colors 12 --no-outline --align top --work ...   # 沒外框、往上掛
 ```
 
-1. **逐個切開，用 `pixel_look master --proportions blocks` 讀回。**
-   - 要用 `blocks`：用 `picture` 的話，複製出來的那列線會變兩格粗、斜線會抖。
-   - 報錯「cells are only about N px」，就用 `--x 3` 重讀那幾個（`--only i`）。
+1. **先量整張圖的格子，用同一個格子讀每個物件。**
+   ```bash
+   python scripts/scene_grid.py art/1-參考原圖/items/cores.png          # 例：x 9.3、y 9.6 → 用 9.4
+   python scripts/props_read.py --src .../cores.png --name cores --cell 9.4 --work ...   # 幾排的格子圖也能切
+   ```
+   - 一張圖裡的物件是 AI 用同一個格子畫的，所以要用同一個格子讀。
+   - 讓 `pixel_look` 每個物件自己判斷的話，細長、尖角、有煙的物件會被誤判成更細的格子（6～7 px），讀回來變大又糊，每個大小也不一樣（2026-11-17 星核：22～42 px 不等，使用者問「你有照 skill 嗎」）。
+   - 改用共用格子後，12 個都落在 22～29 px。
+   - 只有一排、物件格子明顯各不相同的舊原圖，才不給 `--cell`，改用 `pixel_look master --proportions blocks`。
+     - 要用 `blocks`：用 `picture` 的話，複製出來的那列線會變兩格粗、斜線會抖。
+     - 報錯「cells are only about N px」，就用 `--x 3` 重讀那幾個（`--only i`）。
 2. **每張表一套色盤，上限 24 色，不一定要用滿。**
    - 太接近的色會合併。使用者說過色數太多會「太雜亂」，像素畫要適當簡化，不必完全忠於原圖。
    - 不同類的表不要硬共用一套色盤，藍、紅這些少數色會被擠掉。
    - 只出現在單一物件上的重點色用 `--reserve` 加回，例如路燈的亮黃星星。
+   - 道具圖示一張有十幾種不同材質，24 色很緊。苔蘚綠、粉紅、紫光這種少數色，一定要先從讀回結果（`L-`）挑出來 `--reserve`，不然會被吸成金或灰。
+   - 光芒、火花、粉塵、彗尾這些本來就分開的小塊，要加 `--keep-parts`。不加的話會被當成碎片刪掉。格子圖物件之間空很寬，不會有隔壁物件切進來。
+   - 套完外框規則超過 24 色時，用 `cap24.py` 併回去。
 3. **外輪廓輕修。**
    - 跑完美一格線 `pp_fix` 和外輪廓抖動修平 `flatten`，然後用 `pixel_qa` 看 L 形直角和外圍缺口。
    - 小草、苔藤這類 `--no-outline`，混進來的洋紅要清掉。

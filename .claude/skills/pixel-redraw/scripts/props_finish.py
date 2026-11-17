@@ -16,6 +16,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--name", required=True); ap.add_argument("--colors", type=int, default=24)
 ap.add_argument("--no-outline", action="store_true"); ap.add_argument("--align", default="bottom")
 ap.add_argument("--reserve", nargs="*", default=[]); ap.add_argument("--work", default=".")
+ap.add_argument("--keep-parts", action="store_true", help="不拿掉分開的小塊（光芒、火花、粉塵這類本來就分開的部分；格子圖之間空很寬，沒有隔壁物件切進來）")
 A = ap.parse_args(); os.chdir(A.work); n = A.name
 
 srcs = [s for s in sorted(glob.glob(f"L-{n}-*/{n}-*.png")) if os.path.basename(s)[:-4].rsplit("-", 1)[1].isdigit()]
@@ -40,7 +41,8 @@ for s in srcs:
         os.remove(dst + ".a.png"); os.remove(dst + ".b.png")
     else:
         shutil.copy(src, dst)
-    a = drop_stray(np.asarray(Image.open(dst).convert("RGBA")).copy()); Image.fromarray(a).save(dst)
+    if not A.keep_parts:
+        a = drop_stray(np.asarray(Image.open(dst).convert("RGBA")).copy()); Image.fromarray(a).save(dst)
     if not A.no_outline:
         rp = f"fix-{n}/qa-{b}.json"
         sh(PIXEL_QA, "--input", dst, "--outline", c, "--report", rp)
