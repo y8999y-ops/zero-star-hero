@@ -5,11 +5,12 @@ import numpy as np
 from PIL import Image
 from scipy import ndimage
 
-ASF = os.environ.get("ASF_ROOT", r"C:/Users/USER/Desktop/agent-sprite-forge")
-PIXEL_LOOK = os.path.join(ASF, "skills/generate2dsprite/scripts/pixel_look.py")
-PIXEL_REDUCE = os.path.join(ASF, "skills/generate2dsprite/scripts/pixel_reduce.py")
-PALETTE_TOOL = os.path.join(ASF, "skills/generate2dsprite/scripts/palette_tool.py")
-PIXEL_QA = os.path.join(ASF, "skills/codeart2d/scripts/pixel_qa.py")
+# agent-sprite-forge 的 skill 裝在同一個 .claude/skills 底下（generate2dsprite、codeart2d…）；要用別的位置就設 ASF_SKILLS
+SKILLS = os.environ.get("ASF_SKILLS", os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")))
+PIXEL_LOOK = os.path.join(SKILLS, "generate2dsprite/scripts/pixel_look.py")
+PIXEL_REDUCE = os.path.join(SKILLS, "generate2dsprite/scripts/pixel_reduce.py")
+PALETTE_TOOL = os.path.join(SKILLS, "generate2dsprite/scripts/palette_tool.py")
+PIXEL_QA = os.path.join(SKILLS, "codeart2d/scripts/pixel_qa.py")
 HERE = os.path.dirname(os.path.abspath(__file__))
 ENV = dict(os.environ, PYTHONUTF8="1")
 

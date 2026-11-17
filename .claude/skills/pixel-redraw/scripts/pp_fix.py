@@ -8,7 +8,7 @@ import sys
 import numpy as np
 from PIL import Image
 import os
-sys.path.insert(0, os.path.join(os.environ.get("ASF_ROOT", r"C:/Users/USER/Desktop/agent-sprite-forge"), "skills", "codeart2d", "scripts"))
+sys.path.insert(0, os.path.join(os.environ.get("ASF_SKILLS", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")), "codeart2d", "scripts"))
 import codeart_core as cc
 
 def lum(rgb):

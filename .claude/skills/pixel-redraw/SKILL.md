@@ -12,7 +12,7 @@ description: 把 AI 生的「假像素」參考原圖重畫成遊戲用的像素
 - **原圖是假像素。** AI 畫的是被不整齊放大的像素畫，格子是小數，而且寬高常常不同（例如 6.2、4.02×5.32）。所以要照它自己的格子讀回。
   - 固定倍率縮圖會糊。
   - 用程式重畫（codeart2d、pixelfx 重新上色、逐物件重畫）都試過，使用者說「蠻糟糕」「細節不見」「偏離原圖」。
-- **工具**：`C:/Users/USER/Desktop/agent-sprite-forge`（環境變數 `ASF_ROOT` 可改）。本 skill 的腳本在 `scripts/`，都是 `python 腳本 --help` 看得到用法。需要 numpy、Pillow、scipy。
+- **工具**：agent-sprite-forge（MIT，0x0funky）的 skill 已裝在同一個 `.claude/skills/` 底下：`generate2dsprite`（pixel_look、pixel_reduce、palette_tool）、`codeart2d`（pixel_qa、_pixel_perfect）等；要用別的位置就設環境變數 `ASF_SKILLS`。本 skill 的腳本在 `scripts/`，都是 `python 腳本 --help` 看得到用法。需要 numpy、Pillow、scipy。
 - **資料夾**：
   - `art/1-參考原圖/`：原圖。
   - `art/2-草稿/<名稱>-look/`：工作資料夾。
