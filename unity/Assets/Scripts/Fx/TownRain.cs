@@ -17,7 +17,8 @@ namespace PixelFX.Fx
         {
             var d = new FxDef
             {
-                Name = "Rain", W = 320, H = 180, OX = 160, OY = 170, Duration = 8, Loop = true, Fps = 30,
+                Name = "Rain", W = 320, H = 240, OX = 160, OY = 230,   // 2026-11-19：高度蓋滿整個畫面（原本 180，畫面最上面一條沒有雨）
+                Duration = 8, Loop = true, Fps = 30,
                 Options = new FxOptions
                 {
                     Palette = new[] { "#0e1322", "#1a2440", "#283a5e", "#3a5482", "#5674a8", "#84a6d6", "#c0dcf8", "#f2f8ff" },
@@ -31,14 +32,14 @@ namespace PixelFX.Fx
         const double D = 8, SLANT = -0.2;
         static readonly double UX = SLANT / Hypot(SLANT, 1), UY = 1 / Hypot(SLANT, 1);
         class Layer { public int n, m0, m1, len; public int[] col; public double[] stop, z, size; public bool near; }
-        // 從遠到近的深度：幾滴、一個迴圈落幾次（速度）、雨絲多長、顏色（尾、身、頭）、
+        // 從遠到近的深度（2026-11-19 落下距離從 172 加到 232，落幾次照比例調低，速度不變）：幾滴、一個迴圈落幾次（速度）、雨絲多長、顏色（尾、身、頭）、
         // 在哪裡結束（空中，或落在深度 z 的地上）、水花多大
         static readonly Layer[] LAYERS =
         {
-            new Layer { n = 200, m0 = 10, m1 = 13, len = 2, col = new[] { 2, 2, 3 }, stop = new double[] { -80, -6 } },
-            new Layer { n = 150, m0 = 14, m1 = 17, len = 4, col = new[] { 2, 3, 4 }, stop = new double[] { -45, -2 } },
-            new Layer { n = 96, m0 = 19, m1 = 23, len = 7, col = new[] { 3, 4, 5 }, z = new[] { 0, 1.4 }, size = new[] { 0.15, 0.4 } },
-            new Layer { n = 42, m0 = 25, m1 = 29, len = 13, col = new[] { 3, 5, 7 }, z = new[] { 2, 6.5 }, size = new[] { 0.6, 1.0 }, near = true },
+            new Layer { n = 200, m0 = 7, m1 = 10, len = 2, col = new[] { 2, 2, 3 }, stop = new double[] { -80, -6 } },   // 2026-11-19：雨小 20%（長度、水花 ×0.8）
+            new Layer { n = 150, m0 = 10, m1 = 13, len = 3, col = new[] { 2, 3, 4 }, stop = new double[] { -45, -2 } },
+            new Layer { n = 96, m0 = 14, m1 = 17, len = 6, col = new[] { 3, 4, 5 }, z = new[] { 0, 1.4 }, size = new[] { 0.12, 0.32 } },
+            new Layer { n = 42, m0 = 19, m1 = 21, len = 10, col = new[] { 3, 5, 7 }, z = new[] { 2, 6.5 }, size = new[] { 0.48, 0.8 }, near = true },
         };
         // 城鎮版沒有水窪（地是城鎮的），所以原本「落在水窪裡畫漣漪」那段永遠不會走到，這裡省略
 
@@ -70,7 +71,8 @@ namespace PixelFX.Fx
                 // 陣風：一片片比較密、比較疏的雨跟著風掃過去
                 if (L < 2 && Rand(sd, i, j, 7) > 0.35 + 1.3 * (Sample(G, (-166 + Rand(sd, i, j, 2) * 332) * 0.8 + sweep, 9 + L * 40) - 0.32)) return;
                 double end = Ly.z != null ? Ly.z[0] + Rand(sd, i, j, 1) * (Ly.z[1] - Ly.z[0]) : Ly.stop[0] + Rand(sd, i, j, 1) * (Ly.stop[1] - Ly.stop[0]);
-                double y0 = -172 - len, y = y0 + (end - y0) * u, x = -166 + Rand(sd, i, j, 2) * 332 - (end - y) * SLANT;
+                double y0 = -232 - len,   // 從畫面外開始落（蓋滿整個畫面）
+                       y = y0 + (end - y0) * u, x = -166 + Rand(sd, i, j, 2) * 332 - (end - y) * SLANT;
                 // 遠的雨滴結束前變淡；近的完整
                 double a = Ly.z != null ? 1 : Math.Min(1, (1 - u) * 5);
                 if (len <= 2) { q.Dot(x, y, c2, a); q.Dot(x - UX, y - UY, c1, a * 0.8); }
@@ -81,7 +83,7 @@ namespace PixelFX.Fx
                     q.Dot(x, y, c2, a);
                 }
                 // 近的雨滴反光
-                if (Ly.near) q.Glow(x, y - 2, 4, C[5], 0.12);
+                if (Ly.near) q.Glow(x, y - 2, 3, C[5], 0.12);
                 if (Ly.z == null) return;
                 // 這滴之前落地的幾滴：地上的水花
                 double dur = D / m;
