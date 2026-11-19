@@ -59,8 +59,9 @@ export const BIG_CRYSTALS = [];
 
 // 每關放在地上的道具（主題不同，放的東西不同）：[素材表, 格寬, 格高, 可用的格子]
 const KIT = {
-  rocks: ["props/rocks", 64, 64, [0, 1, 2, 3]], bigRocks: ["props/rocks", 64, 64, [4, 5, 6]],
-  junk: ["props/junk", 48, 40, [0, 1, 2, 3, 4, 6, 7]], gold: ["props/crystals", 52, 52, [0, 1]], cyan: ["props/crystals", 52, 52, [3, 4]],
+  // 2026-11-19：換成照原圖格子讀回的新版（rocks 8 格 50×47、junk 87×66、crystals 40×32：0～2 黃、3～5 藍，挑大的兩顆）
+  rocks: ["props/rocks", 50, 47, [1, 2, 3, 4]], bigRocks: ["props/rocks", 50, 47, [5, 6, 7]],
+  junk: ["props/junk", 87, 66, [0, 1, 2, 3, 4, 6, 7]], gold: ["props/crystals", 40, 32, [1, 2]], cyan: ["props/crystals", 40, 32, [4, 5]],
   grass: ["props/grass", 24, 24, [0, 1, 2, 3, 4, 5, 6, 7]], shrooms: ["props/flowers", 32, 32, [4, 5, 6]],
 };
 const MIX = {
@@ -96,15 +97,17 @@ function build() {
     if (THEME === "lair") paintLair((x, y) => solidAt(x, y + 0.5), LEVEL_W, MAP_H, (x, y, c) => put(x, y, C(c)), LAYOUT.arena);   // 特效補強 5：巢穴的黏液、抓痕、啃痕
     for (const g of glowClusters(gl, 24)) PROP_LIGHTS.push({ x: g.x, y: g.y, r: 26, lv: 1.3, col: g.col });
   } else {
-  const STONE = (x, y) => gt.px[(16 + (y % 30)) * gt.w + 86 + (x % 30)];
+  // 2026-11-19 新地面（540×78）：草皮最上緣在第 GT 列（找第一列幾乎填滿的），超過圖塊高度改用最下面 30 列循環
+  let GT = 0; while (GT < gt.h - 1) { let n = 0; for (let x = 0; x < gt.w; x++) if (gt.px[GT * gt.w + x]) n++; if (n > gt.w * 0.9) break; GT++; }
+  const STONE = (x, y) => gt.px[(gt.h - 30 + (y % 30)) * gt.w + (x % gt.w)];
   const EDGE = C("#12122a");
   for (let x = 0; x < LEVEL_W; x++) {
     let d = 999;
     for (let y = 0; y < MAP_H; y++) {
       if (!solidAt(x, y + 0.5)) { d = -1; continue; }
       d = d < 0 ? 0 : d + 1;
-      if (d === 0 && y > 0) for (let g = 1; g <= 9; g++) if (!solidAt(x, y - g + 0.5) && !PF[(y - g) * LEVEL_W + x]) put(x, y - g, gt.px[(9 - g) * gt.w + (x % gt.w)]);
-      let c = d + 9 < gt.h - 1 ? gt.px[(d + 9) * gt.w + (x % gt.w)] : STONE(x, y);
+      if (d === 0 && y > 0) for (let g = 1; g <= GT; g++) if (!solidAt(x, y - g + 0.5) && !PF[(y - g) * LEVEL_W + x]) put(x, y - g, gt.px[(GT - g) * gt.w + (x % gt.w)]);
+      let c = d + GT < gt.h - 1 ? gt.px[(d + GT) * gt.w + (x % gt.w)] : STONE(x, y);
       if (!c) c = STONE(x, y);
       const side = !solidAt(x - 1, y + 0.5) || !solidAt(x + 1, y + 0.5), under = !solidAt(x, y + 1.5) || !solidAt(x, y + 2.5);
       if (side && d > 3) c = EDGE;
@@ -132,10 +135,14 @@ function build() {
   // 平台：浮空岩台的左半＋右半拼成平台的寬度；苔蘚頂面（第 4 列）對準平台的高度
   // 10 批（美術需求 A4）：垃圾山、巢穴用木板垃圾平台，洞窟用苔蘚岩架（platform-art.js）；深淵照舊
   const pl = JUNKY ? genPlatform("junk") : THEME === "cave" ? genPlatform("cave") : ART["valley/platform"];
+  // 圖的左右邊（有像素的第一欄、最後一欄）：舊圖 4～126，2026-11-19 新圖 162 寬是 0～161
+  let PL = 0, PR = pl.w - 1;
+  const colHas = (x) => { for (let y = 0; y < pl.h; y++) if (pl.px[y * pl.w + x]) return true; return false; };
+  while (PL < PR && !colHas(PL)) PL++; while (PR > PL && !colHas(PR)) PR--;
   for (const p of PLATFORMS) {
     const half = Math.floor(p.w / 2), x0 = p.x;
     for (let y = 0; y < pl.h; y++) for (let i = 0; i < p.w; i++) {
-      const sx = i < half ? 4 + i : 126 - (p.w - 1 - i);
+      const sx = i < half ? Math.min(PL + i, PR) : Math.max(PR - (p.w - 1 - i), PL);
       put(x0 + i, p.y - 4 + y, pl.px[y * pl.w + sx]);
     }
   }

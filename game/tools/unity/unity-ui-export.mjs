@@ -67,6 +67,12 @@ for (const [name, cv] of Object.entries(vars)) { writeFileSync(join(OUT, name + 
 const { ICONS } = await import("../../src/icons.js");
 let m = 0;
 for (const name of Object.keys(ICONS)) { const url = UA.iconURL(name, 1), k = url.match(/canvas:(\d+)/); if (!k) continue; writeFileSync(join(OUT, "icons", name + ".png"), PixCanvas.reg[+k[1]].png()); m++; }
+// 重畫通過的道具圖示（art/3-已通過/icons，36×36 畫布、pixel-redraw 畫的）蓋過程式畫的 16×16（只換介面；地上掉落物仍用 icons.js）
+{
+  const { readdirSync, copyFileSync } = await import("node:fs");
+  const DIR = join(ROOT, "art", "3-已通過", "icons");
+  for (const f of readdirSync(DIR)) if (f.endsWith(".png")) copyFileSync(join(DIR, f), join(OUT, "icons", f));
+}
 // 系統的臉（system-face.js）：4 種表情 × 8 格，face-表情-格.png（40×40）
 const SF = await import("../../src/system-face.js");
 mkdirSync(join(OUT, "face"), { recursive: true });

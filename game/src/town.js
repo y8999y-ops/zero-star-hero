@@ -126,12 +126,12 @@ function build() {
   }
   for (const g of glowClusters(glow, 30)) LIGHTS.push([g.x, g.y, Math.min(56, 18 + Math.sqrt(g.n) * 2.2), g.n > 80 ? 1.4 : 0.9, g.col]);
   // 星星路燈（裝飾表第 4 格）：星星是光源
-  const deco = (i) => cell(ART["props/town-deco"], i, 48, 72);
+  const deco = (i) => cell(ART["props/town-deco"], i, 48, 80);   // 2026-11-19：新版（照原圖格子讀回）路燈變高，每格 48×80
   const lamp = deco(4), lampBase = baseRow(lamp);
   for (const x of LAMPS) {
     const x0 = x - 24, y0 = FLOOR + 1 - lampBase;
     blit(MAIN, TOWN_W, H, lamp, x0, y0, { onPx: (i, c) => { if (glows(c)) EMIT[i] = 1; } });
-    LIGHTS.push([x0 + 37, y0 + 25, 60, 2.2, "#ffcf6a"]);
+    LIGHTS.push([x0 + 34, y0 + 24, 60, 2.2, "#ffcf6a"]);   // 新路燈的星星中心
   }
   for (const [k, cx] of DECO) { const d = deco(k); blit(MAIN, TOWN_W, H, d, cx - 24, FLOOR + 1 - baseRow(d)); }
   const sign = deco(3);
