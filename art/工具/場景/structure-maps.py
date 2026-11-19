@@ -63,6 +63,8 @@ def guild():
                 M[y][x] = AVOID                                    # 屋頂上的水晶（金色、亮面、暗面；不是石板瓦的藍紫色）
             elif (48 <= x <= 74 or 188 <= x <= 214) and 58 <= y <= 81:
                 M[y][x] = AVOID                                    # 小屋頂窗的正面（窗、窗框）
+            elif 34 <= x <= 62 and y <= 44:
+                M[y][x] = AVOID                                    # 煙囪（直立的面：雪不黏、雨水繞過去；頂上的雪由頂面那層積）
             elif inside_tri(x, y, apex, gl, gr):
                 M[y][x] = SHELTER                                  # 山牆正面（盾牌那一面是直立的，水不從上面流）
             else:
@@ -172,6 +174,8 @@ def workshop():
                 M[y][x] = AVOID                                    # 拱頂的招牌
             elif 10 <= x <= 37 and 62 <= y <= 97:
                 M[y][x] = AVOID                                    # 左邊的窗（含石框）
+            elif 128 <= x <= 158 and y <= 40:
+                M[y][x] = AVOID                                    # 右上的煙囪（直立的面：雪不黏、雨水繞過去）
             elif (37 <= x <= 51 or 127 <= x <= 141) and 73 <= y <= 117:
                 M[y][x] = GUIDE                                    # 拱門兩邊的木柱：拱上流下來的水順著往下
             elif y <= 76 and 0.9 <= dout < 1.0:

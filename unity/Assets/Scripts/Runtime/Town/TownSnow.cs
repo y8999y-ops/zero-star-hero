@@ -32,6 +32,14 @@ namespace ZeroStar
 
         static double Hash(int i, int s) { unchecked { uint h = (uint)(i * 374761393 + s * 668265263); h = (h ^ (h >> 13)) * 1274126177; h ^= h >> 16; return (h & 0xffffff) / 16777216.0; } }
         static double Noise(double x, int s) { int i = (int)Math.Floor(x); double f = x - i; f = f * f * (3 - 2 * f); return Hash(i, s) + (Hash(i + 1, s) - Hash(i, s)) * f; }
+        /// 二維雜訊（一維雜訊斜著拉會出現一條條斜直線，所以屋頂面的雪用這個）
+        static double Noise2(double x, double y, int s)
+        {
+            int ix = (int)Math.Floor(x), iy = (int)Math.Floor(y); double fx = x - ix, fy = y - iy;
+            fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
+            double a = Hash(ix + iy * 7919, s), b = Hash(ix + 1 + iy * 7919, s), c = Hash(ix + (iy + 1) * 7919, s), d = Hash(ix + 1 + (iy + 1) * 7919, s);
+            return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy;
+        }
 
         /// 載入（或重新擺放建築）之後叫一次：每一欄的接雪面與能堆多厚
         public static void Build(uint[] main)
@@ -54,14 +62,45 @@ namespace ZeroStar
                 int l = x > 0 ? topY[x - 1] : t, r = x < TOWN_W - 1 ? topY[x + 1] : t;
                 int slope = Math.Max(Math.Abs(l - t), Math.Abs(r - t));
                 cap[x] = (byte)(slope <= 0 ? 6 : slope == 1 ? 5 : slope == 2 ? 4 : slope == 3 ? 2 : slope == 4 ? 1 : 0);   // 平的厚、斜的薄、陡的堆不住
+                if (c == TownStructure.ROOF && cap[x] > 3) cap[x] = 3;   // 結構圖的屋頂：整面的雪會蓋，頂面那層薄一點
             }
             if (TownRainHits.DebugLog) { int g = 0, z = 0; var hist = new System.Collections.Generic.SortedDictionary<int, int>(); for (int x = 0; x < TOWN_W; x++) { if (topY[x] >= FLOOR) g++; if (cap[x] == 0) z++; int b = topY[x] / 10 * 10; hist[b] = hist.TryGetValue(b, out int v) ? v + 1 : 1; } UnityEngine.Debug.Log($"[Snow] 地面 {g} 欄、堆不住 {z} 欄、頂面分布 " + string.Join(" ", System.Linq.Enumerable.Select(hist, kv => kv.Key + ":" + kv.Value))); }
             // 屋頂面（結構圖）整面朝天空：越靠近頂端越早被雪蓋，加上雜訊，雪一塊一塊往下長（照影片 05 物件上的積雪）
             mainRef = main; face = new byte[TOWN_W * H];
+            // 屋頂表面（算「離天空多遠」用）：跳過繞開的東西（煙囪、水晶），從它後面的屋頂算；表面多陡（陡的面雪少）
+            var topR = new int[TOWN_W]; var steep = new double[TOWN_W];
+            for (int x = 0; x < TOWN_W; x++)
+            {
+                topR[x] = FLOOR;
+                for (int y = 0; y < FLOOR - 2; y++) { if (!Solid(x, y)) continue; topR[x] = TownStructure.At(x, y) == TownStructure.AVOID ? -1 : y; break; }
+            }
+            // 頂上是繞開的東西（煙囪、水晶）的那幾欄：屋頂線用左右兩邊連起來補（像屋頂從它後面穿過去）。
+            // 從它下面開始算會切出方塊，整段跳過又會讓寬的水晶周圍一大塊沒雪
+            for (int x = 0; x < TOWN_W; x++)
+            {
+                if (topR[x] != -1) continue;
+                int l = x - 1; while (l >= 0 && topR[l] == -1) l--;
+                int r = x; while (r < TOWN_W && topR[r] == -1) r++;
+                bool okL = l >= 0 && topR[l] < FLOOR, okR = r < TOWN_W && topR[r] < FLOOR;
+                for (int xx = x; xx < r; xx++)
+                    topR[xx] = okL && okR ? (int)Math.Round(topR[l] + (topR[r] - topR[l]) * (xx - l) / (double)(r - l)) : okL ? topR[l] : okR ? topR[r] : FLOOR;
+                x = r - 1;
+            }
+            for (int x = 4; x < TOWN_W - 4; x++)
+            {
+                // 坡度看左右各 4 欄（只看隔壁一欄的話，青苔一撮撮凸起來會被當成很陡）
+                int a2 = topR[x - 4], b2 = topR[x + 4];
+                double slope = a2 >= FLOOR || b2 >= FLOOR ? 9 : Math.Abs(b2 - a2) / 8.0;
+                steep[x] = Math.Max(0, Math.Min(1, (slope - 0.6) / 1.4));
+            }
             for (int y = 0; y < FLOOR - 4; y++) for (int x = 0; x < TOWN_W; x++)
             {
                 if (TownStructure.At(x, y) != TownStructure.ROOF || topY[x] >= FLOOR) continue;
-                double below = (y - topY[x]) / 26.0, n = Noise(x / 5.0 + y * 0.37, 31) * 0.6 + Noise(x / 2.0 - y * 0.21, 32) * 0.4;
+                // 離天空多遠：往左右各看 12 欄、斜著算（只看這一欄的頂面的話，煙囪、水晶旁邊頂面突然跳很多，雪會被切出一條垂直線）
+                double dist = 1e9, st = 1;
+                for (int dx = -12; dx <= 12; dx++) { int xx = x + dx; if (xx < 0 || xx >= TOWN_W || topR[xx] >= FLOOR) continue; double dd = y - topR[xx] + Math.Abs(dx) * 0.7; if (dd < dist) { dist = dd; st = steep[xx]; } }
+                if (dist > 1e8) continue;
+                double below = Math.Max(0, dist) / 26.0 + st * 0.9, n = Noise2(x / 6.0, y / 4.0, 31) * 0.6 + Noise2(x / 2.5, y / 2.5, 32) * 0.4;   // 陡的面（圓頂兩側）雪少
                 double sc = 1 - below * 0.75 + (n - 0.5) * 0.5;
                 face[y * TOWN_W + x] = (byte)Math.Max(1, Math.Min(255, sc * 200));
             }
@@ -93,7 +132,7 @@ namespace ZeroStar
             double c = cover; if (c <= 0.01 || cap[x] == 0) return 0;
             // 門檻：積雪越多門檻越低；雜訊高的地方先長
             double k = (c * 1.35 - (1 - nCol[x]) * 0.55);
-            return (int)Math.Floor(Math.Max(0, Math.Min(1, k)) * cap[x] + 0.35);
+            return (int)Math.Floor(Math.Max(0, Math.Min(1, k)) * cap[x] * (0.55 + 0.45 * nCol[x]) + 0.35);   // 厚度隨欄變化：下緣不整齊（每欄一樣厚會變成一條水平線）
         }
 
         static uint Pack(double r, double g, double b) => unchecked(0xff000000u | ((uint)Math.Min(255, Math.Max(0, b)) << 16) | ((uint)Math.Min(255, Math.Max(0, g)) << 8) | (uint)Math.Min(255, Math.Max(0, r)));
