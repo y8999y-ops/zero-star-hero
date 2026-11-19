@@ -50,6 +50,8 @@ namespace ZeroStar
         double perfMs, perfT; int perfN;
         readonly System.Diagnostics.Stopwatch watch = new System.Diagnostics.Stopwatch();
 
+        /// 這一格經過的時間（秒）。錄影時（Unity Recorder 設了 Time.captureDeltaTime）用錄影固定的影格時間，遊戲時間才會跟影片一致；平常用真實時間。
+        public static float FrameDt => Time.captureDeltaTime > 0 ? Time.captureDeltaTime : Time.unscaledDeltaTime;
         public static int WidthFor(float aspect) => Math.Max(320, Math.Min(480, (int)Pf.Round(H * aspect / 2) * 2));
 
         void Awake()
@@ -86,7 +88,7 @@ namespace ZeroStar
         {
             if (Math.Abs(Aspect() - lastAspect) > 0.001f) { int w = WidthFor(Aspect()); if (w != W) Rebuild(w); else lastAspect = Aspect(); }
             watch.Restart();
-            acc += Math.Min(0.1, Time.unscaledDeltaTime);
+            acc += Math.Min(0.1, FrameDt);
             while (acc >= STEP) { acc -= STEP; Tick?.Invoke(STEP); }
             if (Paused?.Invoke() == true) { Fit(); return; }   // 地圖、視窗開著：遊戲暫停，畫面停在最後一格（不用每格重畫）
             Frame.Clear();

@@ -2,7 +2,7 @@
 // 執行（要有畫面，不能 -batchmode）：
 //   Unity.exe -projectPath <unity> -executeMethod ZeroStar.EditorTools.RecordPlay.Run -shot <暫存資料夾> -shotat 999999
 //   環境變數：TRACE_SCRIPT（自動玩的腳本：場景、天氣、時間、按鍵）、REC_OUT（輸出檔，不含副檔名）、REC_SECONDS（秒數，預設 18）、
-//            REC_W／REC_H（解析度，預設 1152×648）、REC_FPS（預設 30）
+//            REC_W／REC_H（解析度，預設 1152×648）、REC_FPS（預設 60）
 // 錄影是固定影格時間（Recorder 的 Constant＋Cap），電腦慢也不會掉格；遊戲的時間照影格走。
 using System;
 using System.IO;
@@ -41,7 +41,7 @@ namespace ZeroStar.EditorTools
             if (s != PlayModeStateChange.EnteredPlayMode || !SessionState.GetBool(KEY, false)) return;
             SessionState.SetBool(KEY, false);
             int w = int.Parse(Env("REC_W", "1152")), h = int.Parse(Env("REC_H", "648"));
-            float fps = float.Parse(Env("REC_FPS", "30"), System.Globalization.CultureInfo.InvariantCulture);
+            float fps = float.Parse(Env("REC_FPS", "60"), System.Globalization.CultureInfo.InvariantCulture);
             float seconds = float.Parse(Env("REC_SECONDS", "18"), System.Globalization.CultureInfo.InvariantCulture);
             string outFile = Env("REC_OUT", Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Golden", "rec", "play"));
             Directory.CreateDirectory(Path.GetDirectoryName(outFile));

@@ -211,8 +211,8 @@ namespace ZeroStar
             ZeroStar.UI.Ui.Refit();   // 電腦版：介面跟著視窗大小
             FitSafeArea();
             bool open = win.Open || inv.Open; if (wasOpen && !open) Save(); wasOpen = open;   // 關掉背包、視窗：存檔
-            if (titleShot != null) TitleShot(Time.unscaledDeltaTime);
-            float dt = Time.unscaledDeltaTime;
+            if (titleShot != null) TitleShot(PixelScreen.FrameDt);
+            float dt = PixelScreen.FrameDt;   // 介面動畫：錄影時照影格走
             hud.Touch = touchMode; mapWin.Touch = touchMode; hud.Dim = dlg.Open;
             hud.Update(game, dt); mapWin.Update(dt); dlg.Update(dt); win.Update(dt); inv.Update(dt); settings.Update(dt);
             title.Update(dt); intro.Update(dt); loading.Update(dt); uiFx.Update(dt);

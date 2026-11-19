@@ -167,6 +167,9 @@ description: 做或調整場景環境特效（Unity 版）：天氣（雨、雪�
 - 腳本：`Editor/RecordPlay.cs`。
   - 進 Play Mode，用 GameRoot 的自動玩（`-shot … -shotat 999999`），照 `TRACE_SCRIPT` 的場景、天氣、時間、按鍵自動玩。
   - Recorder 用固定影格時間（Constant＋Cap），錄滿 `REC_SECONDS` 秒就存成 MP4，然後關掉編輯器。
+  - **使用者要 60 fps**（`REC_FPS` 預設 60）。
+  - 遊戲時間要跟著影格走：`PixelScreen.FrameDt` 在錄影時（`Time.captureDeltaTime > 0`）用錄影的固定影格時間，平常用真實時間；`Time.unscaledDeltaTime` 不受錄影影響，用了的話影片裡的動作會偏快或偏慢。
+  - 新的計時一律用 `PixelScreen.FrameDt`。驗證方法：同一段 30 fps、60 fps 各錄一次，同一秒的畫面要一樣。
   - 要開編輯器畫面，不能加 `-batchmode`。
   ```bash
   REC_OUT='C:\Users\USER\ZeroStarUnity\Golden\rec\<檔名>' REC_SECONDS=18 TRACE_SCRIPT='<腳本.json>' "/c/Program Files/Unity/Hub/Editor/6000.6.0f1/Editor/Unity.exe" -projectPath 'C:\Users\USER\ZeroStarUnity' -executeMethod ZeroStar.EditorTools.RecordPlay.Run -shot 'C:\Users\USER\ZeroStarUnity\Golden\rec\tmp' -shotat 999999 -logFile <log>
