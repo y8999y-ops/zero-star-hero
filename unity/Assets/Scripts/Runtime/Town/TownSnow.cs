@@ -123,7 +123,8 @@ namespace ZeroStar
                         uint o = mainRef[k]; int lum = (int)(o & 255) + (int)((o >> 8) & 255) + (int)((o >> 16) & 255);
                         if (lum < 120) continue;                                                  // 黑色外框不碰
                         bool edge = wy - 1 >= 0 && (face[k - TOWN_W] <= T);                       // 雪塊的上緣：亮
-                        Col[y * W + x] = lum < 260 ? shade : edge ? top : body;
+                        bool bottom = wy + 1 < FLOOR - 4 && face[k + TOWN_W] <= T && mainRef[k + TOWN_W] != 0;   // 雪塊的下緣：一圈陰影（雪是蓋在上面的一層）
+                        Col[y * W + x] = lum < 170 ? shade : edge ? top : bottom ? mid : body;   // 只留真的很暗的縫（瓦片縫）；傘蓋外緣那圈暗紅陰影不留，不然雪裡會多一條跟著輪廓的線
                     }
                 }
             }
@@ -138,7 +139,8 @@ namespace ZeroStar
                 for (int wy = ys; wy <= ye; wy++)
                 {
                     int row = wy - ys, rows = ye - ys + 1;
-                    uint c = row == 0 ? top : row >= rows - 1 && rows >= 3 ? shade : body;
+                    bool faceBelow = wy + 1 < H && face[(wy + 1) * TOWN_W + wx] > (int)((1.25 - 0.85 * cover) * 200);   // 下面也是雪（屋頂面的雪）就不畫陰影列
+                    uint c = row == 0 ? top : row >= rows - 1 && rows >= 3 && !faceBelow ? shade : body;
                     Put(wx, wy, c);
                 }
                 // 高出去的地方補一圈黑外框：上面一格；左右鄰居的雪比較低的那一側
