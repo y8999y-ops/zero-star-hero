@@ -161,6 +161,7 @@ namespace ZeroStar
             for (int k = 0; k < 3; k++) { var o = new FxOptions { X = 0, Y = FLOOR }; o.Num["density"] = 1; rain[k] = new FxRun(FxSystem.Def("town-rain"), o); }
             rainT = null; skyT = null;
             TownPuddles.Reset();
+            TownRainHits.Build(MAIN, EMIT);   // 雨打屋頂、屋簷滴水、房子變濕（Unity 版自己的）：建築擺好之後算接雨面
         }
 
         static readonly uint[] SKY = new[] { "#0e0a24", "#130e2e", "#181238", "#1e1642", "#261a4c", "#301e56", "#3c225e", "#4c2864", "#5e2e68" }.Select(Col.Hex).ToArray();
@@ -177,7 +178,7 @@ namespace ZeroStar
             double wday = DayInfo().d * (1 - 0.45 * wx.cloud);
             if (wx.rain < 0.03) { TownPuddles.Draw(frame, time, wx.rain, wday); return; }
             int bse = (int)Math.Floor(frame.Ox / 332.0) * 332 + 166;
-            for (int k = 0; k < 3; k++) { var fx = rain[k]; fx.Update(dt); fx.Options.X = bse + k * 332; fx.Options.Y = FLOOR + 1; fx.Options.Num["density"] = wx.rain * 0.45; fx.Draw(frame); }
+            for (int k = 0; k < 3; k++) { var fx = rain[k]; fx.Update(dt); fx.Options.X = bse + k * 332; fx.Options.Y = FLOOR + 1; fx.Options.Num["density"] = wx.rain * 0.25; fx.Draw(frame); }
             TownPuddles.Draw(frame, time, wx.rain, wday);   // 積水（Unity 版自己的）：畫在雨和貼地薄霧之後，才不會被霧蓋掉
         }
 
@@ -348,6 +349,7 @@ namespace ZeroStar
                 double t = (time * 0.3 + n / 6.0) % 1; int sx = 607 + (int)Pf.Round(Pf.Sin(t * 6 + n) * 3 + t * 12) - cx, sy2 = FLOOR - 128 - (int)Pf.Round(t * 50) - cy, R = 3 + (int)Pf.Round(t * 6);
                 for (int y = -R; y <= R; y++) for (int x = -R; x <= R; x++) { double f = 1 - Pf.Hypot(x, y) / R; if (f > 0) Add(sx + x, sy2 + y, 120, 110, 140, f * (1 - t) * 0.45); }
             }
+            TownRainHits.Draw(frame, time, wi.rain, DAY);   // 雨打屋頂、屋簷滴水、房子變濕（Unity 版自己的）：在角色之前畫
         }
         /// 前景（在主角和居民之後畫）：比主角近的草葉＝深色剪影（框住畫面、增加景深），最後四角微微壓暗
         public static void DrawFg(Frame frame)

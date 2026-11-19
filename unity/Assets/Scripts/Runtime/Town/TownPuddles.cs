@@ -18,6 +18,19 @@ namespace ZeroStar
         const double SQUASH = 2.6;                                    // 倒影壓扁的倍數
 
         static double wet = -1;      // 積水程度 0～1（-1＝剛進場，照現在的雨直接設好）
+        /// 現在有多濕（0～1）：房子變濕（TownRainHits）也用同一個值
+        public static double Wet => Math.Max(0, wet);
+        /// 開發用（截圖）：進場時的濕度，不設＝照現在的雨量
+        public static double? WetStart;
+        static readonly double[] bump = new double[TOWN_W];
+        /// 屋簷滴水落地的地方（世界 x）：附近比較早積水（TownRainHits.Build 設，載入時算一次）
+        public static void SetDrips(IEnumerable<int> xs)
+        {
+            Array.Clear(bump, 0, bump.Length);
+            foreach (int dx in xs) for (int x = Math.Max(0, dx - 20); x < Math.Min(TOWN_W, dx + 21); x++) { double e = (x - dx) / 7.0; bump[x] = Math.Max(bump[x], 0.13 * Math.Exp(-e * e)); }
+        }
+        /// 雨滴或屋簷滴水落進水裡：起一圈漣漪（不在水裡就不做事）
+        public static void AddRipple(double x, bool big = false) { if (InWater(x)) ripples.Add(new Ripple { x = Math.Round(x), t = 0, big = big }); }
         static double lastT = -1;
         static float[] depth;        // 每一欄的水深（0＝沒有水，1＝最深），每格照 wet 重算
 
@@ -38,7 +51,8 @@ namespace ZeroStar
             double thr = 0.74 - 0.27 * wet;   // 越濕門檻越低：水窪變多變長
             for (int x = 0; x < TOWN_W; x++)
             {
-                double v = x < TownArt.WALL + 4 || x > TOWN_W - TownArt.WALL - 4 ? 0 : (Field(x) - thr) / 0.15;
+                double f = Field(x) + bump[x];   // 屋簷下：水從屋頂滴下來，先積
+                double v = x < TownArt.WALL + 4 || x > TOWN_W - TownArt.WALL - 4 ? 0 : (f - thr) / 0.15;
                 depth[x] = (float)Math.Max(0, Math.Min(1, v));
             }
         }
@@ -74,7 +88,7 @@ namespace ZeroStar
         public static void Draw(Frame frame, double time, double rain, double day)
         {
             double dt = lastT < 0 ? 0 : Math.Max(0, Math.Min(0.1, time - lastT)); lastT = time;
-            if (wet < 0) wet = rain;
+            if (wet < 0) wet = WetStart ?? rain;
             else wet = rain > 0.03 ? Math.Min(1, wet + dt * rain / 40) : Math.Max(0, wet - dt / 90);   // 下 40 秒積滿、停 90 秒乾掉
             if (wet < 0.02 && drops.Count == 0) return;
             BuildDepth();

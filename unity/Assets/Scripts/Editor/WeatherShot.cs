@@ -1,7 +1,7 @@
 // 開發用：碎星鎮天氣截圖（看雨天積水這類天氣特效用）。主角從 START 往右走，在幾個時間點各存一張放大 3 倍的 PNG。
 // 執行（不用開編輯器）：Unity.exe -batchmode -nographics -projectPath <unity> -executeMethod ZeroStar.Tests.WeatherShot.Run -quit
 // 環境變數：SHOT_OUT（輸出資料夾，預設 unity/Golden/weather）、SHOT_WEATHER（rain／cloudy／clear，預設 rain）、
-//   SHOT_DAY（0.25＝中午、0.75＝半夜，預設 0.3）、SHOT_TICKS（逗號分開的第幾步，預設 60,400,700,900）、SHOT_X（主角起點）、SHOT_WALK（第幾步開始往右走，預設 380）
+//   SHOT_WET（進場時的濕度 0～1）、SHOT_DAY（0.25＝中午、0.75＝半夜，預設 0.3）、SHOT_TICKS（逗號分開的第幾步，預設 60,400,700,900）、SHOT_X（主角起點）、SHOT_WALK（第幾步開始往右走，預設 380）
 using System;
 using System.Globalization;
 using System.IO;
@@ -24,6 +24,7 @@ namespace ZeroStar.Tests
             Rnd.R = new Rng(12345);
             Game.W = 384;
             TownArt.DayOverride = null; TownArt.WeatherOverride = null;
+            TownRainHits.DebugLog = true;
             var g = new Game("town");
             TownArt.NowMs = () => 1767225600000.0 + g.SimMs;
             TraceScript.Apply(g, TraceScript.DefaultPath());
@@ -34,6 +35,8 @@ namespace ZeroStar.Tests
             TownArt.DayOverride = double.Parse(Env("SHOT_DAY", "0.3"), inv);
             TownArt.WeatherOverride = Env("SHOT_WEATHER", "rain");
             TownPuddles.Reset();   // 進場時就在下雨：積水直接照現在的雨量設好
+            var sw = Environment.GetEnvironmentVariable("SHOT_WET");   // 指定進場時的濕度（看慢慢變濕的過程）
+            TownPuddles.WetStart = sw == null ? (double?)null : double.Parse(sw, inv);
             var sx = Environment.GetEnvironmentVariable("SHOT_X");
             if (sx != null) g.Player.X = double.Parse(sx, inv);
             int last = at.Max();
@@ -47,6 +50,13 @@ namespace ZeroStar.Tests
                 frame.Composite(rgba, null, 0.8);
                 g.PostComposite(rgba);
                 if (Array.IndexOf(at, n) >= 0) Save(rgba, Path.Combine(outDir, $"shot-{n:0000}.png"));
+            }
+            {   // 濕的分數圖
+                var sc = TownRainHits.DebugScore(out int sw2, out int sh2, out int[] top);
+                var tex = new Texture2D(sw2, sh2, TextureFormat.RGBA32, false); var px = new Color32[sw2 * sh2];
+                for (int y = 0; y < sh2; y++) for (int x = 0; x < sw2; x++) { byte v = sc[y * sw2 + x]; px[(sh2 - 1 - y) * sw2 + x] = top[x] == y ? new Color32(255, 0, 0, 255) : new Color32(v, v, v, 255); }
+                tex.SetPixels32(px); tex.Apply(); File.WriteAllBytes(Path.Combine(outDir, "score.png"), tex.EncodeToPNG()); UnityEngine.Object.DestroyImmediate(tex);
+                Debug.Log($"[WeatherShot] 鏡頭 {frame.Ox},{frame.Oy}");
             }
             Debug.Log($"[WeatherShot] {string.Join(",", at)} → {outDir}");
         }
