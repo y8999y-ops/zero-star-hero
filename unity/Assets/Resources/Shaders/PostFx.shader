@@ -53,6 +53,28 @@ Shader "Hidden/ZeroStar/PostFx"
                 {
                     if (wet <= 0.02 || scen < 0.5) return c;
                     float4 w = World(wx, wy);
+                    // ---- 平台積水（陽台欄杆、窗台、木桶蓋、長椅、招牌頂）：世界資料 G＝120 當記號，R＝要多濕才出現，B＝第幾列
+                    if (abs(w.g * 255.0 - 120.0) < 2.0 && wet > w.r)
+                    {
+                        float prow = round(w.b * 255.0);
+                        float pry = round(wy - prow - 1 - (prow + 0.5) * 2.0) - _Cam.y;   // 映出上方（壓扁）
+                        float prx = clamp(cx + round(sin(wy * 1.7 + t * 2.3 + wx * 0.31) * 0.5), 0, _MainTex_TexelSize.z - 3);
+                        float4 prc = Screen(prx, max(0, pry));
+                        float3 pw = float3(40 + 60 * day, 52 + 70 * day, 84 + 80 * day) / 255.0;
+                        float3 prgb = prc.rgb * 0.6 + pw * 0.4;
+                        if (prow < 0.5)
+                        {
+                            float plip = Noise((wx + t * 2.5) / 4.0, 9);
+                            if (plip > 0.45) prgb = lerp(prgb, float3(220, 232, 246) / 255.0, 0.45 + 0.3 * day);
+                            // 小漣漪：每 7 格一個，各自的節奏擴開
+                            float cell = floor(wx / 7.0), ph = frac(t * 0.9 + Hash(cell + 31.0));
+                            float off = abs(wx - (cell * 7.0 + 3.0)), wr = round(1 + 3 * ph);
+                            if (ph < 0.8 && abs(off - wr) < 0.5) prgb = float3(232, 242, 255) / 255.0;
+                        }
+                        else prgb *= float3(0.75, 0.78, 0.86);
+                        c.rgb = prgb;
+                        return c;
+                    }
                     float T = ((1.0 - 1.1 * wet) * 200 + 40) / 255.0;
                     if (w.r <= T || w.g > 0.5) return c;
                     float3 rgb = c.rgb;
@@ -106,7 +128,10 @@ Shader "Hidden/ZeroStar/PostFx"
                 // 遠的列反射多（像鏡子），近的列看得到水底、比較暗
                 float refl = 0.74 - 0.07 * row;
                 float3 water = float3(24 + 44 * day, 34 + 52 * day, 62 + 64 * day) / 255.0;
-                float3 rgb = rc.rgb * refl + water * (1 - refl);
+                // 水底：被漣漪和雜訊左右扭的草皮（地面的折射），偏藍偏暗
+                float gx2 = clamp(cx + round(wob * 0.6 + sin(wy * 2.3 + t * 3.1 + wx * 0.4) * 0.8), 0, _MainTex_TexelSize.z - 3);
+                float3 under = Screen(gx2, cy).rgb * float3(0.55, 0.62, 0.78) + water * 0.35;
+                float3 rgb = rc.rgb * refl + under * (1 - refl);
                 rgb = lerp(c.rgb, rgb, min(1, 0.55 + d * 0.9));   // 水很淺的兩頭跟草皮淡淡混
                 float edgeT = wy - (MID - h), edgeB = (MID + h) - wy;
                 if (edgeB < 1) rgb *= float3(0.5, 0.54, 0.64);   // 近邊：暗線

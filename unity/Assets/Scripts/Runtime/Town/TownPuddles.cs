@@ -167,7 +167,11 @@ namespace ZeroStar
                     // 遠的列反射多（像鏡子），近的列看得到水底、比較暗
                     double refl = 0.74 - 0.07 * row;
                     double r0 = rc & 255, g0 = (rc >> 8) & 255, b0 = (rc >> 16) & 255;
-                    double rr = r0 * refl + wr * (1 - refl), gg = g0 * refl + wg * (1 - refl), bb = b0 * refl + wb * (1 - refl);
+                    // 水底：被漣漪和雜訊左右扭的草皮（地面的折射）
+                    int ux = Math.Max(0, Math.Min(W - 1, sx + (int)Math.Round(wob * 0.6 + Math.Sin(wy * 2.3 + time * 3.1 + wx * 0.4) * 0.8)));
+                    uint uc = srcC[y * W + ux];
+                    double ur = (uc & 255) * 0.55 + wr * 0.35, ug = ((uc >> 8) & 255) * 0.62 + wg * 0.35, ub = ((uc >> 16) & 255) * 0.78 + wb * 0.35;
+                    double rr = r0 * refl + ur * (1 - refl), gg = g0 * refl + ug * (1 - refl), bb = b0 * refl + ub * (1 - refl);
                     double edgeT = wy - (MID - h), edgeB = (MID + h) - wy;
                     // 跟原本的草皮淡淡混一點：水很淺的兩頭
                     double a = Math.Min(1, 0.55 + d * 0.9);

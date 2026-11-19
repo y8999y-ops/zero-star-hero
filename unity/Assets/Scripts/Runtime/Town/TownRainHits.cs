@@ -21,6 +21,8 @@ namespace ZeroStar
         static int[] topY;                        // 每一欄的接雨面（-1＝沒有）
         static int[] hiY;                         // 濕亮邊畫在哪一列：頂面往下第一個不是外框（暗色）的像素
         static byte[] score;                      // 每一格變濕的分數（0＝不會濕）
+        static byte[] plat;                       // 平台積水：0＝不是，1＝水面最上面那一列，2＝第二列
+        static byte[] platNeed;                   // 平台積水：濕度要多少才出現（0～255）
         static byte[] trickle;                    // 每一欄有沒有往下流的水痕（0＝沒有，其他＝速度與相位的種子）
         struct Drip { public int x, y0, y1; public double period, phase; public int lastCycle; }
         static readonly List<Drip> drips = new List<Drip>();
@@ -116,6 +118,41 @@ namespace ZeroStar
             TownPuddles.SetDrips(land);
             // 給 shader（PostFx）的資料：世界座標 R＝變濕分數、G＝不會濕（外框、會發光）、B＝沿著水路走了多遠、A＝哪一條水路（0＝不是）；
             // 每一欄 G＝接雨面、A＝濕亮邊那一列
+            // 平台積水：朝上的平面（結構圖的接水面，或沒有結構圖的物件從天空看下來第一個面），平的一段至少 4 格寬；
+            // 水積在外框裡面那一列（寬的平台兩列），兩頭各留一格；每一段要多濕才出現不一樣
+            plat = new byte[TOWN_W * H]; platNeed = new byte[TOWN_W * H];
+            for (int y = 2; y < FLOOR - 8; y++)
+            {
+                int run0 = -1;
+                for (int x = 0; x <= TOWN_W; x++)
+                {
+                    bool ok = false;
+                    if (x < TOWN_W && Solid(x, y))
+                    {
+                        byte c = cls != null ? cls[y * TOWN_W + x] : TownStructure.NONE;
+                        byte cu = cls != null ? cls[(y - 1) * TOWN_W + x] : TownStructure.NONE;
+                        // 結構圖的接水面：最上面那一列就是（陽台欄杆在牆前面，上面一格是牆，不能要求上面是空的）；沒有結構圖的物件：從天空看下來第一個面
+                        ok = (c == TownStructure.LAND && cu != TownStructure.LAND) || (c == TownStructure.NONE && !Solid(x, y - 1) && topY[x] == y);
+                    }
+                    if (ok && run0 < 0) run0 = x;
+                    if (!ok && run0 >= 0)
+                    {
+                        int len = x - run0;
+                        if (len >= 4)
+                        {
+                            byte need = (byte)(60 + Hash(run0 * 31 + y, 51) * 100);
+                            for (int xx = run0 + 1; xx < x - 1; xx++)
+                            {
+                                int yy = y; while (yy < y + 3 && Solid(xx, yy) && Dark(main[yy * TOWN_W + xx])) yy++;   // 外框裡面那一列
+                                if (!Solid(xx, yy) || Dark(main[yy * TOWN_W + xx]) || emit[yy * TOWN_W + xx] != 0) continue;
+                                plat[yy * TOWN_W + xx] = 1; platNeed[yy * TOWN_W + xx] = need;
+                                if (len >= 8 && Solid(xx, yy + 1) && !Dark(main[(yy + 1) * TOWN_W + xx])) { plat[(yy + 1) * TOWN_W + xx] = 2; platNeed[(yy + 1) * TOWN_W + xx] = need; }
+                            }
+                        }
+                        run0 = -1;
+                    }
+                }
+            }
             var world = new byte[TOWN_W * H * 4]; var cols = new byte[TOWN_W * 4];
             for (int y = 0; y < H; y++) for (int x = 0; x < TOWN_W; x++)
             {
@@ -124,6 +161,7 @@ namespace ZeroStar
                 world[k * 4 + 1] = emit[k] != 0 || Dark(main[k]) ? (byte)255 : (byte)0;
                 world[k * 4 + 2] = TownFlow.PathArc[k];
                 world[k * 4 + 3] = TownFlow.PathSeed[k];
+                if (plat[k] != 0) { world[k * 4] = platNeed[k]; world[k * 4 + 1] = 120; world[k * 4 + 2] = (byte)(plat[k] - 1); world[k * 4 + 3] = 0; }   // 平台積水：G＝120 當記號，R＝要多濕，B＝第幾列
             }
             for (int x = 0; x < TOWN_W; x++)
             {
@@ -228,6 +266,13 @@ namespace ZeroStar
                     {
                         int gx = x + cx; if (gx < 0 || gx >= TOWN_W) continue;
                         int k = wrow + gx; byte s = score[k];
+                        if (plat[k] != 0 && wet * 255 > platNeed[k])
+                        {
+                            // 平台積水（CPU 版：水色＋最上面一列亮邊，沒有倒影）
+                            double wr0 = 40 + 60 * day, wg0 = 52 + 70 * day, wb0 = 84 + 80 * day;
+                            C[row + x] = plat[k] == 1 && ((gx + (int)(time * 3)) % 5) < 2 ? Pack(200 + 30 * day, 215 + 25 * day, 240) : Pack(wr0, wg0, wb0);
+                            continue;
+                        }
                         if (s <= T || emit[k] != 0 || Dark(main[k])) continue;
                         uint c = C[row + x]; double r = c & 255, g = (c >> 8) & 255, b = (c >> 16) & 255;
                         // 濕：變深、飽和一點、偏冷一點
