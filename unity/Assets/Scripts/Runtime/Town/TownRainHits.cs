@@ -28,7 +28,44 @@ namespace ZeroStar
         static readonly List<Drip> drips = new List<Drip>();
         struct Hit { public int x, y; public double t; }
         static readonly List<Hit> hits = new List<Hit>();
-        static double lastT = -1;
+        static double lastT = -1, actorT = -1;
+        static readonly List<Hit> actorHits = new List<Hit>();
+        static readonly System.Random actorRng = new System.Random(77);
+
+        /// 雨打在角色身上（主角、居民、路人）：角色畫完、雨還沒畫的時候叫。每格隨機挑幾欄，從上往下找第一個「不是場景」、
+        /// 下面連續幾格也是的格子（頭頂、肩膀），雨打到就濺起小水花，畫在角色前面。要有天氣遮罩（顯示卡模式）才做。
+        public static void DrawActors(Frame frame, double time, double rain, double day)
+        {
+            double dt = actorT < 0 ? 0 : Math.Max(0, Math.Min(0.1, time - actorT)); actorT = time;
+            int W = frame.W, Hh = frame.H, cx = frame.Ox, cy = frame.Oy;
+            if (rain > 0.03 && frame.TrackingWeather && frame.WeatherMask != null)
+            {
+                frame.ProtectLegacyDraws();   // 角色是舊的畫法（直接寫顏色）：先比對出角色在哪
+                var M = frame.WeatherMask; int yMax = Math.Min(Hh - 4, FLOOR - 2 - cy);
+                for (int k = 0; k < 28; k++)
+                {
+                    int x = actorRng.Next(W);
+                    for (int y = Math.Max(0, -cy); y < yMax; y++)
+                    {
+                        int i = y * W + x; if (M[i] != 0) continue;
+                        if (M[i + W] == 0 && M[i + 2 * W] == 0 && M[i + 3 * W] == 0 && actorRng.NextDouble() < rain * 9 * dt)
+                            actorHits.Add(new Hit { x = x + cx, y = y + cy, t = 0 });
+                        break;
+                    }
+                }
+            }
+            uint hot = Pack(232, 242, 255), cool = Pack(150 + 60 * day, 178 + 50 * day, 215 + 30 * day);
+            for (int i = actorHits.Count - 1; i >= 0; i--)
+            {
+                var h = actorHits[i]; h.t += dt;
+                if (h.t > 0.24) { actorHits.RemoveAt(i); continue; }
+                actorHits[i] = h;
+                if (h.t < 0.05) { Px(frame, h.x, h.y - 1, hot); continue; }
+                double u = (h.t - 0.05) / 0.19;
+                for (int sgn = -1; sgn <= 1; sgn += 2)
+                    Px(frame, h.x + sgn * (int)Math.Round(1 + 2 * u), h.y - 1 - (int)Math.Round(3 * u - 4 * u * u), u < 0.5 ? hot : cool);
+            }
+        }
         public static bool DebugLog;   // 開發用：載入時印出滴水點
 
         static double Hash(int i, int s) { unchecked { uint h = (uint)(i * 374761393 + s * 668265263); h = (h ^ (h >> 13)) * 1274126177; h ^= h >> 16; return (h & 0xffffff) / 16777216.0; } }

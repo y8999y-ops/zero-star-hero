@@ -213,6 +213,7 @@ namespace ZeroStar
             var wx = WeatherInfo(); double dt = rainT == null ? 0 : Math.Max(0, Math.Min(0.1, time - rainT.Value));
             rainT = time;
             double wday = DayInfo().d * (1 - 0.45 * wx.cloud);
+            TownRainHits.DrawActors(frame, time, wx.rain, wday);   // 雨打在角色身上（在雨之前、角色之後）
             TownSnow.DrawFlakes(frame, time, SnowK());   // 雪花（在角色之後）
             if (wx.rain < 0.03) { TownPuddles.Draw(frame, time, wx.rain, wday); return; }
             int bse = (int)Math.Floor(frame.Ox / 332.0) * 332 + 166;
