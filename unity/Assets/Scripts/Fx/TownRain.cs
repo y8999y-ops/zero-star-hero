@@ -48,7 +48,7 @@ namespace PixelFX.Fx
             var q = Clip(p, meta); int S = o.SeedOr0; uint[] C = Col.Fit(o.Palette, 8);
             // 城鎮版：不畫整片霧和地板（城鎮自己有天空和地面）
             for (int L = 0; L < 3; L++) DrawLayer(q, t, S, C, L, o["density"]);
-            Mist(meta, p, t, S, C);
+            // 貼地薄霧（Mist）2026-11-19 使用者要求取消：效果不好，也會蓋住積水
         }
 
         static void Draw(FxDef meta, Painter p, double t, FxOptions o)
