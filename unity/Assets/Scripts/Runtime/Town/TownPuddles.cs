@@ -13,7 +13,8 @@ namespace ZeroStar
 {
     public static class TownPuddles
     {
-        const int FLOOR = TownArt.FLOOR, TOWN_W = TownArt.TOWN_W;
+        const int FLOOR = TownArt.FLOOR;
+        static int TOWN_W => TownArt.TOWN_W;   // 擴大碎星鎮時不是固定值也能用
         const double TOP = FLOOR + 1, MID = FLOOR + 3.5, HALF = 3.2;   // 積水所在的草皮帶：第 185～190 列
         const double SQUASH = 2.6;                                    // 倒影壓扁的倍數
 
@@ -24,11 +25,11 @@ namespace ZeroStar
         public static double? WetStart;
         /// 每秒融掉多少雪（TownSnow 每格設；0＝沒在融雪）
         public static double MeltIn;
-        static readonly double[] bump = new double[TOWN_W];
+        static double[] bump = new double[0];
         /// 屋簷滴水落地的地方（世界 x）：附近比較早積水（TownRainHits.Build 設，載入時算一次）
         public static void SetDrips(IEnumerable<int> xs)
         {
-            Array.Clear(bump, 0, bump.Length);
+            if (bump.Length != TOWN_W) bump = new double[TOWN_W]; else Array.Clear(bump, 0, bump.Length);
             foreach (int dx in xs) for (int x = Math.Max(0, dx - 20); x < Math.Min(TOWN_W, dx + 21); x++) { double e = (x - dx) / 7.0; bump[x] = Math.Max(bump[x], 0.13 * Math.Exp(-e * e)); }
         }
         /// 雨滴或屋簷滴水落進水裡：起一圈漣漪（不在水裡就不做事）
@@ -49,7 +50,8 @@ namespace ZeroStar
 
         static void BuildDepth()
         {
-            if (depth == null) depth = new float[TOWN_W];
+            if (depth == null || depth.Length != TOWN_W) depth = new float[TOWN_W];
+            if (bump.Length != TOWN_W) bump = new double[TOWN_W];
             double thr = 0.74 - 0.27 * wet;   // 越濕門檻越低：水窪變多變長
             for (int x = 0; x < TOWN_W; x++)
             {
@@ -117,7 +119,7 @@ namespace ZeroStar
             for (int i = ripples.Count - 1; i >= 0; i--) { var r = ripples[i]; r.t += dt; if (r.t > 0.9) ripples.RemoveAt(i); else ripples[i] = r; }
 
             // 交給 shader（PostFx）：這裡只準備資料，倒影、邊、漣漪的環都在顯示卡上畫；水珠照舊 CPU 畫（會在水面上面）
-            if (PostFx.ActiveFor(frame) && PostFx.Cols != null)
+            if (PostFx.TownOnGpu(frame) && PostFx.Cols != null)
             {
                 var cols = PostFx.Cols;
                 for (int x = 0; x < TOWN_W; x++) cols[x * 4] = (byte)Math.Round(depth[x] * 255);

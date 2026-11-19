@@ -14,7 +14,9 @@ namespace ZeroStar
 {
     public static class TownRainHits
     {
-        const int FLOOR = TownArt.FLOOR, TOWN_W = TownArt.TOWN_W, H = TownArt.H;
+        const int FLOOR = TownArt.FLOOR;
+        // 城鎮的寬高每次都讀 TownArt（擴大碎星鎮時改成不是固定值也能用；陣列都在 Build 時照當時的大小配）
+        static int TOWN_W => TownArt.TOWN_W; static int H => TownArt.H;
         const int WET_BOTTOM = FLOOR - 4;        // 再往下是草皮、地面（積水管）
 
         static uint[] main; static byte[] emit;
@@ -228,7 +230,7 @@ namespace ZeroStar
             double dt = lastT < 0 ? 0 : Math.Max(0, Math.Min(0.1, time - lastT)); lastT = time;
             double wet = TownPuddles.Wet;
             int W = frame.W, cx = frame.Ox, cy = frame.Oy;
-            if (wet > 0.02 && !PostFx.ActiveFor(frame)) WetPass(frame, time, wet, day);   // 有 shader 就交給顯示卡（PostFx.shader）
+            if (wet > 0.02 && !PostFx.TownOnGpu(frame)) WetPass(frame, time, wet, day);   // 有 shader 就交給顯示卡（PostFx.shader）
             uint hot = Pack(232, 242, 255), cool = Pack(150 + 60 * day, 178 + 50 * day, 215 + 30 * day);
 
             // 雨打在屋頂、物件頂：每 1/30 秒一個時段，畫面內抽幾欄

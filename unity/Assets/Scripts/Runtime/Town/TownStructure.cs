@@ -17,24 +17,25 @@ namespace ZeroStar
             (70, 140, 255, ROOF), (110, 110, 120, SHELTER), (255, 150, 40, AVOID), (255, 230, 40, GUIDE),
             (255, 40, 40, DRIP), (255, 0, 255, POINT), (40, 230, 120, LAND),
         };
-        // 建築原本擺的左上角 x（game/src/town.js 的 SHOPS）：在附近找
-        static readonly (string name, int x0)[] SHOPS = { ("guild", 70), ("workshop", 459), ("inn", 807) };
-        const int FLOOR = TownArt.FLOOR, TOWN_W = TownArt.TOWN_W, H = TownArt.H;
+        const int FLOOR = TownArt.FLOOR;
+        // 城鎮的寬高每次都讀 TownArt（擴大碎星鎮時改成不是固定值也能用；陣列都在 Build 時照當時的大小配）
+        static int TOWN_W => TownArt.TOWN_W; static int H => TownArt.H;
 
         /// 世界座標每一格的結構類別（城鎮寬×高）
         public static byte[] Cls { get; private set; }
         /// 找到的位置（除錯用）：名稱、左上角
         public static readonly System.Collections.Generic.List<(string name, int x, int y, int w, int h)> Placed = new System.Collections.Generic.List<(string, int, int, int, int)>();
 
+        /// 載入時叫一次。Resources/Art/town/structure/ 裡的每一張結構圖（檔名＝建築名稱）都讀進來，在整個城鎮裡找跟它剪影吻合的地方，
+        /// 找到幾處就貼幾處（擴大碎星鎮、多放幾棟、同一棟放兩次都會自動對上）。新的建築只要多放一張結構圖。
         public static void Build(uint[] main)
         {
             Cls = new byte[TOWN_W * H]; Placed.Clear();
-            foreach (var (name, x0) in SHOPS)
+            foreach (var ta in Resources.LoadAll<TextAsset>("Art/town/structure"))   // 只有這一層（建築原圖放在旁邊的 structure-art）
             {
-                var ta = Resources.Load<TextAsset>("Art/town/structure/" + name);
-                if (ta == null) { Debug.LogWarning("[TownStructure] 找不到結構圖 " + name); continue; }
+                string name = ta.name;
                 var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (!tex.LoadImage(ta.bytes)) { Debug.LogWarning("[TownStructure] 結構圖讀不出來 " + name); continue; }
+                if (!tex.LoadImage(ta.bytes)) { Debug.LogWarning("[TownStructure] 結構圖讀不出來 " + name); UnityEngine.Object.DestroyImmediate(tex); continue; }
                 int w = tex.width, h = tex.height; var px = tex.GetPixels32();   // GetPixels32 第 0 列在最下面
                 UnityEngine.Object.DestroyImmediate(tex);
                 var cls = new byte[w * h];
@@ -46,35 +47,52 @@ namespace ZeroStar
                     foreach (var k in COLORS) { int d = Math.Abs(c.r - k.r) + Math.Abs(c.g - k.g) + Math.Abs(c.b - k.b); if (d < best) { best = d; v = k.cls; } }
                     cls[y * w + x] = v; bottom = Math.Max(bottom, y);
                 }
-                // 原本的位置：底部對齊地面（town.js：y0 = FLOOR + 1 - baseRow）；在附近找剪影最吻合的地方（擺放工具可能移動過）
-                int ey = FLOOR + 1 - bottom, bx = x0, by = ey; long bestScore = long.MinValue;
-                long Score(int ox, int oy, int step)
-                {
-                    long s = 0;
-                    for (int y = 0; y < h; y += step) for (int x = 0; x < w; x += step)
-                    {
-                        int wx = ox + x, wy = oy + y; bool inMain = wx >= 0 && wx < TOWN_W && wy >= 0 && wy < H && main[wy * TOWN_W + wx] != 0;
-                        bool mine = cls[y * w + x] != 0;
-                        if (mine) s += inMain ? 2 : -3; else if (inMain && wy < FLOOR - 4) s -= 1;
-                    }
-                    return s;
-                }
-                for (int oy = ey - 24; oy <= ey + 24; oy += 2) for (int ox = x0 - 80; ox <= x0 + 80; ox += 2)
-                {
-                    long s = Score(ox, oy, 3); if (s > bestScore) { bestScore = s; bx = ox; by = oy; }
-                }
-                int cx0 = bx, cy0 = by; bestScore = long.MinValue;
-                for (int oy = cy0 - 2; oy <= cy0 + 2; oy++) for (int ox = cx0 - 2; ox <= cx0 + 2; ox++)
-                {
-                    long s = Score(ox, oy, 1); if (s > bestScore) { bestScore = s; bx = ox; by = oy; }
-                }
+                // 用建築原圖的像素比對（Resources/Art/town/structure-art/<名稱>）：烘焙進城鎮的是原圖的像素，完全一樣才算，
+                // 不會把旅館認到工坊上。原圖跟結構圖要一樣大（換了建築的圖，結構圖要重做）
+                var at = Resources.Load<TextAsset>("Art/town/structure-art/" + name);
+                if (at == null) { Debug.LogWarning("[TownStructure] 缺建築原圖 structure-art/" + name); continue; }
+                var t2 = new Texture2D(2, 2, TextureFormat.RGBA32, false); t2.LoadImage(at.bytes);
+                if (t2.width != w || t2.height != h) { Debug.LogWarning($"[TownStructure] {name} 的原圖 {t2.width}×{t2.height} 跟結構圖 {w}×{h} 不一樣大：結構圖要重做"); UnityEngine.Object.DestroyImmediate(t2); continue; }
+                var ap = t2.GetPixels32(); UnityEngine.Object.DestroyImmediate(t2);
+                var art = new uint[w * h]; var opq = new System.Collections.Generic.List<int>();
                 for (int y = 0; y < h; y++) for (int x = 0; x < w; x++)
                 {
-                    byte v = cls[y * w + x]; if (v == 0) continue;
-                    int wx = bx + x, wy = by + y; if (wx < 0 || wx >= TOWN_W || wy < 0 || wy >= H) continue;
-                    Cls[wy * TOWN_W + wx] = v;
+                    var c = ap[(h - 1 - y) * w + x]; if (c.a < 128) continue;
+                    art[y * w + x] = 0xff000000u | ((uint)c.b << 16) | ((uint)c.g << 8) | c.r; opq.Add(y * w + x);
                 }
-                Placed.Add((name, bx, by, w, h));
+                if (opq.Count == 0) continue;
+                // 抽 64 格當快篩，全部吻合（容許 4 格不同）才細看全部
+                var probe = new int[Math.Min(64, opq.Count)]; for (int i = 0; i < probe.Length; i++) probe[i] = opq[(int)((long)i * opq.Count / probe.Length)];
+                int Match(int ox, int oy, int[] idx)
+                {
+                    int m = 0;
+                    foreach (int k in idx)
+                    {
+                        int wx = ox + k % w, wy = oy + k / w;
+                        if (wx >= 0 && wx < TOWN_W && wy >= 0 && wy < H && (main[wy * TOWN_W + wx] | 0xff000000u) == art[k]) m++;
+                    }
+                    return m;
+                }
+                var all = opq.ToArray();
+                int ey = FLOOR + 1 - bottom;   // 建築的底部大多對齊地面：上下各找 40 格（擺放工具可能移過）
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                for (int oy = ey - 40; oy <= ey + 40; oy++) for (int ox = -w + 1; ox < TOWN_W; ox++)
+                {
+                    if (Match(ox, oy, probe) < probe.Length - 4) continue;
+                    int m = Match(ox, oy, all);
+                    if (m < all.Length * 0.9) continue;   // 九成以上像素一樣（前面被角色、裝飾擋住一點也找得到）
+                    bool dup = Placed.Exists(p => p.name == name && Math.Abs(p.x - ox) < w / 2 && Math.Abs(p.y - oy) < h / 2);
+                    if (dup) continue;
+                    for (int y = 0; y < h; y++) for (int x = 0; x < w; x++)
+                    {
+                        byte v = cls[y * w + x]; if (v == 0) continue;
+                        int wx = ox + x, wy = oy + y; if (wx < 0 || wx >= TOWN_W || wy < 0 || wy >= H) continue;
+                        Cls[wy * TOWN_W + wx] = v;
+                    }
+                    Placed.Add((name, ox, oy, w, h));
+                }
+                if (TownRainHits.DebugLog) Debug.Log($"[TownStructure] 找 {name} 花了 {sw.ElapsedMilliseconds} ms");
+                if (!Placed.Exists(p => p.name == name)) Debug.Log("[TownStructure] 城鎮裡找不到 " + name + "（這次沒有擺這棟，或建築的圖換了、結構圖要重做）");
             }
         }
         public static byte At(int x, int y) => Cls == null || x < 0 || x >= TOWN_W || y < 0 || y >= H ? NONE : Cls[y * TOWN_W + x];

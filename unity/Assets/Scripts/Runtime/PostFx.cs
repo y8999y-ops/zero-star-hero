@@ -25,6 +25,8 @@ namespace ZeroStar
         public static bool Supported { get { Init(); return ok; } }
         /// CPU 端看這個：true＝交給 shader（自己不要逐格畫），false＝CPU 自己畫
         public static bool ActiveFor(Frame f) => f.UseGpuWeather && Supported && Enabled;
+        /// 城鎮的天氣交給顯示卡：除了 ActiveFor，城鎮資料貼圖也要建得起來（擴大碎星鎮後太寬、超過這台的貼圖上限，就改用 CPU 版）
+        public static bool TownOnGpu(Frame f) => ActiveFor(f) && worldTex != null;
 
         static void Init()
         {
@@ -55,6 +57,12 @@ namespace ZeroStar
         {
             townW = w; townH = h; colData = cols;
             if (!Supported) return;
+            if (w > SystemInfo.maxTextureSize || h > SystemInfo.maxTextureSize)
+            {
+                Debug.LogWarning($"[PostFx] 城鎮 {w}×{h} 超過這台的貼圖上限 {SystemInfo.maxTextureSize}，天氣改用 CPU 版");
+                if (worldTex != null) { ReleaseObject(worldTex); worldTex = null; }
+                return;
+            }
             if (worldTex == null || worldTex.width != w || worldTex.height != h)
             {
                 if (worldTex != null) ReleaseObject(worldTex);
