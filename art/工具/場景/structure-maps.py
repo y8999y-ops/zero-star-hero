@@ -97,8 +97,11 @@ def inn():
     im, P = load("inn"); W, H = im.size
     M = [[0] * W for _ in range(H)]
 
-    def gill(r, g, b):
-        return b > g + 25 and b > r - 10 and r < 200          # 紫色菌褶
+    def gill(r, g, b, y=0):
+        purple = b > g + 25 and b > r - 10 and r < 200                       # 紫色菌褶
+        pink = r > 150 and g > 110 and b > 120 and abs(r - b) < 60           # 菌褶的亮面（2026-11-19 新版建築）
+        dark = y >= 40 and r < 100 and b > r * 0.6 and g < 30                # 菌褶之間的暗紅線（傘的下半部才算，傘頂的黑外框不擋）
+        return purple or pink or dark
     def wall(r, g, b):
         return r > 200 and g > 170 and b > 130 and r - b < 70  # 奶油色的牆
     for y in range(H):
@@ -113,7 +116,7 @@ def inn():
             continue
         seen.add((x, y))
         r, g, b, a = P[x, y]
-        if a < 128 or gill(r, g, b):   # 菌褶一整圈把傘蓋跟下面隔開（白點顏色跟牆很像，所以不用顏色擋牆）
+        if a < 128 or gill(r, g, b, y):   # 菌褶一整圈把傘蓋跟下面隔開（白點顏色跟牆很像，所以不用顏色擋牆）
             continue
         M[y][x] = ROOF
         stack += [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]

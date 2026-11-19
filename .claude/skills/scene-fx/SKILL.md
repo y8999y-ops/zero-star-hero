@@ -108,7 +108,10 @@ description: 做或調整場景環境特效（Unity 版）：天氣（雨、雪�
   - 產生：`art/工具/場景/structure-maps.py`，每棟用位置＋顏色一段一段寫。
   - 給使用者看：`structure-review.py` 產生原圖與疊圖並排的總覽，加一張顏色說明。
   - 通過的放在 `art/3-已通過/town/structure/`，複製成 `unity/Assets/Resources/Art/town/structure/<名稱>.bytes`（PNG 改副檔名才能當 TextAsset 讀）。
-  - 換建築的圖，要回來改腳本、重跑、給使用者看。
+  - **換建築的圖（`art/3-已通過/town/<名稱>.png` 改了）一定要重跑 `structure-maps.py`**：
+    - 遊戲裡會自動對位，換了圖整體還是對得上，但外框差一格，雪和水路的起點會跑掉。
+    - 新圖的顏色也可能讓用顏色判斷的地方失效。2026-11-19 新版旅館的菌褶多了粉色亮面和暗紅線，傘蓋的範圍一路漏到窗戶上面。
+    - 重跑後檢查：結構圖和新圖的剪影要 0 格對不上；各類別的格數不能突然差很多；看疊圖確認，再複製到 `art/3-已通過/town/structure/` 和 `Resources/Art/town/structure/*.bytes`。
 - **遊戲裡**：
   - `TownStructure.cs`：載入結構圖，用剪影在城鎮主圖層裡找位置（建築可能被擺放工具移動過），貼成世界座標的類別。
   - `TownFlow.cs`：算水路。
