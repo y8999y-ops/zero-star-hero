@@ -349,11 +349,13 @@ namespace ZeroStar
                 double t = (time * 0.3 + n / 6.0) % 1; int sx = 607 + (int)Pf.Round(Pf.Sin(t * 6 + n) * 3 + t * 12) - cx, sy2 = FLOOR - 128 - (int)Pf.Round(t * 50) - cy, R = 3 + (int)Pf.Round(t * 6);
                 for (int y = -R; y <= R; y++) for (int x = -R; x <= R; x++) { double f = 1 - Pf.Hypot(x, y) / R; if (f > 0) Add(sx + x, sy2 + y, 120, 110, 140, f * (1 - t) * 0.45); }
             }
+            PostFx.MarkScenery(frame);   // 場景畫完：之後角色、雨、水珠改過的格子不算場景（shader 的變濕、積水只改場景）
             TownRainHits.Draw(frame, time, wi.rain, DAY);   // 雨打屋頂、屋簷滴水、房子變濕（Unity 版自己的）：在角色之前畫
         }
         /// 前景（在主角和居民之後畫）：比主角近的草葉＝深色剪影（框住畫面、增加景深），最後四角微微壓暗
         public static void DrawFg(Frame frame)
         {
+            PostFx.BuildMask(frame);   // 角色和雨都畫好了：算場景遮罩（前景畫過的格子在下面扣掉）
             int W = frame.W, cx = frame.Ox, cy = frame.Oy, ofg = (int)Math.Floor(cx * 1.3); var outc = frame.Color;
             const int LIFT = 2;
             for (int y = 0; y < frame.H; y++)
@@ -366,6 +368,7 @@ namespace ZeroStar
                     if (v != 0) outc[y * W + x] = Pack((v & 255) * 0.154 + 18.7, ((v >> 8) & 255) * 0.154 + 28.8, ((v >> 16) & 255) * 0.154 + 41.8);
                 }
             }
+            PostFx.FinishMask(frame);
             if (vig == null || vig.Length != W * frame.H)
             {
                 vig = new float[W * frame.H];

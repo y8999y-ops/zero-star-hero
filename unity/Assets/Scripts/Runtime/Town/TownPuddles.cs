@@ -94,9 +94,6 @@ namespace ZeroStar
             BuildDepth();
 
             int W = frame.W, Hh = frame.H, cx = frame.Ox, cy = frame.Oy; var C = frame.Color; var L = frame.Light;
-            int n = W * Hh;
-            if (srcC == null || srcC.Length != n) { srcC = new uint[n]; srcL = new uint[n]; }
-            Array.Copy(C, srcC, n); Array.Copy(L, srcL, n);
 
             // 水的底色（倒影混進去的顏色）：白天灰藍、晚上深藍
             double wr = 24 + 44 * day, wg = 34 + 52 * day, wb = 62 + 64 * day;
@@ -115,6 +112,28 @@ namespace ZeroStar
                     }
             }
             for (int i = ripples.Count - 1; i >= 0; i--) { var r = ripples[i]; r.t += dt; if (r.t > 0.9) ripples.RemoveAt(i); else ripples[i] = r; }
+
+            // 交給 shader（PostFx）：這裡只準備資料，倒影、邊、漣漪的環都在顯示卡上畫；水珠照舊 CPU 畫（會在水面上面）
+            if (PostFx.Active && PostFx.Cols != null)
+            {
+                var cols = PostFx.Cols;
+                for (int x = 0; x < TOWN_W; x++) cols[x * 4] = (byte)Math.Round(depth[x] * 255);
+                int rn = 0;
+                foreach (var r in ripples)
+                {
+                    if (rn >= PostFx.MAX_RIP) break;
+                    if (r.x < cx - 12 || r.x > cx + W + 12) continue;
+                    int X = (int)r.x; float dx = X >= 0 && X < TOWN_W ? depth[X] : 0;
+                    PostFx.Rip[rn++] = new UnityEngine.Vector4((float)r.x, (float)r.t, r.big ? 1 : 0, dx);
+                }
+                PostFx.RipN = rn; PostFx.Wet = (float)wet; PostFx.Day = (float)day; PostFx.Time = (float)(time % 3600); PostFx.Ox = cx; PostFx.Oy = cy;
+                PostFx.TownFrame = true;
+                DrawDrops(frame, dt, day);
+                return;
+            }
+            int n = W * Hh;
+            if (srcC == null || srcC.Length != n) { srcC = new uint[n]; srcL = new uint[n]; }
+            Array.Copy(C, srcC, n); Array.Copy(L, srcL, n);
 
             // 每一欄：水深→上下範圍；每一格：倒影＋水色，再加邊
             for (int sx = 0; sx < W; sx++)
@@ -193,7 +212,12 @@ namespace ZeroStar
                 }
             }
 
-            // 主角踩起的水珠
+            DrawDrops(frame, dt, day);
+        }
+
+        // 主角踩起的水珠
+        static void DrawDrops(Frame frame, double dt, double day)
+        {
             uint dropC = Pack(170 + 60 * day, 200 + 40 * day, 240);
             for (int i = drops.Count - 1; i >= 0; i--)
             {

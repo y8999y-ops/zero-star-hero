@@ -9,7 +9,7 @@ description: 做或調整場景環境特效（Unity 版）：天氣（雨、雪�
 
 ## 0. 先知道的事
 
-- **畫面是 CPU 算的，不是 shader。** 每格畫進 `Frame`（`unity/Assets/Scripts/PixelFX/Painter.cs`）：
+- **畫面主體是 CPU 算的，重的逐格效果交給 shader（混合，見 §6）。** 每格畫進 `Frame`（`unity/Assets/Scripts/PixelFX/Painter.cs`）：
   - `Color`：顏色（不透明）。
   - `Light`：加上去的光。讀寫前它會先把還沒畫的光暈畫完。
   - `Ox`、`Oy`：鏡頭位置。世界座標要減掉它們才是畫面座標。
@@ -126,3 +126,46 @@ description: 做或調整場景環境特效（Unity 版）：天氣（雨、雪�
 | 一進場突然冒出來 | 進場照現在的天氣設好濕度 |
 
 - **給使用者看**：全畫面一張＋地面放大一張，用 SendUserFile 傳。使用者用手機看，說明用繁體中文短句。測過沒問題就 commit＋push，不用問；只 commit 自己改的檔案，資料夾裡別人還沒 commit 的改動不要一起加。
+
+## 6. 混合畫面：CPU＋shader（2026-11-19 起）
+
+使用者決定用「混合」：主畫面照舊 CPU 算，**整片逐格的效果（倒影、變濕、折射、霧、發光、水面）放到顯示卡**。不要整個改成 shader。
+
+- **檔案**：
+  - `Runtime/PostFx.cs`：底層，管資料、遮罩、上傳、Blit、顯示。
+  - `Resources/Shaders/PostFx.shader`：效果本體。
+  - `Resources/Shaders/ScreenShow.shader`：把結果畫到螢幕。
+  - shader 放在 Resources，才會被打包進遊戲。
+- **一格的流程**：
+  1. CPU 畫場景。
+  2. `PostFx.MarkScenery`：記下場景。
+  3. 畫角色、特效、雨。
+  4. `DrawFg` 開頭 `PostFx.BuildMask`：跟記下的場景比，沒被改過的格子＝場景。
+  5. 前景草葉畫完 `PostFx.FinishMask`：前景蓋到的格子扣掉。
+  6. 四角壓暗 → 合成 → 上傳貼圖。
+  7. `PostFx.Present`：Blit 跑 PostFx.shader 到 RenderTexture，SpriteRenderer 換成 ScreenShow 材質顯示。
+  - 遮罩一定要在四角壓暗之前算，不然畫面邊緣整圈都會被當成「不是場景」。
+- **給 shader 的資料**：
+  - 遮罩：跟畫面一樣大，含四周補的一格。
+  - 每一欄的資料（城鎮寬×1）：R 積水深度每格更新；G 接雨面、B 水痕種子、A 濕亮邊列，這三個是靜態的。
+  - 世界座標的資料（城鎮寬×高）：R 變濕分數、G 不會濕，靜態。
+  - 參數：`_Cam`（鏡頭、時間、是否城鎮）、`_Env`（濕度、白天、地面 y）、`_Rip[32]`（漣漪）。
+  - `TownFrame` 每格要重新設，沒設就原樣輸出（換到關卡自動沒有效果）。
+- **座標**：
+  - 貼圖第 0 列＝畫布第 -1 列（上面補的一格），所以 `cx = floor(uv.x*寬) - 1`、`cy = floor(uv.y*高) - 1`，加上 `_Cam.xy` 就是世界座標。
+  - 一律以整格計算，取樣用格子中心（`(c + 1.5) / 寬`）、最近點。
+  - 色彩空間是 Gamma，數值直接照 CPU 版的 0～255 / 255。
+- **CPU 備用（一定要保留）**：
+  - `PostFx.Active`＝有顯示卡＋有人負責顯示（`PostFx.Use`，PixelScreen 和 WeatherShot 會設）＋shader 能用＋`Enabled`。
+  - `Active` 是 false 時，CPU 照舊自己畫。自動測試（`-nographics`、TraceTest）都走 CPU 版。
+  - 新效果：CPU 端在 `Active` 時只準備資料、不逐格畫；不是 `Active` 時用 CPU 版，或乾脆不畫。
+- **CPU 端還是要畫的**：會蓋在水面上面的小東西（水珠、雨滴、屋簷滴水），因為它們不是場景，shader 不會改到。
+- **截圖**：
+  - `WeatherShot` 預設用顯示卡（`SHOT_GPU=0` 強制 CPU）。
+  - 要用顯示卡就**不能加 `-nographics`**。
+  - 比對：同一版程式 CPU 與顯示卡各截一張，算不同的格子數（2026-11-19 首次：整張 150～458 格不同，都是雜訊花紋），再並排看。
+- **加新效果**：
+  1. 在 PostFx.cs 加資料；靜態的放世界貼圖或每一欄的貼圖，動態的放參數。
+  2. 在 PostFx.shader 加一段（先用世界座標的 y 範圍或遮罩 early return，其他格子不要多算）。
+  3. 補上 CPU 備用版。
+  4. 顯示卡、CPU 兩種都截圖確認。

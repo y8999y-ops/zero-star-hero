@@ -58,6 +58,7 @@ namespace ZeroStar
             go.transform.SetParent(transform, false);
             sr = go.GetComponent<SpriteRenderer>();
             sr.flipY = true;   // 畫布第 0 列在最上面，貼圖第 0 列在最下面：上下翻轉
+            PostFx.Use = true;   // 這裡負責顯示 shader 的結果
             Application.targetFrameRate = 60;
             QualitySettings.vSyncCount = 0;
             Rebuild(WidthFor(Aspect()));
@@ -95,6 +96,7 @@ namespace ZeroStar
             for (int i = 3; i < rgba.Length; i += 4) rgba[i] = 255;
             tex.SetPixelData(rgba, 0);
             tex.Apply(false);
+            PostFx.Present(tex, Frame, sr);   // 混合畫面：可以用 shader 就把顯示卡的結果換上去（PostFx.cs）
             Fit();
         }
 

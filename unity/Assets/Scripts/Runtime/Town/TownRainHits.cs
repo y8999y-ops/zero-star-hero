@@ -89,6 +89,21 @@ namespace ZeroStar
                 lastX = x;
             }
             TownPuddles.SetDrips(land);
+            // 給 shader（PostFx）的資料：世界座標的分數（R）與不會濕（G：外框、會發光），每一欄的接雨面／水痕／濕亮邊
+            var world = new byte[TOWN_W * H * 4]; var cols = new byte[TOWN_W * 4];
+            for (int y = 0; y < H; y++) for (int x = 0; x < TOWN_W; x++)
+            {
+                int k = y * TOWN_W + x;
+                world[k * 4] = score[k];
+                world[k * 4 + 1] = emit[k] != 0 || Dark(main[k]) ? (byte)255 : (byte)0;
+            }
+            for (int x = 0; x < TOWN_W; x++)
+            {
+                cols[x * 4 + 1] = topY[x] < 0 ? (byte)255 : (byte)topY[x];
+                cols[x * 4 + 2] = trickle[x];
+                cols[x * 4 + 3] = hiY[x] < 0 ? (byte)255 : (byte)hiY[x];
+            }
+            PostFx.SetTown(TOWN_W, H, world, cols);
             if (DebugLog) UnityEngine.Debug.Log("[RainHits] 屋簷滴水點 " + drips.Count + "：" + string.Join(",", drips.ConvertAll(d => d.x + "@" + d.y0 + "-" + d.y1)));
         }
 
@@ -109,7 +124,7 @@ namespace ZeroStar
             double dt = lastT < 0 ? 0 : Math.Max(0, Math.Min(0.1, time - lastT)); lastT = time;
             double wet = TownPuddles.Wet;
             int W = frame.W, cx = frame.Ox, cy = frame.Oy;
-            if (wet > 0.02) WetPass(frame, time, wet, day);
+            if (wet > 0.02 && !PostFx.Active) WetPass(frame, time, wet, day);   // 有 shader 就交給顯示卡（PostFx.shader）
             uint hot = Pack(232, 242, 255), cool = Pack(150 + 60 * day, 178 + 50 * day, 215 + 30 * day);
 
             // 雨打在屋頂、物件頂：每 1/30 秒一個時段，畫面內抽幾欄

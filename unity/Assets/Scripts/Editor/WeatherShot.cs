@@ -1,5 +1,5 @@
 // 開發用：碎星鎮天氣截圖（看雨天積水這類天氣特效用）。主角從 START 往右走，在幾個時間點各存一張放大 3 倍的 PNG。
-// 執行（不用開編輯器）：Unity.exe -batchmode -nographics -projectPath <unity> -executeMethod ZeroStar.Tests.WeatherShot.Run -quit
+// 執行（不用開編輯器）：Unity.exe -batchmode（要看 shader 的結果就不要加 -nographics） -projectPath <unity> -executeMethod ZeroStar.Tests.WeatherShot.Run -quit
 // 環境變數：SHOT_OUT（輸出資料夾，預設 unity/Golden/weather）、SHOT_WEATHER（rain／cloudy／clear，預設 rain）、
 //   SHOT_WET（進場時的濕度 0～1）、SHOT_DAY（0.25＝中午、0.75＝半夜，預設 0.3）、SHOT_TICKS（逗號分開的第幾步，預設 60,400,700,900）、SHOT_X（主角起點）、SHOT_WALK（第幾步開始往右走，預設 380）
 using System;
@@ -25,6 +25,10 @@ namespace ZeroStar.Tests
             Game.W = 384;
             TownArt.DayOverride = null; TownArt.WeatherOverride = null;
             TownRainHits.DebugLog = true;
+            // 顯示卡模式（預設：有顯示卡就用）：跟遊戲一樣跑 PostFx.shader。SHOT_GPU=0＝強制 CPU 版。要顯示卡就不能加 -nographics
+            bool gpu = Env("SHOT_GPU", "1") != "0" && PostFx.Supported;
+            PostFx.Use = gpu;
+            Debug.Log($"[WeatherShot] {(gpu ? "顯示卡（PostFx shader）" : "CPU")} 模式，{SystemInfo.graphicsDeviceType}");
             var g = new Game("town");
             TownArt.NowMs = () => 1767225600000.0 + g.SimMs;
             TraceScript.Apply(g, TraceScript.DefaultPath());
@@ -49,6 +53,7 @@ namespace ZeroStar.Tests
                 g.SimMs += 1000 / 60.0;
                 frame.Composite(rgba, null, 0.8);
                 g.PostComposite(rgba);
+                if (gpu && Array.IndexOf(at, n) >= 0) PostFx.RenderInto(rgba, frame);
                 if (Array.IndexOf(at, n) >= 0) Save(rgba, Path.Combine(outDir, $"shot-{n:0000}.png"));
             }
             {   // 濕的分數圖
