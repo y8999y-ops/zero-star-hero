@@ -58,6 +58,7 @@ namespace ZeroStar
                     if (c != 0)
                     {
                         uint a = c >> 24;
+                        if (a != 0) frame.ExcludeWeather(j);
                         if (a == 255) C[j] = c;
                         else C[j] = Mix(c, C[j], a / 255.0);
                     }

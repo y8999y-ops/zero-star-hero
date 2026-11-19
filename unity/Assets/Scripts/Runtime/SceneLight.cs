@@ -41,7 +41,7 @@ namespace ZeroStar
         /// 整個畫面一起變亮（大招），0～1，每格由外面設定
         public static double GlobalLv; public static string GlobalCol = "#fff0c0";
         static readonly List<LightSrc> allBuf = new List<LightSrc>();
-        static readonly List<(double sx, double sy, double r, double lv, double cr, double cg, double cb, double r2, double ir, int x0, int x1, int y0, int y1)> lsBuf = new List<(double, double, double, double, double, double, double, double, double, int, int, int, int)>();
+        static readonly List<(double sx, double sy, double r, double lv, double cr, double cg, double cb, double r2, double ir, int x0, int x1, int y0, int y1, bool[,] shadow)> lsBuf = new List<(double, double, double, double, double, double, double, double, double, int, int, int, int, bool[,])>();
         public static float[] Compute(Frame frame, List<LightSrc> list)
         {
             int W = frame.W, H = frame.H, n = W * H;
@@ -64,11 +64,11 @@ namespace ZeroStar
             var Ls = lsBuf; Ls.Clear();
             foreach (var L in all)
             {
-                double sx = L.X - frame.Ox * L.Par, sy = L.Y - frame.Oy, r = L.R, lv = L.Lv;
+                double sx = L.X - Parallax.Offset(frame.Ox, frame.CameraFractionX, L.Par), sy = L.Y - frame.Oy, r = L.R, lv = L.Lv;
                 if (sx + r < 0 || sx - r >= W || sy + r < 0 || sy - r >= H || lv <= 0) continue;
                 var c = RgbOf(L.Col ?? DEFAULT);
                 Ls.Add((sx, sy, r, lv, c[0], c[1], c[2], r * r, 1 / r,
-                    (int)Math.Max(0, Math.Floor(sx - r)), (int)Math.Min(W - 1, Math.Ceiling(sx + r)), (int)Math.Max(0, Math.Floor(sy - r)), (int)Math.Min(H - 1, Math.Ceiling(sy + r))));
+                    (int)Math.Max(0, Math.Floor(sx - r)), (int)Math.Min(W - 1, Math.Ceiling(sx + r)), (int)Math.Max(0, Math.Floor(sy - r)), (int)Math.Min(H - 1, Math.Ceiling(sy + r)), L.Shadow));
             }
             const int BANDS = 8;
             int per = (H + BANDS - 1) / BANDS;
@@ -86,6 +86,7 @@ namespace ZeroStar
                         {
                             double ex = x - L.sx, d2 = ex * ex + dy2;
                             if (d2 >= L.r2) continue;
+                            if (L.shadow != null && L.shadow[(int)Math.Round(ex) + L.shadow.GetLength(0)/2, (int)Math.Round(ey) + L.shadow.GetLength(1)/2]) continue;
                             double f = 1 - Math.Sqrt(d2) * L.ir, k = L.lv * f * f * (3 - 2 * f);
                             int i = row + x;
                             buf[i] = (float)Math.Min(4, buf[i] + k);

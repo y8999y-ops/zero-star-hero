@@ -37,7 +37,11 @@ namespace ZeroStar
         /// 建立關卡流程需要的東西（祭壇、寶箱、傳送門），照 main.js 載入時的順序
         void InitStage(string id)
         {
-            StageD = id == "town" ? StageData.Empty("town") : StageData.Get(id);
+            StageD = id == "town" ? StageData.Empty("town") : StageData.Get(id).PlacedSpawns(composition,Map);
+            if(Custom)
+            {
+                StageD=StageD.ForLayout(StageId,Custom.blank);
+            }
             Say.Paced = StageD.Paced;
             if (StageD.Altars != null) foreach (var a in StageD.Altars) Altars.Add(new Altar { X = a.X, Y = a.Y ?? Map.FloorAt(a.X, 0) });
             if (id == "town" || id == "endless") return;
@@ -326,7 +330,7 @@ namespace ZeroStar
         void PlayerDied()
         {
             Deaths++;
-            (double x, double y)? to = CheckpointAltar != null ? (CheckpointAltar.X, CheckpointAltar.Y) : Endless ? ((double x, double y)?)null : (StageD.StartX, Map.FloorAt(StageD.StartX, 0));   // 無限討伐：原地復活
+            (double x, double y)? to = CheckpointAltar != null ? (CheckpointAltar.X, CheckpointAltar.Y) : Endless ? ((double x, double y)?)null : (StageD.StartX + Offset(StampKind.Start).x, Map.FloorAt(StageD.StartX + Offset(StampKind.Start).x, 0));   // 無限討伐：原地復活
             to = BossDeath(to);   // 王戰中死掉：王和房裡的小怪收掉、解除封鎖；王融化中死掉：原地復活
             string col = FORM_COLOR.TryGetValue(Player.Form, out var cc) ? cc : "#ffd84a";
             OnShatter?.Invoke(Player.X, Player.Y, col);

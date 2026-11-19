@@ -143,7 +143,7 @@ namespace ZeroStar
         {
             int x = wx - f.Ox, y = wy - f.Oy;
             if (x < 0 || y < 0 || x >= f.W || y >= f.H) return;
-            f.Color[y * f.W + x] = c;
+            int i=y*f.W+x; f.ExcludeWeather(i); f.Color[i]=c;
         }
 
         /// 畫在建築之後、角色之前（角色會擋住屋簷滴下來的水）。rain＝雨量 0～1、day＝白天程度
@@ -153,7 +153,7 @@ namespace ZeroStar
             double dt = lastT < 0 ? 0 : Math.Max(0, Math.Min(0.1, time - lastT)); lastT = time;
             double wet = TownPuddles.Wet;
             int W = frame.W, cx = frame.Ox, cy = frame.Oy;
-            if (wet > 0.02 && !PostFx.Active) WetPass(frame, time, wet, day);   // 有 shader 就交給顯示卡（PostFx.shader）
+            if (wet > 0.02 && !PostFx.ActiveFor(frame)) WetPass(frame, time, wet, day);   // 有 shader 就交給顯示卡（PostFx.shader）
             uint hot = Pack(232, 242, 255), cool = Pack(150 + 60 * day, 178 + 50 * day, 215 + 30 * day);
 
             // 雨打在屋頂、物件頂：每 1/30 秒一個時段，畫面內抽幾欄

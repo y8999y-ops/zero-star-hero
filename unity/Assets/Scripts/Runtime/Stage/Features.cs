@@ -30,7 +30,7 @@ namespace ZeroStar
         };
 
         /// stage.js 的 features 一筆（t、x、y、h、w、i、form；沒有的用 null）
-        public class Def { public string t; public double x, y; public double? h, w; public int? i; public string form; }
+        public class Def { public string stableId; public string t; public double x, y; public double? h, w; public int? i; public string form; }
 
         /// main.js 傳進來的 api，加上原本直接改 profile 的地方
         public class Api
@@ -66,7 +66,7 @@ namespace ZeroStar
             Items = new List<Item>();
             for (int i = 0; i < list.Count; i++)
             {
-                var f = list[i]; string id = f.t + i;
+                var f = list[i]; string id = f.stableId ?? f.t + i;
                 var it = new Item { t = f.t, x = f.x, y = f.y, h = f.h, w = f.w, i = f.i, form = f.form, id = id, hp = 3 };
                 it.t0 = Rnd.Next() * 9; it.open = 0; it.lit = 0; it.squash = 0; it.cd = 0; it.done = found.TryGetValue(id, out int v) && v != 0;
                 Items.Add(it);

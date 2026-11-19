@@ -482,8 +482,8 @@ namespace ZeroStar
         static (double x, double y, double a)? MoonPos(Ult U, UltHooks H)
         {
             double t = U.T; if (t > END) return null;
-            var v = H.View(); double k = UltForms.OutCubic(UltForms.Clamp01(t / MOONT)), a = t > BACK ? 1 - UltForms.Clamp01((t - BACK) / 0.5) : 1;
-            return (v.l + (v.r - v.l) * 0.72, v.top - 24 + 64 * k, Math.Min(1, k * 1.5) * a);
+            var camera = H.G.DisplayCamera; var v = Game.ViewRect(); double k = UltForms.OutCubic(UltForms.Clamp01(t / MOONT)), a = t > BACK ? 1 - UltForms.Clamp01((t - BACK) / 0.5) : 1;
+            return (camera.X + v.x0 + v.w * 0.72, camera.Y + v.y0 - 24 + 64 * k, Math.Min(1, k * 1.5) * a);
         }
 
         public override void Draw(UltPainter P, Ult U, UltKit kit, UltHooks H)

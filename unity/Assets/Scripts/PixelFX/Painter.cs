@@ -22,13 +22,43 @@ namespace PixelFX
     {
         public readonly int W, H;
         public int Ox, Oy;
+        public double CameraFractionX, CameraFractionY;
         public readonly uint[] Color;
+        // GPU weather is opt-in for each output. Mask indices match Color (no texture border).
+        public bool UseGpuWeather;
+        public byte[] WeatherMask { get; private set; }
+        uint[] weatherBase;
+        public bool TrackingWeather { get; private set; }
+        public bool WeatherReady;
+        public void ResetWeather()
+        {
+            TrackingWeather = false;
+            WeatherReady = false;
+        }
+        public void BeginWeatherMask()
+        {
+            if (WeatherMask == null) { WeatherMask = new byte[Color.Length]; weatherBase = new uint[Color.Length]; }
+            Array.Fill(WeatherMask, (byte)255);
+            Array.Copy(Color, weatherBase, Color.Length);
+            TrackingWeather = true;
+        }
+        public void ExcludeWeather(int index)
+        {
+            if (TrackingWeather) WeatherMask[index] = 0;
+        }
+        public void ProtectLegacyDraws()
+        {
+            // 舊角色與特效仍有直接寫 Color 的路徑。保留明確標記，僅扣除其他改色像素。
+            if (!TrackingWeather) return;
+            for (int i = 0; i < Color.Length; i++)
+                if (Color[i] != weatherBase[i]) WeatherMask[i] = 0;
+        }
         readonly uint[] light;
         /// 光的緩衝。拿之前先把還沒畫的光暈畫完（見 Defer）。
         public uint[] Light { get { if (Q.Count > 0) Flush(); return light; } }
         public uint[] LightRaw => light;   // 不先 Flush（只給會自己顧好順序的地方用）
         public Frame(int w, int h, int ox = 0, int oy = 0) { W = w; H = h; Ox = ox; Oy = oy; Color = new uint[w * h]; light = new uint[w * h]; }
-        public Frame Clear() { Q.Clear(); ReleaseBufs(); Array.Clear(Color, 0, Color.Length); Array.Clear(light, 0, light.Length); return this; }
+        public Frame Clear() { ResetWeather(); Q.Clear(); ReleaseBufs(); Array.Clear(Color, 0, Color.Length); Array.Clear(light, 0, light.Length); return this; }
         // ShadePar 記光用的暫存格子：跟這張畫布借、光畫完（Flush）就還，下次重複用（每格不產生新的）
         readonly System.Collections.Generic.List<(uint[] c, double[] k)> bufFree = new System.Collections.Generic.List<(uint[], double[])>(), bufUsed = new System.Collections.Generic.List<(uint[], double[])>();
         public (uint[] c, double[] k) RentBuf(int n)
@@ -393,6 +423,7 @@ namespace PixelFX
             if (a < 1 && a <= BAYER[((sy & 3) << 2) | (sx & 3)]) return;
             int x = sx - ox, y = sy - oy;
             if (x < 0 || y < 0 || x >= w || y >= h) return;
+            Frame.ExcludeWeather(y * w + x);
             C[y * w + x] = c;
         }
         public void Add(int sx, int sy, uint c, double k = 1)
@@ -418,7 +449,7 @@ namespace PixelFX
             if (c == 0 || a <= 0.004) return;
             int x = sx - ox, y = sy - oy;
             if (x < 0 || y < 0 || x >= w || y >= h) return;
-            int i = y * w + x; uint d = C[i];
+            int i = y * w + x; Frame.ExcludeWeather(i); uint d = C[i];
             double da = (d >> 24) / 255.0, oa = a + da * (1 - a), k = a / oa;
             int Ch(int s) => Pf.ToInt32(((c >> s) & 255) * k + ((d >> s) & 255) * (1 - k)) & 255;
             C[i] = unchecked((uint)(((Pf.ToInt32(oa * 255) & 255) << 24) | (Ch(16) << 16) | (Ch(8) << 8) | Ch(0)));

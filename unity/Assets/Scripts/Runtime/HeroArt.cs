@@ -24,6 +24,7 @@ namespace ZeroStar
                     if (c == 0) continue;
                     int px = ox + (flip ? s.Ax - i : i - s.Ax);
                     if (px < 0 || px >= Wf) continue;
+                    frame.ExcludeWeather(py * Wf + px);
                     Cc[py * Wf + px] = tint != 0 ? tint : c;
                 }
             }

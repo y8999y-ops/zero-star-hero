@@ -114,7 +114,7 @@ namespace ZeroStar
             for (int i = ripples.Count - 1; i >= 0; i--) { var r = ripples[i]; r.t += dt; if (r.t > 0.9) ripples.RemoveAt(i); else ripples[i] = r; }
 
             // 交給 shader（PostFx）：這裡只準備資料，倒影、邊、漣漪的環都在顯示卡上畫；水珠照舊 CPU 畫（會在水面上面）
-            if (PostFx.Active && PostFx.Cols != null)
+            if (PostFx.ActiveFor(frame) && PostFx.Cols != null)
             {
                 var cols = PostFx.Cols;
                 for (int x = 0; x < TOWN_W; x++) cols[x * 4] = (byte)Math.Round(depth[x] * 255);
@@ -127,7 +127,7 @@ namespace ZeroStar
                     PostFx.Rip[rn++] = new UnityEngine.Vector4((float)r.x, (float)r.t, r.big ? 1 : 0, dx);
                 }
                 PostFx.RipN = rn; PostFx.Wet = (float)wet; PostFx.Day = (float)day; PostFx.Time = (float)(time % 3600); PostFx.Ox = cx; PostFx.Oy = cy;
-                PostFx.TownFrame = true;
+                frame.WeatherReady = true;
                 DrawDrops(frame, dt, day);
                 return;
             }
@@ -231,7 +231,7 @@ namespace ZeroStar
         {
             int x = wx - f.Ox, y = wy - f.Oy;
             if (x < 0 || y < 0 || x >= f.W || y >= f.H) return;
-            f.Color[y * f.W + x] = c;
+            int i=y*f.W+x; f.ExcludeWeather(i); f.Color[i]=c;
         }
     }
 }

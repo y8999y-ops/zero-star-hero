@@ -28,13 +28,13 @@ namespace ZeroStar.Tests
             if (Environment.GetEnvironmentVariable("SHOT_FLOWSEED") != null) TownFlow.Seed = int.Parse(Environment.GetEnvironmentVariable("SHOT_FLOWSEED"));
             if (Environment.GetEnvironmentVariable("SHOT_FLOWRANGE") != null) TownFlow.RangeDeg = float.Parse(Environment.GetEnvironmentVariable("SHOT_FLOWRANGE"), inv);
             // 顯示卡模式（預設：有顯示卡就用）：跟遊戲一樣跑 PostFx.shader。SHOT_GPU=0＝強制 CPU 版。要顯示卡就不能加 -nographics
-            bool gpu = Env("SHOT_GPU", "1") != "0" && PostFx.Supported;
-            PostFx.Use = gpu;
+            bool gpu = Env("SHOT_GPU", "1") != "0" && PostFx.Supported && PostFx.Enabled;
+
             Debug.Log($"[WeatherShot] {(gpu ? "顯示卡（PostFx shader）" : "CPU")} 模式，{SystemInfo.graphicsDeviceType}");
             var g = new Game("town");
             TownArt.NowMs = () => 1767225600000.0 + g.SimMs;
             TraceScript.Apply(g, TraceScript.DefaultPath());
-            var frame = new Frame(Game.W, Game.H);
+            var frame = new Frame(Game.W, Game.H){UseGpuWeather=gpu,SoftLight=true};
             var rgba = new byte[Game.W * Game.H * 4];
             g.StartStage();
             g.Warm(frame);

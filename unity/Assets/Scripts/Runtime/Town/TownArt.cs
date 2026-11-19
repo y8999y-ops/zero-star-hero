@@ -22,7 +22,11 @@ namespace ZeroStar
             ("golem", "工坊老闆・岩叔", 510, "workshop", false),
             ("mushroom", "旅館老闆娘・菇媽", 932, "inn", true),
         };
-        public const double SIGNPOST_X = 1150;
+        public static double SIGNPOST_X {get; private set;} = 1150;
+        static bool hasCloudObjects;
+        static readonly Dictionary<string,int> npcOffsetY=new Dictionary<string,int>();
+        public static int FootY(string id)=>FLOOR+(id!=null && npcOffsetY.TryGetValue(id,out int dy)?dy:0);
+        static Vector2Int workshopMove, farMove, cloudMove;
 
         // ---- 匯出的圖層
         static int FAR_W, MID_W, FG_W;
@@ -45,18 +49,23 @@ namespace ZeroStar
             FAR = U32(); MID = U32(); MAIN = U32(); FG = U32(); EMIT = U8();
             int nl = I32(); for (int i = 0; i < nl; i++) LIGHTS.Add((F64(), F64(), F64(), F64(), Str()));
             BuildClouds();
+            cloudPixels = CLOUDS.Select(c => c == 0 ? 0u : c == 2 ? Pack(255, 253, 246) : c == 1 ? Pack(234, 240, 249) : Pack(204, 217, 238)).ToArray();
         }
 
         // ---- 2026-11-12 美術優化（照 Ori 的層次，維持像素畫）：白天的雲、霧、光束、遠近的淡化、角色外框。
         //   全部乘上「白天的程度」，晚上維持原本的夜景。這一段是 Unity 版自己的，不跟網頁版比對。
         const int CLOUD_W = 900, CLOUD_H = 112;
+        static uint[] cloudPixels;
         static byte[] CLOUDS;   // 0 沒有、1 雲身、2 亮面、3 雲底的暗面
-        static void BuildClouds()
+        static void BuildClouds() => GenerateClouds(null);
+        public static void GenerateClouds(Action<int,int,int,byte[]> capture)
         {
-            CLOUDS = new byte[CLOUD_W * CLOUD_H];
+            byte[] canvas=new byte[CLOUD_W * CLOUD_H];
+            if(capture==null) CLOUDS=canvas;
             var rng = new System.Random(7);
             for (int c = 0; c < 11; c++)
             {
+                if(capture!=null) Array.Clear(canvas,0,canvas.Length);
                 int cx = (int)(rng.NextDouble() * CLOUD_W), cy = 20 + (int)(rng.NextDouble() * 66), n = 4 + (int)(rng.NextDouble() * 5);
                 double big = 0.7 + rng.NextDouble() * 0.8;
                 for (int i = 0; i < n; i++)
@@ -70,9 +79,10 @@ namespace ZeroStar
                         int k = yy * CLOUD_W + Wrap(xx, CLOUD_W);
                         double hx = dx + 1.5, hy = dy + 2;
                         byte v = yy >= cy - 1 ? (byte)3 : hx * hx + hy * hy <= r * 0.72 * r * 0.72 && yy <= cy - 3 ? (byte)2 : (byte)1;
-                        if (CLOUDS[k] == 0 || v == 2 || (v == 1 && CLOUDS[k] == 3 && yy < cy - 1)) CLOUDS[k] = v;
+                        if (canvas[k] == 0 || v == 2 || (v == 1 && canvas[k] == 3 && yy < cy - 1)) canvas[k] = v;
                     }
                 }
+                capture?.Invoke(c,cx,cy,canvas);
             }
         }
         static readonly double[] shaftRow = new double[H], fog1 = new double[H], fog2 = new double[H], sunRow = new double[H], coolRow = new double[H];
@@ -153,9 +163,27 @@ namespace ZeroStar
         static FxRun[] rain;
         static double? rainT, skyT;
         /// 換場景（新的一局）時重設：網頁版每次載入頁面都是新的模組狀態
-        public static void Reset()
+        public static void Reset(WorldComposition composition=null)
         {
-            Load();
+            // 城鎮的畫布是靜態快取，每次重組都要從原始資料開始。
+            hasCloudObjects=composition!=null && composition.HasCloudObjects;
+            LIGHTS.Clear(); loaded=false; Load();
+            if(composition!=null)
+            {
+                Img Layer(uint[] pixels,int width) => new Img{W=width,H=H,Px=pixels};
+                var d=new LevelData{Stage="town",W=TOWN_W,H=H,PF=MAIN,PFE=EMIT,Far=Layer(FAR,FAR_W),Mid=Layer(MID,MID_W),Fg=Layer(FG,FG_W)};
+                foreach(var l in LIGHTS)d.PropLights.Add(new LightSrc(l.x,l.y,l.r,l.lv,l.col));
+                composition.Apply(d); MAIN=d.PF;EMIT=d.PFE;
+                LIGHTS.Clear();foreach(var l in d.PropLights)LIGHTS.Add((l.X,l.Y,l.R,l.Lv,l.Col));
+            }
+            Vector2Int Move(string role)=>composition?.Role(role)??Vector2Int.zero;
+            for(int i=0;i<NPCS.Length;i++)
+            {
+                var n=NPCS[i]; var shift=composition?.Delta(StampKind.Resident,i)??Vector2Int.zero;
+                NPCS[i].x=(i==0?198:i==1?510:932)+shift.x; npcOffsetY[n.id]=shift.y;
+            }
+            npcOffsetY["sign"]=Move("sign").y;
+            SIGNPOST_X=1150+Move("sign").x; workshopMove=Move("workshop"); farMove=Move("Far");cloudMove=Move("Cloud");
             SkyInit();
             rain = new FxRun[3];
             for (int k = 0; k < 3; k++) { var o = new FxOptions { X = 0, Y = FLOOR }; o.Num["density"] = 1; rain[k] = new FxRun(FxSystem.Def("town-rain"), o); }
@@ -187,16 +215,24 @@ namespace ZeroStar
         {
             double dl = 1 - 0.75 * DayInfo().d * (1 - 0.5 * WeatherInfo().cloud);
             var list = LIGHTS.Select(l => new LightSrc(l.x, l.y, l.r + (l.r > 50 ? Math.Floor(time * 6) % 2 : 0), l.lv * dl, l.col)).ToList();
-            list.Add(new LightSrc(106, 128, 110, 1.6 * dl, "#ffd27a", 0.12));   // 坑底的大星星（遠景圖左邊那顆）
+            list.Add(new LightSrc(106 + farMove.x, 128 + farMove.y, 110, 1.6 * dl, "#ffd27a", 0.12));   // 坑底的大星星（遠景圖左邊那顆）
             return list;
         }
 
         /// 畫鎮的背景＋街道。lv：光的亮度（街道和店被照到時加上光源的顏色）
-        public static void Draw(Frame frame, float[] lv, double time)
+        public static void Draw(Frame frame,float[] lv,double time) => Draw(frame,lv,time,null);
+        static uint[] customSky;
+        internal static void Draw(Frame frame, float[] lv, double time,StageLayout layout)
         {
             int W = frame.W, cx = frame.Ox, cy = frame.Oy; var outc = frame.Color; var LB = frame.Light; float[] TR = SceneLight.Tr, TG = SceneLight.Tg, TB = SceneLight.Tb;
-            int of = (int)Math.Floor(cx * 0.12), om = (int)Math.Floor(cx * 0.35), os = (int)Math.Floor(cx * 0.04);
+            double rx = frame.CameraFractionX;
+            double of = Parallax.Offset(cx, rx, 0.12), om = Parallax.Offset(cx, rx, 0.35), os = Parallax.Offset(cx, rx, 0.04);
             Prof.Mark("T:前"); SkyUpdate(skyT == null ? 0 : Math.Max(0, Math.Min(0.1, time - skyT.Value))); Prof.Mark("T:流星天空");
+            if(layout!=null)
+            {
+                if(customSky==null || customSky.Length!=frame.Color.Length) customSky=new uint[frame.Color.Length];
+                Array.Clear(customSky,0,customSky.Length);layout.Draw(frame,SceneryLayer.Sky,customSky);
+            }
             var SKYP = skyPx;
             var di = DayInfo(); var wi = WeatherInfo();
             double DAY0 = di.d, DUSK0 = di.dusk, RAINK = wi.rain, CLOUD = wi.cloud;
@@ -233,8 +269,8 @@ namespace ZeroStar
             }
             // 白天的層次（D＝白天的程度；陰天雨天少一點）
             double D = DAY, SUNK = DAY * (1 - CLOUD);
-            double sunX = W * 0.16, shaftOx = cx * 0.2 + Pf.Sin(time * 0.07) * 14;
-            int oc = (int)Math.Floor(cx * 0.05 + time * 1.2);
+            double sunX = W * 0.16, shaftOx = Parallax.Offset(cx, rx, 0.2) + Pf.Sin(time * 0.07) * 14;
+            double oc = Parallax.Offset(cx, rx, 0.05) + time * 1.2;
             for (int y = 0; y < H; y++)
             {
                 fog1[y] = Math.Max(0, Math.Min(1, (y - 96) / 70.0)) * 0.36 * D;
@@ -252,6 +288,10 @@ namespace ZeroStar
                 uint sky = SKY[Math.Max(0, Math.Min(SKY.Length - 1, (int)Math.Floor(wy / 13.0)))];
                 if (wy < 0 || wy >= H) { uint fill = wy < 0 ? DaySky(SKYP[0], 0) : Lift(sky); for (int x = 0; x < W; x++) outc[row + x] = fill; return; }
                 int sy = Math.Min(SKY_H - 1, wy);
+                var midRow = new Parallax.Row(MID, MID_W, H, om, wy);
+                var farRow = new Parallax.Row(FAR, FAR_W, H, of, wy);
+                var skyRow = new Parallax.Row(SKYP, SKY_W, SKY_H, os, sy);
+                var cloudRow = new Parallax.Row(cloudPixels, CLOUD_W, CLOUD_H, oc - cloudMove.x, wy - cloudMove.y);
                 for (int x = 0; x < W; x++)
                 {
                     int i = row + x, gx = x + cx;
@@ -263,49 +303,37 @@ namespace ZeroStar
                         continue;
                     }
                     double r, g, b, k, gray;
-                    uint bg = MID[wy * MID_W + Wrap(x + om, MID_W)];
+                    uint skyColor = DaySky(skyRow.Sample(x), wy);
+
+                    r = skyColor & 255; g = (skyColor >> 8) & 255; b = (skyColor >> 16) & 255;
+                    if (SUNK > 0.01)
+                    {
+                        double dx = x + rx - sunX, dy = wy + 10, gl = 1 - Math.Sqrt(dx * dx + dy * dy) / 190;
+                        if (gl > 0) { gl = gl * Math.Sqrt(gl) * SUNK; r += 35 * gl; g += 29 * gl; b += 10 * gl; }
+                        uint cloud = layout!=null && hasCloudObjects ? customSky[i] : cloudRow.Sample(x);
+                        k = (cloud >> 24) / 255.0 * 0.9 * SUNK;
+                        r += ((cloud & 255) - r) * k; g += (((cloud >> 8) & 255) - g) * k; b += (((cloud >> 16) & 255) - b) * k;
+                    }
+                    uint bg = farRow.Sample(x);
                     if (bg != 0)
                     {
-                        // 中景（山坡上的住家）：往霧的顏色靠
-                        uint c = Lift(bg); r = c & 255; g = (c >> 8) & 255; b = (c >> 16) & 255;
-                        gray = r * 0.3 + g * 0.59 + b * 0.11; k = 0.25 * D; r += (gray - r) * k; g += (gray - g) * k; b += (gray - b) * k;
-                        k = 0.34 * D; r += (188 - r) * k; g += (208 - g) * k; b += (236 - b) * k;
+                        bool warm = (bg & 255) > ((bg >> 16) & 255) * 1.25 && (bg & 255) > 150;
+                        uint c = Lift(bg); double fr = c & 255, fg = (c >> 8) & 255, fb = (c >> 16) & 255;
+                        gray = fr * 0.3 + fg * 0.59 + fb * 0.11; k = (warm ? 0.15 : 0.35) * D;
+                        fr += (gray - fr) * k; fg += (gray - fg) * k; fb += (gray - fb) * k;
+                        k = (warm ? 0.42 : 0.58) * D;
+                        fr += ((warm ? 250 : 206) - fr) * k; fg += ((warm ? 236 : 222) - fg) * k; fb += ((warm ? 200 : 244) - fb) * k;
+                        k = (bg >> 24) / 255.0; r += (fr - r) * k; g += (fg - g) * k; b += (fb - b) * k;
                     }
-                    else
+                    k = fog1[wy]; r += (236 - r) * k; g += (240 - g) * k; b += (244 - b) * k;
+                    bg = midRow.Sample(x);
+                    if (bg != 0)
                     {
-                        bg = FAR[wy * FAR_W + Wrap(x + of, FAR_W)];
-                        if (bg != 0)
-                        {
-                            // 遠景（坑壁、墜落的大星星）：最淡最藍；大星星和金色水晶留一點暖色，不要洗白
-                            bool warm = (bg & 255) > ((bg >> 16) & 255) * 1.25 && (bg & 255) > 150;
-                            uint c = Lift(bg); r = c & 255; g = (c >> 8) & 255; b = (c >> 16) & 255;
-                            gray = r * 0.3 + g * 0.59 + b * 0.11; k = (warm ? 0.15 : 0.35) * D; r += (gray - r) * k; g += (gray - g) * k; b += (gray - b) * k;
-                            if (warm) { k = 0.42 * D; r += (250 - r) * k; g += (236 - g) * k; b += (200 - b) * k; }
-                            else { k = 0.58 * D; r += (206 - r) * k; g += (222 - g) * k; b += (244 - b) * k; }
-                        }
-                        else
-                        {
-                            uint c = DaySky(SKYP[sy * SKY_W + Wrap(x + os, SKY_W)], wy); r = c & 255; g = (c >> 8) & 255; b = (c >> 16) & 255;
-                            if (SUNK > 0.01)
-                            {
-                                // 左上的太陽光暈
-                                double dx = x - sunX, dy = wy + 10, gl = 1 - Math.Sqrt(dx * dx + dy * dy) / 190;
-                                if (gl > 0) { gl = gl * Math.Sqrt(gl) * SUNK; r += 35 * gl; g += 29 * gl; b += 10 * gl; }
-                                // 雲（慢慢飄）
-                                if (wy < CLOUD_H)
-                                {
-                                    byte cl = CLOUDS[wy * CLOUD_W + Wrap(x + oc, CLOUD_W)];
-                                    if (cl != 0)
-                                    {
-                                        k = 0.9 * SUNK;
-                                        if (cl == 2) { r += (255 - r) * k; g += (253 - g) * k; b += (246 - b) * k; }
-                                        else if (cl == 1) { r += (234 - r) * k; g += (240 - g) * k; b += (249 - b) * k; }
-                                        else { r += (204 - r) * k; g += (217 - g) * k; b += (238 - b) * k; }
-                                    }
-                                }
-                            }
-                        }
-                        k = fog1[wy]; r += (236 - r) * k; g += (240 - g) * k; b += (244 - b) * k;   // 遠景和中景之間的霧
+                        uint c = Lift(bg); double mr = c & 255, mg = (c >> 8) & 255, mb = (c >> 16) & 255;
+                        gray = mr * 0.3 + mg * 0.59 + mb * 0.11; k = 0.25 * D;
+                        mr += (gray - mr) * k; mg += (gray - mg) * k; mb += (gray - mb) * k;
+                        k = 0.34 * D; mr += (188 - mr) * k; mg += (208 - mg) * k; mb += (236 - mb) * k;
+                        k = (bg >> 24) / 255.0; r += (mr - r) * k; g += (mg - g) * k; b += (mb - b) * k;
                     }
                     k = fog2[wy]; r += (228 - r) * k; g += (236 - g) * k; b += (244 - b) * k;       // 中景和街道之間的霧
                     if (SUNK > 0.01)
@@ -328,11 +356,13 @@ namespace ZeroStar
                 LB[i] = unchecked((uint)(unchecked((int)0xff000000) | (Pf.ToInt32(Math.Min(255, ((d >> 16) & 255) + b * k)) << 16) | (Pf.ToInt32(Math.Min(255, ((d >> 8) & 255) + g * k)) << 8) | Pf.ToInt32(Math.Min(255, (d & 255) + r * k))));
             }
             // 坑底大星星的光柱（往上，柔和）
-            int bx = 106 - of;
+            double bx = 106 + farMove.x - of;
             for (int y = 0; y < 66 - cy; y++) for (int x = -16; x <= 16; x++)
             {
                 double k = Pf.Pow(1 - Math.Abs(x) / 17.0, 2) * (y / 66.0) * (0.6 + 0.15 * Pf.Sin(time * 1.3)) * (1 - 0.7 * DAY);
-                Add(bx + x, y, 255, 210, 120, k * 0.35);
+                int px = (int)Math.Floor(bx + x); double fraction = bx + x - px;
+                Add(px, y, 255, 210, 120, k * 0.35 * (1 - fraction));
+                Add(px + 1, y, 255, 210, 120, k * 0.35 * fraction);
             }
             // 螢火蟲（只在晚上、沒下雨的時候）
             for (int n = 0; n < 26; n++)
@@ -346,29 +376,33 @@ namespace ZeroStar
             // 工坊煙囪的煙
             for (int n = 0; n < 6; n++)
             {
-                double t = (time * 0.3 + n / 6.0) % 1; int sx = 607 + (int)Pf.Round(Pf.Sin(t * 6 + n) * 3 + t * 12) - cx, sy2 = FLOOR - 128 - (int)Pf.Round(t * 50) - cy, R = 3 + (int)Pf.Round(t * 6);
+                double t = (time * 0.3 + n / 6.0) % 1; int sx = 607 + workshopMove.x + (int)Pf.Round(Pf.Sin(t * 6 + n) * 3 + t * 12) - cx, sy2 = FLOOR - 128 + workshopMove.y - (int)Pf.Round(t * 50) - cy, R = 3 + (int)Pf.Round(t * 6);
                 for (int y = -R; y <= R; y++) for (int x = -R; x <= R; x++) { double f = 1 - Pf.Hypot(x, y) / R; if (f > 0) Add(sx + x, sy2 + y, 120, 110, 140, f * (1 - t) * 0.45); }
             }
-            PostFx.MarkScenery(frame);   // 場景畫完：之後角色、雨、水珠改過的格子不算場景（shader 的變濕、積水只改場景）
+            if (PostFx.ActiveFor(frame)) frame.BeginWeatherMask();   // 場景畫完：之後角色、雨、水珠改過的格子不算場景（shader 的變濕、積水只改場景）
             TownRainHits.Draw(frame, time, wi.rain, DAY);   // 雨打屋頂、屋簷滴水、房子變濕（Unity 版自己的）：在角色之前畫
         }
         /// 前景（在主角和居民之後畫）：比主角近的草葉＝深色剪影（框住畫面、增加景深），最後四角微微壓暗
         public static void DrawFg(Frame frame)
         {
-            PostFx.BuildMask(frame);   // 角色和雨都畫好了：算場景遮罩（前景畫過的格子在下面扣掉）
-            int W = frame.W, cx = frame.Ox, cy = frame.Oy, ofg = (int)Math.Floor(cx * 1.3); var outc = frame.Color;
+            frame.ProtectLegacyDraws();   // 角色和雨都畫好了：算場景遮罩（前景畫過的格子在下面扣掉）
+            int W = frame.W, cy = frame.Oy; var outc = frame.Color;
+            double ofg = Parallax.Offset(frame.Ox, frame.CameraFractionX, 1.3);
             const int LIFT = 2;
             for (int y = 0; y < frame.H; y++)
             {
                 int wy = y + cy + LIFT;
                 if (wy < 0 || wy >= H) continue;
+                var sample = new Parallax.Row(FG, FG_W, H, ofg, wy);
                 for (int x = 0; x < W; x++)
                 {
-                    uint v = FG[wy * FG_W + Wrap(x + ofg, FG_W)];
-                    if (v != 0) outc[y * W + x] = Pack((v & 255) * 0.154 + 18.7, ((v >> 8) & 255) * 0.154 + 28.8, ((v >> 16) & 255) * 0.154 + 41.8);
+                    uint v = sample.Sample(x);
+                    if ((v >> 24) == 0) continue;
+                    frame.ExcludeWeather(y * W + x);
+                    outc[y * W + x] = Parallax.Over(outc[y * W + x], Parallax.Alpha(Pack((v & 255) * 0.154 + 18.7, ((v >> 8) & 255) * 0.154 + 28.8, ((v >> 16) & 255) * 0.154 + 41.8), v));
                 }
             }
-            PostFx.FinishMask(frame);
+            // 暗角只調整亮度，不改變像素所屬圖層。
             if (vig == null || vig.Length != W * frame.H)
             {
                 vig = new float[W * frame.H];
@@ -390,9 +424,9 @@ namespace ZeroStar
         // ---- 角色（居民、路人、主角）從背景跳出來：腳下的影子、一圈深色外框、左上的邊緣光
         static uint[] snap; static byte[] pmask;
         /// 腳下的影子（x＝腳底中間，half＝半寬）
-        public static void Shadow(Frame frame, double x, int half, double k = 0.3)
+        public static void Shadow(Frame frame, double x, int half, double k = 0.3,int footY=FLOOR)
         {
-            int W = frame.W, bx = (int)Pf.Round(x) - frame.Ox, by = FLOOR - frame.Oy; var C = frame.Color;
+            int W = frame.W, bx = (int)Pf.Round(x) - frame.Ox, by = footY - frame.Oy; var C = frame.Color;
             for (int dy = 0; dy < 3; dy++) for (int dx = -half; dx <= half; dx++)
             {
                 double e = (double)dx / Math.Max(1, half), f = (dy - 1) / 1.6;
@@ -450,6 +484,6 @@ namespace ZeroStar
             Blit.Draw(frame, Baked.Anim("npc:" + id + (walk ? ":walk" : "")), t, x, y + 1, flip);
         /// npcs.js 的 npcSize：[寬, 高（腳底到頭頂）]
         public static (int w, int h) NpcSize(string id) { var s = Baked.Anim("npc:" + id).Frames[0]; return (s.W, -s.Ly); }
-        public static void DrawNpcs(Frame frame, double time) { foreach (var n in NPCS) PaintNpc(frame, n.id, time, n.x, FLOOR - 1, n.flip); }
+        public static void DrawNpcs(Frame frame, double time) { foreach (var n in NPCS) PaintNpc(frame, n.id, time, n.x, FootY(n.id) - 1, n.flip); }
     }
 }

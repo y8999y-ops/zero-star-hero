@@ -1,5 +1,5 @@
 // mapview.js：關卡裡的地圖（M 鍵、左上的地圖圖示）。走過的地方才顯示（每格 32×32，畫面看得到的範圍算走過），
-// 標記：主角、祭壇（亮／暗）、出口（1-4 是王房）、一次性資源（拿過變灰）、形態機關。地圖 1 格＝世界 8 格，放大 2 倍。
+// 標記：主角、祭壇（亮／暗）、出口（1-4 是王房）、一次性資源（領取後移除）、形態機關。地圖 1 格＝世界 8 格，放大 2 倍。
 // 視窗用共用的外框（青色主題、全息轉場），下面一排圖例。
 using System;
 using System.Collections.Generic;
@@ -16,10 +16,10 @@ namespace ZeroStar.UI
         const int CELL = 32, K = 8;
         static readonly Dictionary<string, (string solid, string top, string edge)> THEME = new Dictionary<string, (string, string, string)>
         {
-            ["abyss"] = ("#3c4466", "#a8d42a", "#7480a4"), ["junk"] = ("#7a4434", "#e4b072", "#a06446"), ["cave"] = ("#24405a", "#5ac0a0", "#5a86a0"), ["lair"] = ("#7a4434", "#e4b072", "#a06446"),
+            ["abyss"] = ("#30354d", "#c0df85", "#626d87"), ["junk"] = ("#473344", "#f4c78b", "#865e5a"), ["cave"] = ("#24405a", "#5ac0a0", "#5a86a0"), ["lair"] = ("#473344", "#f4c78b", "#865e5a"),
         };
         static readonly Dictionary<string, string> STAGE_THEME = new Dictionary<string, string> { ["1-1"] = "abyss", ["1-2"] = "junk", ["1-3"] = "cave", ["1-4"] = "lair" };
-        const string AIR = "#100e1c", FOG = "#06050c", FOG2 = "#0c0a16", PLAT = "#c8a040";
+        const string AIR = "#171c2b", FOG = "#0b0d17", FOG2 = "#10131e", PLAT = "#80d4dc";
         static readonly Dictionary<string, (string[] rows, Dictionary<char, string> col)> ICON = new Dictionary<string, (string[], Dictionary<char, string>)>
         {
             ["player"] = (new[] { "...a...", "..aba..", "aabbbaa", ".abcba.", "..bbb..", ".bb.bb.", "b.....b" }, new Dictionary<char, string> { ['a'] = "#ffe066", ['b'] = "#f0b424", ['c'] = "#ffffff" }),
@@ -36,7 +36,6 @@ namespace ZeroStar.UI
             ["shroom"] = (new[] { ".aaaaa.", "abcbbba", "abbbcba", "aaaaaaa", "..ddd..", "..ddd..", "......." }, new Dictionary<char, string> { ['a'] = "#2a6a2a", ['b'] = "#5ac84a", ['c'] = "#e8ffd8", ['d'] = "#c8b08a" }),
             ["wind"] = (new[] { "...a...", "..aaa..", ".a.a.a.", "...a...", "...a...", "...a...", "...b..." }, new Dictionary<char, string> { ['a'] = "#7ac8f0", ['b'] = "#3a7aa8" }),
             ["boss"] = (new[] { ".a.a.a.", ".aaaaa.", "..bbb..", ".bbbbb.", "bcbbbcb", "bbbbbbb", "ddddddd" }, new Dictionary<char, string> { ['a'] = "#ffd84a", ['b'] = "#5ac84a", ['c'] = "#ff4a5a", ['d'] = "#2a6a2a" }),
-            ["done"] = (new[] { "......", ".a..a.", "..aa..", "..aa..", ".a..a.", "......" }, new Dictionary<char, string> { ['a'] = "#5a5274" }),
         };
         static readonly Dictionary<string, Color32> cc = new Dictionary<string, Color32>();
         static Color32 H(string h) { if (!cc.TryGetValue(h, out var c)) { ColorUtility.TryParseHtmlString(h, out var f); cc[h] = c = f; } return c; }
@@ -64,38 +63,69 @@ namespace ZeroStar.UI
         static Texture2D Render(Game g, out int pct)
         {
             double W = g.Data.W, Hh = g.Data.H; int mw = (int)Math.Ceiling(W / K), mh = (int)Math.Ceiling(Hh / K), cw = (int)Math.Ceiling(W / CELL);
-            var seen = Seen(g); var T = THEME[STAGE_THEME.TryGetValue(g.StageId, out var th) ? th : "abyss"];
+            var seen = Seen(g);
+            string themeId = g.Custom ? g.Custom.template : g.StageId;
+            var theme = THEME[STAGE_THEME.TryGetValue(themeId, out var th) ? th : "abyss"];
             bool IsSeen(int mx, int my) => mx >= 0 && my >= 0 && mx < mw && my < mh && seen[(my * K) / CELL * cw + (mx * K) / CELL];
-            var px = new string[mw * mh];
-            for (int my = 0; my < mh; my++) for (int mx = 0; mx < mw; mx++)
-            {
-                int i = my * mw + mx;
-                if (!IsSeen(mx, my)) { bool rim = IsSeen(mx - 1, my) || IsSeen(mx + 1, my) || IsSeen(mx, my - 1) || IsSeen(mx, my + 1); px[i] = rim ? "#2a7a94" : (mx + my) % 4 == 0 ? FOG2 : FOG; continue; }
-                if (!g.Map.SolidAt(mx * K + 4, my * K + 4)) { px[i] = AIR; continue; }
-                bool up = !g.Map.SolidAt(mx * K + 4, my * K - 4), side = !g.Map.SolidAt(mx * K - 4, my * K + 4) || !g.Map.SolidAt(mx * K + 12, my * K + 4);
-                px[i] = up ? T.top : side ? T.edge : T.solid;
-            }
-            foreach (var p in g.Map.Platforms)
-                for (int x = (int)Math.Floor(p.X / K); x < (int)Math.Ceiling((p.X + p.W) / K); x++) { int y = (int)Math.Floor(p.Y / K); if (IsSeen(x, y)) px[y * mw + x] = PLAT; }
             const int S = 2; int tw = mw * S, thh = mh * S;
             var buf = new Color32[tw * thh];
-            void Put(int x, int y, string hex) { if (x < 0 || y < 0 || x >= tw || y >= thh) return; buf[(thh - 1 - y) * tw + x] = H(hex); }
-            for (int y = 0; y < mh; y++) for (int x = 0; x < mw; x++) { var c = px[y * mw + x]; for (int b = 0; b < S; b++) for (int a = 0; a < S; a++) Put(x * S + a, y * S + b, c); }
-            var marks = Marks(g).Where(m => m.always || IsSeen((int)Math.Floor(m.x / K), (int)Math.Floor(m.y / K))).OrderBy(m => m.icon == "player" ? 1 : 0).ToList();
-            foreach (var m in marks) Stamp(Put, m.dim ? "done" : m.icon, m.x / K * S, m.y / K * S, m.icon == "player" ? 2 : 1);
+            void Put(int x, int y, string hex)
+            {
+                if ((uint)x < tw && (uint)y < thh) buf[(thh - 1 - y) * tw + x] = H(hex);
+            }
+            for (int y = 0; y < mh; y++) for (int x = 0; x < mw; x++)
+            {
+                int wx = x*K + K/2, wy = y*K + K/2;
+                bool known = IsSeen(x,y);
+                bool solid = known && g.Map.SolidAt(wx,wy);
+                bool top = solid && !g.Map.SolidAt(wx,wy-K);
+                bool left = solid && !g.Map.SolidAt(wx-K,wy);
+                bool right = solid && !g.Map.SolidAt(wx+K,wy);
+                for (int dy=0;dy<S;dy++) for (int dx=0;dx<S;dx++)
+                {
+                    string color = AIR;
+                    if (!known) color = (x*S+dx)%8==0 && (y*S+dy)%8==0 ? FOG2 : FOG;
+                    else if (solid) color = top && dy==0 ? theme.top :
+                        (dx==0 && left || dx==S-1 && right) ? theme.edge : theme.solid;
+                    Put(x*S+dx,y*S+dy,color);
+                }
+            }
+            // 單向平台在實際台面高度只畫一條細線，不填滿下方空間。
+            foreach (var p in g.Map.Platforms)
+            {
+                int y=(int)Math.Floor(p.Y*S/K);
+                for(int x=(int)Math.Ceiling(p.X*S/K);x<(int)Math.Ceiling((p.X+p.W)*S/K);x++)
+                    if(x>=0 && y>=0 && IsSeen(x/S,y/S)) Put(x,y,PLAT);
+            }
+            var marks=VisibleMarks(g).OrderBy(m=>m.icon=="player"?1:0);
+            foreach(var m in marks)
+                Stamp(Put,m.icon,m.x/K*S,m.y/K*S,m.icon=="player"?2:1);
             if (last != null && (last.width != tw || last.height != thh)) { UnityEngine.Object.Destroy(last); last = null; }   // 每次打開重畫在同一張圖上，不會越開越多張
             var tex = last ??= new Texture2D(tw, thh, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point }; tex.SetPixels32(buf); tex.Apply(false);
             pct = (int)Math.Round(seen.Count(b => b) * 100.0 / seen.Length, MidpointRounding.AwayFromZero);
             return tex;
         }
-        static List<(string icon, double x, double y, bool dim, bool always)> Marks(Game g)
+        static IEnumerable<(string icon,double x,double y)> VisibleMarks(Game g)
         {
-            var L = new List<(string, double, double, bool, bool)> { ("player", g.Player.X, g.Player.Y, false, true) };
-            foreach (var a in g.Altars) L.Add((a.Lit ? "altarOn" : "altarOff", a.X, a.Y, false, false));
-            if (g.StageD.ExitX != 0) L.Add(("exit", g.StageD.ExitX + 26, g.StageD.ExitY != 0 ? g.StageD.ExitY : g.Data.Floor, false, false));
-            if (g.StageD.ArenaInfo != null && !g.Cleared_.Contains(g.StageId)) L.Add(("boss", (g.StageD.ArenaInfo.L + g.StageD.ArenaInfo.R) / 2, g.StageD.ArenaInfo.Floor, false, false));
-            if (g.Features != null) foreach (var f in g.Features.Items) { if ((f.t == "crack" || f.t == "seal") && f.done) continue; L.Add((f.t, f.x, f.y, f.done && f.t != "shroom" && f.t != "wind", false)); }
-            return L;
+            int cols=(g.Data.W+CELL-1)/CELL;
+            var seen=Seen(g);
+            bool Known(double x,double y) => x>=0 && y>=0 && x<g.Data.W && y<g.Data.H &&
+                seen[(int)(y/CELL)*cols+(int)(x/CELL)];
+            yield return ("player",g.Player.X,g.Player.Y);
+            foreach(var a in g.Altars) if(Known(a.X,a.Y)) yield return (a.Lit?"altarOn":"altarOff",a.X,a.Y);
+            if(g.PortalX is double exit && Known(exit,g.PortalY)) yield return ("exit",exit,g.PortalY);
+            if(g.Chest!=null && !g.Chest.Opened && Known(g.Chest.X,g.Chest.Y))
+                yield return ("safe",g.Chest.X,g.Chest.Y);
+            var arena=g.StageD.ArenaInfo;
+            if(arena!=null && !g.Cleared_.Contains(g.StageId) && Known((arena.L+arena.R)/2,arena.Floor))
+                yield return ("boss",(arena.L+arena.R)/2,arena.Floor);
+            if(g.Features==null) yield break;
+            foreach(var f in g.Features.Items)
+            {
+                if(!Known(f.x,f.y) || !ICON.ContainsKey(f.t)) continue;
+                if(f.done && f.t!="shroom" && f.t!="wind") continue;
+                yield return (f.t,f.x,f.y);
+            }
         }
         static void Stamp(Action<int, int, string> put, string name, double cx, double cy, int s)
         {
@@ -122,15 +152,24 @@ namespace ZeroStar.UI
 
         public static Task Open(Game g)
         {
-            string name = g.StageD.Name.StartsWith(g.StageId) ? g.StageD.Name : $"{g.StageId} {g.StageD.Name}";
+            string name = g.Custom ? g.Custom.displayName : g.StageD.Name.StartsWith(g.StageId) ? g.StageD.Name : $"{g.StageId} {g.StageD.Name}";
             void Body(VisualElement body)
             {
                 var tex = Render(g, out int pct);
-                var top = Box(body); top.style.flexDirection = FlexDirection.Row; top.style.justifyContent = Justify.FlexEnd; top.style.marginBottom = 4;
+                var top = Box(body); top.style.flexDirection = FlexDirection.Row; top.style.alignItems = Align.Center; top.style.justifyContent = Justify.FlexStart; top.style.marginBottom = 4;
+                void LineKey(string label,string color,int height)
+                {
+                    var line=Box(top);Size(line,18,height);line.style.backgroundColor=C(color);
+                    var text=Text(top,label,12,"#c8bedc");text.style.marginLeft=4;text.style.marginRight=12;
+                }
+                string themeId=g.Custom?g.Custom.template:g.StageId;
+                LineKey("地面",THEME[STAGE_THEME.TryGetValue(themeId,out var key)?key:"abyss"].top,3);
+                LineKey("可穿越平台",PLAT,1);
+                Box(top).style.flexGrow=1;
                 Text(top, $"探索 {pct}%", 13, "#a8f0ff");
                 // 2026-11-14：關卡是很長的一條，整張塞進視窗會小到看不清楚。改成放大到高度撐滿（最多 3 倍），
                 // 只露出視窗寬度的一段、一開始對準主角，按住左右拖可以看其他地方。
-                float k = Mathf.Clamp(Mathf.Floor(230f / tex.height * 2) / 2f, 1, 3), mapW = tex.width * k;
+                float k = Mathf.Clamp(Mathf.Floor(300f / tex.height * 2) / 2f, 1, 3), mapW = tex.width * k;
                 var wrap = Box(body); wrap.style.height = tex.height * k; wrap.style.overflow = Overflow.Hidden; Border(wrap, 2, C("#1a1226")); wrap.style.backgroundColor = C(FOG); wrap.pickingMode = PickingMode.Position;
                 var m = Box(wrap); Abs(m, 0, 0); Size(m, mapW, tex.height * k); m.style.backgroundImage = tex; m.style.backgroundSize = new BackgroundSize(Length.Percent(100), Length.Percent(100));
                 float off = float.NaN, px0 = (float)(g.Player.X / K * 2) * k;
@@ -145,11 +184,14 @@ namespace ZeroStar.UI
                 wrap.RegisterCallback<PointerDownEvent>(e => { if (float.IsNaN(off)) return; drag = e.pointerId; wrap.CapturePointer(drag); dragX = e.position.x; dragOff = off; });
                 wrap.RegisterCallback<PointerMoveEvent>(e => { if (e.pointerId == drag) Place(dragOff + (e.position.x - dragX) * wrap.contentRect.width / Mathf.Max(1, wrap.worldBound.width)); });
                 wrap.RegisterCallback<PointerUpEvent>(e => { if (e.pointerId == drag) { wrap.ReleasePointer(drag); drag = -1; } });
-                if (mapW > 480) Text(body, "按住地圖左右拖，可以看其他地方", 11, "#8f88a8").style.alignSelf = Align.Center;
+                var hint=Text(body,"左右拖曳查看路線",11,"#a8a4bc"); hint.style.alignSelf=Align.Center;
+                wrap.RegisterCallback<GeometryChangedEvent>(e=>hint.style.display=mapW>wrap.contentRect.width?DisplayStyle.Flex:DisplayStyle.None);
                 // 圖例
                 var leg = Box(body); leg.style.flexDirection = FlexDirection.Row; leg.style.flexWrap = Wrap.Wrap; leg.style.justifyContent = Justify.Center; leg.style.marginTop = 6;
-                var L = new List<(string, string)> { ("player", "你"), ("altarOn", "祭壇"), g.StageId == "1-4" ? ("boss", "王房") : ("exit", "出口"), ("ember", "星之殘火"), ("vein", "礦脈"), ("fossil", "化石核"), ("safe", "寶箱"), ("stele", "碑文"), ("crack", "裂牆"), ("seal", "封印"), ("shroom", "黏液菇"), ("wind", "氣流") };
-                foreach (var (ic, lb) in L)
+                var L = new List<(string, string)> { ("player", "你"), ("altarOn", "祭壇"), ("exit", "出口"), ("boss","王房"), ("ember", "星之殘火"), ("vein", "礦脈"), ("fossil", "化石核"), ("safe", "寶箱"), ("stele", "碑文"), ("crack", "裂牆"), ("seal", "封印"), ("shroom", "黏液菇"), ("wind", "氣流") };
+                var visible=new HashSet<string>(VisibleMarks(g).Select(m=>m.icon));
+                if(visible.Contains("altarOff"))visible.Add("altarOn");
+                foreach (var (ic, lb) in L.Where(entry=>visible.Contains(entry.Item1)))
                 {
                     var s = Box(leg); s.style.flexDirection = FlexDirection.Row; s.style.alignItems = Align.Center; s.style.marginRight = 10; s.style.marginBottom = 2;
                     var i = Box(s); Size(i, 20, 20); i.style.backgroundImage = IconTex(ic); i.style.backgroundSize = new BackgroundSize(Length.Percent(100), Length.Percent(100)); i.style.marginRight = 3;

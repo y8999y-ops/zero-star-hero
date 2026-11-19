@@ -17,6 +17,7 @@ namespace ZeroStar.UI
         public bool Touch;
         public Action<string> OnGo; public Action OnClose; public Action<double, double> OnPick;
 
+        readonly ScrollView customRoutes;
         public MapWin(VisualElement parent)
         {
             overlay = Box(parent, "worldWin"); Abs(overlay, 0, 0, 0, 0); overlay.style.backgroundColor = C("#06040e", 0.55f);
@@ -40,11 +41,20 @@ namespace ZeroStar.UI
             card = Box(wrap, "wmCard"); Abs(card, null, 6, 6); card.style.flexDirection = FlexDirection.Column;
             card.style.paddingLeft = card.style.paddingRight = card.style.paddingTop = card.style.paddingBottom = 6;
             card.style.backgroundColor = C("#0c091a", 0.9f); Border(card, 2, C("#ffe7a0", 0.55f)); card.pickingMode = PickingMode.Position;
+            customRoutes=new ScrollView(ScrollViewMode.Horizontal); box.Add(customRoutes);
             msg = Text(box, "", 12, "#ffccaa", true, 1); msg.style.unityTextAlign = TextAnchor.MiddleCenter; msg.style.height = 0; msg.style.overflow = Overflow.Visible;
         }
 
         public void Show(WorldMap m, bool canClose)
         {
+            customRoutes.Clear();
+            foreach(var prefab in Resources.LoadAll<GameObject>("StageLayouts"))
+            {
+                var config=prefab.GetComponent<CustomMap>();if(!config)continue;
+                string id=prefab.name;
+                customRoutes.Add(new Button(()=>OnGo?.Invoke(id)){text=config.displayName});
+            }
+            customRoutes.style.display=customRoutes.contentContainer.childCount>0?DisplayStyle.Flex:DisplayStyle.None;
             map = m; shownSel = null; openT = 0; msgT = 0;
             overlay.style.display = DisplayStyle.Flex;
             closeX.style.display = canClose ? DisplayStyle.Flex : DisplayStyle.None;

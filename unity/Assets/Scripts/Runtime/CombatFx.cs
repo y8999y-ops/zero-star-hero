@@ -216,7 +216,7 @@ namespace ZeroStar
                 }
                 if (q.Since > 0.8 && (int)Math.Floor(q.Since * 30) % 2 != 0) continue;
                 uint[] Cb = frame.Color;
-                void Put(int px, int py, uint c) { if (px >= 0 && py >= 0 && px < W && py < H) Cb[py * W + px] = c; }
+                void Put(int px, int py, uint c) { if (px >= 0 && py >= 0 && px < W && py < H) { int i=py*W+px; frame.ExcludeWeather(i); Cb[i]=c; } }
                 foreach (var (px, py, _) in pixels) { Put(px - 1, py, OUT); Put(px + 1, py, OUT); Put(px, py - 1, OUT); Put(px, py + 1, OUT); Put(px + 1, py + 1, OUT); }
                 foreach (var (px, py, low) in pixels) Put(px, py, low ? cols[1] : cols[0]);
             }

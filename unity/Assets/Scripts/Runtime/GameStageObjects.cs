@@ -26,24 +26,26 @@ namespace ZeroStar
         partial void InitStageObjects()
         {
             bool bare = !Town && !Endless;   // main.js 的 BARE：有 solids 的大地圖（無限討伐是舊的平地）
-            var runs = bare ? StageRuns.MainRuns(Map) : null;   // main.js 的 RUNS：只有大地圖（BARE）才算地面的區段，城鎮是 null
+            var seedMap=bare && composition!=null ? new GameMap(Data.W,Data.H,composition.OriginalSolids,composition.OriginalPlatforms) : Map;
+            var seedPlatforms=bare || Endless ? composition?.OriginalPlatforms ?? Data.Platforms : Data.Platforms;
+            var runs = bare ? StageRuns.MainRuns(seedMap) : null;   // main.js 的 RUNS：只有大地圖（BARE）才算地面的區段，城鎮是 null
             var torches = Data.Torches.ToList();
-            Scenery = new Scenery(new Scenery.Opts { Floor = Data.Floor, W = Data.W, Platforms = Data.Platforms, Town = Town, NoPuddles = StageId == "1-1", Runs = runs, Fx = Fx, Sfx = Sfx, NowMs = () => SimMs });
+            Scenery = new Scenery(new Scenery.Opts { Floor = Data.Floor, W = Data.W, Platforms = seedPlatforms, Town = Town, NoPuddles = StageId == "1-1", Runs = runs, Fx = Fx, Sfx = Sfx, NowMs = () => SimMs });
             Hazards = new Hazards(Endless ? "" : StageId, Data.Floor, torches, Scenery.Puddles, bare ? StageD.Hazards.Select(h => (h.kind, h.x, (double?)h.y)).ToList() : null, (e, el) => Status.Apply(e, el));
             // 水窪不要疊在元素物件、祭壇、機關上
             {
-                var busy = Hazards.List.Select(h => (h.x, h.y)).Concat(Altars.Select(a => (a.X, a.Y))).Concat(StageD.Features.Select(f => (f.X, f.Y))).ToList();
+                var busy = Hazards.List.Select(h => (h.x, h.y)).Concat(Altars.Select((a,i) => (a.X-Offset(StampKind.Altar,i).x, a.Y-Offset(StampKind.Altar,i).y))).Concat(StageD.Features.Select(f => (f.X, f.Y))).ToList();
                 for (int i = Scenery.Puddles.Count - 1; i >= 0; i--) { var p = Scenery.Puddles[i]; if (busy.Any(b => Math.Abs(b.Item1 - p.x) < 40 && Math.Abs(b.Item2 - p.y) < 8)) Scenery.Puddles.RemoveAt(i); }
             }
             var avoid = new List<double>();
-            avoid.AddRange(Data.Torches.Select(t => t.x));
-            avoid.AddRange(Altars.Select(a => a.X));
+            avoid.AddRange((composition?.OriginalTorches ?? Data.Torches).Select(t => t.x));
+            avoid.AddRange(Altars.Select((a,i) => a.X - Offset(StampKind.Altar,i).x));
             avoid.AddRange(StageD.Features.Select(f => f.X));
             foreach (var h in Hazards.List) { avoid.Add(h.x - 14); avoid.Add(h.x); avoid.Add(h.x + 14); }
-            avoid.Add(StageD.ExitX - 120); avoid.Add(StageD.ExitX + 26); avoid.Add(StageD.StartX);
+            avoid.Add(StageD.ExitX - Offset(StampKind.Exit).x - 120); avoid.Add(StageD.ExitX - Offset(StampKind.Exit).x + 26); avoid.Add(StageD.StartX);
             foreach (var p in Scenery.Puddles) { avoid.Add(p.x - p.w / 4); avoid.Add(p.x); avoid.Add(p.x + p.w / 4); }
-            if (Town) { avoid.Clear(); avoid.AddRange(TownArt.NPCS.Select(n => n.x)); avoid.Add(TownArt.SIGNPOST_X); }   // 城鎮：居民、路標前面不要擺東西
-            Props = new Props(new Props.Opts { Floor = Data.Floor, W = Data.W, Platforms = Data.Platforms, Town = Town, Runs = runs, FloorFn = bare ? (Func<double, double, double>)Map.FloorAt : null, BigCrystals = Data.BigCrystals, Avoid = avoid, Fx = Fx, Sfx = Sfx, Blip = (f, t, ms) => Synth.Blip(f, t, ms / 1000.0), HitFx = (x, y, d, h) => Combat.Hit(x, y, d, h) });
+            if (Town) { avoid.Clear(); avoid.AddRange(new double[]{198,510,932,1150}); }   // 城鎮：居民、路標前面不要擺東西
+            Props = new Props(new Props.Opts { Floor = Data.Floor, W = Data.W, Platforms = seedPlatforms, Town = Town, Runs = runs, FloorFn = bare ? (Func<double, double, double>)seedMap.FloorAt : null, BigCrystals = Data.BigCrystals, Avoid = avoid, Fx = Fx, Sfx = Sfx, Blip = (f, t, ms) => Synth.Blip(f, t, ms / 1000.0), HitFx = (x, y, d, h) => Combat.Hit(x, y, d, h) });
             // 藍水晶打一下＝補魔力（最大魔力的 25%，大水晶 35%）
             Props.OnMana = c =>
             {
@@ -99,7 +101,24 @@ namespace ZeroStar
                 FormName = form => FORM_NAME.TryGetValue(form, out var nm) ? nm : null,
                 FormColor = form => FORM_COLOR.TryGetValue(form, out var c) ? c : null,
             };
-            var defs = StageD.Features.Select(f => new Features.Def { t = f.T, x = f.X, y = f.Y, h = f.Raw.ContainsKey("h") ? f.H : (double?)null, w = f.Raw.ContainsKey("w") ? f.W : (double?)null, i = f.Raw.ContainsKey("i") ? f.I : (int?)null, form = f.Form }).ToList();
+            var defs = StageD.Features.Select((f,i) => new Features.Def { t = f.T, x = f.X + Offset(StampKind.Feature,i).x, y = f.Y + Offset(StampKind.Feature,i).y, h = f.Raw.ContainsKey("h") ? f.H : (double?)null, w = f.Raw.ContainsKey("w") ? f.W : (double?)null, i = f.Raw.ContainsKey("i") ? f.I : (int?)null, form = f.Form }).ToList();
+            if(composition!=null)
+            {
+                for(int i=0;i<Props.Tufts.Count;i++){var p=Props.Tufts[i];var v=Offset(StampKind.Tuft,i);p.x+=v.x;p.y+=v.y;}
+                for(int i=0;i<Props.Boxes.Count;i++){var p=Props.Boxes[i];var v=Offset(StampKind.Box,i);p.x+=v.x;p.y+=v.y;}
+                for(int i=0;i<Props.Crystals.Count;i++){var p=Props.Crystals[i];if(p.art!=null)continue;var v=Offset(StampKind.SmallCrystal,i);p.x+=v.x;p.y+=v.y;}
+                for(int i=0;i<Scenery.Critters.Count;i++){var p=Scenery.Critters[i];var v=Offset(StampKind.Critter,i);p.x+=v.x;p.hx+=v.x;p.y+=v.y;p.fy+=v.y;}
+                for(int i=0;i<Scenery.Hangs.Count;i++){var p=Scenery.Hangs[i];var v=Offset(StampKind.Hang,i);p.x+=v.x;p.y+=v.y;}
+                for(int i=0;i<Scenery.Swarms.Count;i++){var p=Scenery.Swarms[i];var v=Offset(StampKind.Swarm,i);p.x+=v.x;p.y+=v.y;foreach(var fly in p.flies){fly.x+=v.x;fly.y+=v.y;}}
+                for(int i=0;i<Scenery.Puddles.Count;i++){var p=Scenery.Puddles[i];var v=Offset(StampKind.Puddle,i);p.x+=v.x;p.y+=v.y;}
+                for(int i=0;i<Hazards.List.Count;i++){var p=Hazards.List[i];var v=Offset(StampKind.Hazard,i);p.x+=v.x;p.y+=v.y;}
+            }
+            if(Custom && Custom.blank)
+            {
+                Props.Tufts.Clear();Props.Crystals.Clear();Props.Boxes.Clear();
+                Hazards.List.Clear();Scenery.Swarms.Clear();Scenery.Puddles.Clear();Scenery.Hangs.Clear();Scenery.Critters.Clear();
+            }
+            composition?.AppendRewards(defs);
             Features = new Features(defs, found, Player, Map, api, () => Input.JumpHeld);
             FeatureUsables = () => Features.UsableNow().Select(u => new Use { Kind = u.t == "safe" ? "chest" : "hand", X = u.x, Top = u.top, Go = () => Features.Use(u) });
             if (Chest != null) { var o = ChestTiers.Opts(Chest.Tier); o.X = Chest.X; o.Y = Chest.Y; chestFx = new FxRun(PixelFX.Fx.TreasureChest.Def, o); }

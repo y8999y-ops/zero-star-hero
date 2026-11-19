@@ -44,6 +44,7 @@ namespace ZeroStar
         public readonly Player Player;
         public readonly List<Enemy> Enemies = new List<Enemy>();
         public double CamX, CamY;
+        public RenderCamera DisplayCamera { get; private set; }
         double lookX, sceneClock;
         double? camRefY, camLand;
         public int Kills, Coins, Combo, BestCombo; public double ComboT;
@@ -368,15 +369,34 @@ namespace ZeroStar
         public FxRun SpawnLive(string name, double x, double y, FxOptions o, double speed = 1, bool back = false) => Fx.SpawnLive(name, x, y, o, speed, back);
         public Action<string> OnSfx;
 
+        readonly StageLayout layout;
+        readonly WorldComposition composition;
+        Vector2Int Offset(StampKind kind, int index=0) => composition?.Delta(kind,index) ?? Vector2Int.zero;
+        public readonly CustomMap Custom;
+#if UNITY_EDITOR
+        public void AdvanceLayoutPreview(double dt)
+        {
+            sceneClock+=dt; layout?.Tick(dt,composition); Fx.Update(dt);
+        }
+        public void SetTestPosition(Vector2 point)
+        {
+            Player.X=point.x; Player.Y=point.y; SnapCam();
+        }
+#endif
         public readonly string StageId;
         /// 新存檔的初始裝備（save.js 載入時一定會做一份：亂數照網頁版的順序先取掉）
         public readonly (Item core, Item shell) Fresh;
 
         /// 照 main.js 載入關卡的順序建立（亂數的順序要一樣）。建好之後呼叫 StartStage() 才開始（擺怪、開場台詞）
         /// from：上一關的遊戲（換關時把存檔裡的東西帶過來：等級、裝備、背包、形態、技能樹、找到的機關……；存檔在階段 5）
-        public Game(string stage = "1-1", Game from = null)
+        public Game(string stage = "1-1", Game from = null, GameObject layoutRoot = null)
         {
             StageId = stage;
+            var prefab=layoutRoot ? layoutRoot : Resources.Load<GameObject>("StageLayouts/"+stage);
+            Custom=prefab ? prefab.GetComponent<CustomMap>() : null;
+            layout=prefab ? new StageLayout(prefab) : null;
+            composition=prefab && prefab.GetComponentInChildren<WorldStamp>() ? new WorldComposition(prefab) : null;
+            if(Custom)stage=Custom.template;
             Town = stage == "town"; Endless = stage == "endless";
             VIEW_DY = (int)Pf.Round((Town ? 0.10 : 0.05) * H / ZOOM);
             Zoom = Town ? TOWN_ZOOM : ZOOM;   // 2026-11-12：城鎮鏡頭拉遠，一個畫面看得到兩棟店
@@ -389,12 +409,22 @@ namespace ZeroStar
             FxSystem.WarmUp();
             SceneLight.GlobalLv = 0;
             Data = Town ? TownArt.Level() : Baked.Level(stage);
+            if (!Town) composition?.Apply(Data);
             Art = Town ? null : new LevelArt(Data);
-            if (Town) TownArt.Reset();
+            if (Town) TownArt.Reset(composition);
+            layout?.BindLighting(composition);
             Map = new GameMap(Data.W, Data.H, Data.Solids, Data.Platforms);
             InitStage(stage);
+            if(Custom && Custom.blank) Chest=null;
+            var chestMove=Offset(StampKind.Chest);
+            if (Chest!=null) { Chest.X+=chestMove.x; Chest.Y+=chestMove.y; }
+            var exitMove=Offset(StampKind.Exit);
+            if(exitMove!=Vector2Int.zero) StageD=StageD.WithExitOffset(exitMove.x,exitMove.y,Data.Floor);
+            if (PortalX.HasValue) { PortalX+=exitMove.x; PortalY+=exitMove.y; }
+            for(int i=0;i<Altars.Count;i++){var move=Offset(StampKind.Altar,i);Altars[i].X+=move.x;Altars[i].Y+=move.y;}
             var combos = JsonUtility.FromJson<ComboDef>(Baked.Text("combos"));
             Player = Town ? new Player(120, TownArt.FLOOR, combos) { RankFn = Rank } : new Player(StageD.StartX, Endless ? Data.Floor : StageD.StartY, combos) { RankFn = Rank };
+            var startMove=Offset(StampKind.Start); Player.X+=startMove.x; Player.Y+=startMove.y;
             if (from == null) { Equip["weapon"] = Fresh.core; Equip["body"] = Fresh.shell; }
             ApplyStats();
             Player.Hp = Player.MaxHp;
@@ -691,12 +721,12 @@ namespace ZeroStar
             if (Director?.Lock != null) CamX = Math.Max(Director.Lock.Value.l - v.x0, Math.Min(Director.Lock.Value.r - v.x0 - v.w, CamX));
             if (Data.H > H) CamY = Math.Max(-v.y0, Math.Min(Data.H - v.y0 - v.h, gy - H * 0.62));
         }
-        double LookAhead(double dt, double dist) { lookX += (Player.Face * dist - lookX) * Math.Min(1, 2.2 * dt); return lookX; }
+        double LookAhead(double dt, double dist) { lookX += (Player.Face * dist - lookX) * (1 - Math.Exp(-2.2 * dt)); return lookX; }
         static double DeadFollow(double c, double target, double dz, double rate, double dt)
         {
             double d = target - c;
             if (Math.Abs(d) <= dz) return c;
-            return c + (d - Math.Sign(d) * dz) * Math.Min(1, rate * dt);
+            return c + (d - Math.Sign(d) * dz) * (1 - Math.Exp(-rate * dt));
         }
         void FollowCam(double dt)
         {
@@ -715,7 +745,7 @@ namespace ZeroStar
                 else if (Player.Y > camRefY) camRefY = Player.Y;
                 else if (Player.Y < camRefY - 72) camRefY = Player.Y + 72;
                 double wy = camRefY.Value - H * 0.62, rate = 3 + Math.Min(4, Math.Max(0, Player.Vy) / 100);
-                CamY += (wy - CamY) * Math.Min(1, rate * dt);
+                CamY += (wy - CamY) * (1 - Math.Exp(-rate * dt));
                 CamY = Math.Max(-v.y0, Math.Min(Data.H - v.y0 - v.h, CamY));
             }
         }
@@ -760,6 +790,9 @@ namespace ZeroStar
         /// 一步（固定 1/60 秒；慢動作時比較短）
         public void Tick(double dt)
         {
+            // 冷卻與場景動畫依模擬時間前進，不受漏畫／重畫影響。
+            sceneClock += dt;
+            layout?.Tick(dt,composition);
             Input.Tick(dt);
             if (Fx.ShakeT > 0) Fx.ShakeT -= dt;
             if (Fx.Freeze > 0) { Fx.Freeze -= dt; return; }
@@ -936,37 +969,59 @@ namespace ZeroStar
         /// 合成之後（大招落地的黑白衝擊定格）
         public void PostComposite(byte[] rgba) => Ult.PostProcess(rgba);
 
-        /// 畫一格（main.js 的 render），結果在 frame 裡（還沒合成）
-        public void Render(Frame frame)
+        public readonly struct RenderCamera
         {
+            public readonly double X, Y;
+            public readonly int OriginX, OriginY;
+            public readonly double FractionX, FractionY;
+
+            public RenderCamera(double x, double y, int shakeX, int shakeY)
+            {
+                X = x; Y = y;
+                int roundedX = (int)Pf.Round(x), roundedY = (int)Pf.Round(y);
+                OriginX = roundedX + shakeX; OriginY = roundedY + shakeY;
+                FractionX = x - roundedX; FractionY = y - roundedY;
+            }
+        }
+
+        public void Render(Frame frame) => RenderAt(frame, CamX, CamY);
+
+        public void RenderAt(Frame frame, double x, double y)
+        {
+            frame.ResetWeather();
             var (sx, sy) = Fx.ShakeOffset();
-            frame.Ox = (int)Pf.Round(CamX) + sx;
-            frame.Oy = (int)Pf.Round(CamY) + sy;
+            DisplayCamera = new RenderCamera(x, y, sx, sy);
+            frame.Ox = DisplayCamera.OriginX;
+            frame.Oy = DisplayCamera.OriginY;
+            frame.CameraFractionX = DisplayCamera.FractionX;
+            frame.CameraFractionY = DisplayCamera.FractionY;
             Array.Clear(frame.Light, 0, frame.Light.Length);
-            sceneClock += 1 / 60.0;
-            var lights = Town ? TownArt.Lights(sceneClock) : Art.SceneLights(CamX, W, sceneClock);
+            var lights = Town ? TownArt.Lights(sceneClock) : Art.SceneLights(x, W, sceneClock);
+            composition?.ShadeFixedLights(lights);
             lights.Add(new LightSrc(Player.X, Player.Y - 10, 64, 1.6, "#ffcf6a"));
             foreach (var e in Enemies) e.Lights(lights);
             foreach (var e in Enemies) if (e.Elite && !e.Dead) lights.Add(new LightSrc(e.X, e.Y - 10, 36, 1.2, "#ff4a3a"));
             foreach (var s in Shots) lights.Add(new LightSrc(s.X, s.Y, 64, 3, (SHOT_PAL.ContainsKey(s.Form) ? SHOT_PAL[s.Form] : SHOT_PAL["star"]).light));
             foreach (var d in Drops.List) if (d.Landed && d.Item.Rarity >= Items.RARE) lights.Add(new LightSrc(d.X, d.Y - 10, d.Item.Rarity == Items.LEGEND ? 48 : 30, 2, Items.RARITY[d.Item.Rarity].Color));
+            layout?.Lights(lights);
             Ult.Lights(lights);
             StageLights(lights);   // props、scenery、features
             foreach (var a in Altars) lights.Add(a.Lit ? new LightSrc(a.X, a.Y - 18, 70, 2.4, "#ffd060") : new LightSrc(a.X, a.Y - 14, 26, 0.8, "#7488aa"));
             Prof.Mark("邏輯");
             var lv = SceneLight.Compute(frame, lights);
             Prof.Mark("光源");
-            if (Town) TownArt.Draw(frame, lv, sceneClock);
-            else { Art.Draw(frame, lv); }
+            if (Town) TownArt.Draw(frame, lv, sceneClock,layout);
+            else { Art.Draw(frame, lv, layout); }
             Prof.Mark("場景");
             if (!Town) Art.DrawAtmosphere(frame, sceneClock);
             Prof.Mark("大氣");
-            foreach (var a in Altars) if (Math.Abs(a.X - CamX - W / 2.0) < W) DrawAltar(frame, a);
+            layout?.Draw(frame, SceneryLayer.Playfield, frame.Color);
+            foreach (var a in Altars) if (Math.Abs(a.X - x - W / 2.0) < W) DrawAltar(frame, a);
             Prof.Mark("S:祭壇"); DrawPlug(frame);   // 王房屋頂的垃圾塞子
             DrawStageObjects(frame, lv);   // features、props、scenery、hazards
             if (Town) DrawTownPeople(frame);
             else if (UseT != null) DrawBang(frame, UseT.X, UseT.Top);
-            Prof.Mark("S:人"); if (Chest != null && !Chest.Opened && Math.Abs(Chest.X - CamX - W / 2.0) < W) DrawChestSolid(frame); Prof.Mark("S:寶箱");
+            Prof.Mark("S:人"); if (Chest != null && !Chest.Opened && Math.Abs(Chest.X - x - W / 2.0) < W) DrawChestSolid(frame); Prof.Mark("S:寶箱");
             Prof.Mark("場景物件");
             if (!Ult.On) Fx.Draw(frame, true);
             Drops.Draw(frame, sceneClock);
@@ -1006,6 +1061,7 @@ namespace ZeroStar
             if (Town) { TownPuddles.Player(Player.X, Player.Vx, Player.Grounded); TownArt.DrawWeather(frame, sceneClock); TownArt.DrawFg(frame); }
             if (Director?.Lock != null) DrawBarrier(frame, Director.Lock.Value);
             if (!Town) Art.DrawForeground(frame);
+            layout?.Draw(frame, SceneryLayer.Foreground, frame.Color);
             Combat.DrawNumbers(frame, ViewRect());
             Prof.Mark("前景");
             Ult.DrawCutIn(frame);

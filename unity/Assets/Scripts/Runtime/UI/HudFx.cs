@@ -298,7 +298,7 @@ namespace ZeroStar.UI
             bool show = near != null && !g.Town && !talking && near.Hold <= 0;
             absorbTip.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
             if (!show) return;
-            var p = ToPanel(near.X - Math.Round(g.CamX), near.Y - 40 - Math.Round(g.CamY));
+            var p = ToPanel(near.X - g.DisplayCamera.OriginX, near.Y - 40 - g.DisplayCamera.OriginY);
             absorbTip.style.left = p.x; absorbTip.style.top = p.y;
             absorbTip.style.marginTop = -3 * (0.5f - 0.5f * Mathf.Cos(clock / 1.2f * Mathf.PI * 2));   // 上下輕輕晃（1.2 秒）
             absorbPc.style.display = touch ? DisplayStyle.None : DisplayStyle.Flex;
@@ -312,7 +312,7 @@ namespace ZeroStar.UI
             bubble.style.opacity = Ease(bubbleK);
             if (!on) return;
             bubbleText.text = g.BubbleText;
-            var p = ToPanel(g.BubbleX - Math.Round(g.CamX), g.BubbleHead - Math.Round(g.CamY));
+            var p = ToPanel(g.BubbleX - g.DisplayCamera.OriginX, g.BubbleHead - g.DisplayCamera.OriginY);
             bubble.style.left = p.x; bubble.style.top = p.y;
         }
     }

@@ -63,21 +63,6 @@ namespace ZeroStar
         static uint Dim(uint c, double k) =>
             (uint)(unchecked((int)0xff000000) | (Pf.ToInt32(((c >> 16) & 255) * k) << 16) | (Pf.ToInt32(((c >> 8) & 255) * k) << 8) | Pf.ToInt32((c & 255) * k));
 
-        // 某一層在螢幕第 y 列：[上段的列（-1＝不在上段）, 下段的列]
-        void LayerRows(int y, int cy, int k, out int t, out int b)
-        {
-            if (!D.Tall) { t = -1; b = y; return; }
-            int top = y + (int)Pf.Round(cy * VPAR[k]), bot = y + (int)Pf.Round((cy - (MH - H)) * VPAR[k]);
-            t = top >= 0 && top < D.Pin ? top : -1;
-            b = bot >= D.Pin && bot < H ? bot : bot < 0 ? bot : H;
-        }
-        uint Sample(Img img, Img up, int t, int b, int x)
-        {
-            if (t >= 0) { uint v = img.Px[t * img.W + Wrap(x, img.W)]; if (v != 0) return v; }
-            if (b >= 0) return b < H ? img.Px[b * img.W + Wrap(x, img.W)] : 0;
-            return up != null && !up.Empty && D.UH + b >= 0 ? up.Px[(D.UH + b) * up.W + Wrap(x, up.W)] : 0;
-        }
-
         float[] vig = new float[0]; int vigW;
         float[] Vignette(int W)
         {
@@ -93,8 +78,17 @@ namespace ZeroStar
 
         /// 畫背景＋遊玩層。lv：SceneLight.Compute 算的亮度。
         /// 畫面切成幾條同時算（每個像素各算各的，結果一樣）；各圖層的欄位用累加取代每格取餘數。
-        public void Draw(Frame frame, float[] lv)
+        public void Draw(Frame frame, float[] lv) => Draw(frame, lv, null);
+        uint[] skyPieces;
+        internal void Draw(Frame frame, float[] lv, StageLayout layout)
         {
+            if (layout != null)
+            {
+                if (skyPieces == null || skyPieces.Length != frame.Color.Length) skyPieces = new uint[frame.Color.Length];
+                Array.Clear(skyPieces, 0, skyPieces.Length);
+                layout.Draw(frame, SceneryLayer.Sky, skyPieces);
+            }
+            else skyPieces = null;
             var V = Vignette(frame.W);
             const int BANDS = 8;
             int per = (H + BANDS - 1) / BANDS;
@@ -117,75 +111,71 @@ namespace ZeroStar
             uint[] outc = frame.Color, LB = frame.Light, PF = D.PF;
             byte[] PFE = D.PFE;
             float[] TR = SceneLight.Tr, TG = SceneLight.Tg, TB = SceneLight.Tb;
-            Img B = D.Back, F1 = D.Far, M2 = D.Mid, N3 = D.Near, UF = D.UpFar, UM = D.UpMid;
-            int o0 = (int)Math.Floor(cx * PAR[0]), o1 = (int)Math.Floor(cx * PAR[1]), o2 = (int)Math.Floor(cx * PAR[2]), o3 = (int)Math.Floor(cx * PAR[3]);
-            int wy = y + cy, row = y * W;
+            double rx = frame.CameraFractionX, ry = frame.CameraFractionY;
+            int wy = y + cy, row = y * W, pfRow = wy * LW;
             if (wy < 0 || wy >= MH) { for (int x = 0; x < W; x++) outc[row + x] = BACK_COLOR; return; }
-            int by = y;
-            LayerRows(y, cy, 1, out int t1, out int b1);
-            LayerRows(y, cy, 2, out int t2, out int b2);
-            LayerRows(y, cy, 3, out int t3, out int b3);
-            // 每一層這一列的起點（-1＝這一段沒有）：上段 t、下段 b（b>=H 或 b<0 時看上層圖）
-            int n3t = t3 >= 0 ? t3 * N3.W : -1, n3b = b3 >= 0 && b3 < H ? b3 * N3.W : -1;
-            int m2t = t2 >= 0 ? t2 * M2.W : -1, m2b = b2 >= 0 && b2 < H ? b2 * M2.W : -1, umr = b2 < 0 && UM != null && !UM.Empty && D.UH + b2 >= 0 ? (D.UH + b2) * UM.W : -1;
-            int f1t = t1 >= 0 ? t1 * F1.W : -1, f1b = b1 >= 0 && b1 < H ? b1 * F1.W : -1, ufr = b1 < 0 && UF != null && !UF.Empty && D.UH + b1 >= 0 ? (D.UH + b1) * UF.W : -1;
-            int bRow = by * B.W;
-            int cN = Wrap(o3, N3.W), cM = Wrap(o2, M2.W), cF = Wrap(o1, F1.W), cB = Wrap(o0, B.W);
-            int wUM = UM != null && !UM.Empty ? UM.W : 1, wUF = UF != null && !UF.Empty ? UF.W : 1;
-            int cUM = Wrap(o2, wUM), cUF = Wrap(o1, wUF);
-            int pfRow = wy * LW;
-            for (int x = 0; x < W; x++, cN = cN + 1 == N3.W ? 0 : cN + 1, cM = cM + 1 == M2.W ? 0 : cM + 1, cF = cF + 1 == F1.W ? 0 : cF + 1, cB = cB + 1 == B.W ? 0 : cB + 1, cUM = cUM + 1 == wUM ? 0 : cUM + 1, cUF = cUF + 1 == wUF ? 0 : cUF + 1)
+            Parallax.Row MakeRow(Img img, double ox, double yy, int minY = 0, int maxY = int.MaxValue) => img == null ? default : new Parallax.Row(img.Px, img.W, img.H, ox, yy, minY, maxY);
+            (Parallax.Row top, Parallax.Row bottom) Rows(Img img, Img upper, int k)
+            {
+                double ox = Parallax.Offset(cx, rx, PAR[k]);
+                if (!D.Tall) return (MakeRow(img, ox, y - ry), default);
+                double top = y + Parallax.Offset(cy, ry, VPAR[k]);
+                double bot = y + Parallax.Offset(cy - (MH - H), ry, VPAR[k]);
+                return (MakeRow(img, ox, top, 0, D.Pin), bot < 0 ? MakeRow(upper, ox, D.UH + bot) : MakeRow(img, ox, bot, D.Pin));
+            }
+            var back = MakeRow(D.Back, Parallax.Offset(cx, rx, PAR[0]), y - ry);
+            var far = Rows(D.Far, D.UpFar, 1);
+            var mid = Rows(D.Mid, D.UpMid, 2);
+            var near = Rows(D.Near, null, 3);
+            uint Sample((Parallax.Row top, Parallax.Row bottom) rows, int x) { uint top = rows.top.Sample(x); return (top >> 24) == 255 ? top : Parallax.Over(rows.bottom.Sample(x), top); }
+            for (int x = 0; x < W; x++)
             {
                 int i = row + x, gx = x + cx;
-                uint v = gx >= 0 && gx < LW ? PF[pfRow + gx] : 0; int layer = 4;
+                uint v = gx >= 0 && gx < LW ? PF[pfRow + gx] : 0;
                 if (v == 0)
                 {
-                    layer = 3;
-                    if (n3t >= 0) v = N3.Px[n3t + cN];
-                    if (v == 0 && n3b >= 0) v = N3.Px[n3b + cN];
-                }
-                if (v == 0)
-                {
-                    layer = 2;
-                    if (m2t >= 0) v = M2.Px[m2t + cM];
-                    if (v == 0) v = m2b >= 0 ? M2.Px[m2b + cM] : umr >= 0 ? UM.Px[umr + cUM] : 0;
-                }
-                if (v == 0)
-                {
-                    layer = 1;
-                    if (f1t >= 0) v = F1.Px[f1t + cF];
-                    if (v == 0) v = f1b >= 0 ? F1.Px[f1b + cF] : ufr >= 0 ? UF.Px[ufr + cUF] : 0;
-                }
-                if (v == 0) { uint bv = B.Px[bRow + cB]; outc[i] = MixF(bv != 0 ? bv : BACK_COLOR, hzR, hzG, hzB, hazeBack[y] * (1 - V[i] * 0.5)); continue; }
-                if (layer == 4 && PFE[pfRow + gx] != 0) { outc[i] = v; continue; }
-                double l = lv[i], k;
-                if (layer <= 2)
-                {
-                    k = (layer == 1 ? FAR1 : FAR2) * (1 - V[i] * 0.2) * (1 + 0.25 * Math.Min(1, l)); v = CoolF(v, layer == 1 ? COOL1 : COOL2);
-                    outc[i] = MixF(ShadeF(v, k), hzR, hzG, hzB, (layer == 1 ? hazeFar[y] : hazeMid[y]) * (1 - V[i] * 0.5));   // 遠的往霧色靠，比近的亮
+                    uint n = Sample(near, x), bg = 0;
+                    if ((n >> 24) != 255)
+                    {
+                        uint m = Sample(mid, x), f = 0;
+                        if ((m >> 24) != 255)
+                        {
+                            f = Sample(far, x);
+                            if ((f >> 24) != 255)
+                            {
+                                bg = Parallax.Over(BACK_COLOR, back.Sample(x));
+                                if (skyPieces != null) bg = Parallax.Over(bg, skyPieces[i]);
+                                bg = MixF(bg, hzR, hzG, hzB, hazeBack[y] * (1 - V[i] * 0.5));
+                            }
+                        }
+                        uint ShadeFar(uint c, int k)
+                        {
+                            double light = (k == 1 ? FAR1 : FAR2) * (1 - V[i] * 0.2) * (1 + 0.25 * Math.Min(1, lv[i]));
+                            uint shaded = ShadeF(CoolF(c, k == 1 ? COOL1 : COOL2), light);
+                            return Parallax.Alpha(MixF(shaded, hzR, hzG, hzB, (k == 1 ? hazeFar[y] : hazeMid[y]) * (1 - V[i] * 0.5)), c);
+                        }
+                        if (f != 0) bg = Parallax.Over(bg, ShadeFar(f, 1));
+                        if (m != 0) bg = Parallax.Over(bg, ShadeFar(m, 2));
+                    }
+                    if (n != 0)
+                    {
+                        double light = LAYER_DIM[3] * (1 - V[i] * 0.35) * (AMB + (1 - AMB) * Math.Min(LIT_MAX, lv[i] / 1.1)) * 0.72;
+                        bg = Parallax.Over(bg, Parallax.Alpha(ShadeF(DesatF(n, 0.4), light), n));
+                        double strength = (n >> 24) / 255.0 * 0.5;
+                        if (lv[i] > 0.02) LB[i] = 0xff000000u | ((uint)(int)Math.Min(255, TB[i] * strength) << 16) | ((uint)(int)Math.Min(255, TG[i] * strength) << 8) | (uint)(int)Math.Min(255, TR[i] * strength);
+                    }
+                    outc[i] = bg;
                     continue;
                 }
-                else
-                {
-                    k = LAYER_DIM[layer] * (1 - V[i] * 0.35) * (AMB + (1 - AMB) * Math.Min(LIT_MAX, l / 1.1));
-                    if (layer == 3) { v = DesatF(v, 0.4); k *= 0.72; }   // 近景裝飾：降彩、壓暗，不跟可以打的東西搶
-                    else
-                    {
-                        int dp = depth[pfRow + gx];
-                        if (dp > 5) { double dk = Math.Min(1, (dp - 5) / 28.0); v = DesatF(v, 0.45 * dk); k *= 1 - 0.5 * dk; }   // 地面深處：越深越暗越灰，表面那一圈最清楚
-                    }
-                    if (layer == 4)
-                    {
-                        bool up = wy > 0 && PF[pfRow - LW + gx] == 0, up2 = wy > 1 && PF[pfRow - 2 * LW + gx] == 0, dn = wy < MH - 1 && PF[pfRow + LW + gx] == 0;
-                        if (up) k *= RIM; else if (up2) k *= 1 + (RIM - 1) * 0.4; else if (dn) k *= UNDER;
-                    }
-                }
+                if (PFE[pfRow + gx] != 0) { outc[i] = v; continue; }
+                double l = lv[i];
+                double k = LAYER_DIM[4] * (1 - V[i] * 0.35) * (AMB + (1 - AMB) * Math.Min(LIT_MAX, l / 1.1));
+                int dp = depth[pfRow + gx];
+                if (dp > 5) { double dk = Math.Min(1, (dp - 5) / 28.0); v = DesatF(v, 0.45 * dk); k *= 1 - 0.5 * dk; }
+                bool up = wy > 0 && PF[pfRow - LW + gx] == 0, up2 = wy > 1 && PF[pfRow - 2 * LW + gx] == 0, dn = wy < MH - 1 && PF[pfRow + LW + gx] == 0;
+                if (up) k *= RIM; else if (up2) k *= 1 + (RIM - 1) * 0.4; else if (dn) k *= UNDER;
                 outc[i] = Math.Abs(k - 1) > 0.01 ? ShadeF(v, k) : v;
-                if (l > 0.02 && layer >= 3)
-                {
-                    double s3 = layer == 4 ? 1 : 0.5;
-                    LB[i] = 0xff000000u | ((uint)(int)Math.Min(255, TB[i] * s3) << 16) | ((uint)(int)Math.Min(255, TG[i] * s3) << 8) | (uint)(int)Math.Min(255, TR[i] * s3);
-                }
+                if (l > 0.02) LB[i] = 0xff000000u | ((uint)(int)Math.Min(255, TB[i]) << 16) | ((uint)(int)Math.Min(255, TG[i]) << 8) | (uint)(int)Math.Min(255, TR[i]);
             }
         }
 
@@ -194,7 +184,8 @@ namespace ZeroStar
         {
             var FGI = D.Fg;
             if (FGI == null || FGI.Empty) return;
-            int W = frame.W, cy = frame.Oy, of = (int)Math.Floor(frame.Ox * PAR_F);
+            int W = frame.W, cy = frame.Oy;
+            double of = Parallax.Offset(frame.Ox, frame.CameraFractionX, PAR_F);
             uint[] outc = frame.Color;
             for (int y = 0; y < H; y++)
             {
@@ -207,11 +198,12 @@ namespace ZeroStar
                 }
                 else { int wy = y + cy - (MH - H); if (wy < 0) continue; sy = wy < 110 ? wy + FG_DROP : wy; if (sy >= H) continue; }
                 if (sy < 0) continue;
-                int r = sy * FGI.W, row = y * W;
+                int row = y * W;
+                var sample = new Parallax.Row(FGI.Px, FGI.W, FGI.H, of, sy);
                 for (int x = 0; x < W; x++)
                 {
-                    uint v = FGI.Px[r + Wrap(x + of, FGI.W)];
-                    if (v != 0) outc[row + x] = v;
+                    uint v = sample.Sample(x);
+                    if (v != 0) outc[row + x] = Parallax.Over(outc[row + x], v);
                 }
             }
         }
@@ -227,7 +219,8 @@ namespace ZeroStar
         }
         public void DrawAtmosphere(Frame frame, double time)
         {
-            int W = frame.W, Hh = frame.H, os = (int)Math.Floor(frame.Ox * SHAFT_PAR);
+            int W = frame.W, Hh = frame.H;
+            double os = Parallax.Offset(frame.Ox, frame.CameraFractionX, SHAFT_PAR);
             uint[] Lb = frame.Light, Cb = frame.Color;
             double flicker = 0.75 + 0.25 * Pf.Sin(time * 1.3);
             foreach (var s in SHAFTS) for (int rep = -1; rep <= 1; rep++)

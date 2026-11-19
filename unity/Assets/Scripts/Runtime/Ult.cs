@@ -407,7 +407,7 @@ namespace ZeroStar
             void Put(int x, int y, int[] c, double a = 1)
             {
                 if (x < 0 || y < 0 || x >= W || y >= frame.H) return;
-                int i = y * W + x; uint d = C[i]; double q = 1 - a;
+                int i = y * W + x; frame.ExcludeWeather(i); uint d = C[i]; double q = 1 - a;
                 C[i] = (uint)(unchecked((int)0xff000000) | (Pf.ToInt32(((d >> 16) & 255) * q + c[2] * a) << 16) | (Pf.ToInt32(((d >> 8) & 255) * q + c[1] * a) << 8) | Pf.ToInt32((d & 255) * q + c[0] * a));
                 L[i] = 0;
             }

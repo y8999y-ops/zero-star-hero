@@ -9,6 +9,8 @@ using PixelFX;
 
 namespace ZeroStar
 {
+    // LateUpdate 先完成顯示鏡頭，GameRoot 隨後更新貼在世界上的 UI。
+    [DefaultExecutionOrder(-100)]
     public class PixelScreen : MonoBehaviour
     {
         public const int H = 216;
@@ -16,6 +18,8 @@ namespace ZeroStar
         public int W { get; private set; } = 384;
         public double Zoom = 1.38;
         public int ViewDy = 8;
+        // CPU 畫布仍按整格取樣；Unity 鏡頭補上不足一格的位移。
+        public double RenderAlpha => Math.Max(0, Math.Min(1, acc / STEP));
 
         public Frame Frame { get; private set; }
         /// 每一步呼叫（固定 1/60 秒）。
@@ -27,8 +31,8 @@ namespace ZeroStar
         /// 合成之後再改像素（大招的黑白定格）
         public event Action<byte[]> PostComposite;
 
-        Texture2D tex;
-        byte[] rgba;
+        FramePresentation presentation;
+        Material spriteMaterial;
         SpriteRenderer sr;
         Camera cam;
         double acc;
@@ -58,7 +62,7 @@ namespace ZeroStar
             go.transform.SetParent(transform, false);
             sr = go.GetComponent<SpriteRenderer>();
             sr.flipY = true;   // 畫布第 0 列在最上面，貼圖第 0 列在最下面：上下翻轉
-            PostFx.Use = true;   // 這裡負責顯示 shader 的結果
+            spriteMaterial = sr.sharedMaterial;
             Application.targetFrameRate = 60;
             QualitySettings.vSyncCount = 0;
             Rebuild(WidthFor(Aspect()));
@@ -68,16 +72,17 @@ namespace ZeroStar
         void Rebuild(int w)
         {
             W = w; lastAspect = Aspect();
-            Frame = new Frame(W, H);
-            rgba = new byte[W * H * 4];
-            if (tex != null) Destroy(tex);
-            tex = new Texture2D(W, H, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, name = "PixelScreen" };
-            sr.sprite = Sprite.Create(tex, new Rect(0, 0, W, H), new Vector2(0.5f, 0.5f), 1f, 0, SpriteMeshType.FullRect);
+            Frame = new Frame(W, H) { UseGpuWeather = true };
+            if (sr.sprite != null) Destroy(sr.sprite);
+            presentation?.Dispose();
+            presentation = new FramePresentation(W,H);
+            sr.sprite = Sprite.Create(presentation.Source, new Rect(0, 0, W + 2, H + 2), new Vector2(0.5f, 0.5f), 1f, 0, SpriteMeshType.FullRect);
             Resized?.Invoke(W);
         }
 
         public Func<bool> Paused;
-        void Update()
+        // 所有 Update（包括 GameRoot 的輸入採樣）完成後才推進模擬與畫面。
+        void LateUpdate()
         {
             if (Math.Abs(Aspect() - lastAspect) > 0.001f) { int w = WidthFor(Aspect()); if (w != W) Rebuild(w); else lastAspect = Aspect(); }
             watch.Restart();
@@ -86,19 +91,31 @@ namespace ZeroStar
             if (Paused?.Invoke() == true) { Fit(); return; }   // 地圖、視窗開著：遊戲暫停，畫面停在最後一格（不用每格重畫）
             Frame.Clear();
             Draw?.Invoke(Frame);
-            Frame.SoftLight = true; Frame.Composite(rgba, null, 0.8);
-            PostComposite?.Invoke(rgba);
+            presentation.Composite(Frame, PostComposite);
             double ms = watch.Elapsed.TotalMilliseconds;
             perfMs += ms; perfN++; perfMax = Math.Max(perfMax, ms);
             { long heap = GC.GetTotalMemory(false); if (lastHeap > 0 && heap > lastHeap) allocSum += heap - lastHeap; lastHeap = heap; }   // 上一格整個遊戲產生的暫存資料（位元組）
             if ((perfT += Time.unscaledDeltaTime) >= 0.5) { AvgMs = perfMs / perfN; Fps = perfN / perfT; MaxMs = perfMax; AllocKb = allocSum / perfN / 1024; PerfText = $"{Fps:F0} fps  {AvgMs:F1} ms（最慢 {MaxMs:F0}）  暫存 {AllocKb:F0} KB/格  {W}×216"; perfMs = 0; perfN = 0; perfT = 0; perfMax = 0; allocSum = 0; }
-            // 沒畫到的地方（透明）在網頁上會露出黑底：這裡直接補成不透明
-            for (int i = 3; i < rgba.Length; i += 4) rgba[i] = 255;
-            tex.SetPixelData(rgba, 0);
-            tex.Apply(false);
-            PostFx.Present(tex, Frame, sr);   // 混合畫面：可以用 shader 就把顯示卡的結果換上去（PostFx.cs）
+            var output = presentation.Upload(Frame);
+            PostFx.Present(output, presentation.Source, sr, spriteMaterial);
             Fit();
         }
+
+        // 城鎮倍率為 1，補一格邊緣避免小數位移露出畫布外的黑線。
+        public static void PadEdges(byte[] source, byte[] destination, int width, int height)
+        {
+            int rowBytes = width * 4, stride = (width + 2) * 4;
+            for (int y = 0; y < height; y++)
+            {
+                int row = (y + 1) * stride;
+                Buffer.BlockCopy(source, y * rowBytes, destination, row + 4, rowBytes);
+                Buffer.BlockCopy(source, y * rowBytes, destination, row, 4);
+                Buffer.BlockCopy(source, (y + 1) * rowBytes - 4, destination, row + stride - 4, 4);
+            }
+            Buffer.BlockCopy(destination, stride, destination, 0, stride);
+            Buffer.BlockCopy(destination, height * stride, destination, (height + 1) * stride, stride);
+        }
+
 
         /// 放大倍率：畫布高度剛好塞滿螢幕再放大 Zoom 倍；看得到的範圍往下移 ViewDy 格
         void Fit()
@@ -107,7 +124,7 @@ namespace ZeroStar
             double k = Math.Min(sw / W, sh / H) * Zoom;
             cam.orthographicSize = (float)(sh / (2 * k));
             double vh = H / Zoom, my = (H - vh) / 2, dy = Math.Min(ViewDy, my);
-            cam.transform.position = new Vector3(0, (float)-dy, -10);
+            cam.transform.position = new Vector3((float)Frame.CameraFractionX, (float)-dy - (float)Frame.CameraFractionY, -10);
         }
 
         /// 畫布座標（左上原點）→ 螢幕座標（像素，左下原點）

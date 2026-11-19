@@ -45,6 +45,7 @@ namespace ZeroStar
 
     public class LightSrc
     {
+        public bool[,] Shadow;
         public double X, Y, R, Lv, Par = 1;
         public string Col;
         public LightSrc(double x, double y, double r, double lv, string col, double par = 1) { X = x; Y = y; R = r; Lv = lv; Col = col; Par = par; }

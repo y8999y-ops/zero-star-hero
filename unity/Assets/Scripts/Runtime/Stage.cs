@@ -8,7 +8,7 @@ namespace ZeroStar
 {
     public class StageData
     {
-        public class Spawn { public string K, Core; public double X; public double? Y; public bool Air, Deep; }
+        public class Spawn { public string K, Core; public double X; public double? Y; public bool Air, Deep; public double AirOffsetY; }
         public class Tip { public string Touch, Key, Focus; }
         public class Wave { public string Kind; public int Side; }
         public class Event { public double X; public double? Y; public bool OnCore, Quiet, WaitCore, Ult; public string Say, Teach; public Tip Tip, Hint; public List<List<Wave>> Waves; public double[] Lock; }
@@ -30,6 +30,35 @@ namespace ZeroStar
         public static List<ChestTier> ChestTiers;
 
         static Dictionary<string, StageData> all;
+        public StageData ForLayout(string id,bool blank)
+        {
+            var s=(StageData)MemberwiseClone(); s.Id=id;
+            if(blank)
+            {
+                s.Paced=false;s.Intro=new List<string>();s.Spawns=new List<Spawn>();s.Events=new List<Event>();
+                s.Caches=new List<Cache>();s.Altars=new List<Altar>();s.Features=new List<Feature>();
+                s.Hazards=new List<(string,double,double)>();s.ArenaInfo=null;
+            }
+            return s;
+        }
+        public StageData WithExitOffset(double dx,double dy,double floor)
+        {
+            var result=(StageData)MemberwiseClone(); result.ExitX+=dx;
+            if(result.ExitY!=0 || dy!=0) result.ExitY=(result.ExitY!=0?result.ExitY:floor)+dy;
+            return result;
+        }
+        public StageData PlacedSpawns(WorldComposition layout,GameMap map)
+        {
+            if(layout==null || Spawns==null)return this;
+            var result=(StageData)MemberwiseClone();
+            result.Spawns=new List<Spawn>(Spawns.Count);
+            for(int i=0;i<Spawns.Count;i++)
+            {
+                var s=Spawns[i]; var v=layout.Delta(StampKind.EnemySpawn,i);
+                result.Spawns.Add(new Spawn{K=s.K,Core=s.Core,X=s.X+v.x,AirOffsetY=s.Air?v.y:0,Y=s.Air || v.y==0?s.Y:(s.Y??map.FloorAt(s.X+v.x,0))+v.y,Air=s.Air,Deep=s.Deep});
+            }
+            return result;
+        }
         public static StageData Get(string id)
         {
             if (all == null) Load();
@@ -114,7 +143,7 @@ namespace ZeroStar
             foreach (var m in stage.Intro) api.Say(m, SAY_TIME);
             foreach (var c in stage.Caches) api.DropCache(c.X, c.Y, c.N);
             // 怪物一開始就擺在地圖上
-            if (stage.Spawns != null) foreach (var sp in stage.Spawns) { var e = api.SpawnEnemy(sp.K, sp.X, sp.Y, sp.Air); if (e != null && sp.Core != null) e.Core = sp.Core; if (e != null && sp.Deep) e.DeepSleep = true; }
+            if (stage.Spawns != null) foreach (var sp in stage.Spawns) { var e = api.SpawnEnemy(sp.K, sp.X, sp.Y, sp.Air); if (e != null && sp.Air) e.Yp+=sp.AirOffsetY; if (e != null && sp.Core != null) e.Core = sp.Core; if (e != null && sp.Deep) e.DeepSleep = true; }
             else foreach (var ev in stage.Events)
             {
                 if (ev.Waves == null || ev.Lock != null) continue;
