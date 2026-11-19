@@ -26,7 +26,9 @@ namespace ZeroStar
         static int[] topY; static byte[] cap; static float[] nCol;
         static byte[] face;   // 結構圖的屋頂面：每一格多早會被雪蓋（0＝不會）
         static uint[] mainRef;
-        public static void Reset() { cover = -1; lastT = -1; }
+        public static void Reset() { cover = -1; lastT = -1; Melting = false; }
+        /// 正在融雪（雪停了、還有積雪）
+        public static bool Melting { get; private set; }
 
         static double Hash(int i, int s) { unchecked { uint h = (uint)(i * 374761393 + s * 668265263); h = (h ^ (h >> 13)) * 1274126177; h ^= h >> 16; return (h & 0xffffff) / 16777216.0; } }
         static double Noise(double x, int s) { int i = (int)Math.Floor(x); double f = x - i; f = f * f * (3 - 2 * f); return Hash(i, s) + (Hash(i + 1, s) - Hash(i, s)) * f; }
@@ -63,6 +65,15 @@ namespace ZeroStar
                 double sc = 1 - below * 0.75 + (n - 0.5) * 0.5;
                 face[y * TOWN_W + x] = (byte)Math.Max(1, Math.Min(255, sc * 200));
             }
+            // 冰柱：長在水路的滴水點（屋簷、傘緣、招牌下角）下面；地面附近的不算。每根最長 2～6 格
+            icicles.Clear();
+            foreach (var d in TownFlow.Drips)
+            {
+                if (d.y0 >= FLOOR - 10 || d.y1 - d.y0 < 8) continue;
+                bool near = false; foreach (var q in icicles) if (Math.Abs(q.x - d.x) < 3 && Math.Abs(q.y - d.y0) < 4) { near = true; break; }
+                if (near) continue;
+                icicles.Add((d.x, d.y0, 2 + (int)(Hash(d.x * 13 + d.y0, 41) * 4.99)));
+            }
             // 太窄的平面（1～2 格寬的尖端）堆不住
             for (int x = 1; x < TOWN_W - 1; x++) if (cap[x] > 0 && cap[x - 1] == 0 && cap[x + 1] == 0) cap[x] = 0;
         }
@@ -93,12 +104,23 @@ namespace ZeroStar
         {
             if (topY == null) return;
             double dt = lastT < 0 ? 0 : Math.Max(0, Math.Min(0.1, time - lastT)); lastT = time;
-            if (cover < 0) cover = CoverStart ?? snow;
-            else cover = snow > 0.03 ? Math.Min(1, cover + dt * snow / 60) : Math.Max(0, cover - dt / 120);   // 下 60 秒積滿、停 120 秒融化
+            double prev = cover;
+            if (cover < 0) { cover = CoverStart ?? snow; prev = cover; }
+            else if (snow > 0.03) cover = Math.Min(1, cover + dt * snow / 60);                       // 下 60 秒積滿
+            else cover = Math.Max(0, cover - dt * (1 / 120.0 + TownArt.WeatherInfo().rain / 50));    // 停 120 秒融化；下雨融得更快
+            // 融雪：融掉的量變成地上的積水（TownPuddles），也讓屋簷開始滴水
+            Melting = snow < 0.03 && cover > 0.01 && cover < prev;
+            TownPuddles.MeltIn = Melting && dt > 0 ? (prev - cover) / dt : 0;
             if (cover <= 0.01) return;
             // 雪的顏色：白天白、晚上偏藍（燈光由光的緩衝加上去）
             double dl = Math.Min(1, day * 1.6);   // 陰天的白天也要是白的雪
             uint top = Lerp(C[6], C[7], 0.4 + 0.6 * dl), body = Lerp(C[6], C[7], 0.15 + 0.5 * dl), mid = Lerp(C[5], C[6], 0.5 + 0.5 * dl), shade = Lerp(C[4], C[5], 0.4 + 0.6 * dl);
+            if (Melting)
+            {
+                // 融化中：雪變成灰一點、濕一點的雪泥（越融越明顯）
+                double k = 0.45 * (1 - cover); uint slush = Pack(120 + 50 * dl, 130 + 50 * dl, 150 + 45 * dl);
+                top = Lerp(top, slush, k * 0.6); body = Lerp(body, slush, k); mid = Lerp(mid, slush, k); shade = Lerp(shade, slush, k * 0.5);
+            }
             int W = frame.W, Hh = frame.H, cx = frame.Ox, cy = frame.Oy; var Col = frame.Color;
             void Put(int wx, int wy, uint c) { int x = wx - cx, y = wy - cy; if (x < 0 || y < 0 || x >= W || y >= Hh) return; Col[y * W + x] = c; }
             // 地面：雪鋪在草皮上（第 FLOOR 列往下），厚了高出地面一格；草葉從雪裡冒出來（雪只蓋地面那幾列）
@@ -154,6 +176,7 @@ namespace ZeroStar
                     }
                 }
             }
+            DrawIcicles(frame);
             // 雪面上的閃光：幾個點慢慢閃
             for (int i = 0; i < 26; i++)
             {
@@ -164,6 +187,30 @@ namespace ZeroStar
                 int yy = (onTop ? topY[wx] : FLOOR) - (d >= 3 ? 1 : 0);
                 Put(wx, yy, C[7]);
                 int x = wx - cx, y = yy - cy; if (x >= 0 && y >= 0 && x < W && y < Hh) { var L = frame.Light; uint l = L[y * W + x]; L[y * W + x] = Pack((l & 255) + 50 * tw, ((l >> 8) & 255) + 60 * tw, ((l >> 16) & 255) + 80 * tw); }
+            }
+        }
+
+        // ---- 冰柱：下雪時就慢慢長，長度跟著積雪程度；上粗下細、左亮右暗、尖端白，外面一格黑外框（外框只能是黑色）
+        static readonly System.Collections.Generic.List<(int x, int y, int max)> icicles = new System.Collections.Generic.List<(int, int, int)>();
+        public static int IcicleLen(int i) { var ic = icicles[i]; double k = Math.Max(0, Math.Min(1, cover * 1.25 - 0.15)); return (int)Math.Floor(ic.max * k + 0.3); }
+        static void DrawIcicles(Frame frame)
+        {
+            int W = frame.W, Hh = frame.H, cx = frame.Ox, cy = frame.Oy; var Col = frame.Color;
+            uint hi = Pack(228, 244, 255), lo = Pack(150, 192, 232), tip = Pack(250, 253, 255);
+            for (int i = 0; i < icicles.Count; i++)
+            {
+                var ic = icicles[i]; int len = IcicleLen(i); if (len <= 0) continue;
+                if (ic.x - cx < -3 || ic.x - cx > W + 3) continue;
+                int wide = len >= 4 ? (len + 1) / 2 : 0;   // 上半段兩格寬
+                void Put(int wx, int wy, uint c) { int x = wx - cx, y = wy - cy; if (x < 0 || y < 0 || x >= W || y >= Hh) return; Col[y * W + x] = c; }
+                for (int r = 0; r < len; r++)
+                {
+                    int y = ic.y + r; bool two = r < wide;
+                    Put(ic.x, y, r == len - 1 ? tip : hi);
+                    if (two) Put(ic.x + 1, y, lo);
+                    Put(ic.x - 1, y, OUTLINE); Put(ic.x + (two ? 2 : 1), y, OUTLINE);
+                }
+                Put(ic.x, ic.y + len, OUTLINE);
             }
         }
 

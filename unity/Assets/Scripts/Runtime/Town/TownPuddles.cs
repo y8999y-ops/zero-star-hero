@@ -22,6 +22,8 @@ namespace ZeroStar
         public static double Wet => Math.Max(0, wet);
         /// 開發用（截圖）：進場時的濕度，不設＝照現在的雨量
         public static double? WetStart;
+        /// 每秒融掉多少雪（TownSnow 每格設；0＝沒在融雪）
+        public static double MeltIn;
         static readonly double[] bump = new double[TOWN_W];
         /// 屋簷滴水落地的地方（世界 x）：附近比較早積水（TownRainHits.Build 設，載入時算一次）
         public static void SetDrips(IEnumerable<int> xs)
@@ -90,6 +92,7 @@ namespace ZeroStar
             double dt = lastT < 0 ? 0 : Math.Max(0, Math.Min(0.1, time - lastT)); lastT = time;
             if (wet < 0) wet = WetStart ?? rain;
             else wet = rain > 0.03 ? Math.Min(1, wet + dt * rain / 40) : Math.Max(0, wet - dt / 90);   // 下 40 秒積滿、停 90 秒乾掉
+            if (MeltIn > 0) wet = Math.Min(1, wet + dt * MeltIn * 2.4);   // 融雪的水（TownSnow）：雪融完約積到八成
             if (wet < 0.02 && drops.Count == 0) return;
             BuildDepth();
 
