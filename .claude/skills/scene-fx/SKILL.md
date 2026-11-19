@@ -160,45 +160,45 @@ description: 做或調整場景環境特效（Unity 版）：天氣（雨、雪�
 
 - **給使用者看**：全畫面一張＋地面放大一張，用 SendUserFile 傳。使用者用手機看，說明用繁體中文短句。測過沒問題就 commit＋push，不用問；只 commit 自己改的檔案，資料夾裡別人還沒 commit 的改動不要一起加。
 
-## 6. 混合畫面：CPU＋shader（2026-11-19 起）
+## 6. 混合畫面：CPU＋shader（2026-11-19 起；架構經使用者另一個 AI 審查後改過，照這版做）
 
 使用者決定用「混合」：主畫面照舊 CPU 算，**整片逐格的效果（倒影、變濕、折射、霧、發光、水面）放到顯示卡**。不要整個改成 shader。
 
 - **檔案**：
-  - `Runtime/PostFx.cs`：底層，管資料、遮罩、上傳、Blit、顯示。
+  - `Runtime/PostFx.cs`：城鎮資料貼圖、參數、`Resolve`／`Present`、`ActiveFor`。
+  - `Runtime/FramePresentation.cs`：合成→上傳→`PostFx.Resolve`，每個顯示端各自持有貼圖。
+  - `PixelFX/Painter.cs` 的 `Frame`：天氣遮罩。
   - `Resources/Shaders/PostFx.shader`：效果本體。
   - `Resources/Shaders/ScreenShow.shader`：把結果畫到螢幕。
-  - shader 放在 Resources，才會被打包進遊戲。
-- **一格的流程**：
-  1. CPU 畫場景。
-  2. `PostFx.MarkScenery`：記下場景。
-  3. 畫角色、特效、雨。
-  4. `DrawFg` 開頭 `PostFx.BuildMask`：跟記下的場景比，沒被改過的格子＝場景。
-  5. 前景草葉畫完 `PostFx.FinishMask`：前景蓋到的格子扣掉。
-  6. 四角壓暗 → 合成 → 上傳貼圖。
-  7. `PostFx.Present`：Blit 跑 PostFx.shader 到 RenderTexture，SpriteRenderer 換成 ScreenShow 材質顯示。
-  - 遮罩一定要在四角壓暗之前算，不然畫面邊緣整圈都會被當成「不是場景」。
+- **每格自己決定要不要用顯示卡**：
+  - `new Frame(...) { UseGpuWeather = true }`：PixelScreen、WeatherShot 的顯示卡模式、編輯器預覽。
+  - CPU 端一律看 **`PostFx.ActiveFor(frame)`**：true＝只準備資料、不逐格畫；false＝CPU 自己畫（備用版）。
+  - 不要用全域的開關（舊的 `PostFx.Use`／`Active` 已經拿掉）。
+- **場景遮罩**（`frame.WeatherMask`，跟 `Color` 一樣大，255＝場景）：
+  1. 場景畫完（`TownArt.Draw` 最後）：`if (PostFx.ActiveFor(frame)) frame.BeginWeatherMask();`，記下畫面，遮罩全部設成場景。
+  2. 之後**每個會蓋在場景上的寫入都要 `frame.ExcludeWeather(i)`**：水珠、滴水、水花（`Px`）、前景草葉、畫筆（Painter 已經做了）。
+  3. `DrawFg` 開頭 `frame.ProtectLegacyDraws()`：還在直接寫 `Color` 的舊角色和特效，跟記下的畫面比，被改過的格子扣掉。
+  - 四角壓暗只改亮度，不改遮罩。
+  - 新程式**一定要自己呼叫 `ExcludeWeather`**，不要靠 `ProtectLegacyDraws`。
+- **這一格的資料準備好了**：TownPuddles 在 `ActiveFor` 時寫好每欄資料、漣漪、參數，再設 `frame.WeatherReady = true`。
+  - `PostFx.Resolve` 只在 `WeatherReady && TrackingWeather && ActiveFor && 有城鎮資料` 時跑 shader，不然直接回傳原本的貼圖。所以換到關卡會自動原樣輸出。
 - **給 shader 的資料**：
-  - 遮罩：跟畫面一樣大，含四周補的一格。
-  - 每一欄的資料（城鎮寬×1）：R 積水深度每格更新；G 接雨面、B 水痕種子、A 濕亮邊列，這三個是靜態的。
-  - 世界座標的資料（城鎮寬×高）：R 變濕分數、G 不會濕，靜態。
-  - 參數：`_Cam`（鏡頭、時間、是否城鎮）、`_Env`（濕度、白天、地面 y）、`_Rip[32]`（漣漪）。
-  - `TownFrame` 每格要重新設，沒設就原樣輸出（換到關卡自動沒有效果）。
+  - 遮罩（加上四周補的一格）。
+  - 每一欄的資料（城鎮寬×1）：R 積水深度，每格更新；G 接雨面；A 濕亮邊列。
+  - 世界座標的資料（城鎮寬×高）：R 變濕分數、G 不會濕、B 沿著水路走了多遠、A 哪一條水路。
+  - 參數：`_Cam`（鏡頭、時間）、`_Env`（濕度、白天、地面 y）、`_Rip[32]`（漣漪）。
 - **座標**：
   - 貼圖第 0 列＝畫布第 -1 列（上面補的一格），所以 `cx = floor(uv.x*寬) - 1`、`cy = floor(uv.y*高) - 1`，加上 `_Cam.xy` 就是世界座標。
   - 一律以整格計算，取樣用格子中心（`(c + 1.5) / 寬`）、最近點。
   - 色彩空間是 Gamma，數值直接照 CPU 版的 0～255 / 255。
-- **CPU 備用（一定要保留）**：
-  - `PostFx.Active`＝有顯示卡＋有人負責顯示（`PostFx.Use`，PixelScreen 和 WeatherShot 會設）＋shader 能用＋`Enabled`。
-  - `Active` 是 false 時，CPU 照舊自己畫。自動測試（`-nographics`、TraceTest）都走 CPU 版。
-  - 新效果：CPU 端在 `Active` 時只準備資料、不逐格畫；不是 `Active` 時用 CPU 版，或乾脆不畫。
-- **CPU 端還是要畫的**：會蓋在水面上面的小東西（水珠、雨滴、屋簷滴水），因為它們不是場景，shader 不會改到。
-- **截圖**：
-  - `WeatherShot` 預設用顯示卡（`SHOT_GPU=0` 強制 CPU）。
-  - 要用顯示卡就**不能加 `-nographics`**。
-  - 比對：同一版程式 CPU 與顯示卡各截一張，算不同的格子數（2026-11-19 首次：整張 150～458 格不同，都是雜訊花紋），再並排看。
+- **資源釋放**：PostFx 自己的貼圖、材質在換程式（assembly reload）和關閉時釋放（`ReleaseSharedResources`）。顯示端的 RenderTexture 由 `FramePresentation.Dispose` 釋放。
+- **測試**：
+  - `Editor/WeatherPresentationTest.cs`：天氣顯示的測試。
+  - `WeatherShot` 預設用顯示卡（`SHOT_GPU=0` 強制 CPU）。要用顯示卡就不能加 `-nographics`。
+  - 比對：同一版程式 CPU 與顯示卡各截一張，算不同的格子數。2026-11-19 結果：整張約 150～460 格不同，都是雜訊花紋。
 - **加新效果**：
-  1. 在 PostFx.cs 加資料；靜態的放世界貼圖或每一欄的貼圖，動態的放參數。
-  2. 在 PostFx.shader 加一段（先用世界座標的 y 範圍或遮罩 early return，其他格子不要多算）。
-  3. 補上 CPU 備用版。
-  4. 顯示卡、CPU 兩種都截圖確認。
+  1. 在 PostFx 加資料；靜態的放世界貼圖或每一欄的貼圖，動態的放參數。
+  2. 在 PostFx.shader 加一段，先用世界座標的 y 範圍或遮罩 early return。
+  3. CPU 端：`ActiveFor` 時只準備資料；會蓋在上面的小東西自己 `ExcludeWeather`。
+  4. 補上 CPU 備用版。
+  5. 顯示卡、CPU 兩種都截圖確認。
