@@ -5,12 +5,13 @@
   2. 真雜點：只合併「一格、周圍 8 格全是同一色」而且灰階差 < 0.08 的格子；紋理不碰
   3. 內部的黑 → 材質最暗色（blackline）
   4. 剝掉外圍黑邊 → 本體；分開的小塊 < 12 格拿掉（--multi 的多塊物件保留大塊）
-  5. 外框整圈步進修正（contour.fix2）：換軸要先收窄、不准凹凸凹凸、短直角補成 1:1、平邊凸凹、斜率、曲線單調、單格凸起／凹陷；
-     只補一格或挖一格（一格不夠時兩格），只在原外圍一格內，最多改本體 4%
+  5. 外框整圈步進修正（contour.fix3，只修明確的錯）：單格凸起、單格凹陷（刻意的縫例外）、凹凸凹凸、換軸太突然＋短直角、
+     比前後都短的段、平邊凸凹；每次改動任何一種錯都不准變多，只補一格或挖一格（一格不夠時兩格），只在原外圍一格內，最多改本體 4%；
+     斜率、曲線單調只報告（slope_curve）
   6. 包一層外框黑；L 形轉角補成本體；貼外框的暗格調亮；輪廓線以內不准有黑
   7. 形狀比對：本體跟讀回重疊 < 96% 就退回第 5 步（手修過的除外）
   8. 對稱（--sym）：右半邊照左半邊鏡射，要改的格子 > 6% 就不改
-  9. 最後檢查（包完外框之後）：單格凸起／凹陷再修、重包，直到沒有（退回的物件也做）
+  9. 最後檢查（包完外框之後）：單格凸起一律往內收（尖端例外）、凹陷補上，重包，直到沒有（退回的物件也做）
  10. 色相偏移最多 5°，顏色偏移 > 0.04 就不做；壓回色數
  11. 只報告：灰階糊在一起的色對、枕頭式陰影（> 0.25 WARN）、帶狀
 用法：python items_finish.py --name 表名 --colors 16 [--sym i ...] [--multi i ...] [--work 資料夾]
@@ -108,6 +109,9 @@ for s in srcs:
         if oy >= 0 and ox >= 0: a[oy:oy + h.shape[0], ox:ox + h.shape[1]] = h
         else: a = pad(h)
         rep = {"hand": 1}
+        # 手修版＝使用者確認過的樣子：原樣保留，只壓色數，不跑自動修正（2026-11-19 魚骨：跑完流程骨頭之間的縫被當內線換掉、輪廓不清楚）
+        res = cap(a.copy(), A.colors); bb = Image.fromarray(res).getbbox(); Image.fromarray(res).crop(bb).save(f"{out_dir}/{b}.png")
+        pairs.append((read, res)); print(b, {"hand": 1, "colours": ncol(res)}); continue
     else:
         sh(PALETTE_TOOL, "build", "--output-dir", f"{w}/pal", "--input", f"{w}/in.png", "--colors", A.colors - 1, "--name", b)
         sh(PALETTE_TOOL, "apply", "--output-dir", f"{w}/app", "--palette", glob.glob(f"{w}/pal/*.hex")[0], "--input", f"{w}/in.png")
@@ -123,9 +127,9 @@ for s in srcs:
         sz = np.bincount(lab.ravel()); sz[0] = 0; big = sz.argmax()
         for c in range(1, k + 1):
             if c != big and (sz[c] < 12 or idx not in A.multi): body[lab == c] = False
-    sc0 = contour.score2(body)[1]
+    sc0 = contour.errors(body)
     # 5. 外框步進
-    fixed_body, nchg = contour.fix2(body)
+    fixed_body, nchg = contour.fix3(body)
     # 新補的格子給旁邊本體的顏色
     col = a.copy()
     for y, x in zip(*np.nonzero(fixed_body & ~body)):
@@ -148,7 +152,7 @@ for s in srcs:
     for _ in range(4):
         fb = body_of(res); sp, no = contour.spurs_notches(fb)
         if not sp and not no: break
-        nb2, k2 = contour.spot_fix(fb); rep["spot"] = rep.get("spot", 0) + k2
+        nb2, k2 = contour.spot_fix_in(fb); rep["spot"] = rep.get("spot", 0) + k2
         col = res.copy(); col[(res[..., :3] == INK).all(-1)] = 0
         for y, x in zip(*np.nonzero(nb2 & ~fb)):
             for dy, dx in ((0, -1), (0, 1), (-1, 0), (1, 0), (-1, -1), (1, 1), (-1, 1), (1, -1)):
@@ -158,12 +162,12 @@ for s in srcs:
     hs, nh = checks.hue_shift(res, max_deg=5)
     if colour_shift(read, hs) <= 0.04: res = hs; rep["hue"] = nh
     res = cap(res, A.colors)
-    after = contour.score2(body_of(res))[1]
+    after = contour.errors(body_of(res)); rep["slope_curve"] = contour._slope_curve(body_of(res))
     vis = res[..., 3] > 0; inner_black = int((vis & ndimage.binary_erosion(vis, F4) & (res[..., :3] == INK).all(-1)).sum())
     rep.update({"contour_before": sc0, "contour_after": after, "changed": nchg, "iou": round(float(iou), 3),
                 "colour_shift": round(colour_shift(read, res), 3), "colours": ncol(res), "inner_black": inner_black,
                 "value_pairs": checks.value_contrast(res)[1], "banding": checks.banding(res)[1], "pillow": checks.pillow(res)})
-    if after[6] or after[7] or inner_black or rep["pillow"] > 0.25 or (rep["colour_shift"] > 0.06 and not rep.get("hand")): warn.append(b)
+    if after[0] or after[1] or inner_black or rep["pillow"] > 0.25 or (rep["colour_shift"] > 0.06 and not rep.get("hand")): warn.append(b)
     pairs.append((read, res))
     bb = Image.fromarray(res).getbbox(); Image.fromarray(res).crop(bb).save(f"{out_dir}/{b}.png")
     print(b, rep)
