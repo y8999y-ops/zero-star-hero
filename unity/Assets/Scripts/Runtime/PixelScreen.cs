@@ -65,6 +65,10 @@ namespace ZeroStar
             sr = go.GetComponent<SpriteRenderer>();
             sr.flipY = true;   // 畫布第 0 列在最上面，貼圖第 0 列在最下面：上下翻轉
             spriteMaterial = sr.sharedMaterial;
+            {   // 測試版：Resources/DevWeather.txt 有寫天氣（rain／snow…）就固定成那個天氣（正式版沒有這個檔）
+                var dw = Resources.Load<TextAsset>("DevWeather");
+                if (dw != null && dw.text.Trim().Length > 0) TownArt.WeatherOverride = dw.text.Trim();
+            }
             Application.targetFrameRate = 60;
             QualitySettings.vSyncCount = 0;
             Rebuild(WidthFor(Aspect()));
@@ -97,7 +101,8 @@ namespace ZeroStar
             double ms = watch.Elapsed.TotalMilliseconds;
             perfMs += ms; perfN++; perfMax = Math.Max(perfMax, ms);
             { long heap = GC.GetTotalMemory(false); if (lastHeap > 0 && heap > lastHeap) allocSum += heap - lastHeap; lastHeap = heap; }   // 上一格整個遊戲產生的暫存資料（位元組）
-            if ((perfT += Time.unscaledDeltaTime) >= 0.5) { AvgMs = perfMs / perfN; Fps = perfN / perfT; MaxMs = perfMax; AllocKb = allocSum / perfN / 1024; PerfText = $"{Fps:F0} fps  {AvgMs:F1} ms（最慢 {MaxMs:F0}）  暫存 {AllocKb:F0} KB/格  {W}×216"; perfMs = 0; perfN = 0; perfT = 0; perfMax = 0; allocSum = 0; }
+            // 效能那一行的「天氣：」＝混合畫面用的是顯示卡還是 CPU（手機測試用）
+            if ((perfT += Time.unscaledDeltaTime) >= 0.5) { AvgMs = perfMs / perfN; Fps = perfN / perfT; MaxMs = perfMax; AllocKb = allocSum / perfN / 1024; PerfText = $"{Fps:F0} fps  {AvgMs:F1} ms（最慢 {MaxMs:F0}）  暫存 {AllocKb:F0} KB/格  {W}×216  天氣：{(PostFx.ActiveFor(Frame) ? (Frame.WeatherReady ? "顯示卡（有效果）" : "顯示卡") : "CPU")} {SystemInfo.graphicsDeviceType}"; perfMs = 0; perfN = 0; perfT = 0; perfMax = 0; allocSum = 0; }
             var output = presentation.Upload(Frame);
             PostFx.Present(output, presentation.Source, sr, spriteMaterial);
             Fit();
