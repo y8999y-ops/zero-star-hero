@@ -590,7 +590,7 @@ namespace ZeroStar.UI
             double camX = deep * 40;
             w0.Tile(vback, -40 - camX * 0.2, 0); w0.Tile(vfar, -80 - camX * 0.4, 0); w0.Tile(vmid, -140 - camX * 0.7, 0);
             double gy = H - 40;
-            w0.Tile(vground, -60 - camX, gy - 9);
+            w0.Tile(vground, -60 - camX, gy - 14);   // 2026-11-19 新地面（540×78）草皮最上緣在第 14 列（舊圖第 9 列）
             double cx = JR(W / 2.0 - camX);
             if (crashFx == null) crashFx = new FxRun(FxSystem.Def("meteor"), new FxOptions { X = JR(W / 2.0), Y = gy, Palette = GOLD, Light = 0.6, Seed = 5 });
             crashFx.Update(dt * slow);

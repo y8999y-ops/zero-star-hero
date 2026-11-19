@@ -46,6 +46,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 35
@@ -98,6 +100,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 27
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 1
@@ -131,7 +135,7 @@ Transform:
   m_GameObject: {fileID: 331811025668459186}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 644, y: -114, z: 0}
+  m_LocalPosition: {x: 644, y: -106, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -150,10 +154,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 1
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 644, y: 114}
+  original: {x: 644, y: 106}
   role: "\u88DD\u98FE"
   lights: 
 --- !u!212 &3557402072688805780
@@ -203,9 +209,9 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 508
+  m_SortingOrder: 509
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: f4b784c4c388c404dbfb2fdc8fdcc5d4, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 760ccc6c9ea226a49a593e904a001bca, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -446,6 +452,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 33
@@ -603,7 +611,7 @@ Transform:
   m_GameObject: {fileID: 665264073231511891}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1024, y: -155, z: 0}
+  m_LocalPosition: {x: 1024, y: -154, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -622,10 +630,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 1
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 1024, y: 155}
+  original: {x: 1024, y: 154}
   role: "\u88DD\u98FE"
   lights: 
 --- !u!212 &5706111569288398925
@@ -675,9 +685,9 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 516
+  m_SortingOrder: 517
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 8be7ba529fba9ce4cb7519d28fa405f2, type: 3}
+  m_Sprite: {fileID: 21300000, guid: f424550d4003c5844b9a4d76df99f69b, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -994,6 +1004,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 29
@@ -1143,7 +1155,7 @@ Transform:
   m_GameObject: {fileID: 912573782989334029}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1126, y: -114, z: 0}
+  m_LocalPosition: {x: 1126, y: -106, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1162,10 +1174,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 1
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 1126, y: 114}
+  original: {x: 1126, y: 106}
   role: sign
   lights: 
 --- !u!212 &7267175867250564579
@@ -1215,9 +1229,9 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 512
+  m_SortingOrder: 513
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 7795cf27b2278214fa8378055356e02d, type: 3}
+  m_Sprite: {fileID: 21300000, guid: be38cdeb94a4bd34d8707eac397efecc, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -1274,6 +1288,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 6
@@ -1326,6 +1342,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 18
@@ -1470,6 +1488,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 25
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 4
@@ -1522,6 +1542,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 27
@@ -1666,6 +1688,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 5
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
@@ -1778,6 +1802,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 28
@@ -2038,6 +2064,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 7
@@ -2182,6 +2210,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 25
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 2
@@ -2307,7 +2337,7 @@ Transform:
   m_GameObject: {fileID: 1604600052842571078}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 364, y: -114, z: 0}
+  m_LocalPosition: {x: 364, y: -106, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2326,12 +2356,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 1
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 364, y: 114}
+  original: {x: 364, y: 106}
   role: lamp
-  lights: 2e000000i
+  lights: 26000000i
 --- !u!212 &1163180548122838807
 SpriteRenderer:
   serializedVersion: 3
@@ -2379,9 +2411,9 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 506
+  m_SortingOrder: 507
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 4ffb96e39e723924c8fc18069764b1b7, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 97c466fde78dd4e4b92b62ad93e89de5, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -2854,6 +2886,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 25
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 1
@@ -3090,6 +3124,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 1
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
@@ -3143,9 +3179,9 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 521
+  m_SortingOrder: 522
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 661a5db36ec3e7e4e84fa9622d33210b, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 3357dec138ba27340b9aa3a1575f4fdb, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -3202,6 +3238,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 26
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 1
@@ -3234,7 +3272,7 @@ Transform:
   m_GameObject: {fileID: 2151475463912206967}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 128, y: -157, z: 0}
+  m_LocalPosition: {x: 128, y: -158, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -3254,6 +3292,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 27
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 0
@@ -3306,6 +3346,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 1
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
@@ -3359,9 +3401,9 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 523
+  m_SortingOrder: 524
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: dd68b14aaa696db46a934f91d5fc79a6, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 8fd9e94d1793f8d4c84edddd3b5a1a72, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -3418,6 +3460,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 10
@@ -3562,6 +3606,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 25
@@ -3706,6 +3752,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 0
@@ -3850,6 +3898,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 1
@@ -3994,6 +4044,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 23
@@ -4046,6 +4098,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 6
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
@@ -4158,6 +4212,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 2
@@ -4302,6 +4358,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 25
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 3
@@ -4335,7 +4393,7 @@ Transform:
   m_GameObject: {fileID: 3184458088688866356}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 346, y: -155, z: 0}
+  m_LocalPosition: {x: 346, y: -154, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4354,10 +4412,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 1
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 346, y: 155}
+  original: {x: 346, y: 154}
   role: "\u88DD\u98FE"
   lights: 
 --- !u!212 &2440888164788528902
@@ -4407,9 +4467,9 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 514
+  m_SortingOrder: 515
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 8e1b8e520f3a02043989518086eaaa4a, type: 3}
+  m_Sprite: {fileID: 21300000, guid: c5609d02115b22c418a8a4735909bb1c, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -4466,6 +4526,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 14
@@ -4910,6 +4972,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 12
@@ -4943,7 +5007,7 @@ Transform:
   m_GameObject: {fileID: 3737711226060936868}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 976, y: -114, z: 0}
+  m_LocalPosition: {x: 976, y: -106, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4962,10 +5026,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 1
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 976, y: 114}
+  original: {x: 976, y: 106}
   role: "\u88DD\u98FE"
   lights: 
 --- !u!212 &3865336893419662775
@@ -5015,9 +5081,9 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 509
+  m_SortingOrder: 510
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 1aa7c7facfddb6b428a633c54c53ec5d, type: 3}
+  m_Sprite: {fileID: 21300000, guid: f46da204d384cb14bb79e43dc0860157, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -5074,6 +5140,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 26
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 0
@@ -5126,6 +5194,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 21
@@ -5179,12 +5249,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 1
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
   original: {x: 459, y: 61}
   role: workshop
-  lights: 1d0000001e0000001f000000200000002100000022000000i
+  lights: 1b0000001c0000001d0000001e000000i
 --- !u!212 &7974018088068964745
 SpriteRenderer:
   serializedVersion: 3
@@ -5232,9 +5304,9 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 504
+  m_SortingOrder: 505
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: fc56e4cfeaf025e48a54ee2b8664f41e, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 469d5c680beb617429a226f6aaa787d9, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -5567,6 +5639,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 26
@@ -5619,6 +5693,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 17
@@ -5812,6 +5888,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 22
@@ -5961,7 +6039,7 @@ Transform:
   m_GameObject: {fileID: 4735086618149536162}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 744, y: -155, z: 0}
+  m_LocalPosition: {x: 744, y: -154, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5980,10 +6058,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 1
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 744, y: 155}
+  original: {x: 744, y: 154}
   role: "\u88DD\u98FE"
   lights: 
 --- !u!212 &5986324316942110122
@@ -6033,9 +6113,9 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 515
+  m_SortingOrder: 516
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 8ef35cb2c7d258d4a9bb6c4aa6c3db5c, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 7eaaed54e4671004b973d1351b600bdc, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -6092,6 +6172,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 16
@@ -6144,6 +6226,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 9
@@ -6238,6 +6322,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 26
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 2
@@ -6290,6 +6376,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 1
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
@@ -6343,9 +6431,9 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 520
+  m_SortingOrder: 521
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 9721727601ad73d4eaaabdae77e1519d, type: 3}
+  m_Sprite: {fileID: 21300000, guid: e44bd79ee44c89d4091021e56ecc90d2, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -6494,6 +6582,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 13
@@ -6619,7 +6709,7 @@ Transform:
   m_GameObject: {fileID: 5408930647857144887}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 14, y: -155, z: 0}
+  m_LocalPosition: {x: 14, y: -154, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -6638,10 +6728,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 1
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 14, y: 155}
+  original: {x: 14, y: 154}
   role: "\u88DD\u98FE"
   lights: 
 --- !u!212 &6254731656244536756
@@ -6691,9 +6783,9 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 513
+  m_SortingOrder: 514
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: b65fc03274a7c6a499368653161ec754, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 34b4b906fafb9204a83b3af97c067f48, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -6915,7 +7007,7 @@ Transform:
   m_GameObject: {fileID: 5767307293614459628}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 692, y: -114, z: 0}
+  m_LocalPosition: {x: 692, y: -106, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -6934,12 +7026,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 1
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 692, y: 114}
+  original: {x: 692, y: 106}
   role: lamp
-  lights: 2f000000i
+  lights: 27000000i
 --- !u!212 &7705500786923040531
 SpriteRenderer:
   serializedVersion: 3
@@ -6987,9 +7081,9 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 507
+  m_SortingOrder: 508
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 4ffb96e39e723924c8fc18069764b1b7, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 97c466fde78dd4e4b92b62ad93e89de5, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -7046,6 +7140,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 19
@@ -7398,6 +7494,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 34
@@ -7542,6 +7640,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 1
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
@@ -7595,9 +7695,9 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 519
+  m_SortingOrder: 520
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 2855c960cf06e684592535f437b96bfa, type: 3}
+  m_Sprite: {fileID: 21300000, guid: b2300adb9c606074da456d4844cedbbe, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -7688,6 +7788,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 32
@@ -7740,6 +7842,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 5
@@ -7908,6 +8012,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 1
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
@@ -7961,9 +8067,9 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 517
+  m_SortingOrder: 518
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: dd68b14aaa696db46a934f91d5fc79a6, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 8fd9e94d1793f8d4c84edddd3b5a1a72, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -8020,6 +8126,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 31
@@ -8164,6 +8272,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 11
@@ -8197,7 +8307,7 @@ Transform:
   m_GameObject: {fileID: 6875887054056617752}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1182, y: -114, z: 0}
+  m_LocalPosition: {x: 1182, y: -106, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -8216,10 +8326,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 1
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 1182, y: 114}
+  original: {x: 1182, y: 106}
   role: "\u88DD\u98FE"
   lights: 
 --- !u!212 &2127074289958465352
@@ -8269,9 +8381,9 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 511
+  m_SortingOrder: 512
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 2003c58442d0bf94e8b2b347a606cd4d, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 37459aced467dca43a30ee061e3b0ef5, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -8420,6 +8532,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 25
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 0
@@ -8472,6 +8586,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 20
@@ -8640,6 +8756,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 24
@@ -8692,6 +8810,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 8
@@ -8724,7 +8844,7 @@ Transform:
   m_GameObject: {fileID: 7411907524954952786}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 125, y: -159, z: 0}
+  m_LocalPosition: {x: 125, y: -158, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -8744,6 +8864,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 27
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 2
@@ -9072,6 +9194,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 30
@@ -9332,6 +9456,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 0
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
@@ -9385,7 +9511,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 2
+  m_SortingOrder: 3
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: e5da8c1117dd7f74c98175a427431429, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -9444,6 +9570,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 15
@@ -9588,6 +9716,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 1
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
@@ -9641,9 +9771,9 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 522
+  m_SortingOrder: 523
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 8f0cb5cc2d12d0448ba4c89942b5ed42, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 0c65785f9e87fc84db38c1003557825e, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -9976,6 +10106,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 8
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
@@ -10513,7 +10645,7 @@ Transform:
   m_GameObject: {fileID: 8858564940828540002}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1046, y: -114, z: 0}
+  m_LocalPosition: {x: 1046, y: -106, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -10532,10 +10664,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 1
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 1046, y: 114}
+  original: {x: 1046, y: 106}
   role: "\u88DD\u98FE"
   lights: 
 --- !u!212 &8557806945183956938
@@ -10585,9 +10719,9 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 510
+  m_SortingOrder: 511
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 228846738e4aef74c95431cbebeed726, type: 3}
+  m_Sprite: {fileID: 21300000, guid: a72807db068d76243ae35cbaf1665f3f, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -10644,6 +10778,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 13
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 0
@@ -10880,6 +11016,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 4
@@ -10913,7 +11051,7 @@ Transform:
   m_GameObject: {fileID: 9063408233148989469}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 807, y: -25, z: 0}
+  m_LocalPosition: {x: 807, y: -26, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -10933,12 +11071,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 1
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 807, y: 25}
+  original: {x: 807, y: 26}
   role: inn
-  lights: 230000002400000025000000260000002700000028000000290000002a0000002b0000002c0000002d000000i
+  lights: 1f000000200000002100000022000000230000002400000025000000i
 --- !u!212 &1753947974881013499
 SpriteRenderer:
   serializedVersion: 3
@@ -10986,9 +11126,9 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 505
+  m_SortingOrder: 506
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: ea37ec3768810a048a485d8d8cb972a5, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 0f781ae8275831c44b6a8408e4d906b4, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -11045,6 +11185,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 1
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
@@ -11098,9 +11240,9 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 518
+  m_SortingOrder: 519
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 5aa72bed1b8179f4589b256a6be64b88, type: 3}
+  m_Sprite: {fileID: 21300000, guid: ee3440c84dbdb3f40a06d6171260c14c, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -11138,7 +11280,7 @@ Transform:
   m_GameObject: {fileID: 9091409761268667933}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 70, y: -27, z: 0}
+  m_LocalPosition: {x: 70, y: -26, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -11158,12 +11300,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 1
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 70, y: 27}
+  original: {x: 70, y: 26}
   role: guild
-  lights: 000000000100000002000000030000000400000005000000060000000700000008000000090000000a0000000b0000000c0000000d0000000e0000000f000000100000001100000012000000130000001400000015000000160000001700000018000000190000001a0000001b0000001c000000i
+  lights: 000000000100000002000000030000000400000005000000060000000700000008000000090000000a0000000b0000000c0000000d0000000e0000000f000000100000001100000012000000130000001400000015000000160000001700000018000000190000001a000000i
 --- !u!212 &3613834121186609171
 SpriteRenderer:
   serializedVersion: 3
@@ -11211,9 +11355,9 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 503
+  m_SortingOrder: 504
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 04153a6db308fea42a8077ae9c5ea605, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 53926ad478ae53542a18411df048cbda, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -11270,6 +11414,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 20
+  size: {x: 32, y: 8}
+  rewardId: 
   blocksLight: 0
   blocksSparks: 0
   index: 3
