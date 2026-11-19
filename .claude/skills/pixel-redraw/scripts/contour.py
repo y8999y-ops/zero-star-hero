@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""外框整圈連起來看的步進檢查與修正（2026-11-19 使用者確認；修正用 fix3＋spot_fix_in，只修明確的錯）。
+"""外框整圈連起來看的步進檢查與修正（2026-11-19 使用者確認）。
 
 把本體（剝掉外框後有顏色的部分）的外圍沿著走一圈（Moore 邊界追蹤，8 連通），
 每一步是 8 個方向之一。斜的一步＝階梯換一層；連續的直步＝同一層。
@@ -133,6 +133,26 @@ def flat_bumps(mask):
     return n
 
 
+def fix(mask, orig=None, budget=BUDGET):
+    """貪婪：每次在原外圍一格以內，試補一格或挖一格，選分數降最多的；到分數 0 或用完預算為止"""
+    m = mask.copy(); orig = mask if orig is None else orig
+    limit = max(2, int(budget * orig.sum()))
+    near = ndimage.binary_dilation(orig, np.ones((3, 3))) & ~ndimage.binary_erosion(orig, np.ones((3, 3)))
+    changed = np.zeros_like(m); best_s = score(m)[0]
+    while best_s > 0 and changed.sum() < limit:
+        ring_in = m & ~ndimage.binary_erosion(m, np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]], bool))
+        ring_out = ndimage.binary_dilation(m, np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]], bool)) & ~m
+        cand = [(y, x, False) for y, x in zip(*np.nonzero(ring_in & near & ~changed))] + \
+               [(y, x, True) for y, x in zip(*np.nonzero(ring_out & near & ~changed))]
+        best = None
+        for y, x, fill in cand:
+            m[y, x] = fill
+            s = score(m)[0]
+            m[y, x] = not fill
+            if s < best_s and (best is None or s < best[0]): best = (s, y, x, fill)
+        if best is None: break
+        best_s, y, x, fill = best; m[y, x] = fill; changed[y, x] = True
+    return m, int(changed.sum())
 
 
 # ---- 2026-11-19 第三輪：通用的單格凸起／凹陷規則 ----
@@ -174,26 +194,8 @@ def spurs_notches(m):
     nb = _nb4(m)
     holes = ndimage.binary_fill_holes(m) & ~m
     sp = [(y, x) for y, x in zip(*np.nonzero(m & (nb <= 1))) if not _is_tip(m, y, x)]
-    no = [(y, x) for y, x in zip(*np.nonzero(~m & (nb >= 3) & ~holes)) if not _is_slot(m, y, x)]
+    no = [(y, x) for y, x in zip(*np.nonzero(~m & (nb >= 3) & ~holes))]
     return sp, no
-
-
-def _is_slot(m, y, x):
-    """刻意的縫：凹陷往外那一邊還延伸成至少 2 格深、1 格寬的縫（例如魚骨骨刺之間），不算凹陷"""
-    H, W = m.shape
-    v = ndimage.binary_dilation(m, F4)          # 看得到的範圍（本體＋外框）：縫的兩邊是外框線
-    for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-        yy, xx = y + dy, x + dx
-        if not (0 <= yy < H and 0 <= xx < W) or m[yy, xx]: continue      # 找開口那一邊
-        depth = 0
-        for step in (1, 2):
-            cy, cx = y + dy * step, x + dx * step
-            if not (0 <= cy < H and 0 <= cx < W) or v[cy, cx]: break
-            side = [(cy + dx, cx + dy), (cy - dx, cx - dy)]              # 垂直方向的兩邊
-            if all(0 <= a < H and 0 <= b < W and v[a, b] for a, b in side): depth += 1
-            else: break
-        if depth >= 1: return True        # 凹陷那格本身算第 1 格，往外再 1 格也夾著＝至少 2 格深
-    return False
 
 
 def _slope_curve(m):
@@ -201,6 +203,12 @@ def _slope_curve(m):
     import outline2
     prof = outline2._profiles(m)
     return sum(outline2._steps(p) for p in prof.values()), sum(outline2._mono_fix(p)[1] for p in prof.values())
+
+
+def score2(m):
+    """回傳 (總分, (突然換軸, 凹凸凹凸, 階梯凹陷, 平邊凸凹, 斜率不規律, 曲線不單調, 單格凸起, 單格凹陷))"""
+    s = score(m); sp, no = spurs_notches(m); st, cv = _slope_curve(m)
+    return s[0] + 4 * (len(sp) + len(no)) + st + cv, s[1:] + (st, cv, len(sp), len(no))
 
 
 def long_corners(m):
@@ -211,73 +219,54 @@ def long_corners(m):
     return sum(1 for i in range(L) if segs[i]["corner"] and segs[i]["n"] >= 4 and segs[(i + 1) % L]["n"] >= 4)
 
 
-
-
-# ---- 2026-11-19 第四輪：只修明確的錯，不做分數最佳化 ----
-def short_runs(mask):
-    """同一條斜邊或曲線（斜步方向一樣、沒有直角）裡，一段比前後兩段都短 2 格以上（長度 1 也算，沒有長度上限）。
-    例：麵包上緣 2,5,1,7 的那個 1（使用者 2026-11-19：「橫多格中間出現一格又橫多格」）"""
-    path = trace(mask)
-    if len(path) < 8: return 0
-    segs = runs_of(moves(path)); L = len(segs); n = 0
-    for i in range(L):
-        a, b, c = segs[(i - 1) % L], segs[i], segs[(i + 1) % L]
-        if a["corner"] or b["corner"] or c["corner"]: continue
-        # a→b、b→c 是同一個方向的斜步＝同一條階梯（c 可以是頂點那段，它之後才轉向）
-        if a["diag"] is None or b["diag"] is None or a["diag"] != b["diag"]: continue
-        ax = {s["axis"] for s in (a, b, c)} - {None}
-        if len(ax) > 1: continue                       # 換軸的地方由 abrupt 規則管
-        if min(a["n"], c["n"]) - b["n"] >= 2: n += 1
-    return n
-
-
-def errors(m):
-    """明確的錯（使用者指出過的）：(單格凸起, 單格凹陷, 凹凸凹凸, 換軸太突然＋短直角, 比前後都短的段, 平邊凸凹)"""
-    sp, no = spurs_notches(m); s = score(m)
-    return (len(sp), len(no), s[2], s[1], short_runs(m), s[4])
-
-
-def fix3(mask, budget=BUDGET):
-    """一處一處修：每次只接受「每一種錯都沒有變多、總數變少」的改動（先單格，不行再兩格），
-    只在原外圍一格內，最多改本體 budget；不准新造原本沒有的方角。修不動就停，保留原樣"""
+def fix2(mask, budget=BUDGET, pairs=True):
+    """貪婪：單格補／挖；沒有單格能改善時，試兩格（挖一格＋旁邊補一格，或相鄰兩格一起補／挖）。只在原外圍一格以內"""
     m = mask.copy(); orig = mask
     limit = max(3, int(budget * orig.sum()))
     near = ndimage.binary_dilation(orig, np.ones((3, 3))) & ~ndimage.binary_erosion(orig, np.ones((3, 3)))
-    base_c = long_corners(orig); changed = np.zeros_like(m)
-    cur = errors(m)
-    def ok(new):
-        return all(x <= y for x, y in zip(new, cur)) and sum(new) < sum(cur)
-    while sum(cur) and changed.sum() < limit:
+    # 方角只有原本就有的才算刻意；修的時候不准新造方角（2026-11-19：金幣底部被修成方的）
+    base = long_corners(orig)
+    sc = lambda mm: score2(mm)[0] + 6 * max(0, long_corners(mm) - base)
+    changed = np.zeros_like(m); best_s = sc(m)
+    while best_s > 0 and changed.sum() < limit:
         rin = m & ~ndimage.binary_erosion(m, F4); rout = ndimage.binary_dilation(m, F4) & ~m
         cells = [(y, x) for y, x in zip(*np.nonzero((rin | rout) & near & ~changed))]
         best = None
         for y, x in cells:
-            m[y, x] = ~m[y, x]
-            e = errors(m)
-            if ok(e) and long_corners(m) <= base_c and (best is None or sum(e) < sum(best[0])): best = (e, [(y, x)])
-            m[y, x] = ~m[y, x]
-        if best is None:
+            m[y, x] = ~m[y, x]; s = sc(m); m[y, x] = ~m[y, x]
+            if s < best_s and (best is None or s < best[0]): best = (s, [(y, x)])
+        if best is None and pairs:
             cs = set(cells)
             for y, x in cells:
                 for dy, dx in ((0, 1), (1, 0), (1, 1), (1, -1)):
                     q = (y + dy, x + dx)
                     if q not in cs: continue
-                    m[y, x] = ~m[y, x]; m[q] = ~m[q]
-                    e = errors(m)
-                    if ok(e) and long_corners(m) <= base_c and (best is None or sum(e) < sum(best[0])): best = (e, [(y, x), q])
-                    m[y, x] = ~m[y, x]; m[q] = ~m[q]
+                    m[y, x] = ~m[y, x]; m[q] = ~m[q]; s = sc(m); m[y, x] = ~m[y, x]; m[q] = ~m[q]
+                    if s < best_s and (best is None or s < best[0]): best = (s, [(y, x), q])
         if best is None: break
-        cur, pts = best
+        best_s, pts = best
         for p in pts: m[p] = ~m[p]; changed[p] = True
     return m, int(changed.sum())
 
 
-def spot_fix_in(m):
-    """最後一關：單格凸起一律往內收（挖掉，尖端例外），單格凹陷補上（使用者 2026-11-19）"""
+def spot_fix(m):
+    """退回原樣的物件也要做：只修單格凸起（挖掉或補平，看哪個步進分數低）和凹陷（補上），每處只動 1 格"""
     m = m.copy(); n = 0
     for _ in range(4):
         sp, no = spurs_notches(m)
         if not sp and not no: break
-        for y, x in sp: m[y, x] = False; n += 1
         for y, x in no: m[y, x] = True; n += 1
+        for y, x in sp:
+            if not m[y, x]: continue
+            opts = []
+            m[y, x] = False; opts.append((score2(m)[0], None)); m[y, x] = True
+            H, W = m.shape
+            for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                yy, xx = y + dy, x + dx
+                if 0 <= yy < H and 0 <= xx < W and not m[yy, xx]:
+                    m[yy, xx] = True; opts.append((score2(m)[0], (yy, xx))); m[yy, xx] = False
+            s, p = min(opts, key=lambda t: t[0])
+            if p is None: m[y, x] = False
+            else: m[p] = True
+            n += 1
     return m, n
