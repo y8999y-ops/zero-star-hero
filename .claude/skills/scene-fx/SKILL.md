@@ -160,6 +160,20 @@ description: 做或調整場景環境特效（Unity 版）：天氣（雨、雪�
 
 - **給使用者看**：全畫面一張＋地面放大一張，用 SendUserFile 傳。使用者用手機看，說明用繁體中文短句。測過沒問題就 commit＋push，不用問；只 commit 自己改的檔案，資料夾裡別人還沒 commit 的改動不要一起加。
 
+## 5b. 錄實機影片（Unity Recorder）
+
+- 使用者 2026-11-19：錄實機要用 **Unity 內建的錄影（Unity Recorder）**，不要錄螢幕。錄螢幕會被別的視窗擋住，錄到使用者桌面上的東西；也不要自己逐張截圖再接，會拖慢、漏格。
+- 套件：`com.unity.recorder` **5.1.8**（5.1.2 在 Unity 6000.6 編譯不過：`GetInstanceID` 已經是錯誤）。
+- 腳本：`Editor/RecordPlay.cs`。
+  - 進 Play Mode，用 GameRoot 的自動玩（`-shot … -shotat 999999`），照 `TRACE_SCRIPT` 的場景、天氣、時間、按鍵自動玩。
+  - Recorder 用固定影格時間（Constant＋Cap），錄滿 `REC_SECONDS` 秒就存成 MP4，然後關掉編輯器。
+  - 要開編輯器畫面，不能加 `-batchmode`。
+  ```bash
+  REC_OUT='C:\Users\USER\ZeroStarUnity\Golden\rec\<檔名>' REC_SECONDS=18 TRACE_SCRIPT='<腳本.json>' "/c/Program Files/Unity/Hub/Editor/6000.6.0f1/Editor/Unity.exe" -projectPath 'C:\Users\USER\ZeroStarUnity' -executeMethod ZeroStar.EditorTools.RecordPlay.Run -shot 'C:\Users\USER\ZeroStarUnity\Golden\rec\tmp' -shotat 999999 -logFile <log>
+  ```
+- 錄影用的腳本：複製 `game/tools/unity/unity-trace-script-town-rain.json`，改 `events`（例如 `[40,"d","KeyD"]`、`[330,"u","KeyD"]` 來回走）、`day`、`weather`、`ticks`。
+- 檢查：抽幾格看主角的位置跟按鍵時間對不對得上（遊戲時間照影格走），再用 SendUserFile 傳給使用者。
+
 ## 6. 混合畫面：CPU＋shader（2026-11-19 起；架構經使用者另一個 AI 審查後改過，照這版做）
 
 使用者決定用「混合」：主畫面照舊 CPU 算，**整片逐格的效果（倒影、變濕、折射、霧、發光、水面）放到顯示卡**。不要整個改成 shader。
