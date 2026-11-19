@@ -1,9 +1,10 @@
 // 碎星鎮：雨跟房子、物件互動（Unity 版自己的，不跟網頁版比對）。scene-fx skill §3、§4。
 //  1. 接雨面：載入時從建築圖層（MAIN）每一欄由上往下找第一個不透明的像素＝屋頂／物件頂。換建築、移動建築都會自動跟著變。
 //  2. 雨打在屋頂和物件頂上：一個亮點，然後兩顆小水珠往左右彈開。
-//  3. 屋簷滴水：屋頂邊緣下面是空的那幾欄＝滴水點，水珠在簷下慢慢長大、掉下去，落地起漣漪；屋簷下的地面比較早積水。
-//  4. 慢慢變濕（照 Mushreb DEV LOG.05 雪的堆積遮罩）：分數＝「離受雨頂面多近」＋往下拉長的雜訊，濕度越高門檻越低，
-//     從屋頂往下一條條濕下來；屋簷下被擋住的牆不會濕。濕的地方變深、飽和一點，頂面一條濕亮邊，有幾條水痕慢慢往下流。
+//  3. 滴水：照水路（TownFlow：有結構圖的建築照結構圖，其他物件自動）流到哪就從哪滴，加上結構圖的滴水點（青苔尖、山牆下角）；
+//     水珠在簷下慢慢長大、掉下去，打在接水面（陽台欄杆、招牌頂）或地上，落地起漣漪；滴水下面的地面比較早積水。
+//  4. 慢慢變濕（照 Mushreb DEV LOG.05 雪的堆積遮罩）：分數＝「離水路多近」＋雜訊，濕度越高門檻越低，
+//     先沿著水路濕出一條條彎的，再往兩邊擴散；擋雨區不會濕。濕的地方變深、飽和一點，頂面一條濕亮邊，亮點沿著水路往下流。
 // 效能：遮罩分數載入時算一次存 byte；每格只查表、比門檻，畫面切 8 段同時算。
 using System;
 using System.Collections.Generic;
@@ -47,15 +48,35 @@ namespace ZeroStar
             drips.Clear(); hits.Clear(); lastT = -1;
             for (int x = 0; x < TOWN_W; x++)
             {
-                topY[x] = -1;
+                topY[x] = -1; hiY[x] = -1;
                 for (int y = 0; y < FLOOR - 6; y++) if (Solid(x, y)) { topY[x] = y; break; }
-                hiY[x] = -1;
                 if (topY[x] < 0) continue;
                 for (int y = topY[x]; y < Math.Min(topY[x] + 3, WET_BOTTOM); y++) { if (!Solid(x, y)) break; if (!Dark(main[y * TOWN_W + x])) { hiY[x] = y; break; } }
-                // 從頂面往下：越往下越不濕；碰到空的（屋簷下）就被擋住，下面都不濕
+            }
+            // 水路（照結構圖或自動）：滴水點、往下流的亮點、變濕都照它
+            TownFlow.Build(main, topY);
+            var cls = TownStructure.Cls;
+            // 離水路多近（最多 10 格）：水先沿著水路濕，濕度越高越往兩邊擴散
+            var near = new byte[TOWN_W * H]; var q = new Queue<int>();
+            const int R = 10;
+            for (int i = 0; i < near.Length; i++) if (TownFlow.PathSeed[i] != 0) { near[i] = R + 1; q.Enqueue(i); }
+            while (q.Count > 0)
+            {
+                int i = q.Dequeue(); byte v = near[i]; if (v <= 1) continue;
+                int x = i % TOWN_W, y = i / TOWN_W;
+                if (x > 0 && near[i - 1] < v - 1) { near[i - 1] = (byte)(v - 1); q.Enqueue(i - 1); }
+                if (x < TOWN_W - 1 && near[i + 1] < v - 1) { near[i + 1] = (byte)(v - 1); q.Enqueue(i + 1); }
+                if (y > 0 && near[i - TOWN_W] < v - 1) { near[i - TOWN_W] = (byte)(v - 1); q.Enqueue(i - TOWN_W); }
+                if (y < H - 1 && near[i + TOWN_W] < v - 1) { near[i + TOWN_W] = (byte)(v - 1); q.Enqueue(i + TOWN_W); }
+            }
+            for (int x = 0; x < TOWN_W; x++)
+            {
+                if (topY[x] < 0) continue;
+                // 從頂面往下：越往下越不濕；碰到空的（屋簷下）就被擋住，下面都不濕（沒有結構圖的物件用這個）
                 double expo = 1;
                 for (int y = topY[x]; y < WET_BOTTOM; y++)
                 {
+                    int k = y * TOWN_W + x;
                     if (!Solid(x, y))
                     {
                         // 空的：短短一段（屋頂上的小東西、圖裡的小縫）雨還是淋得到下面，跳過去；長的一段＝屋簷下，被擋住
@@ -63,48 +84,56 @@ namespace ZeroStar
                         if (gap > 6 || y + gap >= WET_BOTTOM) break;
                         y += gap - 1; expo -= gap / 64.0; continue;
                     }
-                    double n = Noise2(x / 2.6, y / 13.0, 3) * 0.8 + Noise2(x / 7.0, y / 5.0, 4) * 0.2;   // 往下拉長的雜訊＝水痕
-                    double s = expo * 0.95 + (n - 0.5) * 0.45;
-                    score[y * TOWN_W + x] = (byte)Math.Max(0, Math.Min(255, s * 200 + 40));
+                    double n = Noise2(x / 4.0, y / 4.0, 3) * 0.7 + Noise2(x / 9.0, y / 9.0, 4) * 0.3;
+                    double nr = near[k] / (double)(R + 1);   // 1＝在水路上，0＝離水路 10 格以上
+                    byte c = cls != null ? cls[k] : TownStructure.NONE;
+                    double s;
+                    if (c == TownStructure.SHELTER) s = -1;                                    // 擋雨區：不會濕
+                    else if (c == TownStructure.LAND) s = 0.35 + (n - 0.5) * 0.3;               // 接水面：上面滴下來的水打濕
+                    else if (c != TownStructure.NONE) s = 0.15 + nr * 0.75 + (n - 0.5) * 0.4;   // 結構圖的屋頂：沿著水路先濕，再往兩邊擴散
+                    else s = Math.Max(expo * 0.7 + (n - 0.5) * 0.35, 0.15 + nr * 0.75 + (n - 0.5) * 0.4);
+                    score[k] = s < 0 ? (byte)0 : (byte)Math.Max(1, Math.Min(255, s * 200 + 40));
                     expo -= 1 / 64.0;
                 }
-                if (Hash(x, 21) < 0.12 && FLOOR - topY[x] > 24) trickle[x] = (byte)(1 + Hash(x, 22) * 254);
             }
-            // 屋簷滴水點：頂面下面有一段是空的（凸出去的屋簷、陽台），而且旁邊那一欄比較低（邊緣）
-            int lastX = -99;
+            // 有結構圖的格子：不看那一欄上面有什麼（小香菇、煙囪底下不能被當成屋簷下），一律照結構圖與水路算
+            if (cls != null)
+                for (int y = 0; y < WET_BOTTOM; y++) for (int x = 0; x < TOWN_W; x++)
+                {
+                    int k = y * TOWN_W + x; byte c = cls[k];
+                    if (c == TownStructure.NONE) continue;
+                    double n = Noise2(x / 4.0, y / 4.0, 3) * 0.7 + Noise2(x / 9.0, y / 9.0, 4) * 0.3, nr = near[k] / (double)(R + 1);
+                    double s2 = c == TownStructure.SHELTER ? -1 : c == TownStructure.LAND ? 0.35 + (n - 0.5) * 0.3 : 0.15 + nr * 0.75 + (n - 0.5) * 0.4;
+                    score[k] = s2 < 0 ? (byte)0 : (byte)Math.Max(1, Math.Min(255, s2 * 200 + 40));
+                }
+            // 滴水點：水路滴下去的地方＋結構圖的滴水點（青苔尖、山牆下角）
             var land = new List<int>();
-            for (int x = 1; x < TOWN_W - 1; x++)
+            foreach (var d in TownFlow.Drips)
             {
-                int t = topY[x]; if (t < 0) continue;
-                int yb = -1;
-                for (int y = t; y < FLOOR - 6; y++) if (!Solid(x, y)) { yb = y; break; }
-                if (yb < 0) continue;
-                bool edge = topY[x - 1] < 0 || topY[x - 1] > yb || topY[x + 1] < 0 || topY[x + 1] > yb;
-                if (!edge || x - lastX < 5) continue;
-                int y1 = FLOOR;
-                for (int y = yb + 1; y < FLOOR; y++) if (Solid(x, y)) { y1 = y; break; }
-                if (y1 - yb < 10) continue;
-                drips.Add(new Drip { x = x, y0 = yb, y1 = y1, period = 0.55 + Hash(x, 31) * 0.8, phase = Hash(x, 32) * 3, lastCycle = int.MinValue });
-                if (y1 >= FLOOR) land.Add(x);
-                lastX = x;
+                drips.Add(new Drip { x = d.x, y0 = d.y0, y1 = d.y1, period = 0.55 + Hash(d.x * 7 + d.y0, 31) * 0.9, phase = Hash(d.x * 7 + d.y0, 32) * 3, lastCycle = int.MinValue });
+                if (d.ground) land.Add(d.x);
             }
             TownPuddles.SetDrips(land);
-            // 給 shader（PostFx）的資料：世界座標的分數（R）與不會濕（G：外框、會發光），每一欄的接雨面／水痕／濕亮邊
+            // 給 shader（PostFx）的資料：世界座標 R＝變濕分數、G＝不會濕（外框、會發光）、B＝沿著水路走了多遠、A＝哪一條水路（0＝不是）；
+            // 每一欄 G＝接雨面、A＝濕亮邊那一列
             var world = new byte[TOWN_W * H * 4]; var cols = new byte[TOWN_W * 4];
             for (int y = 0; y < H; y++) for (int x = 0; x < TOWN_W; x++)
             {
                 int k = y * TOWN_W + x;
                 world[k * 4] = score[k];
                 world[k * 4 + 1] = emit[k] != 0 || Dark(main[k]) ? (byte)255 : (byte)0;
+                world[k * 4 + 2] = TownFlow.PathArc[k];
+                world[k * 4 + 3] = TownFlow.PathSeed[k];
             }
             for (int x = 0; x < TOWN_W; x++)
             {
                 cols[x * 4 + 1] = topY[x] < 0 ? (byte)255 : (byte)topY[x];
-                cols[x * 4 + 2] = trickle[x];
                 cols[x * 4 + 3] = hiY[x] < 0 ? (byte)255 : (byte)hiY[x];
+                // 有結構圖的地方：濕亮邊只畫在屋頂面上
+                if (hiY[x] >= 0 && cls != null && cls[hiY[x] * TOWN_W + x] != TownStructure.NONE && cls[hiY[x] * TOWN_W + x] != TownStructure.ROOF) { cols[x * 4 + 3] = 255; hiY[x] = -1; }
             }
             PostFx.SetTown(TOWN_W, H, world, cols);
-            if (DebugLog) UnityEngine.Debug.Log("[RainHits] 屋簷滴水點 " + drips.Count + "：" + string.Join(",", drips.ConvertAll(d => d.x + "@" + d.y0 + "-" + d.y1)));
+            if (DebugLog) UnityEngine.Debug.Log("[RainHits] 滴水點 " + drips.Count + "，結構圖：" + string.Join("、", TownStructure.Placed.ConvertAll(p => $"{p.name}@{p.x},{p.y}")));
         }
 
         /// 開發用：濕的分數圖（世界座標，灰階）、接雨面（紅）
@@ -207,13 +236,13 @@ namespace ZeroStar
                         if (wy == hiY[gx]) { r += (215 - r) * hiK; g += (228 - g) * hiK; b += (245 - b) * hiK; }   // 頂面的濕亮邊
                         else
                         {
-                            byte tr = trickle[gx];
+                            byte tr = TownFlow.PathSeed[k];
                             if (tr != 0)
                             {
-                                // 往下流的水痕：一小段亮的慢慢往下走
-                                double sp = 10 + tr / 255.0 * 14, len = FLOOR - topY[gx];
-                                double head = (time * sp + tr * 0.37) % (len + 30) + topY[gx];
-                                double dd = head - wy;
+                                // 往下流的水痕：一小段亮的沿著水路（照著建築的弧度）慢慢往下走
+                                double sp = 10 + tr / 255.0 * 12;
+                                double head = (time * sp + tr * 1.7) % 160;
+                                double dd = head - TownFlow.PathArc[k];
                                 if (dd >= 0 && dd < 3) { double kk = (dd < 1 ? 0.5 : 0.25) * (0.6 + 0.4 * day); r += (225 - r) * kk; g += (236 - g) * kk; b += (250 - b) * kk; }
                             }
                         }

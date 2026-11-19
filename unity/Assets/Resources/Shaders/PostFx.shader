@@ -18,8 +18,8 @@ Shader "Hidden/ZeroStar/PostFx"
 
             sampler2D _MainTex; float4 _MainTex_TexelSize;   // 1/寬、1/高、寬、高（含四周各補一格）
             sampler2D _MaskTex;                              // 255＝場景本身（變濕、積水只改這些格）
-            sampler2D _WorldTex;                             // 城鎮世界座標：R 變濕分數、G 不會濕
-            sampler2D _ColTex;                               // 每一欄：R 積水深度、G 接雨面、B 水痕種子、A 濕亮邊那一列
+            sampler2D _WorldTex;                             // 城鎮世界座標：R 變濕分數、G 不會濕、B 沿著水路走了多遠、A 哪一條水路
+            sampler2D _ColTex;                               // 每一欄：R 積水深度、G 接雨面、A 濕亮邊那一列
             float4 _WorldSize;                               // 城鎮寬、高
             float4 _Cam;                                     // 鏡頭 x、y、時間、城鎮（1＝要做效果）
             float4 _Env;                                     // 濕度、白天程度、地面 y
@@ -58,17 +58,18 @@ Shader "Hidden/ZeroStar/PostFx"
                     float3 rgb = c.rgb;
                     float g = dot(rgb, float3(0.3, 0.59, 0.11));
                     rgb = (g + (rgb - g) * 1.12) * float3(0.87, 0.88, 0.92);
-                    float top = col.g * 255, hi = col.a * 255, tr = col.b * 255;
+                    float hi = col.a * 255;
                     if (abs(wy - hi) < 0.5)
                     {
                         float k = (0.3 + 0.2 * day) * min(1, wet * 1.5);
                         rgb = lerp(rgb, float3(215, 228, 245) / 255.0, k);
                     }
-                    else if (tr > 0.5)
+                    else if (w.a > 0.5 / 255.0)
                     {
-                        float sp = 10 + tr / 255.0 * 14, len = FLOOR - top;
-                        float head = fmod(t * sp + tr * 0.37, len + 30) + top;
-                        float dd = head - wy;
+                        // 往下流的亮點：沿著水路（世界資料 B＝走了多遠、A＝哪一條）
+                        float sd = w.a * 255.0, sp = 10 + sd / 255.0 * 12;
+                        float head = fmod(t * sp + sd * 1.7, 160.0);
+                        float dd = head - w.b * 255.0;
                         if (dd >= 0 && dd < 3) rgb = lerp(rgb, float3(225, 236, 250) / 255.0, (dd < 1 ? 0.5 : 0.25) * (0.6 + 0.4 * day));
                     }
                     c.rgb = rgb;
