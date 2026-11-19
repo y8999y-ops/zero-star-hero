@@ -133,8 +133,16 @@ namespace ZeroStar
             return (p, d, 1 - Math.Abs(2 * d - 1));
         }
         const double WX_SLOT = 180, WX_FADE = 25;
-        static readonly string[] WX_PICK = { "clear", "clear", "cloudy", "rain", "clear", "rain", "cloudy", "clear", "clear", "rain" };
+        static readonly string[] WX_PICK = { "clear", "clear", "cloudy", "rain", "clear", "rain", "cloudy", "clear", "snow", "rain" };   // 2026-11-19：一格晴天換成下雪
         static string WxAt(double slot) => WX_PICK[(int)Math.Floor(Rnd2(slot, 97) * WX_PICK.Length)];
+        /// 下雪量 0～1（換天氣時跟雨一樣慢慢過渡）
+        public static double SnowK()
+        {
+            if (WeatherOverride != null) return WeatherOverride == "snow" ? 1 : 0;
+            double now = NowMs() / 1000, slot = Math.Floor(now / WX_SLOT), k = Math.Min(1, (now - slot * WX_SLOT) / WX_FADE);
+            double a = WxAt(slot - 1) == "snow" ? 1 : 0, b = WxAt(slot) == "snow" ? 1 : 0;
+            return a + (b - a) * k;
+        }
         public static (string kind, double rain, double cloud) WeatherInfo()
         {
             if (WeatherOverride != null) return (WeatherOverride, WeatherOverride == "rain" ? 1 : 0, WeatherOverride == "clear" ? 0 : 1);
@@ -190,6 +198,7 @@ namespace ZeroStar
             rainT = null; skyT = null;
             TownPuddles.Reset();
             TownRainHits.Build(MAIN, EMIT);   // 雨打屋頂、屋簷滴水、房子變濕（Unity 版自己的）：建築擺好之後算接雨面
+            TownSnow.Reset(); TownSnow.Build(MAIN);   // 下雪：每一欄能堆多少雪（要在結構圖之後）
         }
 
         static readonly uint[] SKY = new[] { "#0e0a24", "#130e2e", "#181238", "#1e1642", "#261a4c", "#301e56", "#3c225e", "#4c2864", "#5e2e68" }.Select(Col.Hex).ToArray();
@@ -204,6 +213,7 @@ namespace ZeroStar
             var wx = WeatherInfo(); double dt = rainT == null ? 0 : Math.Max(0, Math.Min(0.1, time - rainT.Value));
             rainT = time;
             double wday = DayInfo().d * (1 - 0.45 * wx.cloud);
+            TownSnow.DrawFlakes(frame, time, SnowK());   // 雪花（在角色之後）
             if (wx.rain < 0.03) { TownPuddles.Draw(frame, time, wx.rain, wday); return; }
             int bse = (int)Math.Floor(frame.Ox / 332.0) * 332 + 166;
             for (int k = 0; k < 3; k++) { var fx = rain[k]; fx.Update(dt); fx.Options.X = bse + k * 332; fx.Options.Y = FLOOR + 1; fx.Options.Num["density"] = wx.rain * 0.25; fx.Draw(frame); }
@@ -379,6 +389,7 @@ namespace ZeroStar
                 double t = (time * 0.3 + n / 6.0) % 1; int sx = 607 + workshopMove.x + (int)Pf.Round(Pf.Sin(t * 6 + n) * 3 + t * 12) - cx, sy2 = FLOOR - 128 + workshopMove.y - (int)Pf.Round(t * 50) - cy, R = 3 + (int)Pf.Round(t * 6);
                 for (int y = -R; y <= R; y++) for (int x = -R; x <= R; x++) { double f = 1 - Pf.Hypot(x, y) / R; if (f > 0) Add(sx + x, sy2 + y, 120, 110, 140, f * (1 - t) * 0.45); }
             }
+            TownSnow.DrawCover(frame, time, SnowK(), DAY);   // 積雪（場景的一部分，角色站在雪前面）
             if (PostFx.ActiveFor(frame)) frame.BeginWeatherMask();   // 場景畫完：之後角色、雨、水珠改過的格子不算場景（shader 的變濕、積水只改場景）
             TownRainHits.Draw(frame, time, wi.rain, DAY);   // 雨打屋頂、屋簷滴水、房子變濕（Unity 版自己的）：在角色之前畫
         }

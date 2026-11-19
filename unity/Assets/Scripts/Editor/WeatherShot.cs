@@ -1,7 +1,7 @@
 // 開發用：碎星鎮天氣截圖（看雨天積水這類天氣特效用）。主角從 START 往右走，在幾個時間點各存一張放大 3 倍的 PNG。
 // 執行（不用開編輯器）：Unity.exe -batchmode（要看 shader 的結果就不要加 -nographics） -projectPath <unity> -executeMethod ZeroStar.Tests.WeatherShot.Run -quit
 // 環境變數：SHOT_OUT（輸出資料夾，預設 unity/Golden/weather）、SHOT_WEATHER（rain／cloudy／clear，預設 rain）、
-//   SHOT_WET（進場時的濕度 0～1）、SHOT_DAY（0.25＝中午、0.75＝半夜，預設 0.3）、SHOT_TICKS（逗號分開的第幾步，預設 60,400,700,900）、SHOT_X（主角起點）、SHOT_WALK（第幾步開始往右走，預設 380）
+//   SHOT_WET（進場時的濕度 0～1）、SHOT_SNOW（進場時的積雪 0～1；SHOT_WEATHER=snow 下雪）、SHOT_DAY（0.25＝中午、0.75＝半夜，預設 0.3）、SHOT_TICKS（逗號分開的第幾步，預設 60,400,700,900）、SHOT_X（主角起點）、SHOT_WALK（第幾步開始往右走，預設 380）
 using System;
 using System.Globalization;
 using System.IO;
@@ -43,6 +43,8 @@ namespace ZeroStar.Tests
             TownPuddles.Reset();   // 進場時就在下雨：積水直接照現在的雨量設好
             var sw = Environment.GetEnvironmentVariable("SHOT_WET");   // 指定進場時的濕度（看慢慢變濕的過程）
             TownPuddles.WetStart = sw == null ? (double?)null : double.Parse(sw, inv);
+            var ss = Environment.GetEnvironmentVariable("SHOT_SNOW");   // 指定進場時的積雪程度
+            TownSnow.CoverStart = ss == null ? (double?)null : double.Parse(ss, inv); TownSnow.Reset();
             var sx = Environment.GetEnvironmentVariable("SHOT_X");
             if (sx != null) g.Player.X = double.Parse(sx, inv);
             int last = at.Max();
