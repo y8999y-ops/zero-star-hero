@@ -23,6 +23,7 @@ ap.add_argument("--x", type=int, default=2); ap.add_argument("--only", type=int,
 ap.add_argument("--drawn", action="store_true"); ap.add_argument("--work", default=".")
 ap.add_argument("--gap", type=int, default=6, help="物件之間至少幾格空欄才算分開")
 ap.add_argument("--cell", type=float, help="整張圖共用的格子（例如 9.4）")
+ap.add_argument("--ruler", type=int, nargs=2, help="第 0 格是尺（金幣）時，它標準的讀回大小（例如 26 25）；差超過 8%% 就 WARN：這批像素大小跟其他批不一致")
 ap.add_argument("--key", default="#ff00ff", help="底色（洋紅 #ff00ff、綠 #00ff00、藍 #0000ff）。只挖跟底色很接近的格子，紫、粉紅不會被當成底色")
 A = ap.parse_args()
 src_path = os.path.abspath(A.src)
@@ -77,6 +78,9 @@ for i, (x0, x1, r0, r1) in enumerate(segs):
         json.dump({"size": [o.shape[1], o.shape[0]], "read": {"method": "pixel_reduce", "cellPx": [A.cell, A.cell], "outline": {"line": line}}},
                   open(f"{out}/{A.name}-{i}.json", "w", encoding="utf-8"))
         print(i, "size", [o.shape[1], o.shape[0]], "shared cell", A.cell)
+        if i == 0 and A.ruler:
+            rw, rh = A.ruler; err = max(abs(o.shape[1] - rw) / rw, abs(o.shape[0] - rh) / rh)
+            print(f"ruler {o.shape[1]}x{o.shape[0]} vs {rw}x{rh}: {err:.0%}" + ("  WARN 像素大小跟標準不一致（重生這批或接受）" if err > 0.08 else "  OK"))
         continue
     big = f"x-{A.name}-{i}.png"
     crop.resize((crop.width * A.x, crop.height * A.x), Image.NEAREST).save(big)

@@ -17,13 +17,15 @@ from PIL import Image, ImageDraw, ImageFont
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import PALETTE_TOOL, HERE, sh, ring
 from oklab import oklab
-import outline, outline2
+import outline, outline2, checks
 from scipy import ndimage
 
 BLACK = (0x11, 0x10, 0x2e)
 ap = argparse.ArgumentParser()
 ap.add_argument("--name", required=True); ap.add_argument("--colors", type=int, default=16)
 ap.add_argument("--min-part", type=int, default=3); ap.add_argument("--work", default=".")
+ap.add_argument("--sym", type=int, nargs="*", default=[], help="設計上左右對稱的物件編號（提示詞表格的「對稱」欄）")
+ap.add_argument("--multi", type=int, nargs="*", default=[], help="本來就是好幾塊的物件編號（提示詞表格的「多塊」欄，例如斷成兩截的魔杖）")
 A = ap.parse_args(); os.chdir(A.work); n = A.name
 srcs = sorted([s for s in glob.glob(f"L-{n}-*/{n}-*.png") if os.path.basename(s)[:-4].rsplit("-", 1)[1].isdigit()],
               key=lambda s: int(os.path.basename(s)[:-4].rsplit("-", 1)[1]))
@@ -69,6 +71,20 @@ for s in srcs:
         for c in range(1, k + 1):
             if sz[c] < A.min_part: a[lab == c] = 0
     s2 = a.copy()
+    idx = int(b.rsplit("-", 1)[1]); fx = {}
+    # 使用者指出、已經手修過的物件（hand-<name>/）：從手修版接著跑檢查，不會被重跑蓋掉
+    if os.path.exists(f"hand-{n}/{b}.png"):
+        a = np.asarray(Image.open(f"hand-{n}/{b}.png").convert("RGBA")).copy(); fx["hand"] = 1
+    # 2b. 外框外分開的小塊（< 12 格拿掉；不是多塊物件就只留主體）
+    a, fx["detached"] = checks.detached(a, multi=idx in A.multi)
+    # 2c. 真雜點（灰階跟周圍差很少的單格）併掉；刻意的亮點保留
+    a, fx["orphans"] = checks.orphans(a)
+    # 2d. 相鄰不同材質灰階糊在一起 → 推開
+    a, fx["value"] = checks.value_contrast(a)
+    # 2e. 色階色相偏移：暗部偏冷、亮部偏暖
+    a, fx["hue"] = checks.hue_shift(a)
+    # 2f. 帶狀：兩色交界對齊成直線 → 錯開
+    a, fx["banding"] = checks.banding(a)
     # 4. 內部的黑 → 材質最暗一階（外框規則）
     os.makedirs(f"{w}/r"); Image.fromarray(a).save(f"{w}/r/{b}.png")
     sh(os.path.join(HERE, "blackline.py"), f"{w}/r", f"{w}/bl", b)
@@ -76,7 +92,10 @@ for s in srcs:
     # 3. 外輪廓重建（outline2.py，使用者 2026-11-19 教的）：剝掉外圍黑邊 → 本體剪影照步進補色或往內挖 → 外面包一層外框黑；
     #    貼著外框很暗的本體格調亮一階。外框永遠只有一層，不會有直角雙層、黑點
     pad = np.zeros((a.shape[0] + 4, a.shape[1] + 4, 4), np.uint8); pad[2:-2, 2:-2] = a
-    a = outline2.rebuild(pad); s2 = a.copy()
+    a = outline2.rebuild(pad)
+    if idx in A.sym:            # 3b. 設計上左右對稱：右半邊照左半邊鏡射，再重建一次外框
+        a, fx["symmetry"] = checks.symmetry(a, "lr"); a = outline2.rebuild(a)
+    s2 = a.copy()
     # 5. 壓回上限（外框黑不併），壓完再檢查一次
     a = cap(a, A.colors, protect={BLACK}); oc = outline2.check(a)
     if oc.get("stack"):        # 壓色把調亮的格子又併回暗色：再調一次（不再壓色，色數只會一樣或更少）
@@ -101,9 +120,12 @@ for s in srcs:
     lost = (rv & ~fv).sum() / max(1, rv.sum())
     both = rv & fv & ~ring(fv)
     shift = float(np.linalg.norm(oklab(read_c[both][:, :3].astype(float)) - oklab(a_c[both][:, :3].astype(float)), axis=1).mean()) if both.any() else 0
-    flag = lost > 0.06 or shift > 0.06 or any(oc.values())
+    fx["pillow"] = checks.pillow(a)
+    # 刻意的改動（手修、拿掉光點、對稱鏡射、色相偏移）會讓「少掉的格子」「顏色偏移」變大，不算問題
+    intended = fx.get("hand") or fx.get("detached") or fx.get("symmetry")
+    flag = (lost > 0.06 and not intended) or shift > 0.10 or any(oc.values()) or fx["pillow"] > 0.25
     if flag: warn.append(b)
-    print(f"{b}: {a.shape[1]}x{a.shape[0]} colours {ncol(a)} | lost {lost:.1%} | colour shift {shift:.3f} | outline {oc}{'  WARN' if flag else ''}")
+    print(f"{b}: {a.shape[1]}x{a.shape[0]} colours {ncol(a)} | lost {lost:.1%} | colour shift {shift:.3f} | outline {oc} | fixed {fx}{'  WARN' if flag else ''}")
     stages.append((b, [read, s1, s2, a]))
 shutil.rmtree(f"_w-{n}", ignore_errors=True)
 sh(os.path.join(HERE, "sheet.py"), "--dir", f"fin-{n}", "--name", n)

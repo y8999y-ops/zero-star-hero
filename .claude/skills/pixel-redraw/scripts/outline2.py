@@ -74,6 +74,45 @@ def _bump_fix(prof):
     return new, n
 
 
+def _mono_fix(prof):
+    """曲線段長要單調（網上規則：5,2,1,2,1 會有一塊凸起，要 5,2,2,1,1）；斜直線段長要一樣（1:1、1:2、2:1）。
+    一段剪影依高低方向切成幾部分，**轉折處（最凸出的那一階）同時算在兩邊**：圓的最左、最上那一階要最長，
+    往兩邊越來越短。每部分的段長不是單調的，就照「離轉折越遠越短」重排（總長不變）。段落頭尾的半截不算"""
+    new = list(prof); n = 0
+    for seg in _segments(prof):
+        for _ in range(3):
+            rs = runs([new[k] for k in seg])
+            if len(rs) < 4: break
+            dirs = [rs[q + 1][2] - rs[q][2] for q in range(len(rs) - 1)]
+            parts, q0 = [], 0                         # 依方向切；轉折的那一階 index 同時是前一部分的尾、下一部分的頭
+            for q in range(1, len(dirs)):
+                if dirs[q] != dirs[q - 1]:
+                    parts.append((q0, q, "end")); q0 = q
+            parts.append((q0, len(rs) - 1, "none"))
+            changed = False
+            for k, (a_, b_, _t) in enumerate(parts):
+                lo = a_ if a_ > 0 else 1                  # 段落最前面的半截不算
+                hi = b_ if b_ < len(rs) - 1 else b_ - 1   # 段落最後面的半截不算
+                idx = list(range(lo, hi + 1))
+                if len(idx) < 3: continue
+                L = [rs[q][1] for q in idx]
+                if max(L) > 8: continue
+                start_turn = a_ > 0; end_turn = b_ < len(rs) - 1
+                if start_turn and not end_turn: want = sorted(L, reverse=True)
+                elif end_turn and not start_turn: want = sorted(L)
+                elif start_turn and end_turn: continue       # 兩頭都是轉折（S 形中段）：不動
+                else: want = sorted(L, reverse=L[0] >= L[-1])
+                if want == L: continue
+                pos = rs[idx[0]][0]
+                for ln, q in zip(want, idx):
+                    for t in range(ln): new[seg[pos + t]] = rs[q][2]
+                    pos += ln
+                n += 1; changed = True
+                break
+            if not changed: break
+    return new, n
+
+
 def _steps(prof):
     n = 0
     for seg in _segments(prof):
@@ -117,6 +156,7 @@ def _smooth(body, col, rounds=4):
         for side, p in _profiles(body).items():
             new, _ = fix_profile(p)
             new, nb = _bump_fix(new)
+            new, nm = _mono_fix(new)
             if new != p:
                 _apply(body, col, side, p, new); changed += 1
         if not changed: break
@@ -202,6 +242,7 @@ def check(a):
         "lshape": lshape,
         "bumps": sum(_bump_fix(p)[1] for p in prof.values()),
         "steps": sum(_steps(p) for p in prof.values()),
+        "curves": sum(_mono_fix(p)[1] for p in prof.values()),
         "stack": int((_ring(body) & (L < STACK) & body).sum()),
     }
 
