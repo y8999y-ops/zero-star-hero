@@ -111,6 +111,7 @@ namespace ZeroStar.UI
             xpText = Text(root, "", 12, "#d0f4ff", true, 2); Abs(xpText, null, null, 4, 8); xpText.style.opacity = 0;
             killBox = Text(root, "", 14, "#a59fbd", true, 2); Abs(killBox, null, 172, 12); killBox.style.opacity = 0; killBox.enableRichText = true;
             BuildFx(root);
+            BuildTownActivityHud();
             Pad = new TouchPad(root, ultTex);
         }
         bool? lastTouch;
@@ -234,6 +235,7 @@ namespace ZeroStar.UI
             killBox.style.opacity = (killShowT -= dt) > 0 && !g.Town ? 1 : 0;
             killBox.text = $"擊倒 <color=#f2eefc><size=16>{g.Kills}</size></color>";
             UpdateFx(g, dt, Touch);
+            UpdateTownActivityHud(g);
             Pad.Update(g, dt, Touch, talking, k => Locked(g, k));
         }
         /// 按鈕跟著教學一個一個出現（1-1 的新玩家）：教過的記在 Taught；打過 1-1 的全部照舊顯示

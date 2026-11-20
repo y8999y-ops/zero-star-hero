@@ -43,6 +43,10 @@ namespace ZeroStar
                 {
                     ["built"] = g.TownBuiltIds.Cast<object>().ToList(), ["track"] = g.TrackTownConstruction,
                     ["wish"] = g.TownWishDate, ["star"] = g.TownStarDate, ["race"] = g.TownRaceSeconds,
+                    ["wishLuck"] = g.TownWishLuck,
+                    ["sewerDay"] = g.TownSewerDate, ["sewerTaken"] = g.TownSewerTaken, ["sewerCaches"] = g.TownSewerCaches,
+                    ["sewerWall"] = g.TownWallOpened,
+                    ["readLetters"] = g.TownReadLetters.OrderBy(id => id).Cast<object>().ToList(),
                 },
                 ["quests"] = new Dictionary<string, object>
                 {
@@ -114,7 +118,15 @@ namespace ZeroStar
             g.TownStarDate = S(town, "star");
             double race = N(town, "race", -1);
             g.TownRaceSeconds = race >= 0 ? race : (double?)null;
+            g.TownWishLuck = B(town, "wishLuck");
+            g.TownSewerDate = S(town, "sewerDay");
+            g.TownSewerTaken = (int)N(town, "sewerTaken") & 31;
+            g.TownSewerCaches = (int)N(town, "sewerCaches") & 3;
+            g.TownWallOpened = B(town, "sewerWall");
+            g.TownReadLetters.Clear();
+            g.TownReadLetters.UnionWith(L(town, "readLetters")?.OfType<string>() ?? Enumerable.Empty<string>());
             g.RestoreTownConstruction(L(town, "built")?.OfType<string>() ?? Enumerable.Empty<string>(), B(town, "track"));
+            g.RefreshLoadedTownActivities();
         }
 
         /// 把存檔套到一個剛建好的遊戲上（等級、裝備、形態……全部換成存檔的）。存檔是 ver 2 以前的：裝備清掉換起始裝備（跟網頁版一樣）

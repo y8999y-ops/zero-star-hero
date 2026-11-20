@@ -65,6 +65,7 @@ namespace ZeroStar.EditorTools
             controller.PrepareRecording();
             controller.StartRecording();
             startFrame = Time.frameCount; stopAt = startFrame + Mathf.RoundToInt(seconds * fps);
+            if (Env("REC_TOWN_ACTIVITIES", "0") == "1") TownActivityRecording.Begin(startFrame, fps);
             Debug.Log($"[RecordPlay] 開始錄 {w}×{h} {fps} fps {seconds} 秒 → {outFile}.mp4");
             EditorApplication.update += Tick;
         }

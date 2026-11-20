@@ -65,6 +65,8 @@ namespace ZeroStar
             foreach (var n in TownArt.NPCS) if (Math.Abs(n.x - x) < 26 && Math.Abs(TownArt.FootY(n.id)-y)<32) return new Near { Id = n.id, Name = n.name, Place = n.place, X = n.x };
             var destination = FindTownStop(x, y);
             if (destination != null) return destination;
+            var activity = NearbyTownActivity(x, y);
+            if (activity != null) return activity;
             if (townStops.Count == 0 && Math.Abs(TownArt.SIGNPOST_X - x) < 22 && Math.Abs(TownArt.FootY("sign")-y)<32) return new Near { Id = "sign", Name = "路標", X = TownArt.SIGNPOST_X, Place = "sign" };
             foreach (var gate in townBarriers)
                 if (Math.Abs(x - gate.x - gate.w / 2.0) < 22 && Math.Abs(y - gate.y - gate.h) < 10)
@@ -82,10 +84,16 @@ namespace ZeroStar
             SceneLight.Update(dt);
             if (!TownBusy)
             {
-                bool atk = IsTouch ? Input.Attack : Input.Absorb;
-                Input.Attack = false;
+                bool training = TownTrainingZone;
+                bool atk = Input.Absorb || IsTouch && !training && Input.Attack;
+                if (!training) Input.Attack = false;
                 Input.Consume("skill"); Input.Consume("ult");
-                if (!UpdateTownLadder(dt))
+                if (TownRaceClock < 0)
+                {
+                    Player.Vx = Player.Vy = 0;
+                    Input.Consume("jump"); Input.Consume("dash"); Input.Consume("drop");
+                }
+                else if (!UpdateTownLadder(dt))
                 {
                     if (Input.Down && !prevTownDown && Player.Grounded && Map.OnPlatform(Player.X, Player.Y))
                         Input.Drop = true;
@@ -101,6 +109,7 @@ namespace ZeroStar
                 prevTownAtk = atk;
             }
             else { Player.Vx = 0; prevTownAtk = true; }
+            TickTownActivities(dt);
             Drops.Update(dt, Player, 16, Map, PickUp);
             Fx.Update(dt);
             CamX = DeadFollow(CamX + W / 2.0, Player.X + LookAhead(dt, 30), 14, 5, dt) - W / 2.0;
@@ -115,7 +124,7 @@ namespace ZeroStar
         public string BubbleText; public double BubbleX, BubbleHead; object bubbleWho; double bubbleT, bubbleWait = 3;
         void UpdateBubble(double dt)
         {
-            if (TownBusy) { BubbleText = null; bubbleWho = null; return; }
+            if (TownBusy || TownUnderground) { BubbleText = null; bubbleWho = null; return; }
             bool IsNear(object n) => NearNow != null && (n is Folk.O fo ? fo == NearNow.FolkO : n is string id && NearNow.FolkO == null && id == NearNow.Id);
             if (bubbleWho != null)
             {
@@ -149,15 +158,17 @@ namespace ZeroStar
         {
             if (TownUnderground)
             {
+                DrawTownActivities(frame, true);
                 TownArt.Shadow(frame, Player.X, 9, footY: SewerFloor);
                 TownArt.SnapPeople(frame);
                 townPeopleDrawn = true;
-                if (NearNow != null && !TownBusy)
+                if (NearNow != null && NearNow.Place != "town-activity" && !TownBusy)
                     DrawBang(frame, NearNow.X, (NearNow.FootY ?? SewerFloor) - (NearNow.Hgt ?? 27) - 12);
                 return;
             }
             // 腳下的影子 → 記下畫面（之後幫角色描外框、加邊緣光）→ 居民、路人
             DrawTownWorksites(frame);
+            DrawTownActivities(frame, false);
             var mayor = TownMayorPosition;
             double mayorVisible = mayor.y == TownArt.FLOOR ? 1 : TownArt.ElevatedVisibility(frame.Oy + frame.CameraFractionY);
             if (mayorVisible > 0) TownArt.Shadow(frame, mayor.x, 7, 0.3 * mayorVisible, mayor.y);
@@ -194,7 +205,7 @@ namespace ZeroStar
                     CombatFx.DrawAlert(frame, GuideX(k), TownArt.FootY(k<2?"clerk":k==2?"golem":k==3?"mushroom":"sign") - GUIDE_HEAD[k] + bob, 0.35);
                 }
             }
-            if (NearNow != null && !TownBusy) DrawBang(frame, NearNow.X, NearNow.Place == "sign" ? TownArt.FootY("sign")-44
+            if (NearNow != null && NearNow.Place != "town-activity" && !TownBusy) DrawBang(frame, NearNow.X, NearNow.Place == "sign" ? TownArt.FootY("sign")-44
                 : (NearNow.FootY ?? TownArt.FootY(NearNow.Id)) - (NearNow.Hgt ?? TownArt.NpcSize(NearNow.Id).h) - 12);
         }
     }

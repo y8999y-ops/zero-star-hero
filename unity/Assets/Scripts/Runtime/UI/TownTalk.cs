@@ -32,6 +32,7 @@ namespace ZeroStar.UI
                 else if (n.Place == "inn") await Inn(g, dlg, n.Name);
                 else if (n.Place == "town-waypoint") await Waypoint(g, dlg, n, openMap);
                 else if (n.Place == "town-mayor") await TownWins.OpenConstruction(g);
+                else if (n.Place == "town-activity") await TownActivityWin.Open(g, n.Id);
                 else if (n.Place == "town-worksite")
                     await dlg.Talk("施工告示", new[] { n.Name, "建設委託請洽鎮長。" });
                 else if (n.Place == "town-manhole")

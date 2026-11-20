@@ -99,7 +99,7 @@ namespace ZeroStar
         public void DropItem(double x, double y, int minR = 0, int? ilvl = null, int? rarity = null, double? dir = null)
         {
             int r = rarity ?? Items.RollRarity(Player.S.Mf, minR);
-            var item = Items.MakeItem(ilvl ?? IlvlNow(), r);
+            var item = Items.MakeItem(ilvl ?? IlvlNow(), r, junkFactor: TownJunkFactor);
             Drops.Add(item, x, y, dir);
             if (item.Rarity == Items.LEGEND)
             {
@@ -416,6 +416,7 @@ namespace ZeroStar
             if (Town) TownArt.Reset(composition);
             layout?.BindLighting(composition);
             Map = new GameMap(Data.W, Data.H, Data.Solids, Data.Platforms, Town ? Data.TownSteps : null);
+            SyncTownActivityCollision();
             InitStage(stage);
             if(Custom && Custom.blank) Chest=null;
             var chestMove=Offset(StampKind.Chest);
@@ -426,6 +427,8 @@ namespace ZeroStar
             for(int i=0;i<Altars.Count;i++){var move=Offset(StampKind.Altar,i);Altars[i].X+=move.x;Altars[i].Y+=move.y;}
             var combos = JsonUtility.FromJson<ComboDef>(Baked.Text("combos"));
             Player = Town ? new Player(120, TownArt.FLOOR, combos) { RankFn = Rank } : new Player(StageD.StartX, Endless ? Data.Floor : StageD.StartY, combos) { RankFn = Rank };
+            Player.TownDamageModifier = () => TownDamageFactor;
+            Player.SuppressLeech = Town;
             if (Town) ReadTownTraversal();
             var startMove=Offset(StampKind.Start); Player.X+=startMove.x; Player.Y+=startMove.y;
             if (from == null) { Equip["weapon"] = Fresh.core; Equip["body"] = Fresh.shell; }
@@ -445,7 +448,7 @@ namespace ZeroStar
         {
             townBuilt.UnionWith(f.townBuilt);
             TrackTownConstruction = f.TrackTownConstruction;
-            TownWishDate = f.TownWishDate; TownStarDate = f.TownStarDate; TownRaceSeconds = f.TownRaceSeconds;
+            CarryTownActivities(f);
             Lv = f.Lv; Xp = f.Xp; Money = f.Money; Scrap = f.Scrap;
             foreach (var k in f.Equip.Keys) Equip[k] = f.Equip[k];
             Inv.AddRange(f.Inv);
@@ -481,6 +484,7 @@ namespace ZeroStar
         public List<Enemy> EnemiesIn(Box box) => Enemies.FindAll(e => !e.Dead && box.Overlaps(e.HitBox()));
         public int HitArea(Box box, Func<Roll> dmg, double dir, HitOpts o)
         {
+            if (Town) return HitTownDummy(box, dmg);
             int n = 0;
             var bt = (box.X0, box.X1, box.Y0, box.Y1);
             Props.Hit(bt, dir);
@@ -572,7 +576,7 @@ namespace ZeroStar
             e.Hit(Player.RollDmg(0.8), e.X >= Player.X ? 1 : -1, new HitOpts { Push = 2 }, this);
             Fx.Spawn(Baked.Anim("spark"), Pf.Round(e.X), Pf.Round(y - 12));
         }
-        public void SpawnWave(double x, double y, double dir) { Waves.Add(new Wave { X = x, Y = y, Dir = dir, Seed = Rnd.Next() }); Sfx("swing"); }
+        public void SpawnWave(double x, double y, double dir) { if (Town) return; Waves.Add(new Wave { X = x, Y = y, Dir = dir, Seed = Rnd.Next() }); Sfx("swing"); }
         public void OnGlide(double dt)
         {
             if (Rank("bat", "b_swarm") == 0) return;
@@ -655,7 +659,7 @@ namespace ZeroStar
             if (e.Core != null) { var bb = e.Box(); Drops.Add(Items.MakeCore(e.Core), e.X, (bb.y0 + bb.y1) / 2, 1); }   // 關卡指定必掉
             else if (coreId != null && !StageD.Paced && Rnd.Next() < (e.Elite ? Math.Min(1, coreP * 4) : coreP)) { var bb = e.Box(); Drops.Add(Items.MakeCore(coreId), e.X, (bb.y0 + bb.y1) / 2); }
             var b = e.Box(); double cy = (b.y0 + b.y1) / 2;
-            if (e.Elite || Rnd.Next() < (DROP_RATE.TryGetValue(e.Kind, out var dr) ? dr : 0.1) * (1 + Player.S.Mf / 200))
+            if (e.Elite || Rnd.Next() < (DROP_RATE.TryGetValue(e.Kind, out var dr) ? dr : 0.1) * (1 + Player.S.Mf / 200) * TownLootFactor)
             {
                 int minR = e.Kind == "gold" || e.Elite ? Items.FINE : 0;
                 if (e.Elite && EliteLegend()) { int il = IlvlNow(1); DropItem(e.X, cy, minR, il, Items.LEGEND); }

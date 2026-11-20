@@ -63,11 +63,13 @@ namespace ZeroStar.UI
 
         /// 打開視窗（已經開著就先把前一個「等關閉」送出去）；回傳的工作在關閉時完成
         bool showMoney = true;
+        Vector2 preferredSize;
         /// 捲動區裡的每個東西（找節點、按鈕用）
         public void BodyQuery(Action<VisualElement> f) => body.Content.Query<VisualElement>().ForEach(f);
-        public Task Show(string title, string theme, string emblem, List<Tab> tabs, string tab = null, bool money = true)
+        public Task Show(string title, string theme, string emblem, List<Tab> tabs, string tab = null, bool money = true, Vector2? size = null)
         {
             showMoney = money;
+            preferredSize = size ?? new Vector2(620, 400);
             if (Open) { var r = done; done = null; r?.TrySetResult(true); }
             this.title = title; this.theme = theme; this.emblem = emblem; this.tabs = tabs; this.tab = tab ?? tabs[0].Id;
             Open = true; overlay.style.display = DisplayStyle.Flex;
@@ -92,7 +94,8 @@ namespace ZeroStar.UI
             var t = tabs.Find(x => x.Id == tab); string th = t.Theme ?? theme;
             Nine(box, "win-" + th, 16, 16); box.style.paddingLeft = box.style.paddingRight = 16 + 2; box.style.paddingBottom = 16 + 4;
             float pw = overlay.parent.layout.width > 0 ? overlay.parent.layout.width : 1280, ph = overlay.parent.layout.height > 0 ? overlay.parent.layout.height : 720;
-            box.style.width = Mathf.Min(620, pw * 0.94f); box.style.height = Mathf.Min(400, ph * (ph <= 420 ? 0.94f : 0.92f));
+            box.style.width = Mathf.Min(preferredSize.x, pw * 0.94f);
+            box.style.height = Mathf.Min(preferredSize.y, ph * (ph <= 420 ? 0.94f : 0.92f));
             emb.Clear(); var ei = Box(emb); Size(ei, 32, 32); Img(ei, "icons/" + (t.Emblem ?? emblem));
             ttl.text = t.Title ?? title; ttl.style.color = C(Acc);
             tabsRow.Clear();

@@ -130,6 +130,7 @@ namespace ZeroStar
             if (!Town) return false;
             var target = townStops.Find(stop => stop.Id == id);
             if (target == null) return false;
+            CancelTownRace();
             activeLadder = null;
             ladderCooldown = 0.2;
             Player.X = target.X; Player.Y = target.Y;

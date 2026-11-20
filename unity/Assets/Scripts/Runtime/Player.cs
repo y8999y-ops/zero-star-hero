@@ -131,14 +131,16 @@ namespace ZeroStar
         }
 
         /// 一下攻擊的傷害（攻擊力 × 倍率，再算暴擊）。force＝必定暴擊。吸血：傷害的 leech% 回復生命
+        internal Func<double> TownDamageModifier;
+        internal bool SuppressLeech;
         public Roll RollDmg(double mult, bool force = false)
         {
             var s = S; bool spk = Form == "spike";
             double critK = s.Crit + (spk ? 8 + 3 * Rank("spike", "k_tip") + Rank("spike", "p_spike") : 0);
             bool crit = force || Rnd.Next() * 100 < critK;
             double coreMul = (Hp >= MaxHp * 0.8 ? 1 + Core("dawn") / 100 : 1) * (ShadowT > 0 ? 1 + Core("shadow") / 100 : 1);
-            double dmg = s.Atk * mult * (1 + BuffAtk) * DmgMul * 1.0 * (crit ? 1 + (s.CritDmg + (spk && Rank("spike", "k_sharp") != 0 ? 25 : 0)) / 100 : 1) * (KingT > 0 ? 1.2 : 1) * coreMul;
-            if (s.Leech > 0 && Hp > 0)
+            double dmg = s.Atk * mult * (1 + BuffAtk) * DmgMul * (TownDamageModifier?.Invoke() ?? 1) * (crit ? 1 + (s.CritDmg + (spk && Rank("spike", "k_sharp") != 0 ? 25 : 0)) / 100 : 1) * (KingT > 0 ? 1.2 : 1) * coreMul;
+            if (s.Leech > 0 && Hp > 0 && !SuppressLeech)
             {
                 bool feast = Set4("feast"); double k = feast && Hp < MaxHp * 0.3 ? 2 : 1;
                 double h = Math.Min(LeechBudget, (dmg * s.Leech * k) / 100);

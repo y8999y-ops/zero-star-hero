@@ -267,7 +267,7 @@ namespace ZeroStar
         }
 
         /// 產生一件物品（items.js 的 makeItem）
-        public static Item MakeItem(double ilvlIn, int rarity, string kind = null, string baseId = null, bool noJunk = false, string set = null, string unique = null, string myth = null)
+        public static Item MakeItem(double ilvlIn, int rarity, string kind = null, string baseId = null, bool noJunk = false, string set = null, string unique = null, string myth = null, double junkFactor = 1)
         {
             int ilvl = (int)Math.Max(1, Pf.Round(ilvlIn));
             if (rarity == MYTH) return MakeMyth(myth ?? Pick(MYTHS.Select(m => m.id).ToList()), ilvl);
@@ -276,7 +276,7 @@ namespace ZeroStar
                 var ids = UNIQUES.Where(u => kind == null || u.Kind == kind).Select(u => u.Id).ToList();
                 if (ids.Count > 0) return MakeUnique(unique ?? Pick(ids), ilvl);
             }
-            if (rarity == COMMON && kind == null && baseId == null && !noJunk && Rnd.Next() < JUNK_CHANCE)
+            if (rarity == COMMON && kind == null && baseId == null && !noJunk && Rnd.Next() < JUNK_CHANCE * junkFactor)
             {
                 var j = Pick(JUNK);
                 return new Item { Uid = NewUid(), Junk = j.id, Kind = "junk", Name = j.name, Icon = j.icon, Rarity = rarity, Ilvl = ilvl };

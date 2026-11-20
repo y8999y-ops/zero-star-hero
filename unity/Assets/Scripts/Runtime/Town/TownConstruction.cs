@@ -114,6 +114,7 @@ namespace ZeroStar
             Data.Platforms.Clear(); Data.Platforms.AddRange(rebuilt.Platforms);
             Data.TownSteps.Clear(); Data.TownSteps.AddRange(rebuilt.TownSteps);
             Map.LoadSolids(Data.Solids);
+            SyncTownActivityCollision();
             TownArt.RebuildStructures(composition);
             layout?.BindLighting(composition);
             ReadTownTraversal();

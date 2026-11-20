@@ -55,11 +55,11 @@ namespace ZeroStar.UI
             Place(atk, A, 0, 0); Place(dash, B, A + 8, 2); Place(skill, B, A * 0.78f, A * 0.78f); Place(ult, B, 2, A + 8);
             Place(absorb, B, A * 0.78f, A * 1.48f + 20);
             // 攻擊鍵：城鎮＝對話（旁邊沒人變淡）；旁邊有寶箱、門、祭壇＝換圖示、發亮
-            string kind = g.Town ? "talk" : g.UseT?.Kind switch { "chest" => "chest", "door" => "door", "hand" => "hand", _ => "atk" };
+            string kind = g.Town ? (g.TownTrainingZone ? "atk" : "talk") : g.UseT?.Kind switch { "chest" => "chest", "door" => "door", "hand" => "hand", _ => "atk" };
             bool aDown = Down.Contains("attack");
             Img(atk, "tb-" + kind + (aDown ? "-on" : ""));
             float glow = kind != "atk" && !(g.Town && g.NearNow == null) ? 0.5f - 0.5f * Mathf.Cos(clock / (g.Town ? 1.2f : 1f) * Mathf.PI * 2) : 0;
-            atk.style.opacity = g.Town && g.NearNow == null ? 0.45f : 1;
+            atk.style.opacity = g.Town && g.NearNow == null && !g.TownTrainingZone ? 0.45f : 1;
             atk.style.unityBackgroundImageTintColor = Color.Lerp(Color.white, C("#fff2b0"), glow * 0.6f);
             atk.style.scale = new Scale(Vector2.one * (aDown ? 0.94f : 1));
             Img(dash, Down.Contains("dash") ? "tb-dash-on" : "tb-dash"); dash.style.scale = new Scale(Vector2.one * (Down.Contains("dash") ? 0.94f : 1));
