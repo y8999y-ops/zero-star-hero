@@ -82,7 +82,7 @@ namespace ZeroStar
         static bool Solid(int x, int y) => x >= 0 && x < TOWN_W && y >= 0 && y < H && main[y * TOWN_W + x] != 0;
 
         /// 載入（或重新擺放建築）之後叫一次
-        public static void Build(uint[] mainLayer, byte[] emitLayer)
+        public static void Build(uint[] mainLayer, byte[] emitLayer, WorldComposition layout = null)
         {
             main = mainLayer; emit = emitLayer;
             topY = new int[TOWN_W]; hiY = new int[TOWN_W]; score = new byte[TOWN_W * H]; trickle = new byte[TOWN_W];
@@ -95,7 +95,7 @@ namespace ZeroStar
                 for (int y = topY[x]; y < Math.Min(topY[x] + 3, WET_BOTTOM); y++) { if (!Solid(x, y)) break; if (!Dark(main[y * TOWN_W + x])) { hiY[x] = y; break; } }
             }
             // 水路（照結構圖或自動）：滴水點、往下流的亮點、變濕都照它
-            TownFlow.Build(main, topY);
+            TownFlow.Build(main, topY, layout);
             var cls = TownStructure.Cls;
             // 離水路多近（最多 10 格）：水先沿著水路濕，濕度越高越往兩邊擴散
             var near = new byte[TOWN_W * H]; var q = new Queue<int>();

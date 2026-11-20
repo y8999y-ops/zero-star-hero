@@ -19,15 +19,16 @@ namespace ZeroStar
         public readonly QuestBook Quests = new QuestBook();
 
         /// 可以對話的對象：店家（NPCS）、路標、路人
-        public class Near { public string Id, Name, Place; public double X; public double? Hgt; public Folk.O FolkO; }
+        public class Near { public string Id, Name, Place; public double X; public double? Hgt, FootY; public Folk.O FolkO; }
         public Near NearNow;
         bool prevTownAtk;
+        bool prevTownDown;
         public Action<Near> OnTalk;   // 按互動：對話、視窗（階段 4b、4c 接上）
         public bool TownBusy;         // 對話或視窗開著：主角不動
 
         static double GuideX(int k) => k < 2 ? TownArt.NPCS[0].x : k < 4 ? TownArt.NPCS[k-1].x : TownArt.SIGNPOST_X;
         static readonly double[] GUIDE_HEAD = { 40, 40, 62, 58, 44 };
-        static readonly string[] GUIDE_LINE = { null, null, "系統：下一站，岩叔的工坊。", "系統：再來是菇媽的旅館。", "系統：準備好了就去最右邊的路標。" };
+        static readonly string[] GUIDE_LINE = { null, null, "系統：下一站，岩叔的工坊。", "系統：再來是菇媽的旅館。", "系統：準備好了就去城門旁的路標。" };
         static readonly Dictionary<string, string[]> AMBIENT = new Dictionary<string, string[]>
         {
             ["clerk"] = new[] { "（推眼鏡）今天的委託也很多呢。", "請排隊……啊，只有你一個。", "公會的茶，是我泡的。……喝嗎？" },
@@ -52,14 +53,16 @@ namespace ZeroStar
             Quests.RefreshBoard(Unlocked());
             QuestProgress("tick");
             Say.Show("碎星鎮", 2);
-            if (!GuildRegistered) Say.Push("系統：這裡是碎星鎮。先去左邊的公會找波波。", 3.2);
+            if (!GuildRegistered) Say.Push("系統：這裡是碎星鎮。先去公會找波波。", 3.2);
             else if (TGuide >= 0 && TGuide < GUIDE_LINE.Length && GUIDE_LINE[TGuide] != null) Say.Push(GUIDE_LINE[TGuide], 3.2);
         }
 
-        static Near TownNearby(double x,double y)
+        Near TownNearby(double x,double y)
         {
             foreach (var n in TownArt.NPCS) if (Math.Abs(n.x - x) < 26 && Math.Abs(TownArt.FootY(n.id)-y)<32) return new Near { Id = n.id, Name = n.name, Place = n.place, X = n.x };
-            if (Math.Abs(TownArt.SIGNPOST_X - x) < 22 && Math.Abs(TownArt.FootY("sign")-y)<32) return new Near { Id = "sign", Name = "路標", X = TownArt.SIGNPOST_X, Place = "sign" };
+            var destination = FindTownStop(x, y);
+            if (destination != null) return destination;
+            if (townStops.Count == 0 && Math.Abs(TownArt.SIGNPOST_X - x) < 22 && Math.Abs(TownArt.FootY("sign")-y)<32) return new Near { Id = "sign", Name = "路標", X = TownArt.SIGNPOST_X, Place = "sign" };
             return null;
         }
 
@@ -72,7 +75,10 @@ namespace ZeroStar
                 bool atk = IsTouch ? Input.Attack : Input.Absorb;
                 Input.Attack = false;
                 Input.Consume("skill"); Input.Consume("ult");
-                Player.Update(dt, this);
+                if (!TownClimbing && Input.Down && !prevTownDown && Player.Grounded && Map.OnPlatform(Player.X, Player.Y))
+                    Input.Drop = true;
+                prevTownDown = Input.Down;
+                if (!UpdateTownLadder(dt)) Player.Update(dt, this);
                 Player.X = Math.Max(20, Math.Min(TownArt.TOWN_W - 20, Player.X));
                 UpdateStageObjectsPlayer(dt);
                 Folk.Update(dt, Player.X);
@@ -87,7 +93,8 @@ namespace ZeroStar
             var v = ViewRect();
             CamX = DeadFollow(CamX + W / 2.0, Player.X + LookAhead(dt, 30), 14, 5, dt) - W / 2.0;
             CamX = Math.Max(-v.x0, Math.Min(TownArt.TOWN_W - v.x0 - v.w, CamX));
-            FollowVertical(dt, TownArt.LegacyFloor, -v.y0, TownArt.StreetTop);
+            FollowTownHeight(dt);
+            if (TownUnderground) TownArt.TickSewerWater(dt);
             Say.Update();
             UpdateBubble(dt);
         }
@@ -128,10 +135,23 @@ namespace ZeroStar
         bool townPeopleDrawn;
         void DrawTownPeople(Frame frame)
         {
+            if (TownUnderground)
+            {
+                TownArt.Shadow(frame, Player.X, 9, footY: SewerFloor);
+                TownArt.SnapPeople(frame);
+                townPeopleDrawn = true;
+                if (NearNow != null && !TownBusy)
+                    DrawBang(frame, NearNow.X, (NearNow.FootY ?? SewerFloor) - (NearNow.Hgt ?? 27) - 12);
+                return;
+            }
             // 腳下的影子 → 記下畫面（之後幫角色描外框、加邊緣光）→ 居民、路人
             foreach (var n in TownArt.NPCS) TownArt.Shadow(frame, n.x, (int)(TownArt.NpcSize(n.id).w * 0.36),footY:TownArt.FootY(n.id));
             foreach (var o in Folk.List) TownArt.Shadow(frame, o.X, (int)(TownArt.NpcSize(o.Id).w * 0.36));
-            { double air = Math.Max(0, Math.Min(1, (TownArt.FLOOR - Player.Y) / 40.0)); TownArt.Shadow(frame, Player.X, (int)Pf.Round(9 - 4 * air), 0.3 - 0.15 * air); }
+            {
+                int foot = (int)Map.FloorAt(Player.X, Player.Y);
+                double air = Math.Max(0, Math.Min(1, (foot - Player.Y) / 40.0));
+                TownArt.Shadow(frame, Player.X, (int)Pf.Round(9 - 4 * air), 0.3 - 0.15 * air, foot);
+            }
             TownArt.SnapPeople(frame);
             TownArt.DrawNpcs(frame, sceneClock);
             Folk.Draw(frame);
@@ -148,7 +168,8 @@ namespace ZeroStar
                     CombatFx.DrawAlert(frame, GuideX(k), TownArt.FootY(k<2?"clerk":k==2?"golem":k==3?"mushroom":"sign") - GUIDE_HEAD[k] + bob, 0.35);
                 }
             }
-            if (NearNow != null && !TownBusy) DrawBang(frame, NearNow.X, NearNow.Place == "sign" ? TownArt.FootY("sign")-44 : TownArt.FootY(NearNow.Id) - (NearNow.Hgt ?? TownArt.NpcSize(NearNow.Id).h) - 12);
+            if (NearNow != null && !TownBusy) DrawBang(frame, NearNow.X, NearNow.Place == "sign" ? TownArt.FootY("sign")-44
+                : (NearNow.FootY ?? TownArt.FootY(NearNow.Id)) - (NearNow.Hgt ?? TownArt.NpcSize(NearNow.Id).h) - 12);
         }
     }
 }

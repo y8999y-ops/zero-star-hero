@@ -167,8 +167,9 @@ namespace ZeroStar.Tests
             }
             if(tab==1)
             {
-                brush=GUILayout.Toolbar(brush,new[]{"實心地面","單向平台","擦除筆刷地形"});
-                EditorGUILayout.HelpBox(map==5?"城鎮使用固定街道。地形筆刷適用於戰鬥地圖。":"在場景拖曳畫出地形，放開滑鼠完成。Ctrl+Z 復原。",MessageType.Info);
+                var brushes=map==5 ? new[]{"實心地面","單向平台","擦除筆刷地形","攀爬區"} : new[]{"實心地面","單向平台","擦除筆刷地形"};
+                brush=GUILayout.Toolbar(Mathf.Clamp(brush,0,brushes.Length-1),brushes);
+                EditorGUILayout.HelpBox("在場景拖曳標記範圍，放開滑鼠完成。Ctrl+Z 復原。",MessageType.Info);
             }
             EditorGUILayout.BeginHorizontal();
             bool show=GUILayout.Toggle(collisionOn,"碰撞線","Button");
@@ -284,6 +285,11 @@ namespace ZeroStar.Tests
         internal static Rect Collision(WorldStamp s,GameObject root,LevelData data)
         {
             var p=s.Position(root.transform);var d=p-s.original;
+            if(data.Stage=="town" && s.index<0)
+            {
+                if(s.kind==StampKind.Solid) return new Rect(p.x,p.y,s.size.x,s.size.y);
+                if(s.kind==StampKind.Platform || s.kind==StampKind.TownStep) return new Rect(p.x,p.y,s.size.x,1);
+            }
             if(s.kind==StampKind.Solid && s.index>=0 && s.index<data.Solids.Count)
             {var a=data.Solids[s.index];return new Rect((float)a.X+d.x,(float)a.Y+d.y,(float)a.W,(float)a.H);}
             if(s.kind==StampKind.Platform && s.index>=0 && s.index<data.Platforms.Count)
@@ -297,9 +303,10 @@ namespace ZeroStar.Tests
             var data=Base(root);
             foreach(var s in root.GetComponentsInChildren<WorldStamp>())
             {
-                var r=Collision(s,root,data);if(r.width>0)collisionShapes.Add((r,s.kind==StampKind.Platform || s.kind==StampKind.PaintedPlatform));
+                var r=Collision(s,root,data);if(r.width>0)collisionShapes.Add((r,s.kind==StampKind.Platform || s.kind==StampKind.PaintedPlatform || s.kind==StampKind.TownStep));
             }
-            if(ids[map]=="town")foreach(var a in data.Solids)collisionShapes.Add((new Rect((float)a.X,(float)a.Y,(float)a.W,(float)a.H),false));
+            if(ids[map]=="town" && !root.GetComponentsInChildren<WorldStamp>().Any(s=>s.role=="town-street"))
+                foreach(var a in data.Solids)collisionShapes.Add((new Rect((float)a.X,(float)a.Y,(float)a.W,(float)a.H),false));
         }
         void CheckBeforeSave(GameObject root)
         {
@@ -321,7 +328,7 @@ namespace ZeroStar.Tests
             }
             foreach(var g in stamps.Where(s=>s.kind==StampKind.RewardChest).GroupBy(s=>s.rewardId))
                 if(string.IsNullOrEmpty(g.Key)||g.Count()>1)foreach(var s in g)issues.Add((s.gameObject,s.name+"：存檔識別缺失或重複"));
-            foreach(var s in stamps.Where(s=>s.kind==StampKind.PaintedGround || s.kind==StampKind.PaintedPlatform))
+            foreach(var s in stamps.Where(s=>s.kind==StampKind.PaintedGround || s.kind==StampKind.PaintedPlatform || s.kind==StampKind.Climb))
             {
                 var p=s.Position(root.transform);
                 if(s.size.x<=0 || s.size.y<=0 || p.x<0 || p.y<0 || p.x+s.size.x>data.W || p.y+s.size.y>data.H)
@@ -400,6 +407,8 @@ namespace ZeroStar.Tests
                         case StampKind.Chest:size=new Vector2(48,40);break;
                         case StampKind.Altar:size=new Vector2(32,48);break;
                         case StampKind.Exit:size=new Vector2(32,40);break;
+                        case StampKind.TownMarker:size=new Vector2(36,28);break;
+                        case StampKind.Climb:Outline(new Rect(p.x,p.y,s.size.x,s.size.y),Color.cyan);continue;
                         default:continue;
                     }
                     Outline(new Rect((Vector2)p-size/2,size),Color.cyan);
@@ -408,7 +417,7 @@ namespace ZeroStar.Tests
             if(live && texture){Handles.BeginGUI();GUI.DrawTextureWithTexCoords(new Rect(8,8,256,144),texture,new Rect(1f/texture.width,1f-1f/texture.height,(float)frame.W/texture.width,-(float)frame.H/texture.height));Handles.EndGUI();}
             bool drag=e.type==EventType.DragUpdated || e.type==EventType.DragPerform;
             int preset=drag && DragAndDrop.GetGenericData("ZeroStar.Preset") is int i?i:-1;
-            bool paint=tab==1 && map!=5 && !locked.Contains(2);
+            bool paint=tab==1 && !locked.Contains(2);
             if(!paint && !testingPoint && preset<0)return false;
             if(e.alt)return true;
             var ray=HandleUtility.GUIPointToWorldRay(e.mousePosition);
@@ -444,7 +453,7 @@ namespace ZeroStar.Tests
                 {
                     var tile=root.GetComponentsInChildren<WorldStamp>().LastOrDefault(s=>
                     {
-                        if(s.kind!=StampKind.PaintedGround && s.kind!=StampKind.PaintedPlatform)return false;
+                        if(s.kind!=StampKind.PaintedGround && s.kind!=StampKind.PaintedPlatform && s.kind!=StampKind.Climb)return false;
                         var corner=s.Position(root.transform);
                         return new Rect(corner.x,corner.y,s.size.x,s.size.y).Contains(point);
                     });
@@ -462,13 +471,29 @@ namespace ZeroStar.Tests
                 {
                     var data=Base(root);
                     if(r.xMin>=0 && r.yMin>=0 && r.xMax<=data.W && r.yMax<=data.H)
-                        Selection.activeGameObject=AddTile(root,new Vector3(r.x,-r.y),(int)r.width,(int)r.height,brush==1);
+                        Selection.activeGameObject=brush==3 ? AddClimb(root,r)
+                            : AddTile(root,new Vector3(r.x,-r.y),(int)r.width,(int)r.height,brush==1);
                     else ShowNotification(new GUIContent("地形超出地圖範圍"));
                     GUIUtility.hotControl=0;dragging=false;Refresh();e.Use();
                 }
                 view.Repaint();
             }
             return true;
+        }
+        static GameObject AddClimb(GameObject root, Rect bounds)
+        {
+            var go = new GameObject("攀爬區");
+            SceneManager.MoveGameObjectToScene(go,root.scene);
+            go.transform.SetParent(root.transform,false);
+            go.transform.localPosition = new Vector3(bounds.x,-bounds.y);
+            var stamp = go.AddComponent<WorldStamp>();
+            stamp.kind = StampKind.Climb;
+            stamp.index = -1;
+            stamp.original = stamp.Position(root.transform);
+            stamp.size = new Vector2Int((int)bounds.width,(int)bounds.height);
+            Undo.RegisterCreatedObjectUndo(go,"標記攀爬區");
+            EditorSceneManager.MarkSceneDirty(root.scene);
+            return go;
         }
         static Vector2Int Snap(Vector2Int p)=>new Vector2Int(Mathf.FloorToInt(p.x/8f)*8,Mathf.FloorToInt(p.y/8f)*8);
         [InitializeOnLoadMethod]

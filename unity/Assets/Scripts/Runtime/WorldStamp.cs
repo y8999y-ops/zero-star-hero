@@ -1,7 +1,7 @@
 using UnityEngine;
 namespace ZeroStar
 {
-    public enum StampKind { Terrain, Decor, Solid, Platform, Back, Far, Mid, Near, Fg, UpFar, UpMid, Torch, Crystal, Start, Exit, Chest, Altar, Feature, Hazard, Cloud, Tuft, Box, SmallCrystal, Puddle, Hang, Critter, Swarm, Resident, EnemySpawn, PaintedGround, PaintedPlatform, RewardChest }
+    public enum StampKind { Terrain, Decor, Solid, Platform, Back, Far, Mid, Near, Fg, UpFar, UpMid, Torch, Crystal, Start, Exit, Chest, Altar, Feature, Hazard, Cloud, Tuft, Box, SmallCrystal, Puddle, Hang, Critter, Swarm, Resident, EnemySpawn, PaintedGround, PaintedPlatform, RewardChest, Climb, TownStep, TownMarker, PaintedDetail }
     // 圖片左上角為原點，互動物件則以遊戲內的腳底或效果掛點為原點。
     public sealed class WorldStamp : MonoBehaviour
     {
@@ -14,6 +14,9 @@ namespace ZeroStar
         [HideInInspector] public Vector2Int original;
         [HideInInspector] public string role;
         [HideInInspector] public int[] lights;
+        [HideInInspector] public int sourceTop;
+        [HideInInspector] public int sourceInsetX;
+        [HideInInspector] public bool useBakedEmission = true;
         public Vector2Int Position(Transform root)
         {
             Vector3 p=root.InverseTransformPoint(transform.position);

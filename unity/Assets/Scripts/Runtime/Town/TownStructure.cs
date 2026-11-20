@@ -28,7 +28,7 @@ namespace ZeroStar
 
         /// 載入時叫一次。Resources/Art/town/structure/ 裡的每一張結構圖（檔名＝建築名稱）都讀進來，在整個城鎮裡找跟它剪影吻合的地方，
         /// 找到幾處就貼幾處（擴大碎星鎮、多放幾棟、同一棟放兩次都會自動對上）。新的建築只要多放一張結構圖。
-        public static void Build(uint[] main)
+        public static void Build(uint[] main, WorldComposition layout = null)
         {
             Cls = new byte[TOWN_W * H]; Placed.Clear();
             foreach (var ta in Resources.LoadAll<TextAsset>("Art/town/structure"))   // 只有這一層（建築原圖放在旁邊的 structure-art）
@@ -76,13 +76,11 @@ namespace ZeroStar
                 var all = opq.ToArray();
                 int ey = FLOOR + 1 - bottom;   // 建築的底部大多對齊地面：上下各找 40 格（擺放工具可能移過）
                 var sw = System.Diagnostics.Stopwatch.StartNew();
-                for (int oy = ey - 40; oy <= ey + 40; oy++) for (int ox = -w + 1; ox < TOWN_W; ox++)
+                bool AlreadyPlaced(int ox, int oy) =>
+                    Placed.Exists(p => p.name == name && Math.Abs(p.x - ox) < w / 2 && Math.Abs(p.y - oy) < h / 2);
+                void Place(int ox, int oy)
                 {
-                    if (Match(ox, oy, probe) < probe.Length - 4) continue;
-                    int m = Match(ox, oy, all);
-                    if (m < all.Length * 0.9) continue;   // 九成以上像素一樣（前面被角色、裝飾擋住一點也找得到）
-                    bool dup = Placed.Exists(p => p.name == name && Math.Abs(p.x - ox) < w / 2 && Math.Abs(p.y - oy) < h / 2);
-                    if (dup) continue;
+                    if (AlreadyPlaced(ox, oy)) return;
                     for (int y = 0; y < h; y++) for (int x = 0; x < w; x++)
                     {
                         byte v = cls[y * w + x]; if (v == 0) continue;
@@ -90,6 +88,16 @@ namespace ZeroStar
                         Cls[wy * TOWN_W + wx] = v;
                     }
                     Placed.Add((name, ox, oy, w, h));
+                }
+                // 用擺設的原圖像素比對，可辨認前方被路燈、花草蓋住的店家。
+                if (layout != null)
+                    foreach (var pos in layout.MatchingTownArt(name, w, h, art, probe)) Place(pos.x, pos.y);
+                for (int oy = ey - 40; oy <= ey + 40; oy++) for (int ox = -w + 1; ox < TOWN_W; ox++)
+                {
+                    if (Match(ox, oy, probe) < probe.Length - 4) continue;
+                    int m = Match(ox, oy, all);
+                    if (m < all.Length * 0.9) continue;   // 九成以上像素一樣（前面被角色、裝飾擋住一點也找得到）
+                    Place(ox, oy);
                 }
                 if (TownRainHits.DebugLog) Debug.Log($"[TownStructure] 找 {name} 花了 {sw.ElapsedMilliseconds} ms");
                 if (!Placed.Exists(p => p.name == name)) Debug.Log("[TownStructure] 城鎮裡找不到 " + name + "（這次沒有擺這棟，或建築的圖換了、結構圖要重做）");

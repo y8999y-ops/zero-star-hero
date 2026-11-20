@@ -102,6 +102,21 @@ namespace ZeroStar
         public List<RectD> OriginalSolids {get;private set;}
         public List<Platform> OriginalPlatforms {get;private set;}
         public List<(double x,double y)> OriginalTorches {get;private set;}
+        internal IEnumerable<(string role, Vector2Int position, Vector2Int size)> TownStamps(StampKind kind)
+        {
+            foreach (var s in stamps)
+                if (s.kind == kind) yield return (s.role, s.Position(root), s.size);
+        }
+        internal IEnumerable<Vector2Int> MatchingTownArt(string role, int w, int h, uint[] reference, int[] probe)
+        {
+            foreach (var s in stamps)
+            {
+                if (s.role != role || !s.TryGetComponent<SpriteRenderer>(out var sr) || !sr.enabled || !sr.sprite
+                    || sr.sprite.rect.width != w || sr.sprite.rect.height != h) continue;
+                var img = ImageOf(sr.sprite);
+                if (probe.All(i => (img.Px[i] | 0xff000000u) == reference[i])) yield return s.Position(root);
+            }
+        }
         internal bool ApplyTownCollision(LevelData data)
         {
             bool hasStreet = false;
@@ -115,8 +130,12 @@ namespace ZeroStar
                     hasStreet |= s.role == "town-street";
                     data.Solids.Add(new RectD { X = pos.x, Y = pos.y, W = s.size.x, H = s.size.y });
                 }
-                else if (s.kind == StampKind.Platform || s.kind == StampKind.PaintedPlatform)
-                    data.Platforms.Add(new Platform { X = pos.x, Y = pos.y, W = s.size.x });
+                else if (s.kind == StampKind.Platform || s.kind == StampKind.PaintedPlatform || s.kind == StampKind.TownStep)
+                {
+                    var p = new Platform { X = pos.x, Y = pos.y, W = s.size.x };
+                    data.Platforms.Add(p);
+                    if (s.kind == StampKind.TownStep) data.TownSteps.Add(p);
+                }
             }
             return hasStreet;
         }
@@ -165,13 +184,18 @@ namespace ZeroStar
                 {
                     case StampKind.PaintedGround:
                     case StampKind.PaintedPlatform:
+                    case StampKind.PaintedDetail:
                         if(img==null)continue;
                         if(s.kind==StampKind.PaintedGround)solids.Add(new RectD{X=pos.x,Y=pos.y,W=s.size.x,H=s.size.y});
-                        else platforms.Add(new Platform{X=pos.x,Y=pos.y,W=s.size.x});
+                        else if(s.kind==StampKind.PaintedPlatform) platforms.Add(new Platform{X=pos.x,Y=pos.y,W=s.size.x});
+                        int inset = Math.Max(0, Math.Min(s.sourceInsetX, (img.W - 1) / 2));
+                        int period = img.W - inset * 2;
                         for(int y=Math.Max(0,-pos.y);y<Math.Min(s.size.y,data.H-pos.y);y++)
                         for(int x=Math.Max(0,-pos.x);x<Math.Min(s.size.x,data.W-pos.x);x++)
                         {
-                            int dest=(pos.y+y)*data.W+pos.x+x;data.PF[dest]=img.Px[(y%img.H)*img.W+x%img.W];data.PFE[dest]=0;
+                            uint c=img.Px[((y+s.sourceTop)%img.H)*img.W+inset+x%period];
+                            if(s.kind==StampKind.PaintedDetail && c==0)continue;
+                            int dest=(pos.y+y)*data.W+pos.x+x;data.PF[dest]=c;data.PFE[dest]=0;
                         }
                         continue;
                     case StampKind.Torch: torches.Add((pos.x,pos.y)); continue;
@@ -188,7 +212,7 @@ namespace ZeroStar
                     default: continue;
                 }
                 if(img!=null) AddBlocker(pos.x,pos.y,img.Px,img.W,img.H,s.blocksLight,s.blocksSparks);
-                if(img!=null) Blit(img,data.PF,data.W,data.H,pos,data.PFE,oldMask,s.original,false);
+                if(img!=null) Blit(img,data.PF,data.W,data.H,pos,data.PFE,s.useBakedEmission ? oldMask : null,s.original,false);
             }
             if(data.Stage!="town"){data.Solids=solids;data.Platforms=platforms;}
             data.PropLights=lights;data.Torches=torches;data.BigCrystals=crystals;

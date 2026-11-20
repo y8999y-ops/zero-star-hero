@@ -358,6 +358,11 @@ namespace ZeroStar
                 double g2 = State == "move" && !Grounded && !gliding && !(BoostT > 0) ? (Math.Abs(Vy) < APEX_V && input.JumpHeld ? g * 0.5 : Vy > 0 ? g * FALL_K : g) : g;
                 Vy = Math.Min(cap, Vy + g2 * dt);
             }
+            if (Grounded && DropT <= 0 && State == "move")
+            {
+                var step = map.StepAt(X, X + Vx * dt, Y, 24);
+                if (step.HasValue) { Y = step.Value; Vy = 0; }
+            }
             double prevY = Y;
             double nx = map.MoveX(X, X + Vx * dt, Y, 24, 7);
             if (nx != X + Vx * dt && State == "spikeball" && spikeBounce == 0) { spikeBounce = 1; Face = -Face; w.Dust(X, Y, 4); }   // 刺球撞牆彈回來

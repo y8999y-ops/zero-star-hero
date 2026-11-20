@@ -9,14 +9,14 @@ namespace ZeroStar
     public class GameInput
     {
         public double Move;
-        public bool Attack, Absorb, JumpHeld, Down, Air;
+        public bool Attack, Absorb, JumpHeld, Up, Down, Air;
         public bool Jump, Drop, Dash, Skill, Ult;
 
         const double BUFFER = 0.15;
         readonly Dictionary<string, double> pressed = new Dictionary<string, double> { ["jump"] = 0, ["drop"] = 0, ["dash"] = 0, ["skill"] = 0, ["ult"] = 0 };
         static readonly string[] KEYS = { "jump", "drop", "dash", "skill", "ult" };
-        bool kLeft, kRight, kDown, kAttack, kMouse, kAbsorb;
-        public double TouchMove; public bool TouchAttack, TouchAbsorb;
+        bool kLeft, kRight, kUp, kDown, kAttack, kMouse, kAbsorb;
+        public double TouchMove, TouchVertical; public bool TouchAttack, TouchAbsorb;
 
         public void Press(string k) { pressed[k] = BUFFER; }
 
@@ -30,7 +30,8 @@ namespace ZeroStar
             Move = Math.Max(-1, Math.Min(1, ((kRight ? 1 : 0) - (kLeft ? 1 : 0)) + TouchMove));
             Attack = kAttack || kMouse || TouchAttack;
             Absorb = kAbsorb || TouchAbsorb;
-            Down = kDown;
+            Up = kUp || TouchVertical > 0.35;
+            Down = kDown || TouchVertical < -0.35;
         }
         void Set(string k, bool v)
         {
@@ -46,6 +47,7 @@ namespace ZeroStar
             {
                 case "KeyA": case "ArrowLeft": kLeft = true; break;
                 case "KeyD": case "ArrowRight": kRight = true; break;
+                case "KeyW": case "ArrowUp": kUp = true; break;
                 case "KeyS": case "ArrowDown": kDown = true; break;
                 case "KeyJ": case "KeyX": kAttack = true; break;
                 case "KeyF": kAbsorb = true; break;
@@ -61,6 +63,7 @@ namespace ZeroStar
             {
                 case "KeyA": case "ArrowLeft": kLeft = false; break;
                 case "KeyD": case "ArrowRight": kRight = false; break;
+                case "KeyW": case "ArrowUp": kUp = false; break;
                 case "KeyS": case "ArrowDown": kDown = false; break;
                 case "KeyJ": case "KeyX": kAttack = false; break;
                 case "KeyF": kAbsorb = false; break;
@@ -68,6 +71,6 @@ namespace ZeroStar
             if (IsJumpKey(code)) JumpHeld = false;
         }
         public void Mouse(bool left) { kMouse = left; }
-        public void ReleaseAll() { kLeft = kRight = kDown = kAttack = kMouse = kAbsorb = false; TouchAttack = TouchAbsorb = false; TouchMove = 0; JumpHeld = false; }
+        public void ReleaseAll() { kLeft = kRight = kUp = kDown = kAttack = kMouse = kAbsorb = false; TouchAttack = TouchAbsorb = false; TouchMove = TouchVertical = 0; JumpHeld = false; }
     }
 }

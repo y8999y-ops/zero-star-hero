@@ -134,10 +134,17 @@ namespace ZeroStar.UI
 
         // ---- 整個畫面變黑再亮回來（旅館睡一晚；網頁版的 #fade）
         float fadeT = 9, fadeLen;
-        public async Task FadeBlack(float hold)
+        public async Task FadeBlack(float hold, Action atBlack = null)
         {
             fadeLen = hold; fadeT = 0; fade.style.display = DisplayStyle.Flex;
-            await Task.Delay((int)(hold * 1000));
+            if (atBlack == null)
+            {
+                await Task.Delay((int)(hold * 1000));
+                return;
+            }
+            await Task.Delay(300);
+            atBlack();
+            await Task.Delay(Math.Max(0, (int)(hold * 1000) - 300));
         }
         void UpdateFade(float dt)
         {

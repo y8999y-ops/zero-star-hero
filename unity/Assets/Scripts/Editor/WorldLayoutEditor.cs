@@ -54,6 +54,8 @@ namespace ZeroStar.Tests
                     if (g.Data.W != 2400 || g.Data.H != 560 || g.Player.Y != TownArt.FLOOR
                         || !g.Map.SolidAt(1800, TownArt.FLOOR + 0.5) || g.Map.SolidAt(1800, TownArt.FLOOR - 0.5))
                         throw new Exception("擴建城鎮大小、出生點或右側街道路面不正確");
+                    if (new[] { "guild", "workshop", "inn" }.Any(name => !TownStructure.Placed.Any(p => p.name == name)))
+                        throw new Exception("舊店家的天氣結構圖沒有跟著搬移");
                     var copy=UnityEngine.Object.Instantiate(prefab);
                     try
                     {

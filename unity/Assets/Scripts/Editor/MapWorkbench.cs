@@ -13,7 +13,7 @@ namespace ZeroStar.Tests
         static readonly string[] Presets = { "漂移雲", "岩石", "發光水晶", "前景草", "單向平台", "寶箱" };
         static readonly string[] Art = { "Cloud", "Stone", "Crystal", "Grass", "PlatformTile", "Previews/Chest-寶箱" };
         static readonly string[] Layers = { "背景", "地面", "前景" };
-        static readonly string[] Kinds = { "地形","裝飾","實心地形","平台","天空","遠景","中景","近景","前景","上層遠景","上層中景","火盆","水晶","出生點","傳送門","寶箱","祭壇","機關","危險物","雲","草叢","箱子","可破壞水晶","積水","吊飾","小生物","蟲群","居民","敵人出生點","實心地形","單向平台","獎勵寶箱" };
+        static readonly string[] Kinds = { "地形","裝飾","實心地形","平台","天空","遠景","中景","近景","前景","上層遠景","上層中景","火盆","水晶","出生點","傳送門","寶箱","祭壇","機關","危險物","雲","草叢","箱子","可破壞水晶","積水","吊飾","小生物","蟲群","居民","敵人出生點","實心地形","單向平台","獎勵寶箱","攀爬區","樓梯踏面","城鎮路標","重複裝飾" };
         readonly List<Component> items = new List<Component>();
         GameObject listRoot;
         bool dirty = true, advanced;
@@ -59,6 +59,7 @@ namespace ZeroStar.Tests
                 case StampKind.Back: case StampKind.Far: case StampKind.Mid: case StampKind.Near:
                 case StampKind.UpFar: case StampKind.UpMid: case StampKind.Cloud: return 1;
                 case StampKind.Decor: case StampKind.Solid: case StampKind.Platform: case StampKind.Terrain: case StampKind.PaintedGround: case StampKind.PaintedPlatform: return 2;
+                case StampKind.Climb: case StampKind.TownStep: case StampKind.PaintedDetail: return 2;
                 case StampKind.Start: case StampKind.EnemySpawn: case StampKind.Resident: case StampKind.Critter: return 5;
                 default: return 4;
             }
@@ -169,10 +170,17 @@ namespace ZeroStar.Tests
                     sr.sortingOrder=SortOrder(piece.layer);
                 }
             }
-            else if(entry is WorldStamp s && (s.kind==StampKind.Decor || s.kind==StampKind.Solid || s.kind==StampKind.Platform || s.kind==StampKind.Terrain))
+            else if(entry is WorldStamp s)
             {
-                advanced=EditorGUILayout.Foldout(advanced,"更多設定",true);
-                if(advanced){ Field("blocksLight","遮光"); Field("blocksSparks","擋住火星"); obj.ApplyModifiedProperties(); }
+                if(s.kind==StampKind.Climb || s.kind==StampKind.TownStep || s.index<0 && (s.kind==StampKind.Solid || s.kind==StampKind.Platform))
+                    Field("size","尺寸（遊戲像素）");
+                if(s.kind==StampKind.TownMarker) Field("role","路標目的地");
+                if(s.kind==StampKind.Decor || s.kind==StampKind.Solid || s.kind==StampKind.Platform || s.kind==StampKind.Terrain)
+                {
+                    advanced=EditorGUILayout.Foldout(advanced,"更多設定",true);
+                    if(advanced){ Field("blocksLight","遮光"); Field("blocksSparks","擋住火星"); }
+                }
+                if(obj.ApplyModifiedProperties()) Invalidate();
             }
         }
         static int SortOrder(SceneryLayer layer)=>layer==SceneryLayer.Sky?-20:layer==SceneryLayer.Foreground?30010:1500;

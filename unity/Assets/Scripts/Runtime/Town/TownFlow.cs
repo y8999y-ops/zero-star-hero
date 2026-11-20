@@ -39,10 +39,10 @@ namespace ZeroStar
         static bool Dark(int x, int y) { uint c = main[y * TOWN_W + x]; return (c & 255) + ((c >> 8) & 255) + ((c >> 16) & 255) < 150; }   // 黑色外框
         static bool Solid(int x, int y) => x >= 0 && x < TOWN_W && y >= 0 && y < BOTTOM && main[y * TOWN_W + x] != 0;
 
-        public static void Build(uint[] mainLayer, int[] topY)
+        public static void Build(uint[] mainLayer, int[] topY, WorldComposition layout = null)
         {
             main = mainLayer; Paths.Clear();
-            TownStructure.Build(mainLayer);   // 有結構圖的建築照結構圖流
+            TownStructure.Build(mainLayer, layout);   // 有結構圖的建築照結構圖流
             int N = TOWN_W * H;
             // ---- 1. 距離場（兩趟掃描，八個方向，斜的算 1.41）
             var D = new float[N];

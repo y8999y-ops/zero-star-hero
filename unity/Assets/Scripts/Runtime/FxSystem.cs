@@ -9,7 +9,12 @@ namespace ZeroStar
     {
         const int MAX = 70;
         // 一個特效：烘焙動畫（Playing）或即時特效（FxRun，pixelfx 翻成 C# 的）
-        class E { public Playing Baked; public FxRun Live; public bool Back, Keep; public double Speed; public double X => Baked != null ? Baked.X : Live.Options.X ?? 0; }
+        class E
+        {
+            public Playing Baked; public FxRun Live; public bool Back, Keep; public double Speed;
+            public double X => Baked != null ? Baked.X : Live.Options.X ?? 0;
+            public double Y => Baked != null ? Baked.Y : Live.Options.Y ?? 0;
+        }
         readonly List<E> list = new List<E>();
         static readonly Dictionary<string, FxDef> DEFS = new Dictionary<string, FxDef>
         {
@@ -18,6 +23,7 @@ namespace ZeroStar
             ["collect-burst"] = PixelFX.Fx.CollectBurst.Def, ["rune-circle"] = PixelFX.Fx.RuneCircle.Def, ["sunburst"] = PixelFX.Fx.Sunburst.Def,
             ["ground-slam"] = PixelFX.Fx.GroundSlam.Def, ["star-fall"] = PixelFX.Fx.StarFall.Def, ["level-up"] = PixelFX.Fx.LevelUp.Def, ["poof"] = PixelFX.Fx.Poof.Def, ["splash"] = PixelFX.Fx.Splash.Def, ["treasure-chest"] = PixelFX.Fx.TreasureChest.Def,
             ["shooting-stars"] = PixelFX.Fx.ShootingStars.Def, ["frog"] = PixelFX.Fx.Frog.Def, ["town-rain"] = PixelFX.Fx.TownRain.Def,
+            ["sewer-current"] = PixelFX.Fx.SewerCurrent.Def,
             ["parry"] = PixelFX.Fx.Parry.Def, ["quest-complete"] = PixelFX.Fx.QuestComplete.Def, ["quest-complete-zh"] = PixelFX.Fx.QuestCompleteZh.Def, ["coin-collect"] = PixelFX.Fx.CoinCollect.Def,
             ["meteor"] = PixelFX.Fx.Meteor.Def, ["star-meteor"] = PixelFX.Fx.Meteor.StarDef, ["slime"] = PixelFX.Fx.Slime.Def,   // 開場動畫用
         };
@@ -65,12 +71,12 @@ namespace ZeroStar
             foreach (var e in list) { if (e.Baked != null) e.Baked.Update(dt * e.Speed); else e.Live.Update(dt * e.Speed); }
             for (int i = list.Count - 1; i >= 0; i--) if (list[i].Baked != null ? list[i].Baked.Done() : list[i].Live.Done()) list.RemoveAt(i);
         }
-        public void Draw(Frame frame, bool back)
+        public void Draw(Frame frame, bool back, double minY = double.NegativeInfinity)
         {
             double mid = frame.Ox + frame.W / 2.0;
             frame.Defer = Probe == null;   // 光暈先記下來，最後切條一起畫（結果一樣，見 Frame.Defer）
             foreach (var e in list)
-                if (e.Back == back && Math.Abs(e.X - mid) < frame.W / 2.0 + 220) { if (Prof.On) Prof.Mark(back ? "背景特效" : "前景特效"); if (e.Baked != null) e.Baked.Draw(frame); else e.Live.Draw(frame); if (Prof.On) Prof.Mark("fx:" + (e.Baked != null ? "烘焙" : e.Live.Def.Name)); Probe?.Invoke(e.Baked != null ? e.Baked.Anim.Name + " t=" + e.Baked.T.ToString("R") : e.Live.Def.Name + " t=" + e.Live.T.ToString("R")); }
+                if (e.Back == back && e.Y >= minY && Math.Abs(e.X - mid) < frame.W / 2.0 + 220) { if (Prof.On) Prof.Mark(back ? "背景特效" : "前景特效"); if (e.Baked != null) e.Baked.Draw(frame); else e.Live.Draw(frame); if (Prof.On) Prof.Mark("fx:" + (e.Baked != null ? "烘焙" : e.Live.Def.Name)); Probe?.Invoke(e.Baked != null ? e.Baked.Anim.Name + " t=" + e.Baked.T.ToString("R") : e.Live.Def.Name + " t=" + e.Live.T.ToString("R")); }
             frame.Defer = false; frame.Flush();
             if (Prof.On) Prof.Mark("fx:光暈");
         }

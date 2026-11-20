@@ -1,0 +1,17 @@
+{
+  "stage": "town", "day": 0.25, "weather": "clear",
+  "ticks": 1098, "shotTicks": [289,625,1051,1077],
+  "events": [
+    [20,"d","KeyD"],
+    [277,"u","KeyD"],
+    [289,"d","KeyW"],
+    [459,"u","KeyW"],
+    [471,"d","KeyD"],
+    [613,"u","KeyD"],
+    [625,"d","KeyW"],
+    [755,"u","KeyW"],
+    [767,"d","KeyD"],
+    [1039,"u","KeyD"],
+    [1051,"t","sewer"]
+  ]
+}

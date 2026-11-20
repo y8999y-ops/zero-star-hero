@@ -68,6 +68,7 @@ namespace ZeroStar
         public List<BigCrystal> BigCrystals = new List<BigCrystal>();
         public List<RectD> Solids = new List<RectD>();
         public List<Platform> Platforms = new List<Platform>();
+        public List<Platform> TownSteps = new List<Platform>();
     }
 
     public static class Baked

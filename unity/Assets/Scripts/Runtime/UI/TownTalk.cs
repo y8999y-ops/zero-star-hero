@@ -30,6 +30,8 @@ namespace ZeroStar.UI
                 else if (n.Place == "guild") await Guild(g, dlg, n.Name);
                 else if (n.Place == "workshop") await Workshop(g, dlg, n.Name);
                 else if (n.Place == "inn") await Inn(g, dlg, n.Name);
+                else if (n.Place == "town-waypoint") await Waypoint(g, dlg, n, openMap);
+                else if (n.Place == "town-manhole") await TownWins.W.FadeBlack(0.6f, () => g.TravelTown("sewer"));
                 else await Travel(g, dlg, openMap);
             }
             finally { g.TownBusy = false; }
@@ -79,7 +81,7 @@ namespace ZeroStar.UI
             if (firstInn)
             {
                 await dlg.Talk(name, new[] { "哎呀，新面孔～我是菇媽。", "累了就來睡一晚，血會回滿，公會的任務板也會換一批新的喔。", "出門前吃一道料理，會有加成～" });
-                g.GuideNext("系統：最後，鎮子最右邊的路標。準備好了就去那裡選要去哪。");
+                g.GuideNext("系統：最後，去城門旁的路標。準備好了就去那裡選要去哪。");
             }
             else await dlg.Talk(name, new[] { Rnd.Next() < 0.4 ? INN_CHAT[(int)Math.Floor(Rnd.Next() * INN_CHAT.Length)] : "哎呀，歡迎光臨～要休息還是吃點東西？" });
             if (firstInn) TownWins.W.GuidePulse();   // 第一次打開：「睡一晚」閃一下
@@ -97,6 +99,18 @@ namespace ZeroStar.UI
             if (g.TGuide == 4) g.GuideNext(null);
             if (g.Quests.Active.Count == 0 && g.GuildRegistered) await dlg.Talk("系統", new[] { "……你沒接公會任務喔。打怪是可以，但沒有人會付錢給你。" });
             openMap();
+        }
+
+        static async Task Waypoint(Game g, Dialog dlg, Game.Near here, Action openMap)
+        {
+            var choices = g.TownStops.Where(stop => stop.Id != here.Id)
+                .Select(stop => (label: stop.Name, value: stop.Id)).ToList();
+            if (here.Id == "surface") choices.Insert(0, ("出發・世界地圖", "map"));
+            choices.Add(("留在這裡", "cancel"));
+            string target = await dlg.Ask("路標", "要去哪裡？", choices);
+            if (target == "map") await Travel(g, dlg, openMap);
+            else if (target != null && target != "cancel")
+                await TownWins.W.FadeBlack(0.6f, () => g.TravelTown(target));
         }
     }
 }

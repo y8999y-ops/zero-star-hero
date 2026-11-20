@@ -27,7 +27,8 @@ namespace ZeroStar
         {
             bool bare = !Town && !Endless;   // main.js 的 BARE：有 solids 的大地圖（無限討伐是舊的平地）
             var seedMap=bare && composition!=null ? new GameMap(Data.W,Data.H,composition.OriginalSolids,composition.OriginalPlatforms) : Map;
-            var seedPlatforms=bare || Endless ? composition?.OriginalPlatforms ?? Data.Platforms : Data.Platforms;
+            // 舊鎮的草葉只種在街道，新增的吊橋和踏面有各自的擺設。
+            var seedPlatforms = Town ? new List<Platform>() : bare || Endless ? composition?.OriginalPlatforms ?? Data.Platforms : Data.Platforms;
             var runs = bare ? StageRuns.MainRuns(seedMap) : null;   // main.js 的 RUNS：只有大地圖（BARE）才算地面的區段，城鎮是 null
             var torches = Data.Torches.ToList();
             Scenery = new Scenery(new Scenery.Opts { Floor = Data.Floor, W = Data.W, Platforms = seedPlatforms, Town = Town, NoPuddles = StageId == "1-1", Runs = runs, Fx = Fx, Sfx = Sfx, NowMs = () => SimMs });

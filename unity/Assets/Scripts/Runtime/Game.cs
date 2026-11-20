@@ -380,7 +380,8 @@ namespace ZeroStar
         }
         public void SetTestPosition(Vector2 point)
         {
-            Player.X=point.x; Player.Y=point.y; SnapCam();
+            Player.X=point.x; Player.Y=point.y;
+            if (Town) SnapTownCamera(); else SnapCam();
         }
 #endif
         public readonly string StageId;
@@ -413,7 +414,7 @@ namespace ZeroStar
             Art = Town ? null : new LevelArt(Data);
             if (Town) TownArt.Reset(composition);
             layout?.BindLighting(composition);
-            Map = new GameMap(Data.W, Data.H, Data.Solids, Data.Platforms);
+            Map = new GameMap(Data.W, Data.H, Data.Solids, Data.Platforms, Town ? Data.TownSteps : null);
             InitStage(stage);
             if(Custom && Custom.blank) Chest=null;
             var chestMove=Offset(StampKind.Chest);
@@ -424,6 +425,7 @@ namespace ZeroStar
             for(int i=0;i<Altars.Count;i++){var move=Offset(StampKind.Altar,i);Altars[i].X+=move.x;Altars[i].Y+=move.y;}
             var combos = JsonUtility.FromJson<ComboDef>(Baked.Text("combos"));
             Player = Town ? new Player(120, TownArt.FLOOR, combos) { RankFn = Rank } : new Player(StageD.StartX, Endless ? Data.Floor : StageD.StartY, combos) { RankFn = Rank };
+            if (Town) ReadTownTraversal();
             var startMove=Offset(StampKind.Start); Player.X+=startMove.x; Player.Y+=startMove.y;
             if (from == null) { Equip["weapon"] = Fresh.core; Equip["body"] = Fresh.shell; }
             ApplyStats();
@@ -1011,20 +1013,21 @@ namespace ZeroStar
             Prof.Mark("邏輯");
             var lv = SceneLight.Compute(frame, lights);
             Prof.Mark("光源");
-            if (Town) TownArt.Draw(frame, lv, sceneClock,layout);
+            if (Town) TownArt.Draw(frame, lv, sceneClock, layout, TownUnderground);
             else { Art.Draw(frame, lv, layout); }
             Prof.Mark("場景");
             if (!Town) Art.DrawAtmosphere(frame, sceneClock);
             Prof.Mark("大氣");
-            layout?.Draw(frame, SceneryLayer.Playfield, frame.Color);
+            if (!TownUnderground) layout?.Draw(frame, SceneryLayer.Playfield, frame.Color);
             foreach (var a in Altars) if (Math.Abs(a.X - x - W / 2.0) < W) DrawAltar(frame, a);
             Prof.Mark("S:祭壇"); DrawPlug(frame);   // 王房屋頂的垃圾塞子
-            DrawStageObjects(frame, lv);   // features、props、scenery、hazards
+            if (!TownUnderground) DrawStageObjects(frame, lv);   // 暫時把地面物件留在地上；地下探索物件於第 4 段接入
             if (Town) DrawTownPeople(frame);
             else if (UseT != null) DrawBang(frame, UseT.X, UseT.Top);
             Prof.Mark("S:人"); if (Chest != null && !Chest.Opened && Math.Abs(Chest.X - x - W / 2.0) < W) DrawChestSolid(frame); Prof.Mark("S:寶箱");
             Prof.Mark("場景物件");
-            if (!Ult.On) Fx.Draw(frame, true);
+            double effectTop = TownUnderground ? SewerCeiling : double.NegativeInfinity;
+            if (!Ult.On) Fx.Draw(frame, true, effectTop);
             Drops.Draw(frame, sceneClock);
             foreach (var d in Drops.List) if (d.Item.Kind == "formcore" && d.Hold > 0 && d.HasCenter) CoreArt.DrawBeams(frame, d.Cx, d.Cy, Player.X, Player.Y - 12, sceneClock, d.Item.Form, d.Hold);
             Prof.Mark("背景特效");
@@ -1051,7 +1054,7 @@ namespace ZeroStar
             DrawDeathFx(frame);
             if (Player.KingT > 0) SetFx.DrawKingFront(frame, Player.X, Player.Y - 12, sceneClock);
             Prof.Mark("主角");
-            Fx.Draw(frame, false);
+            Fx.Draw(frame, false, effectTop);
             Prof.Mark("前景特效");
             Combat.Form = Player.Form;
             Combat.Draw(frame);
@@ -1059,7 +1062,7 @@ namespace ZeroStar
             Ult.Draw(frame);
             Prof.Mark("大招畫");
             if (!Town) DrawLowHp(frame);
-            if (Town) { TownPuddles.Player(Player.X, Player.Vx, Player.Grounded); TownArt.DrawWeather(frame, sceneClock); TownArt.DrawFg(frame); }
+            if (Town && !TownUnderground) { TownPuddles.Player(Player.X, Player.Vx, Player.Grounded && Math.Abs(Player.Y - TownArt.FLOOR) < 1); TownArt.DrawWeather(frame, sceneClock); TownArt.DrawFg(frame); }
             if (Director?.Lock != null) DrawBarrier(frame, Director.Lock.Value);
             if (!Town) Art.DrawForeground(frame);
             layout?.Draw(frame, SceneryLayer.Foreground, frame.Color);

@@ -381,7 +381,21 @@ namespace ZeroStar
         {
             if (shotDir != null)
             {
-                while (si < script.Count && script[si].t == tickN) { var e = script[si++]; if (e.type == "f") game.SwitchForm(e.code); else if (e.type == "m") game.Player.Mp = game.Player.MaxMp; else if (e.type == "h") game.Player.Hp = int.Parse(e.code); else if (e.type == "x") game.GainXp(int.Parse(e.code)); else if (e.type == "i") game.DropItem(game.Player.X + 40 * game.Player.Face, game.Player.Y - 12, int.Parse(e.code)); else if (e.type == "d") { game.Input.KeyDown(e.code); if (dlg != null && dlg.Open && e.code == "KeyF") dlg.Next(); } else game.Input.KeyUp(e.code); }   // 自動玩：F 也翻對話
+                while (si < script.Count && script[si].t == tickN)
+                {
+                    var e = script[si++];
+                    if (e.type == "t")
+                    {
+                        if (game.NearNow?.Place == "town-waypoint") game.TravelTown(e.code);
+                    }
+                    else if (e.type == "f") game.SwitchForm(e.code);
+                    else if (e.type == "m") game.Player.Mp = game.Player.MaxMp;
+                    else if (e.type == "h") game.Player.Hp = int.Parse(e.code);
+                    else if (e.type == "x") game.GainXp(int.Parse(e.code));
+                    else if (e.type == "i") game.DropItem(game.Player.X + 40 * game.Player.Face, game.Player.Y - 12, int.Parse(e.code));
+                    else if (e.type == "d") { game.Input.KeyDown(e.code); if (dlg != null && dlg.Open && e.code == "KeyF") dlg.Next(); }
+                    else game.Input.KeyUp(e.code);
+                }
                 if (shotNo < shotAt.Length && tickN == shotAt[shotNo]) { ScreenCapture.CaptureScreenshot(Path.Combine(shotDir, $"play-{shotNo}.png")); shotNo++; }
                 if (tickN % 30 == 0) Debug.Log($"[Perf] 第 {tickN} 步{(game.Ult.On ? "（大招）" : "")}：{screen.Fps:F0} fps，平均 {screen.AvgMs:F2} ms，最慢 {screen.MaxMs:F2} ms，回收 {GC.CollectionCount(0)} 次");
                 if (shotNo >= shotAt.Length && tickN > Math.Max(shotAt[shotAt.Length - 1] + 20, scTicks)) { Debug.Log($"[Shot] 結束：{game.StageId} 主角 {game.Player.X:F1},{game.Player.Y:F1} 通關 {game.StageDone} 離開 {game.Leaving}"); Application.Quit(); }
@@ -429,7 +443,7 @@ namespace ZeroStar
         // ---- 手機觸控（input.js 的 initTouch）：左半邊拖動＝走、往上快滑＝跳、往下快滑＝穿平台；右下角攻擊（按住）、閃避
         bool touchMode;
         const double DEAD = 10, FULL = 38, FOLLOW = 60, SWIPE = 26, SWIPE_AIR = 16, SWIPE_TIME = 0.18;
-        int stickId = -1; double ax, ay, lockT; readonly List<(double y, double t)> hist = new List<(double, double)>();
+        int stickId = -1; double ax, ay, lockT, stickStart; bool stickDragged; readonly List<(double y, double t)> hist = new List<(double, double)>();
         Vector2 knobOff;
         readonly Dictionary<int, string> btnOf = new Dictionary<int, string>();
         static float Css => Screen.dpi > 0 ? Mathf.Max(1, Screen.dpi / 160f) : 2.5f;
@@ -449,8 +463,8 @@ namespace ZeroStar
                     else if (hud.Blocks(t.position)) btnOf[t.fingerId] = "ui";   // 按在形態格、選單上：給介面處理
                     else if (p.x < Screen.width / 2f && !dlg.Open)
                     {
-                        if (inp.Air) { inp.Press("jump"); inp.JumpHeld = true; }   // 在空中點一下左半邊＝二段跳
-                        if (stickId < 0) { stickId = t.fingerId; ax = x; ay = y; hist.Clear(); hist.Add((y, now)); knobOff = Vector2.zero; }
+                        if (inp.Air && !game.TownClimbing) { inp.Press("jump"); inp.JumpHeld = true; }   // 在空中點一下左半邊＝二段跳
+                        if (stickId < 0) { stickId = t.fingerId; ax = x; ay = y; stickStart = now; stickDragged = false; hist.Clear(); hist.Add((y, now)); knobOff = Vector2.zero; }
                     }
                 }
                 if (btnOf.TryGetValue(t.fingerId, out var b) && b == "attack" && t.phase != TouchPhase.Ended && t.phase != TouchPhase.Canceled) atk = true;
@@ -458,23 +472,36 @@ namespace ZeroStar
                 if (t.fingerId == stickId && (t.phase == TouchPhase.Moved || t.phase == TouchPhase.Stationary))
                 {
                     double dx = x - ax;
+                    if (Math.Abs(dx) > DEAD || Math.Abs(y - ay) > DEAD) stickDragged = true;
                     if (Math.Abs(dx) > FOLLOW) { ax += dx - Math.Sign(dx) * FOLLOW; dx = x - ax; }
                     inp.TouchMove = Math.Abs(dx) < DEAD ? 0 : Math.Sign(dx) * Math.Min(1, (Math.Abs(dx) - DEAD) / (FULL - DEAD) * 0.6 + 0.4);
                     hist.Add((y, now));
                     while (hist.Count > 2 && now - hist[0].t > SWIPE_TIME) hist.RemoveAt(0);
                     double maxY = double.MinValue, minY = double.MaxValue; foreach (var h in hist) { maxY = Math.Max(maxY, h.y); minY = Math.Min(minY, h.y); }
                     double up = y - maxY, down = y - minY;
-                    if (up < -(inp.Air ? SWIPE_AIR : SWIPE) && now > lockT) { inp.Press("jump"); lockT = now + 0.22; inp.JumpHeld = true; hist.Clear(); hist.Add((y, now)); ay = y; }
-                    else if (down > SWIPE && !inp.Air) { inp.Press("drop"); hist.Clear(); hist.Add((y, now)); ay = y; }
+                    if (game.TownClimbing || game.TownNearLadder)
+                    {
+                        inp.TouchVertical = Math.Abs(y - ay) < DEAD ? 0 : Math.Max(-1, Math.Min(1, (ay - y) / 28));
+                    }
+                    else
+                    {
+                        inp.TouchVertical = 0;
+                        if (up < -(inp.Air ? SWIPE_AIR : SWIPE) && now > lockT) { inp.Press("jump"); lockT = now + 0.22; inp.JumpHeld = true; hist.Clear(); hist.Add((y, now)); ay = y; }
+                        else if (down > SWIPE && !inp.Air) { inp.Press("drop"); hist.Clear(); hist.Add((y, now)); ay = y; }
+                    }
                     knobOff = new Vector2((float)Math.Max(-34, Math.Min(34, dx)), (float)Math.Max(-30, Math.Min(30, y - ay)));   // CSS px
                 }
                 if (t.phase == TouchPhase.Ended || t.phase == TouchPhase.Canceled)
                 {
                     btnOf.Remove(t.fingerId);
-                    if (t.fingerId == stickId) { stickId = -1; inp.TouchMove = 0; inp.JumpHeld = false; }
+                    if (t.fingerId == stickId)
+                    {
+                        if (game.TownClimbing && !stickDragged && now - stickStart < 0.22 && t.phase == TouchPhase.Ended) inp.Press("jump");
+                        stickId = -1; inp.TouchMove = inp.TouchVertical = 0; inp.JumpHeld = false;
+                    }
                 }
             }
-            if (dlg.Open) { btnOf.Clear(); if (stickId >= 0) { stickId = -1; inp.TouchMove = 0; inp.JumpHeld = false; } atk = absorbHeld = false; }   // 對話打開：放開所有觸控
+            if (dlg.Open) { btnOf.Clear(); if (stickId >= 0) { stickId = -1; inp.TouchMove = inp.TouchVertical = 0; inp.JumpHeld = false; } atk = absorbHeld = false; }   // 對話打開：放開所有觸控
             inp.TouchAttack = atk;
             inp.TouchAbsorb = absorbHeld;
             hud.Pad.Down.Clear(); foreach (var v in btnOf.Values) hud.Pad.Down.Add(v);
@@ -531,11 +558,16 @@ namespace ZeroStar
             var sc = Load(path);
             if (sc.tree == "max") g.MaxTree();
             var root = (OrderedDict)MiniJson.Parse(txt);
-            var V = variant != "" ? (OrderedDict)((OrderedDict)root["variants"])[variant] : (OrderedDict)root["starter"];
-            g.Lv = V.ContainsKey("lv") ? (int)(double)V["lv"] : 1;
-            foreach (var k in System.Linq.Enumerable.ToList(g.Equip.Keys)) g.Equip[k] = null;   // 存檔裡只有腳本給的那幾件
-            var eq = (OrderedDict)V["equip"];
-            foreach (var slot in eq.Order) g.Equip[slot] = SpecItem((OrderedDict)eq[slot]);
+            var V = variant != "" ? (OrderedDict)((OrderedDict)root["variants"])[variant]
+                : root.ContainsKey("starter") ? (OrderedDict)root["starter"] : null;
+            // 只測場景輸入的腳本可以直接沿用開局裝備。
+            if (V != null)
+            {
+                g.Lv = V.ContainsKey("lv") ? (int)(double)V["lv"] : 1;
+                foreach (var k in System.Linq.Enumerable.ToList(g.Equip.Keys)) g.Equip[k] = null;   // 存檔裡只有腳本給的那幾件
+                var eq = (OrderedDict)V["equip"];
+                foreach (var slot in eq.Order) g.Equip[slot] = SpecItem((OrderedDict)eq[slot]);
+            }
             g.ApplyStats();
             g.Player.Hp = g.Player.MaxHp;
             foreach (var f in new[] { "star", "slime", "bat", "can", "spike" }) g.FormsOwned[f] = 0;

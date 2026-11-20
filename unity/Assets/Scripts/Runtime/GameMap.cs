@@ -9,15 +9,32 @@ namespace ZeroStar
         public const int TILE = 8;
         public double W, H;
         public readonly List<Platform> Platforms;
+        readonly List<Platform> steps;
         readonly int gw, gh;
         readonly byte[] grid;
 
-        public GameMap(double w, double h, List<RectD> solids, List<Platform> platforms)
+        public GameMap(double w, double h, List<RectD> solids, List<Platform> platforms, List<Platform> steps = null)
         {
             W = w; H = h; Platforms = platforms;
+            this.steps = steps;
             gw = (int)Math.Ceiling(w / TILE); gh = (int)Math.Ceiling(h / TILE);
             grid = new byte[gw * gh];
             foreach (var r in solids) SetSolid(r, true);
+        }
+
+        // 標成樓梯的踏面才會自動抬腳，普通的單向平台仍然要跳上去。
+        public double? StepAt(double x, double nextX, double footY, double height)
+        {
+            if (steps == null || nextX == x) return null;
+            double? result = null;
+            foreach (var step in steps)
+            {
+                if (step.Y >= footY || footY - step.Y > TILE) continue;
+                if (nextX < step.X || nextX >= step.X + step.W) continue;
+                if (CeilingAt(nextX, footY, step.Y, height) != null) continue;
+                if (result == null || step.Y < result) result = step.Y;
+            }
+            return result;
         }
 
         public void SetSolid(RectD r, bool on)
