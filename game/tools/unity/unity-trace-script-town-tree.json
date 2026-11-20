@@ -1,0 +1,48 @@
+{
+ "note": "碎星鎮大樹：傳到觀星台，往右走過吊橋到樹冠，再往右",
+ "stage": "town",
+ "day": 0.25,
+ "weather": "clear",
+ "town": {
+  "built": [
+   "plaza",
+   "tower",
+   "terrace",
+   "wall",
+   "sewer",
+   "tree",
+   "star",
+   "house-a",
+   "house-b",
+   "house-c"
+  ]
+ },
+ "ticks": 900,
+ "events": [
+  [
+   10,
+   "d",
+   "KeyA"
+  ],
+  [
+   34,
+   "u",
+   "KeyA"
+  ],
+  [
+   45,
+   "t",
+   "upper"
+  ],
+  [
+   90,
+   "d",
+   "KeyD"
+  ],
+  [
+   640,
+   "u",
+   "KeyD"
+  ]
+ ]
+}

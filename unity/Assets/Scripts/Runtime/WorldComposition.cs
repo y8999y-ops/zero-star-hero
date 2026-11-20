@@ -20,9 +20,10 @@ namespace ZeroStar
         {
             root=prefab.transform;
             // 原圖先鋪地面、再放道具、最後疊平台。Hierarchy 分組並非繪製順序。
-            // 鐘樓畫在吊橋之後（2026-11-20）：吊橋的端柱、扶手繩不會蓋到鐘面，看起來是綁在鐘樓側面。碰撞不變。
+            // 鐘樓、大樹畫在吊橋之後（2026-11-20）：吊橋的端柱、扶手繩不會蓋到鐘面；樹冠的吊橋穿進葉子裡，不是貼在葉子上面。
+            // 梯子畫在最上面（5）：爬的地方一定看得到。碰撞不變。
             allStamps=prefab.GetComponentsInChildren<WorldStamp>()
-                .OrderBy(s => s.kind==StampKind.Decor && s.role=="bell-tower" ? 4 : s.kind==StampKind.TownPathArt || s.kind==StampKind.TownBridge ? 3 : s.kind==StampKind.Platform ? 2 : s.kind==StampKind.Decor ? 1 : 0)
+                .OrderBy(s => (s.kind==StampKind.PaintedDetail || s.kind==StampKind.TownPathArt) && s.name.Contains("梯") ? 5 : s.kind==StampKind.Decor && (s.role=="bell-tower" || s.role=="big-tree") ? 4 : s.kind==StampKind.TownPathArt || s.kind==StampKind.TownBridge ? 3 : s.kind==StampKind.Platform ? 2 : s.kind==StampKind.Decor ? 1 : 0)
                 .ThenBy(s => s.TryGetComponent<SpriteRenderer>(out var renderer) ? renderer.sortingOrder : 0).ToArray();
             SelectTownStamps(null);
         }
