@@ -17,7 +17,7 @@ namespace ZeroStar
             (70, 140, 255, ROOF), (110, 110, 120, SHELTER), (255, 150, 40, AVOID), (255, 230, 40, GUIDE),
             (255, 40, 40, DRIP), (255, 0, 255, POINT), (40, 230, 120, LAND),
         };
-        const int FLOOR = TownArt.FLOOR;
+        static int FLOOR => TownArt.FLOOR;
         // 城鎮的寬高每次都讀 TownArt（擴大碎星鎮時改成不是固定值也能用；陣列都在 Build 時照當時的大小配）
         static int TOWN_W => TownArt.TOWN_W; static int H => TownArt.H;
 

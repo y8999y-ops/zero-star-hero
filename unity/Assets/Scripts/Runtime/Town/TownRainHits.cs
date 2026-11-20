@@ -14,10 +14,10 @@ namespace ZeroStar
 {
     public static class TownRainHits
     {
-        const int FLOOR = TownArt.FLOOR;
+        static int FLOOR => TownArt.FLOOR;
         // 城鎮的寬高每次都讀 TownArt（擴大碎星鎮時改成不是固定值也能用；陣列都在 Build 時照當時的大小配）
         static int TOWN_W => TownArt.TOWN_W; static int H => TownArt.H;
-        const int WET_BOTTOM = FLOOR - 4;        // 再往下是草皮、地面（積水管）
+        static int WET_BOTTOM => FLOOR - 4;     // 再往下是草皮、地面（積水管）
 
         static uint[] main; static byte[] emit;
         static int[] topY;                        // 每一欄的接雨面（-1＝沒有）

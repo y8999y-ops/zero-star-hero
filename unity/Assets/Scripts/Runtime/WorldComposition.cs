@@ -102,6 +102,24 @@ namespace ZeroStar
         public List<RectD> OriginalSolids {get;private set;}
         public List<Platform> OriginalPlatforms {get;private set;}
         public List<(double x,double y)> OriginalTorches {get;private set;}
+        internal bool ApplyTownCollision(LevelData data)
+        {
+            bool hasStreet = false;
+            foreach (var s in stamps)
+            {
+                var pos = s.Position(root);
+                if (s.size.x <= 0) continue;
+                if (s.kind == StampKind.Solid || s.kind == StampKind.PaintedGround)
+                {
+                    if (s.size.y <= 0) continue;
+                    hasStreet |= s.role == "town-street";
+                    data.Solids.Add(new RectD { X = pos.x, Y = pos.y, W = s.size.x, H = s.size.y });
+                }
+                else if (s.kind == StampKind.Platform || s.kind == StampKind.PaintedPlatform)
+                    data.Platforms.Add(new Platform { X = pos.x, Y = pos.y, W = s.size.x });
+            }
+            return hasStreet;
+        }
         public void AppendRewards(List<Features.Def> defs)
         {
             foreach(var s in stamps) if(s.kind==StampKind.RewardChest)
@@ -130,7 +148,12 @@ namespace ZeroStar
                 if(sr && sr.enabled && sr.sprite && !images.TryGetValue(sr.sprite,out img)) images[sr.sprite]=img=ImageOf(sr.sprite);
                 if(originalLayers.TryGetValue(s.kind,out var layer))
                 {
-                    if(img!=null && layer!=null) Blit(img,layer.Px,layer.W,layer.H,pos,null,null,s.original,true);
+                    if(img!=null && layer!=null)
+                    {
+                        var layerPos = data.Stage == "town" && (s.kind == StampKind.Far || s.kind == StampKind.Mid || s.kind == StampKind.Fg)
+                            ? pos - new Vector2Int(0, TownArt.StreetTop) : pos;
+                        Blit(img,layer.Px,layer.W,layer.H,layerPos,null,null,s.original,true);
+                    }
                     if(s.kind==StampKind.Near) foreach(var l in data.CrystalLights){l.X+=delta.x;l.Y+=delta.y;}
                     continue;
                 }
@@ -156,8 +179,10 @@ namespace ZeroStar
                         var crystal=data.BigCrystals[s.index];crystal.X+=delta.x;crystal.Y+=delta.y;crystal.X0=pos.x;crystal.Y0=pos.y;
                         if(img!=null){crystal.Img=img;crystals.Add(crystal);} continue;
                     case StampKind.Solid:
+                        if(data.Stage=="town")continue;
                         var box=data.Solids[s.index];box.X+=delta.x;box.Y+=delta.y;solids.Add(box);break;
                     case StampKind.Platform:
+                        if(data.Stage=="town")continue;
                         var pl=data.Platforms[s.index];pl.X+=delta.x;pl.Y+=delta.y;platforms.Add(pl);break;
                     case StampKind.Terrain: case StampKind.Decor: break;
                     default: continue;

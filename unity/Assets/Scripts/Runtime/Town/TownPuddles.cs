@@ -13,9 +13,11 @@ namespace ZeroStar
 {
     public static class TownPuddles
     {
-        const int FLOOR = TownArt.FLOOR;
+        static int FLOOR => TownArt.FLOOR;
         static int TOWN_W => TownArt.TOWN_W;   // 擴大碎星鎮時不是固定值也能用
-        const double TOP = FLOOR + 1, MID = FLOOR + 3.5, HALF = 3.2;   // 積水所在的草皮帶：第 185～190 列
+        static double TOP => FLOOR + 1;
+        static double MID => FLOOR + 3.5;
+        const double HALF = 3.2;
         const double SQUASH = 2.6;                                    // 倒影壓扁的倍數
 
         static double wet = -1;      // 積水程度 0～1（-1＝剛進場，照現在的雨直接設好）

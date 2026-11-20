@@ -47,7 +47,7 @@ namespace ZeroStar.EditorTools
         static void Common()
         {
             if (!File.Exists(MAIN)) MakeScene();
-            SubsetFont();
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-skip-font-subset") < 0) SubsetFont();
             PlayerSettings.companyName = "y8999y";
             PlayerSettings.productName = "轉生成星星碎片的我";
             PlayerSettings.bundleVersion = "0.5.0";

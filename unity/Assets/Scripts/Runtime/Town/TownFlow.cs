@@ -11,10 +11,10 @@ namespace ZeroStar
 {
     public static class TownFlow
     {
-        const int FLOOR = TownArt.FLOOR;
+        static int FLOOR => TownArt.FLOOR;
         // 城鎮的寬高每次都讀 TownArt（擴大碎星鎮時改成不是固定值也能用；陣列都在 Build 時照當時的大小配）
         static int TOWN_W => TownArt.TOWN_W; static int H => TownArt.H;
-        const int BOTTOM = FLOOR - 4;
+        static int BOTTOM => FLOOR - 4;
         public enum End { Drip, Ground, Merge, Stop }
         public class Path { public readonly List<(int x, int y)> Px = new List<(int, int)>(); public End End; }
         public static readonly List<Path> Paths = new List<Path>();

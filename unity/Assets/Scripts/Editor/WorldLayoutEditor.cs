@@ -51,13 +51,24 @@ namespace ZeroStar.Tests
                 var g=new Game(id);
                 if(id=="town")
                 {
+                    if (g.Data.W != 2400 || g.Data.H != 560 || g.Player.Y != TownArt.FLOOR
+                        || !g.Map.SolidAt(1800, TownArt.FLOOR + 0.5) || g.Map.SolidAt(1800, TownArt.FLOOR - 0.5))
+                        throw new Exception("擴建城鎮大小、出生點或右側街道路面不正確");
                     var copy=UnityEngine.Object.Instantiate(prefab);
                     try
                     {
                         var guild=copy.GetComponentsInChildren<WorldStamp>().First(s=>s.role=="guild");
                         var resident=TownArt.NPCS[0].x;guild.transform.position+=Vector3.right*13;
-                        TownArt.Reset(new WorldComposition(copy));
+                        var ground = copy.GetComponentsInChildren<WorldStamp>().Single(s => s.role == "town-street");
+                        ground.transform.position += Vector3.down * GameMap.TILE;
+                        var moved = new WorldComposition(copy);
+                        TownArt.Reset(moved);
                         if(TownArt.NPCS[0].x!=resident+13) throw new Exception("公會櫃檯與店面位置不同步");
+                        var data = TownArt.Level(moved);
+                        var map = new GameMap(data.W, data.H, data.Solids, data.Platforms);
+                        if (map.SolidAt(800, TownArt.FLOOR + 0.5)
+                            || !map.SolidAt(800, TownArt.FLOOR + GameMap.TILE + 0.5))
+                            throw new Exception("搬動城鎮地面擺設時，碰撞沒有跟著搬");
                     }
                     finally{UnityEngine.Object.DestroyImmediate(copy);TownArt.Reset(WorldComposition.Load(id));}
                 }

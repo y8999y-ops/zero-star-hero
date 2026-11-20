@@ -77,7 +77,7 @@ namespace ZeroStar
                 UpdateStageObjectsPlayer(dt);
                 Folk.Update(dt, Player.X);
                 NearNow = TownNearby(Player.X,Player.Y);
-                if (NearNow == null) { var f = Folk.Nearby(Player.X); if (f != null) NearNow = new Near { Id = f.Id, Name = f.Info.Name, X = f.X, FolkO = f, Hgt = TownArt.NpcSize(f.Id).h }; }
+                if (NearNow == null && Math.Abs(TownArt.FLOOR - Player.Y) < 32) { var f = Folk.Nearby(Player.X); if (f != null) NearNow = new Near { Id = f.Id, Name = f.Info.Name, X = f.X, FolkO = f, Hgt = TownArt.NpcSize(f.Id).h }; }
                 if (atk && !prevTownAtk && NearNow != null && Player.Grounded) OnTalk?.Invoke(NearNow);
                 prevTownAtk = atk;
             }
@@ -87,6 +87,7 @@ namespace ZeroStar
             var v = ViewRect();
             CamX = DeadFollow(CamX + W / 2.0, Player.X + LookAhead(dt, 30), 14, 5, dt) - W / 2.0;
             CamX = Math.Max(-v.x0, Math.Min(TownArt.TOWN_W - v.x0 - v.w, CamX));
+            FollowVertical(dt, TownArt.LegacyFloor, -v.y0, TownArt.StreetTop);
             Say.Update();
             UpdateBubble(dt);
         }

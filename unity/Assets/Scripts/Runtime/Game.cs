@@ -408,7 +408,7 @@ namespace ZeroStar
             Ult = new Ult(this);
             FxSystem.WarmUp();
             SceneLight.GlobalLv = 0;
-            Data = Town ? TownArt.Level() : Baked.Level(stage);
+            Data = Town ? TownArt.Level(composition) : Baked.Level(stage);
             if (!Town) composition?.Apply(Data);
             Art = Town ? null : new LevelArt(Data);
             if (Town) TownArt.Reset(composition);
@@ -428,7 +428,7 @@ namespace ZeroStar
             if (from == null) { Equip["weapon"] = Fresh.core; Equip["body"] = Fresh.shell; }
             ApplyStats();
             Player.Hp = Player.MaxHp;
-            CamY = Math.Max(0, Data.H - H);
+            CamY = Town ? TownArt.StreetTop : Math.Max(0, Data.H - H);
             InitStageObjects();   // 場景物件、機關（載入時取亂數的在這裡）
             var brazier = Baked.Anim("brazier");
             foreach (var t in Data.Torches) Fx.Spawn(brazier, t.x, t.y, back: true, keep: true).Update(Rnd.Next() * 3);
@@ -737,17 +737,18 @@ namespace ZeroStar
             CamX = DeadFollow(CamX + W / 2.0, Player.X + LookAhead(dt, 36), 14, 5, dt) - W / 2.0;
             CamX = Math.Max(-v.x0, Math.Min(Data.W - v.x0 - v.w, CamX));
             if (Director?.Lock != null) CamX = Math.Max(Director.Lock.Value.l - v.x0, Math.Min(Director.Lock.Value.r - v.x0 - v.w, CamX));
-            if (Data.H > H)
-            {
-                if (camLand != null && Player.Grounded) camLand = null;
-                if (camLand != null) camRefY = camLand;
-                else if (Player.Grounded || camRefY == null) camRefY = Player.Y;
-                else if (Player.Y > camRefY) camRefY = Player.Y;
-                else if (Player.Y < camRefY - 72) camRefY = Player.Y + 72;
-                double wy = camRefY.Value - H * 0.62, rate = 3 + Math.Min(4, Math.Max(0, Player.Vy) / 100);
-                CamY += (wy - CamY) * (1 - Math.Exp(-rate * dt));
-                CamY = Math.Max(-v.y0, Math.Min(Data.H - v.y0 - v.h, CamY));
-            }
+            if (Data.H > H) FollowVertical(dt, H * 0.62, -v.y0, Data.H - v.y0 - v.h);
+        }
+        void FollowVertical(double dt, double screenY, double minCamY, double maxCamY)
+        {
+            if (camLand != null && Player.Grounded) camLand = null;
+            if (camLand != null) camRefY = camLand;
+            else if (Player.Grounded || camRefY == null) camRefY = Player.Y;
+            else if (Player.Y > camRefY) camRefY = Player.Y;
+            else if (Player.Y < camRefY - 72) camRefY = Player.Y + 72;
+            double wy = camRefY.Value - screenY, rate = 3 + Math.Min(4, Math.Max(0, Player.Vy) / 100);
+            CamY += (wy - CamY) * (1 - Math.Exp(-rate * dt));
+            CamY = Math.Max(minCamY, Math.Min(maxCamY, CamY));
         }
         void Separate(double dt)
         {

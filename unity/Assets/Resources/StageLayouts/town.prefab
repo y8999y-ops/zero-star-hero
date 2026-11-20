@@ -51,7 +51,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 35
-  original: {x: 1198, y: 184}
+  original: {x: 1198, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &151986710747299244
@@ -105,7 +105,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 1
-  original: {x: 510, y: 184}
+  original: {x: 510, y: 440}
   role: golem
   lights: 
 --- !u!1 &331811025668459186
@@ -159,7 +159,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 644, y: 106}
+  original: {x: 644, y: 362}
   role: "\u88DD\u98FE"
   lights: 
 --- !u!212 &3557402072688805780
@@ -457,7 +457,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 33
-  original: {x: 1075, y: 184}
+  original: {x: 1075, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &643014071707260324
@@ -485,7 +485,7 @@ Transform:
   m_GameObject: {fileID: 643014071707260324}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: -256, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -635,7 +635,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 1024, y: 154}
+  original: {x: 1024, y: 410}
   role: "\u88DD\u98FE"
   lights: 
 --- !u!212 &5706111569288398925
@@ -815,7 +815,7 @@ Transform:
   m_GameObject: {fileID: 683276467511106984}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: -256, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -1009,7 +1009,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 29
-  original: {x: 967, y: 184}
+  original: {x: 967, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &747017686058977328
@@ -1179,7 +1179,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 1126, y: 106}
+  original: {x: 1126, y: 362}
   role: sign
   lights: 
 --- !u!212 &7267175867250564579
@@ -1293,7 +1293,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 6
-  original: {x: 251, y: 184}
+  original: {x: 251, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &986092161010407311
@@ -1347,7 +1347,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 18
-  original: {x: 643, y: 184}
+  original: {x: 643, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &1095018302631792264
@@ -1493,7 +1493,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 4
-  original: {x: 960, y: 184}
+  original: {x: 960, y: 440}
   role: Critter
   lights: 
 --- !u!1 &1261081066263721781
@@ -1547,7 +1547,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 27
-  original: {x: 914, y: 184}
+  original: {x: 914, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &1266284807761041021
@@ -1693,7 +1693,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 0, y: 0}
+  original: {x: 0, y: 256}
   role: Far
   lights: 
 --- !u!212 &6849173711531156297
@@ -1807,7 +1807,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 28
-  original: {x: 950, y: 184}
+  original: {x: 950, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &1318563209949485816
@@ -2069,7 +2069,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 7
-  original: {x: 265, y: 184}
+  original: {x: 265, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &1413132194844443813
@@ -2215,7 +2215,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 2
-  original: {x: 640, y: 184}
+  original: {x: 640, y: 440}
   role: Critter
   lights: 
 --- !u!1 &1575639193316979160
@@ -2361,7 +2361,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 364, y: 106}
+  original: {x: 364, y: 362}
   role: lamp
   lights: 26000000i
 --- !u!212 &1163180548122838807
@@ -2891,7 +2891,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 1
-  original: {x: 282, y: 184}
+  original: {x: 282, y: 440}
   role: Critter
   lights: 
 --- !u!1 &1917108450097815594
@@ -3129,7 +3129,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 730, y: 162}
+  original: {x: 730, y: 418}
   role: "\u88DD\u98FE"
   lights: 
 --- !u!212 &5989912092137417974
@@ -3243,7 +3243,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 1
-  original: {x: 720, y: 140}
+  original: {x: 720, y: 396}
   role: Swarm
   lights: 
 --- !u!1 &2151475463912206967
@@ -3297,7 +3297,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 0
-  original: {x: 198, y: 184}
+  original: {x: 198, y: 440}
   role: clerk
   lights: 
 --- !u!1 &2190902943993705173
@@ -3351,7 +3351,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 1088, y: 162}
+  original: {x: 1088, y: 418}
   role: "\u88DD\u98FE"
   lights: 
 --- !u!212 &3084698401066850017
@@ -3414,6 +3414,59 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!1 &2257827146241991401
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8387858373551159018}
+  - component: {fileID: 5287933434274630430}
+  m_Layer: 0
+  m_Name: "\u897F\u754C"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8387858373551159018
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2257827146241991401}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 9075683264422215135}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5287933434274630430
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2257827146241991401}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba925f2ca43032f4e88c74bb60f14274, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
+  kind: 2
+  size: {x: 16, y: 560}
+  rewardId:
+  blocksLight: 0
+  blocksSparks: 0
+  index: -1
+  original: {x: 0, y: 0}
+  role: town-west
+  lights:
 --- !u!1 &2334708103258460353
 GameObject:
   m_ObjectHideFlags: 0
@@ -3465,7 +3518,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 10
-  original: {x: 366, y: 184}
+  original: {x: 366, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &2365072976695793941
@@ -3611,7 +3664,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 25
-  original: {x: 878, y: 184}
+  original: {x: 878, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &2415224804385685588
@@ -3757,7 +3810,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 0
-  original: {x: 30, y: 184}
+  original: {x: 30, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &2572248472436259658
@@ -3852,6 +3905,40 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!1 &2605860524022998751
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 9075683264422215135}
+  m_Layer: 0
+  m_Name: "\u57CE\u93AE\u5730\u5F62"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &9075683264422215135
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2605860524022998751}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 4647844093727818073}
+  - {fileID: 8387858373551159018}
+  - {fileID: 1980043013508575211}
+  m_Father: {fileID: 2173468228228107806}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2687099012200556203
 GameObject:
   m_ObjectHideFlags: 0
@@ -3903,7 +3990,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 1
-  original: {x: 44, y: 184}
+  original: {x: 44, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &2738363542673865487
@@ -4049,7 +4136,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 23
-  original: {x: 821, y: 184}
+  original: {x: 821, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &2851526602047857409
@@ -4103,7 +4190,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 0, y: 0}
+  original: {x: 0, y: 256}
   role: Mid
   lights: 
 --- !u!212 &5877476187652411723
@@ -4217,7 +4304,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 2
-  original: {x: 84, y: 184}
+  original: {x: 84, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &3153228182620131043
@@ -4363,7 +4450,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 3
-  original: {x: 870, y: 184}
+  original: {x: 870, y: 440}
   role: Critter
   lights: 
 --- !u!1 &3184458088688866356
@@ -4417,7 +4504,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 346, y: 154}
+  original: {x: 346, y: 410}
   role: "\u88DD\u98FE"
   lights: 
 --- !u!212 &2440888164788528902
@@ -4531,7 +4618,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 14
-  original: {x: 489, y: 184}
+  original: {x: 489, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &3267642490309161817
@@ -4977,7 +5064,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 12
-  original: {x: 441, y: 184}
+  original: {x: 441, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &3737711226060936868
@@ -5031,7 +5118,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 976, y: 106}
+  original: {x: 976, y: 362}
   role: "\u88DD\u98FE"
   lights: 
 --- !u!212 &3865336893419662775
@@ -5145,7 +5232,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 0
-  original: {x: 300, y: 150}
+  original: {x: 300, y: 406}
   role: Swarm
   lights: 
 --- !u!1 &3847281198733127257
@@ -5199,7 +5286,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 21
-  original: {x: 763, y: 184}
+  original: {x: 763, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &3962799305293004024
@@ -5254,7 +5341,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 459, y: 61}
+  original: {x: 459, y: 317}
   role: workshop
   lights: 1b0000001c0000001d0000001e000000i
 --- !u!212 &7974018088068964745
@@ -5644,7 +5731,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 26
-  original: {x: 895, y: 184}
+  original: {x: 895, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &4247590493451559237
@@ -5698,7 +5785,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 17
-  original: {x: 625, y: 184}
+  original: {x: 625, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &4304584557993567632
@@ -5736,6 +5823,7 @@ Transform:
   - {fileID: 7809446215341658503}
   - {fileID: 7753368432663463182}
   - {fileID: 2632546046949899354}
+  - {fileID: 9075683264422215135}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &9222225147563707166
@@ -5893,7 +5981,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 22
-  original: {x: 801, y: 184}
+  original: {x: 801, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &4697952926258063496
@@ -6063,7 +6151,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 744, y: 154}
+  original: {x: 744, y: 410}
   role: "\u88DD\u98FE"
   lights: 
 --- !u!212 &5986324316942110122
@@ -6177,7 +6265,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 16
-  original: {x: 596, y: 184}
+  original: {x: 596, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &4981263623960546068
@@ -6231,7 +6319,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 9
-  original: {x: 326, y: 184}
+  original: {x: 326, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &5028282006370555493
@@ -6327,7 +6415,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 2
-  original: {x: 930, y: 156}
+  original: {x: 930, y: 412}
   role: Swarm
   lights: 
 --- !u!1 &5180511472461376864
@@ -6381,7 +6469,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 678, y: 162}
+  original: {x: 678, y: 418}
   role: "\u88DD\u98FE"
   lights: 
 --- !u!212 &4386611692594233808
@@ -6587,7 +6675,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 13
-  original: {x: 471, y: 184}
+  original: {x: 471, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &5341745769226998896
@@ -6733,7 +6821,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 14, y: 154}
+  original: {x: 14, y: 410}
   role: "\u88DD\u98FE"
   lights: 
 --- !u!212 &6254731656244536756
@@ -7031,7 +7119,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 692, y: 106}
+  original: {x: 692, y: 362}
   role: lamp
   lights: 27000000i
 --- !u!212 &7705500786923040531
@@ -7145,9 +7233,62 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 19
-  original: {x: 682, y: 184}
+  original: {x: 682, y: 440}
   role: Tuft
   lights: 
+--- !u!1 &5814915448963001360
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1980043013508575211}
+  - component: {fileID: 688391374114056963}
+  m_Layer: 0
+  m_Name: "\u6771\u754C"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1980043013508575211
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5814915448963001360}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 2384, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 9075683264422215135}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &688391374114056963
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5814915448963001360}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba925f2ca43032f4e88c74bb60f14274, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
+  kind: 2
+  size: {x: 16, y: 560}
+  rewardId:
+  blocksLight: 0
+  blocksSparks: 0
+  index: -1
+  original: {x: 2384, y: 0}
+  role: town-east
+  lights:
 --- !u!1 &5842576495178963234
 GameObject:
   m_ObjectHideFlags: 0
@@ -7499,7 +7640,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 34
-  original: {x: 1097, y: 184}
+  original: {x: 1097, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &6044670366191550392
@@ -7645,7 +7786,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 400, y: 162}
+  original: {x: 400, y: 418}
   role: "\u88DD\u98FE"
   lights: 
 --- !u!212 &16585028186289233
@@ -7733,7 +7874,7 @@ Transform:
   m_GameObject: {fileID: 6225234446973910214}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: -256, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -7793,7 +7934,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 32
-  original: {x: 1061, y: 184}
+  original: {x: 1061, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &6266653400667295290
@@ -7847,7 +7988,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 5
-  original: {x: 214, y: 184}
+  original: {x: 214, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &6368832205104698579
@@ -8017,7 +8158,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 4, y: 162}
+  original: {x: 4, y: 418}
   role: "\u88DD\u98FE"
   lights: 
 --- !u!212 &2613506492405646590
@@ -8131,7 +8272,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 31
-  original: {x: 1018, y: 184}
+  original: {x: 1018, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &6783802615196494350
@@ -8277,7 +8418,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 11
-  original: {x: 408, y: 184}
+  original: {x: 408, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &6875887054056617752
@@ -8331,7 +8472,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 1182, y: 106}
+  original: {x: 1182, y: 362}
   role: "\u88DD\u98FE"
   lights: 
 --- !u!212 &2127074289958465352
@@ -8537,7 +8678,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 0
-  original: {x: 118, y: 184}
+  original: {x: 118, y: 440}
   role: Critter
   lights: 
 --- !u!1 &7212638066297343930
@@ -8591,7 +8732,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 20
-  original: {x: 721, y: 184}
+  original: {x: 721, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &7278711947695167757
@@ -8761,7 +8902,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 24
-  original: {x: 854, y: 184}
+  original: {x: 854, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &7379709985279760191
@@ -8815,9 +8956,62 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 8
-  original: {x: 294, y: 184}
+  original: {x: 294, y: 440}
   role: Tuft
   lights: 
+--- !u!1 &7392535001599471929
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4647844093727818073}
+  - component: {fileID: 2899593226928956202}
+  m_Layer: 0
+  m_Name: "\u8857\u9053\u8DEF\u9762"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4647844093727818073
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7392535001599471929}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: -440, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 9075683264422215135}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2899593226928956202
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7392535001599471929}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba925f2ca43032f4e88c74bb60f14274, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
+  kind: 2
+  size: {x: 2400, y: 120}
+  rewardId:
+  blocksLight: 0
+  blocksSparks: 0
+  index: -1
+  original: {x: 0, y: 440}
+  role: town-street
+  lights:
 --- !u!1 &7411907524954952786
 GameObject:
   m_ObjectHideFlags: 0
@@ -8869,7 +9063,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 2
-  original: {x: 932, y: 184}
+  original: {x: 932, y: 440}
   role: mushroom
   lights: 
 --- !u!1 &7422503245719773764
@@ -9199,7 +9393,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 30
-  original: {x: 989, y: 184}
+  original: {x: 989, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &7574554757953225018
@@ -9461,7 +9655,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 0, y: 0}
+  original: {x: 0, y: 256}
   role: "\u8857\u9053"
   lights: 
 --- !u!212 &5444023678726883590
@@ -9575,7 +9769,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 15
-  original: {x: 554, y: 184}
+  original: {x: 554, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &7825839205842178932
@@ -9721,7 +9915,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 968, y: 162}
+  original: {x: 968, y: 418}
   role: "\u88DD\u98FE"
   lights: 
 --- !u!212 &6568527629917607185
@@ -10111,7 +10305,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 0, y: 0}
+  original: {x: 0, y: 256}
   role: Fg
   lights: 
 --- !u!212 &4371113682271007242
@@ -10199,7 +10393,7 @@ Transform:
   m_GameObject: {fileID: 8497682400220536356}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: -256, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -10669,7 +10863,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 1046, y: 106}
+  original: {x: 1046, y: 362}
   role: "\u88DD\u98FE"
   lights: 
 --- !u!212 &8557806945183956938
@@ -10783,7 +10977,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 0
-  original: {x: 120, y: 184}
+  original: {x: 120, y: 440}
   role: Start
   lights: 
 --- !u!1 &8914981551231969746
@@ -11021,7 +11215,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 4
-  original: {x: 161, y: 184}
+  original: {x: 161, y: 440}
   role: Tuft
   lights: 
 --- !u!1 &9063408233148989469
@@ -11076,7 +11270,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 807, y: 26}
+  original: {x: 807, y: 282}
   role: inn
   lights: 1f000000200000002100000022000000230000002400000025000000i
 --- !u!212 &1753947974881013499
@@ -11190,7 +11384,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 328, y: 162}
+  original: {x: 328, y: 418}
   role: "\u88DD\u98FE"
   lights: 
 --- !u!212 &2294171498428048310
@@ -11305,7 +11499,7 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: -1
-  original: {x: 70, y: 26}
+  original: {x: 70, y: 282}
   role: guild
   lights: 000000000100000002000000030000000400000005000000060000000700000008000000090000000a0000000b0000000c0000000d0000000e0000000f000000100000001100000012000000130000001400000015000000160000001700000018000000190000001a000000i
 --- !u!212 &3613834121186609171
@@ -11419,6 +11613,6 @@ MonoBehaviour:
   blocksLight: 0
   blocksSparks: 0
   index: 3
-  original: {x: 126, y: 184}
+  original: {x: 126, y: 440}
   role: Tuft
   lights: 

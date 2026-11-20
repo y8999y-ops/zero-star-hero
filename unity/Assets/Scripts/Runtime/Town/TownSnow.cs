@@ -15,7 +15,7 @@ namespace ZeroStar
 {
     public static class TownSnow
     {
-        const int FLOOR = TownArt.FLOOR;
+        static int FLOOR => TownArt.FLOOR;
         // 城鎮的寬高每次都讀 TownArt（擴大碎星鎮時改成不是固定值也能用；陣列都在 Build 時照當時的大小配）
         static int TOWN_W => TownArt.TOWN_W; static int H => TownArt.H;
         static readonly uint[] C = new[] { "#0c1020", "#161d36", "#24304f", "#3a4a72", "#5f74a3", "#93abd6", "#cfe0fa", "#ffffff" }.Select8();

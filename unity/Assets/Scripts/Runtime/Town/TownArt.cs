@@ -15,7 +15,12 @@ namespace ZeroStar
 {
     public static class TownArt
     {
-        public const int TOWN_W = 1240, H = 216, FLOOR = 184, WALL = 16;
+        public static int TOWN_W { get; } = 2400;
+        public static int H { get; } = 560;
+        public static int FLOOR { get; } = 440;
+        public const int WALL = 16;
+        internal const int LegacyFloor = 184, LegacyHeight = 216, LegacyWidth = 1240;
+        internal static int StreetTop => FLOOR - LegacyFloor;
         public static readonly (string id, string name, double x, string place, bool flip)[] NPCS =
         {
             ("clerk", "公會櫃檯・波波", 198, "guild", false),
@@ -31,6 +36,7 @@ namespace ZeroStar
         // ---- 匯出的圖層
         static int FAR_W, MID_W, FG_W;
         static uint[] FAR, MID, MAIN, FG; static byte[] EMIT;
+        static Img upperFar, upperMid;
         static readonly List<(double x, double y, double r, double lv, string col)> LIGHTS = new List<(double, double, double, double, string)>();
         static bool loaded;
         static void Load()
@@ -45,11 +51,44 @@ namespace ZeroStar
             uint[] U32() { int n = I32(); var a = new uint[n]; Buffer.BlockCopy(b, p, a, 0, n * 4); p += n * 4; return a; }
             byte[] U8() { int n = I32(); var a = new byte[n]; Buffer.BlockCopy(b, p, a, 0, n); p += n; return a; }
             if (Str() != "ZTN1") throw new Exception("城鎮資料格式不對");
-            I32(); FAR_W = I32(); MID_W = I32(); FG_W = I32();
-            FAR = U32(); MID = U32(); MAIN = U32(); FG = U32(); EMIT = U8();
-            int nl = I32(); for (int i = 0; i < nl; i++) LIGHTS.Add((F64(), F64(), F64(), F64(), Str()));
+            int bakedWidth = I32(); FAR_W = I32(); MID_W = I32(); FG_W = I32();
+            FAR = U32(); MID = U32(); var street = U32(); FG = U32(); var emit = U8();
+            if (bakedWidth != LegacyWidth || street.Length != LegacyWidth * LegacyHeight || emit.Length != street.Length)
+                throw new Exception("碎星鎮舊街圖層尺寸不對");
+            MAIN = new uint[TOWN_W * H]; EMIT = new byte[MAIN.Length];
+            for (int y = 0; y < LegacyHeight; y++)
+            {
+                Array.Copy(street, y * LegacyWidth, MAIN, (y + StreetTop) * TOWN_W, LegacyWidth);
+                Array.Copy(emit, y * LegacyWidth, EMIT, (y + StreetTop) * TOWN_W, LegacyWidth);
+            }
+            int nl = I32(); for (int i = 0; i < nl; i++) LIGHTS.Add((F64(), F64() + StreetTop, F64(), F64(), Str()));
+            upperFar ??= ReadUpperLayer("far-up");
+            upperMid ??= ReadUpperLayer("mid-up");
             BuildClouds();
             cloudPixels = CLOUDS.Select(c => c == 0 ? 0u : c == 2 ? Pack(255, 253, 246) : c == 1 ? Pack(234, 240, 249) : Pack(204, 217, 238)).ToArray();
+        }
+
+        static Img ReadUpperLayer(string name)
+        {
+            var texture = Resources.Load<Texture2D>("Art/town2/" + name);
+            if (!texture) return null;
+            var rgba = texture.GetPixels32();
+            var img = new Img { W = texture.width, H = texture.height, Px = new uint[rgba.Length] };
+            for (int y = 0; y < img.H; y++)
+            for (int x = 0; x < img.W; x++)
+            {
+                var c = rgba[(img.H - 1 - y) * img.W + x];
+                if (c.a != 0) img.Px[y * img.W + x] = (uint)(c.r | c.g << 8 | c.b << 16 | c.a << 24);
+            }
+            return img;
+        }
+
+        static Parallax.Row BackdropRow(uint[] pixels, int width, Img upper, double x, double y)
+        {
+            // 擴建圖的下半部是原有構圖。往上只取新增的部分。
+            if (y < 0 && upper != null)
+                return new Parallax.Row(upper.Px, upper.W, upper.H, x, upper.H / 2.0 + y);
+            return new Parallax.Row(pixels, width, LegacyHeight, x, y);
         }
 
         // ---- 2026-11-12 美術優化（照 Ori 的層次，維持像素畫）：白天的雲、霧、光束、遠近的淡化、角色外框。
@@ -111,9 +150,10 @@ namespace ZeroStar
         }
 
         /// 城鎮的地形（map.js 的 flatMap：平地＋左右兩面牆），給遊戲的共用程式用
-        public static LevelData Level()
+        public static LevelData Level(WorldComposition composition = null)
         {
             var d = new LevelData { Stage = "town", W = TOWN_W, H = H, Floor = FLOOR };
+            if (composition != null && composition.ApplyTownCollision(d)) return d;
             d.Solids.Add(new RectD { X = 0, Y = FLOOR, W = TOWN_W, H = H - FLOOR });
             d.Solids.Add(new RectD { X = 0, Y = 0, W = WALL, H = H });
             d.Solids.Add(new RectD { X = TOWN_W - WALL, Y = 0, W = WALL, H = H });
@@ -178,12 +218,13 @@ namespace ZeroStar
             LIGHTS.Clear(); loaded=false; Load();
             if(composition!=null)
             {
-                Img Layer(uint[] pixels,int width) => new Img{W=width,H=H,Px=pixels};
+                Img Layer(uint[] pixels,int width) => new Img{W=width,H=LegacyHeight,Px=pixels};
                 var d=new LevelData{Stage="town",W=TOWN_W,H=H,PF=MAIN,PFE=EMIT,Far=Layer(FAR,FAR_W),Mid=Layer(MID,MID_W),Fg=Layer(FG,FG_W)};
                 foreach(var l in LIGHTS)d.PropLights.Add(new LightSrc(l.x,l.y,l.r,l.lv,l.col));
                 composition.Apply(d); MAIN=d.PF;EMIT=d.PFE;
                 LIGHTS.Clear();foreach(var l in d.PropLights)LIGHTS.Add((l.X,l.Y,l.R,l.Lv,l.Col));
             }
+            ExtendStreet();
             Vector2Int Move(string role)=>composition?.Role(role)??Vector2Int.zero;
             for(int i=0;i<NPCS.Length;i++)
             {
@@ -199,6 +240,18 @@ namespace ZeroStar
             TownPuddles.Reset();
             TownRainHits.Build(MAIN, EMIT);   // 雨打屋頂、屋簷滴水、房子變濕（Unity 版自己的）：建築擺好之後算接雨面
             TownSnow.Reset(); TownSnow.Build(MAIN);   // 下雪：每一欄能堆多少雪（要在結構圖之後）
+        }
+
+        static void ExtendStreet()
+        {
+            // 延伸街道沿用舊街地表，重複鋪在右側尚未開放的區域。
+            const int sampleX = 1096, period = 128;
+            for (int y = FLOOR; y < StreetTop + LegacyHeight; y++)
+            {
+                int row = y * TOWN_W;
+                for (int x = LegacyWidth; x < TOWN_W; x++)
+                    if (MAIN[row + x] == 0) MAIN[row + x] = MAIN[row + sampleX + (x - LegacyWidth) % period];
+            }
         }
 
         static readonly uint[] SKY = new[] { "#0e0a24", "#130e2e", "#181238", "#1e1642", "#261a4c", "#301e56", "#3c225e", "#4c2864", "#5e2e68" }.Select(Col.Hex).ToArray();
@@ -226,7 +279,7 @@ namespace ZeroStar
         {
             double dl = 1 - 0.75 * DayInfo().d * (1 - 0.5 * WeatherInfo().cloud);
             var list = LIGHTS.Select(l => new LightSrc(l.x, l.y, l.r + (l.r > 50 ? Math.Floor(time * 6) % 2 : 0), l.lv * dl, l.col)).ToList();
-            list.Add(new LightSrc(106 + farMove.x, 128 + farMove.y, 110, 1.6 * dl, "#ffd27a", 0.12));   // 坑底的大星星（遠景圖左邊那顆）
+            list.Add(new LightSrc(106 + farMove.x, StreetTop + 128 + farMove.y, 110, 1.6 * dl, "#ffd27a", 0.12));   // 坑底的大星星（遠景圖左邊那顆）
             return list;
         }
 
@@ -256,10 +309,10 @@ namespace ZeroStar
             var RC = rowClear; var RD = rowCloud; double SK = Math.Min(1, DAY + DUSK);
             for (int y = 0; y < H; y++)
             {
-                double f = y / (H * 0.62); double w = DUSK / Math.Max(0.01, DAY + DUSK);
+                double f = (y - StreetTop) / (LegacyHeight * 0.62); double w = DUSK / Math.Max(0.01, DAY + DUSK);
                 double ka = Math.Max(0, Math.Min(DAY_SKY.Length - 1.001, f * (DAY_SKY.Length - 1))); int ia = (int)Math.Floor(ka); double ta = ka - ia;
                 double kb = Math.Max(0, Math.Min(DUSK_SKY.Length - 1.001, f * (DUSK_SKY.Length - 1))); int ib = (int)Math.Floor(kb); double tb = kb - ib;
-                double ff = Math.Min(1, f);
+                double ff = Math.Max(0, Math.Min(1, f));
                 for (int j = 0; j < 3; j++)
                 {
                     double a = DAY_SKY[ia][j] + (DAY_SKY[ia + 1][j] - DAY_SKY[ia][j]) * ta, b = DUSK_SKY[ib][j] + (DUSK_SKY[ib + 1][j] - DUSK_SKY[ib][j]) * tb;
@@ -284,25 +337,27 @@ namespace ZeroStar
             double oc = Parallax.Offset(cx, rx, 0.05) + time * 1.2;
             for (int y = 0; y < H; y++)
             {
-                fog1[y] = Math.Max(0, Math.Min(1, (y - 96) / 70.0)) * 0.36 * D;
-                fog2[y] = Math.Max(0, Math.Min(1, (y - 132) / 50.0)) * 0.30 * D;
-                sunRow[y] = 1 + (0.06 - 0.16 * Math.Max(0, Math.Min(1, (y - 20) / 164.0))) * D;
-                coolRow[y] = Math.Max(0, Math.Min(1, (y - 120) / 64.0)) * 0.16 * D;
-                shaftRow[y] = 1 - 0.75 * Math.Max(0, Math.Min(1, (y - 50) / 120.0));
+                int localY = y - StreetTop;
+                fog1[y] = Math.Max(0, Math.Min(1, (localY - 96) / 70.0)) * 0.36 * D;
+                fog2[y] = Math.Max(0, Math.Min(1, (localY - 132) / 50.0)) * 0.30 * D;
+                sunRow[y] = 1 + (0.06 - 0.16 * Math.Max(0, Math.Min(1, (localY - 20) / 164.0))) * D;
+                coolRow[y] = Math.Max(0, Math.Min(1, (localY - 120) / 64.0)) * 0.16 * D;
+                shaftRow[y] = 1 - 0.75 * Math.Max(0, Math.Min(1, (localY - 50) / 120.0));
             }
             skyT = time; Prof.Mark("T:天色");
             // 每一格只寫自己那一格（顏色、光）：切成 8 段同時算，結果一樣
-            PixelFX.Par.For(8, band => { for (int y = band * 27, ye = Math.Min(H, y + 27); y < ye; y++) PixelRow(y); });
+            PixelFX.Par.For(8, band => { for (int y = band * frame.H / 8, ye = (band + 1) * frame.H / 8; y < ye; y++) PixelRow(y); });
             void PixelRow(int y)
             {
                 int wy = y + cy, row = y * W;
-                uint sky = SKY[Math.Max(0, Math.Min(SKY.Length - 1, (int)Math.Floor(wy / 13.0)))];
+                int localY = wy - StreetTop;
+                uint sky = SKY[Math.Max(0, Math.Min(SKY.Length - 1, (int)Math.Floor(localY / 13.0)))];
                 if (wy < 0 || wy >= H) { uint fill = wy < 0 ? DaySky(SKYP[0], 0) : Lift(sky); for (int x = 0; x < W; x++) outc[row + x] = fill; return; }
-                int sy = Math.Min(SKY_H - 1, wy);
-                var midRow = new Parallax.Row(MID, MID_W, H, om, wy);
-                var farRow = new Parallax.Row(FAR, FAR_W, H, of, wy);
+                int sy = Math.Max(0, Math.Min(SKY_H - 1, localY));
+                var midRow = BackdropRow(MID, MID_W, upperMid, om, y + (cy - StreetTop) * 0.5);
+                var farRow = BackdropRow(FAR, FAR_W, upperFar, of, y + (cy - StreetTop) * 0.3);
                 var skyRow = new Parallax.Row(SKYP, SKY_W, SKY_H, os, sy);
-                var cloudRow = new Parallax.Row(cloudPixels, CLOUD_W, CLOUD_H, oc - cloudMove.x, wy - cloudMove.y);
+                var cloudRow = new Parallax.Row(cloudPixels, CLOUD_W, CLOUD_H, oc - cloudMove.x, localY - cloudMove.y);
                 for (int x = 0; x < W; x++)
                 {
                     int i = row + x, gx = x + cx;
@@ -319,7 +374,7 @@ namespace ZeroStar
                     r = skyColor & 255; g = (skyColor >> 8) & 255; b = (skyColor >> 16) & 255;
                     if (SUNK > 0.01)
                     {
-                        double dx = x + rx - sunX, dy = wy + 10, gl = 1 - Math.Sqrt(dx * dx + dy * dy) / 190;
+                        double dx = x + rx - sunX, dy = localY + 10, gl = 1 - Math.Sqrt(dx * dx + dy * dy) / 190;
                         if (gl > 0) { gl = gl * Math.Sqrt(gl) * SUNK; r += 35 * gl; g += 29 * gl; b += 10 * gl; }
                         uint cloud = layout!=null && hasCloudObjects ? customSky[i] : cloudRow.Sample(x);
                         k = (cloud >> 24) / 255.0 * 0.9 * SUNK;
@@ -350,7 +405,7 @@ namespace ZeroStar
                     if (SUNK > 0.01)
                     {
                         // 陽光光束：很淡、邊緣漸淡、只在天空和遠處（不蓋到建築和角色），慢慢飄
-                        double u = x + shaftOx - wy * 0.75; u -= Math.Floor(u / 320) * 320;
+                        double u = x + shaftOx - localY * 0.75; u -= Math.Floor(u / 320) * 320;
                         double t1 = 1 - Math.Abs(u - 92) / 30, t2 = 1 - Math.Abs(u - 246) / 36, sh = 0;
                         if (t1 > 0) sh += t1 * t1 * (3 - 2 * t1) * 0.085;
                         if (t2 > 0) sh += t2 * t2 * (3 - 2 * t2) * 0.07;
@@ -368,7 +423,7 @@ namespace ZeroStar
             }
             // 坑底大星星的光柱（往上，柔和）
             double bx = 106 + farMove.x - of;
-            for (int y = 0; y < 66 - cy; y++) for (int x = -16; x <= 16; x++)
+            for (int y = 0, ye = Math.Min(frame.H, StreetTop + 66 - cy); y < ye; y++) for (int x = -16; x <= 16; x++)
             {
                 double k = Pf.Pow(1 - Math.Abs(x) / 17.0, 2) * (y / 66.0) * (0.6 + 0.15 * Pf.Sin(time * 1.3)) * (1 - 0.7 * DAY);
                 int px = (int)Math.Floor(bx + x); double fraction = bx + x - px;
@@ -378,7 +433,7 @@ namespace ZeroStar
             // 螢火蟲（只在晚上、沒下雨的時候）
             for (int n = 0; n < 26; n++)
             {
-                int fx = (int)Pf.Round(Rnd2(n, 41) * TOWN_W + Pf.Sin(time * 0.6 + n) * 14) - cx, fy = (int)Pf.Round(118 + Rnd2(n, 42) * 58 + Pf.Sin(time * 0.9 + n * 2) * 6) - cy;
+                int fx = (int)Pf.Round(Rnd2(n, 41) * LegacyWidth + Pf.Sin(time * 0.6 + n) * 14) - cx, fy = StreetTop + (int)Pf.Round(118 + Rnd2(n, 42) * 58 + Pf.Sin(time * 0.9 + n * 2) * 6) - cy;
                 double on = (0.5 + 0.5 * Pf.Sin(time * 2.2 + n * 1.7)) * (1 - DAY0) * (1 - RAINK);
                 if (on < 0.15 || fx < 0 || fy < 0 || fx >= W || fy >= frame.H) continue;
                 outc[fy * W + fx] = 0xffa0f4d4;
@@ -403,9 +458,9 @@ namespace ZeroStar
             const int LIFT = 2;
             for (int y = 0; y < frame.H; y++)
             {
-                int wy = y + cy + LIFT;
-                if (wy < 0 || wy >= H) continue;
-                var sample = new Parallax.Row(FG, FG_W, H, ofg, wy);
+                int wy = y + cy + LIFT - StreetTop;
+                if (wy < 0 || wy >= LegacyHeight) continue;
+                var sample = new Parallax.Row(FG, FG_W, LegacyHeight, ofg, wy);
                 for (int x = 0; x < W; x++)
                 {
                     uint v = sample.Sample(x);
@@ -436,9 +491,9 @@ namespace ZeroStar
         // ---- 角色（居民、路人、主角）從背景跳出來：腳下的影子、一圈深色外框、左上的邊緣光
         static uint[] snap; static byte[] pmask;
         /// 腳下的影子（x＝腳底中間，half＝半寬）
-        public static void Shadow(Frame frame, double x, int half, double k = 0.3,int footY=FLOOR)
+        public static void Shadow(Frame frame, double x, int half, double k = 0.3, int? footY = null)
         {
-            int W = frame.W, bx = (int)Pf.Round(x) - frame.Ox, by = footY - frame.Oy; var C = frame.Color;
+            int W = frame.W, bx = (int)Pf.Round(x) - frame.Ox, by = (footY ?? FLOOR) - frame.Oy; var C = frame.Color;
             for (int dy = 0; dy < 3; dy++) for (int dx = -half; dx <= half; dx++)
             {
                 double e = (double)dx / Math.Max(1, half), f = (dy - 1) / 1.6;
