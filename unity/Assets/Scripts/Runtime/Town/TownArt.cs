@@ -134,7 +134,7 @@ namespace ZeroStar
                 capture?.Invoke(c,cx,cy,canvas);
             }
         }
-        static readonly double[] shaftRow = new double[H], fog1 = new double[H], fog2 = new double[H], sunRow = new double[H], coolRow = new double[H];
+        static readonly double[] shaftRow = new double[H], fog1 = new double[H], fog2 = new double[H], sunRow = new double[H], coolRow = new double[H], upperPush = new double[H];
         static uint Pack(double r, double g, double b) => unchecked((uint)(unchecked((int)0xff000000) | ((int)Math.Min(255, Math.Max(0, b)) << 16) | ((int)Math.Min(255, Math.Max(0, g)) << 8) | (int)Math.Min(255, Math.Max(0, r))));
         /// 街道與店在白天的樣子：彩度降一點（不跟角色搶）、上面受光、靠近地面偏藍偏暗、草地不要螢光綠、泥土壓暗。窗戶和水晶這些會發光的不動。
         static uint MainDay(uint c, int wy, bool emit, double D)
@@ -395,6 +395,7 @@ namespace ZeroStar
                 sunRow[y] = 1 + (0.06 - 0.16 * Math.Max(0, Math.Min(1, (localY - 20) / 164.0))) * D;
                 coolRow[y] = Math.Max(0, Math.Min(1, (localY - 120) / 64.0)) * 0.16 * D;
                 shaftRow[y] = 1 - 0.75 * Math.Max(0, Math.Min(1, (localY - 50) / 120.0));
+                upperPush[y] = elevated * Math.Max(0, Math.Min(1, (FLOOR - y) / 120.0));   // 中層、上層的中景退後（街道那段不變）
             }
             skyT = time; Prof.Mark("T:天色");
             // 每一格只寫自己那一格（顏色、光）：切成 8 段同時算，結果一樣
@@ -412,7 +413,7 @@ namespace ZeroStar
                 var farUpper = UpperRow(upperFar, of, farY);
                 var midUpper = UpperRow(upperMid, om, midY);
                 var rock = craterWall == null ? default : new Parallax.Row(craterWall.Px, craterWall.W, craterWall.H,
-                    nearOffset, y + cy * 0.8 - 14);
+                    nearOffset, y + cy * 0.8 - 14 - (341 - craterWall.H));   // 2026-11-20 坑壁照原圖格子重讀（288×192，原本 512×341 被拉成兩倍大）：底部對齊原本的位置
                 double cliffAlpha = elevated * Math.Max(0, Math.Min(1, (352 - wy) / 56.0));
                 double backdropGrade = 1 - 0.5 * elevated * Math.Max(0, Math.Min(1, (FLOOR - wy) / 170.0));
                 var skyRow = new Parallax.Row(SKYP, SKY_W, SKY_H, os, sy);
@@ -490,6 +491,14 @@ namespace ZeroStar
                         gray = mr * 0.3 + mg * 0.59 + mb * 0.11; k = 0.25 * D * backdropGrade;
                         mr += (gray - mr) * k; mg += (gray - mg) * k; mb += (gray - mb) * k;
                         k = 0.34 * D * backdropGrade; mr += (188 - mr) * k; mg += (208 - mg) * k; mb += (236 - mb) * k;
+                        // 2026-11-20：爬到中層、上層時，中景的黃窗、紅蘑菇比可以站的台地還搶眼 → 退後一點（白天、晚上都要）
+                        if (upperPush[wy] > 0)
+                        {
+                            k = 0.18 * upperPush[wy]; gray = mr * 0.3 + mg * 0.59 + mb * 0.11;
+                            mr += (gray - mr) * k; mg += (gray - mg) * k; mb += (gray - mb) * k;
+                            double tr = 34 + (196 - 34) * D, tg = 30 + (206 - 30) * D, tb = 62 + (236 - 62) * D;
+                            k = 0.10 * upperPush[wy]; mr += (tr - mr) * k; mg += (tg - mg) * k; mb += (tb - mb) * k;
+                        }
                         k = (bg >> 24) / 255.0; r += (mr - r) * k; g += (mg - g) * k; b += (mb - b) * k;
                     }
                     k = fog2[wy]; r += (228 - r) * k; g += (236 - g) * k; b += (244 - b) * k;       // 中景和街道之間的霧

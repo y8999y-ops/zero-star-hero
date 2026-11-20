@@ -249,6 +249,58 @@ def fix2(mask, budget=BUDGET, pairs=True):
     return m, int(changed.sum())
 
 
+def _eval_chunk(args):
+    """fix2_par 的工人：在 m 上逐一試翻 cands 裡的格子（單格或兩格），回傳 (最低分, 序號, 格子)"""
+    m, cands, base, best_s, i0 = args
+    sc = lambda mm: score2(mm)[0] + 6 * max(0, long_corners(mm) - base)
+    best = None
+    for k, pts in enumerate(cands):
+        for p in pts: m[p] = ~m[p]
+        s = sc(m)
+        for p in pts: m[p] = ~m[p]
+        if s < best_s and (best is None or s < best[0]): best = (s, i0 + k, pts)
+    return best
+
+
+def fix2_par(mask, budget=BUDGET, pairs=True, workers=None):
+    """跟 fix2 一模一樣的結果（每一步挑同一格），只是把「試每個候選格」分給好幾個 CPU 一起算。
+    大建築（大樹、鐘樓）用 fix2 要好幾個小時（每一步都要對 2000 個候選格各重算一次整圈分數）。
+    注意（Windows）：呼叫的腳本主程式要放在 if __name__ == "__main__": 底下，不然每個工人會把整支腳本再跑一次。"""
+    import os
+    from concurrent.futures import ProcessPoolExecutor
+    workers = workers or max(1, (os.cpu_count() or 2) - 1)
+    m = mask.copy(); orig = mask
+    limit = max(3, int(budget * orig.sum()))
+    near = ndimage.binary_dilation(orig, np.ones((3, 3))) & ~ndimage.binary_erosion(orig, np.ones((3, 3)))
+    base = long_corners(orig)
+    sc = lambda mm: score2(mm)[0] + 6 * max(0, long_corners(mm) - base)
+    changed = np.zeros_like(m); best_s = sc(m)
+
+    def run(pool, cands):
+        if not cands: return None
+        n = max(1, -(-len(cands) // (workers * 4)))
+        jobs = [(m, cands[i:i + n], base, best_s, i) for i in range(0, len(cands), n)]
+        res = [r for r in pool.map(_eval_chunk, jobs) if r is not None]
+        return min(res, key=lambda r: (r[0], r[1])) if res else None
+
+    with ProcessPoolExecutor(workers) as pool:
+        while best_s > 0 and changed.sum() < limit:
+            rin = m & ~ndimage.binary_erosion(m, F4); rout = ndimage.binary_dilation(m, F4) & ~m
+            cells = [(y, x) for y, x in zip(*np.nonzero((rin | rout) & near & ~changed))]
+            best = run(pool, [[c] for c in cells])
+            if best is None and pairs:
+                cs = set(cells); prs = []
+                for y, x in cells:
+                    for dy, dx in ((0, 1), (1, 0), (1, 1), (1, -1)):
+                        q = (y + dy, x + dx)
+                        if q in cs: prs.append([(y, x), q])
+                best = run(pool, prs)
+            if best is None: break
+            best_s, _, pts = best
+            for p in pts: m[p] = ~m[p]; changed[p] = True
+    return m, int(changed.sum())
+
+
 def spot_fix(m):
     """退回原樣的物件也要做：只修單格凸起（挖掉或補平，看哪個步進分數低）和凹陷（補上），每處只動 1 格"""
     m = m.copy(); n = 0

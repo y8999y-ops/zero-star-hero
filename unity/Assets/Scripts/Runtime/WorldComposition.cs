@@ -20,8 +20,9 @@ namespace ZeroStar
         {
             root=prefab.transform;
             // 原圖先鋪地面、再放道具、最後疊平台。Hierarchy 分組並非繪製順序。
+            // 鐘樓畫在吊橋之後（2026-11-20）：吊橋的端柱、扶手繩不會蓋到鐘面，看起來是綁在鐘樓側面。碰撞不變。
             allStamps=prefab.GetComponentsInChildren<WorldStamp>()
-                .OrderBy(s => s.kind==StampKind.TownPathArt || s.kind==StampKind.TownBridge ? 3 : s.kind==StampKind.Platform ? 2 : s.kind==StampKind.Decor ? 1 : 0)
+                .OrderBy(s => s.kind==StampKind.Decor && s.role=="bell-tower" ? 4 : s.kind==StampKind.TownPathArt || s.kind==StampKind.TownBridge ? 3 : s.kind==StampKind.Platform ? 2 : s.kind==StampKind.Decor ? 1 : 0)
                 .ThenBy(s => s.TryGetComponent<SpriteRenderer>(out var renderer) ? renderer.sortingOrder : 0).ToArray();
             SelectTownStamps(null);
         }
@@ -253,13 +254,18 @@ namespace ZeroStar
             int width = tiled ? stamp.size.x : img.W, height = tiled ? stamp.size.y : img.H;
             int inset = tiled ? Math.Max(0, Math.Min(stamp.sourceInsetX, (img.W - 1) / 2)) : 0;
             int period = img.W - 2 * inset;
+            // 2026-11-20：還沒蓋的建築原本是 25% 半透明的整張圖，疊在遠景的大星星上像畫面出錯。
+            //   改成「藍圖」：只畫剪影的外緣，一格亮一格暗交錯的點線，不透明、不混色。
+            const uint BLUEPRINT = 0xffd89c8c;   // #8c9cd8（ABGR）：白天比天空暗、晚上比夜空亮
+            bool Solid(int x, int y) => x >= 0 && y >= 0 && x < width && y < height
+                && img.Px[((y + stamp.sourceTop) % img.H) * img.W + inset + x % period] != 0;
             for (int y = Math.Max(0, -pos.y); y < Math.Min(height, data.H - pos.y); y++)
             for (int x = Math.Max(0, -pos.x); x < Math.Min(width, data.W - pos.x); x++)
             {
-                uint c = img.Px[((y + stamp.sourceTop) % img.H) * img.W + inset + x % period];
-                if (c == 0) continue;
-                uint muted = Parallax.Over(c | 0xff000000, 0xb399847a);
-                data.TownPreview[(pos.y + y) * data.W + pos.x + x] = (muted & 0xffffff) | ((c >> 24) / 4 << 24);
+                if (!Solid(x, y)) continue;
+                bool edge = !Solid(x - 1, y) || !Solid(x + 1, y) || !Solid(x, y - 1) || !Solid(x, y + 1);
+                if (!edge || ((pos.x + x + pos.y + y) & 3) >= 2) continue;
+                data.TownPreview[(pos.y + y) * data.W + pos.x + x] = BLUEPRINT;
             }
         }
         static void Blit(Img img,uint[] dest,int w,int h,Vector2Int pos,byte[] mask,byte[] originalMask,Vector2Int original,bool wrap)
