@@ -14,6 +14,7 @@ namespace ZeroStar
         public const int SewerCeiling = 472;
         public const int SewerFloor = 528;
         readonly List<RectD> townLadders = new List<RectD>();
+        readonly List<(string project, int x, int y, int w, int h)> townBarriers = new List<(string, int, int, int, int)>();
         readonly List<TownStop> townStops = new List<TownStop>();
         public IReadOnlyList<TownStop> TownStops => townStops;
         TownStop townManhole;
@@ -21,17 +22,20 @@ namespace ZeroStar
         double ladderCooldown;
         public bool TownClimbing => activeLadder.HasValue;
         public bool TownUnderground => Town && Player.Y >= SewerCeiling;
-        public bool TownNearLadder => Town && FindLadder(false) != null;
+        public bool TownNearLadder => Town && FindLadder() != null;
 
         void ReadTownTraversal()
         {
             townLadders.Clear();
+            townBarriers.Clear();
             townStops.Clear();
             townManhole = null;
             activeLadder = null;
             if (composition == null) return;
             foreach (var (role, p, size) in composition.TownStamps(StampKind.Climb))
                 if (size.x > 0 && size.y > 0) townLadders.Add(new RectD { X = p.x, Y = p.y, W = size.x, H = size.y });
+            foreach (var (project, p, size) in composition.TownStamps(StampKind.TownBarrier))
+                if (size.x > 0 && size.y > 0) townBarriers.Add((project, p.x, p.y, size.x, size.y));
             foreach (var (role, p, _) in composition.TownStamps(StampKind.TownMarker))
             {
                 string name = role switch
@@ -46,7 +50,7 @@ namespace ZeroStar
             townStops.Sort((a, b) => a.Y.CompareTo(b.Y));
         }
 
-        RectD? FindLadder(bool toClimb)
+        RectD? FindLadder(bool? descending = null)
         {
             RectD? nearest = null;
             double distance = double.PositiveInfinity;
@@ -54,7 +58,8 @@ namespace ZeroStar
             {
                 if (Player.X < r.X - 3 || Player.X > r.X + r.W + 3
                     || Player.Y < r.Y - 2 || Player.Y > r.Y + r.H + 4) continue;
-                if (toClimb && Player.Y <= r.Y + 1) continue;
+                if (descending == false && Player.Y <= r.Y + 1) continue;
+                if (descending == true && (!Player.Grounded || Math.Abs(Player.Y - r.Y) > 1)) continue;
                 double d = Math.Abs(Player.X - (r.X + r.W / 2));
                 if (d < distance) { nearest = r; distance = d; }
             }
@@ -66,8 +71,10 @@ namespace ZeroStar
             ladderCooldown = Math.Max(0, ladderCooldown - dt);
             if (!activeLadder.HasValue)
             {
-                if (!Input.Up || ladderCooldown > 0) return false;
-                activeLadder = FindLadder(true);
+                if (!Input.Up && !Input.Down) return false;
+                if (Input.Up && ladderCooldown > 0) return false;
+                // 梯口的下鍵先抓梯，其他地方仍可按下穿過單向平台。
+                activeLadder = FindLadder(descending: !Input.Up);
                 if (!activeLadder.HasValue) return false;
                 Input.Consume("jump"); // W / 上同時是跳鍵。這次按下是抓梯子。
                 Input.Consume("drop");
@@ -86,14 +93,15 @@ namespace ZeroStar
                 return true;
             }
             double bottom = r.Y + r.H;
+            double direction = (Input.Down ? 1 : 0) - (Input.Up ? 1 : 0);
             Player.X = r.X + r.W / 2;
-            Player.Y = Math.Max(r.Y, Math.Min(bottom, Player.Y + ((Input.Down ? 1 : 0) - (Input.Up ? 1 : 0)) * 60 * dt));
+            Player.Y = Math.Max(r.Y, Math.Min(bottom, Player.Y + direction * 60 * dt));
             Player.Vx = Player.Vy = 0;
             Player.Grounded = false;
             Player.State = "move";
             Player.Pose = "stand";  // 攀爬美術待補；先沿用待機姿勢。
             Player.Clock += dt;
-            if (Player.Y <= r.Y || (Input.Down && Player.Y >= bottom))
+            if ((direction < 0 && Player.Y <= r.Y) || (direction > 0 && Player.Y >= bottom))
             {
                 activeLadder = null;
                 ladderCooldown = 0.15;

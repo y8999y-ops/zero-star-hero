@@ -22,6 +22,7 @@ namespace ZeroStar.UI
         readonly List<(string form, VisualElement slot)> formSlots = new List<(string, VisualElement)>();
         // 系統台詞、一般提示
         readonly VisualElement sys, sysFace; readonly Label sysText, toast;
+        bool toastIsTownName;
         string sysFull, sysShown; int sysI; float sysNext, faceT; int faceF; string faceExpr = "normal";
         // 右下的技能、大招
         readonly VisualElement pcSkill, skillWipe, ultHud; readonly Label skillT; readonly Texture2D ultTex = new Texture2D(UltIcon.S, UltIcon.S, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point }; readonly Color32[] ultBuf = new Color32[UltIcon.S * UltIcon.S];
@@ -198,6 +199,17 @@ namespace ZeroStar.UI
             else sysFull = null;
             // 一般提示（不是系統說的）
             string t = g.Say.Toast;
+            bool townName = g.Town && t == "碎星鎮";
+            if (toastIsTownName != townName)
+            {
+                toastIsTownName = townName;
+                toast.style.top = Length.Percent(townName ? 22 : 30);
+                toast.style.paddingLeft = toast.style.paddingRight = townName ? 17 : 0;
+                toast.style.paddingTop = toast.style.paddingBottom = townName ? 5 : 0;
+                toast.style.backgroundColor = townName ? C("#151326", 0.9f) : Color.clear;
+                Border(toast, townName ? 1 : 0, C("#998a76"));
+                Round(toast, townName ? 4 : 0);
+            }
             toast.style.opacity = t != null && !t.StartsWith("系統：") ? 1 : 0;
             if (t != null && !t.StartsWith("系統：")) toast.text = t;
             // 右下：技能冷卻、大招的能量星

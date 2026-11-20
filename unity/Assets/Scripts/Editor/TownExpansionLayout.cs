@@ -72,6 +72,7 @@ namespace ZeroStar.EditorTools
                             && art.sprite.rect.width == 260)
                         { stamp.sourceInsetX = 2; changed = true; }
                     changed |= TagConstruction(existing, prefab.transform);
+                    changed |= PrepareApproaches(existing);
                     if (changed) PrefabUtility.SaveAsPrefabAsset(prefab, PrefabPath);
                     return;
                 }
@@ -180,6 +181,7 @@ namespace ZeroStar.EditorTools
                 Paint(tunnel, "下水道石磚", ImportSprite("sewer-floor"), 400, Game.SewerFloor, 1304, 20, StampKind.PaintedGround, 2);
                 Waypoint(tunnel, "下水道路標", "sewer", 882, Game.SewerFloor);
                 TagConstruction(root, prefab.transform);
+                PrepareApproaches(root);
                 PrefabUtility.SaveAsPrefabAsset(prefab, PrefabPath);
             }
             finally { PrefabUtility.UnloadPrefabContents(prefab); }
@@ -221,6 +223,81 @@ namespace ZeroStar.EditorTools
                 changed = true;
             }
             return changed;
+        }
+
+        static bool PrepareApproaches(Transform expansion)
+        {
+            bool changed = false;
+            foreach (var stamp in expansion.GetComponentsInChildren<WorldStamp>())
+            {
+                bool suspended = stamp.kind == StampKind.PaintedPlatform
+                    || (stamp.kind == StampKind.PaintedDetail && stamp.name == "吊橋")
+                    || (stamp.kind == StampKind.Decor && stamp.role is "mayor" or "鎮長家路標" or "觀星台路標")
+                    || ((stamp.name is "鐘樓上段梯子" or "中層通往上層的梯子" or "樹冠落腳木板"
+                        or "樹屋之間的繩梯" or "樹冠繩梯" or "城牆梯子上段")
+                        && stamp.kind is StampKind.PaintedDetail or StampKind.TownPathArt);
+                if (suspended && !stamp.aboveStreet)
+                {
+                    stamp.aboveStreet = true;
+                    changed = true;
+                }
+            }
+            changed |= SplitWallLadder(expansion.Find("中層台地"));
+            if (expansion.Find("橋端工地與出入口")) return changed;
+            var ground = expansion.Find("地面街景");
+            var middle = expansion.Find("中層台地");
+            var tree = expansion.Find("大樹繩梯");
+            foreach (var stamp in expansion.GetComponentsInChildren<WorldStamp>())
+            {
+                if (stamp.transform.parent == middle && stamp.kind == StampKind.PaintedPlatform && stamp.townProject == "wall")
+                {
+                    stamp.size = new Vector2Int(197, stamp.size.y);
+                    stamp.GetComponent<SpriteRenderer>().size = stamp.size;
+                }
+                if (stamp.transform.parent == tree && stamp.kind == StampKind.PaintedDetail)
+                    stamp.kind = StampKind.TownPathArt;
+            }
+            var mushroom = Marker(ground, "蘑菇住宅右側梯子", "", StampKind.Climb, 1541, 342, 24, TownArt.FLOOR - 342);
+            mushroom.townProject = "house-c";
+
+            var deck = AssetDatabase.LoadAssetAtPath<Sprite>(SpriteFolder + "rope-bridge.png");
+            Paint(tree, "樹冠落腳木板", deck, 2060, 115, 156, 33, StampKind.TownPathArt);
+            var canopy = tree.Find("樹冠落腳木板").GetComponent<WorldStamp>();
+            canopy.townProject = "tree";
+            canopy.aboveStreet = true;
+
+            var gates = Group(expansion, "橋端工地與出入口");
+            void Gate(string name, string from, string pending, int x, int floor)
+            {
+                var stamp = Marker(gates, name, pending, StampKind.TownBarrier, x, floor - 24, 8, 24);
+                stamp.townProject = from;
+            }
+            Gate("吊橋至石台地", "tower", "terrace", 960, 270);
+            Gate("上層西側至觀星台", "tower", "star", 1184, 140);
+            Gate("觀星台至上層西側", "star", "tower", 1184, 140);
+            Gate("觀星台至樹冠", "star", "tree", 2024, 140);
+            Gate("樹冠至觀星台", "tree", "star", 2016, 140);
+            return true;
+        }
+
+        static bool SplitWallLadder(Transform middle)
+        {
+            if (middle.Find("城牆梯子上段")) return false;
+            // 地面看得到接在城門牆邊的梯腳。屋簷以上的梯段跟步道同時顯現。
+            var marker = middle.GetComponentsInChildren<WorldStamp>().Single(s => s.name == "城牆步道梯子" && s.kind == StampKind.Climb);
+            var art = middle.GetComponentsInChildren<WorldStamp>().Single(s => s.name == "城牆步道梯子" && s.kind == StampKind.PaintedDetail);
+            var sprite = art.GetComponent<SpriteRenderer>().sprite;
+            const int x = 166, top = 270, split = 324;
+            marker.transform.localPosition = new Vector3(x, -top);
+            art.transform.localPosition = new Vector3(x - 1, -split);
+            art.size = new Vector2Int(26, TownArt.FLOOR - split);
+            art.GetComponent<SpriteRenderer>().size = art.size;
+            art.kind = StampKind.TownPathArt;
+            Paint(middle, "城牆梯子上段", sprite, x - 1, top, 26, split - top, StampKind.TownPathArt);
+            var extension = middle.Find("城牆梯子上段").GetComponent<WorldStamp>();
+            extension.townProject = "wall";
+            extension.aboveStreet = true;
+            return true;
         }
 
         static Transform Group(Transform parent, string name)

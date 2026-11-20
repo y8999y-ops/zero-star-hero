@@ -141,7 +141,7 @@ namespace ZeroStar
         static uint Lerp(uint a, uint b, double k) => Pack((a & 255) + (((int)(b & 255)) - (int)(a & 255)) * k, ((a >> 8) & 255) + (((int)((b >> 8) & 255)) - (int)((a >> 8) & 255)) * k, ((a >> 16) & 255) + (((int)((b >> 16) & 255)) - (int)((a >> 16) & 255)) * k);
 
         /// 積雪：場景畫完、角色之前畫。snow＝下雪量 0～1、day＝白天程度
-        public static void DrawCover(Frame frame, double time, double snow, double day)
+        public static void DrawCover(Frame frame, double time, double snow, double day, double elevated = 1)
         {
             if (topY == null) return;
             double dt = lastT < 0 ? 0 : Math.Max(0, Math.Min(0.1, time - lastT)); lastT = time;
@@ -182,6 +182,7 @@ namespace ZeroStar
                     for (int x = 0; x < W; x++)
                     {
                         int wx = x + cx; if (wx < 0 || wx >= TOWN_W) continue;
+                        if (!TownArt.WeatherSurfaceVisible(wx, wy, elevated)) continue;
                         int k = wy * TOWN_W + wx; byte f = face[k]; if (f == 0 || f <= T) continue;
                         uint o = mainRef[k]; int lum = (int)(o & 255) + (int)((o >> 8) & 255) + (int)((o >> 16) & 255);
                         if (lum < 120) continue;                                                  // 黑色外框不碰
@@ -197,6 +198,7 @@ namespace ZeroStar
                 int wx = sx + cx; if (wx < 1 || wx >= TOWN_W - 1) continue;
                 int d = Depth(wx); if (d <= 0) continue;
                 int y0 = topY[wx];
+                if (!TownArt.WeatherSurfaceVisible(wx, y0, elevated)) continue;
                 // 厚了高出原本的輪廓一格（地面的雪堆、屋頂上的雪帽）
                 int bump = d >= 3 ? 1 : 0, ys = y0 - bump, ye = y0 + d - 1 - bump;
                 for (int wy = ys; wy <= ye; wy++)
@@ -217,7 +219,7 @@ namespace ZeroStar
                     }
                 }
             }
-            DrawIcicles(frame);
+            DrawIcicles(frame, elevated);
             // 雪面上的閃光：幾個點慢慢閃
             for (int i = 0; i < 26; i++)
             {
@@ -226,6 +228,7 @@ namespace ZeroStar
                 int d = Depth(wx); bool onTop = d >= 2; if (!onTop) d = GroundDepth(wx); if (d < 2) continue;
                 double tw = Math.Sin(time * 2.3 + i * 1.7); if (tw < 0.6) continue;
                 int yy = (onTop ? topY[wx] : FLOOR) - (d >= 3 ? 1 : 0);
+                if (onTop && !TownArt.WeatherSurfaceVisible(wx, topY[wx], elevated)) continue;
                 Put(wx, yy, C[7]);
                 int x = wx - cx, y = yy - cy; if (x >= 0 && y >= 0 && x < W && y < Hh) { var L = frame.Light; uint l = L[y * W + x]; L[y * W + x] = Pack((l & 255) + 50 * tw, ((l >> 8) & 255) + 60 * tw, ((l >> 16) & 255) + 80 * tw); }
             }
@@ -234,13 +237,14 @@ namespace ZeroStar
         // ---- 冰柱：下雪時就慢慢長，長度跟著積雪程度；上粗下細、左亮右暗、尖端白，外面一格黑外框（外框只能是黑色）
         static readonly System.Collections.Generic.List<(int x, int y, int max)> icicles = new System.Collections.Generic.List<(int, int, int)>();
         public static int IcicleLen(int i) { var ic = icicles[i]; double k = Math.Max(0, Math.Min(1, cover * 1.25 - 0.15)); return (int)Math.Floor(ic.max * k + 0.3); }
-        static void DrawIcicles(Frame frame)
+        static void DrawIcicles(Frame frame, double elevated)
         {
             int W = frame.W, Hh = frame.H, cx = frame.Ox, cy = frame.Oy; var Col = frame.Color;
             uint hi = Pack(228, 244, 255), lo = Pack(150, 192, 232), tip = Pack(250, 253, 255);
             for (int i = 0; i < icicles.Count; i++)
             {
                 var ic = icicles[i]; int len = IcicleLen(i); if (len <= 0) continue;
+                if (!TownArt.WeatherSurfaceVisible(ic.x, ic.y - 1, elevated)) continue;
                 if (ic.x - cx < -3 || ic.x - cx > W + 3) continue;
                 int wide = len >= 4 ? (len + 1) / 2 : 0;   // 上半段兩格寬
                 void Put(int wx, int wy, uint c) { int x = wx - cx, y = wy - cy; if (x < 0 || y < 0 || x >= W || y >= Hh) return; Col[y * W + x] = c; }

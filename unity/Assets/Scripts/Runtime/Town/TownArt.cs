@@ -35,7 +35,8 @@ namespace ZeroStar
 
         // ---- 匯出的圖層
         static int FAR_W, MID_W, FG_W;
-        static uint[] FAR, MID, MAIN, FG, constructionPreview; static byte[] EMIT;
+        static uint[] FAR, MID, MAIN, FG, constructionPreview, streetMain, streetPreview;
+        static byte[] EMIT, streetEmit;
         static Img upperFar, upperMid;
         static Img sewerBack;
         static FxRun sewerWater;
@@ -240,17 +241,28 @@ namespace ZeroStar
             // 城鎮的畫布是靜態快取，每次重組都要從原始資料開始。
             hasCloudObjects=composition!=null && composition.HasCloudObjects;
             constructionPreview = null;
+            streetMain = streetPreview = null;
+            streetEmit = null;
             LIGHTS.Clear(); loaded=false; Load();
             if(composition!=null)
             {
                 Img Layer(uint[] pixels,int width) => new Img{W=width,H=LegacyHeight,Px=pixels};
+                if (composition.HasStreetView)
+                {
+                    var street = new LevelData { Stage = "town", W = TOWN_W, H = H, PFE = EMIT };
+                    composition.Apply(street, streetView: true);
+                    streetMain = street.PF;
+                    streetEmit = street.PFE;
+                    streetPreview = street.TownPreview;
+                    ExtendStreet(streetMain);
+                }
                 var d=new LevelData{Stage="town",W=TOWN_W,H=H,PF=MAIN,PFE=EMIT,Far=Layer(FAR,FAR_W),Mid=Layer(MID,MID_W),Fg=Layer(FG,FG_W)};
                 foreach(var l in LIGHTS)d.PropLights.Add(new LightSrc(l.x,l.y,l.r,l.lv,l.col));
                 composition.Apply(d); MAIN=d.PF;EMIT=d.PFE;
                 constructionPreview = d.TownPreview;
                 LIGHTS.Clear();foreach(var l in d.PropLights)LIGHTS.Add((l.X,l.Y,l.R,l.Lv,l.Col));
             }
-            ExtendStreet();
+            ExtendStreet(MAIN);
             Vector2Int Move(string role)=>composition?.Role(role)??Vector2Int.zero;
             for(int i=0;i<NPCS.Length;i++)
             {
@@ -291,7 +303,7 @@ namespace ZeroStar
             sewerWater?.Draw(f);
         }
 
-        static void ExtendStreet()
+        static void ExtendStreet(uint[] pixels)
         {
             // 延伸街道沿用舊街地表，重複鋪在右側尚未開放的區域。
             const int sampleX = 1096, period = 128;
@@ -299,8 +311,22 @@ namespace ZeroStar
             {
                 int row = y * TOWN_W;
                 for (int x = LegacyWidth; x < TOWN_W; x++)
-                    if (MAIN[row + x] == 0) MAIN[row + x] = MAIN[row + sampleX + (x - LegacyWidth) % period];
+                    if (pixels[row + x] == 0) pixels[row + x] = pixels[row + sampleX + (x - LegacyWidth) % period];
             }
+        }
+
+        internal static double ElevatedVisibility(double cameraY)
+        {
+            // 保留 1× 取景。攀登時越過普通地面跳躍的取景範圍，才逐步露出跨空地的構件。
+            double t = Math.Max(0, Math.Min(1, (StreetTop - cameraY - 12) / 62));
+            return t * t * (3 - 2 * t);
+        }
+
+        internal static bool WeatherSurfaceVisible(int x, int y, double elevated)
+        {
+            if (streetMain == null || elevated >= 0.75 || (uint)x >= TOWN_W || (uint)y >= H) return true;
+            int index = y * TOWN_W + x;
+            return MAIN[index] == streetMain[index];
         }
 
         static readonly uint[] SKY = new[] { "#0e0a24", "#130e2e", "#181238", "#1e1642", "#261a4c", "#301e56", "#3c225e", "#4c2864", "#5e2e68" }.Select(Col.Hex).ToArray();
@@ -386,6 +412,7 @@ namespace ZeroStar
             double sunX = W * 0.16, shaftOx = Parallax.Offset(cx, rx, 0.2) + Pf.Sin(time * 0.07) * 14;
             double oc = Parallax.Offset(cx, rx, 0.05) + time * 1.2;
             double extension = Math.Min(124, (StreetTop - cy - 56) * 1.6);
+            double elevated = streetMain == null ? 1 : ElevatedVisibility(cy + frame.CameraFractionY);
             for (int y = 0; y < H; y++)
             {
                 int localY = y - StreetTop;
@@ -414,13 +441,45 @@ namespace ZeroStar
                 var cloudRow = new Parallax.Row(cloudPixels, CLOUD_W, CLOUD_H, oc - cloudMove.x, localY - cloudMove.y);
                 for (int x = 0; x < W; x++)
                 {
-                    int i = row + x, gx = x + cx;
-                    uint v = gx >= 0 && gx < TOWN_W ? MAIN[wy * TOWN_W + gx] : 0;
+                    int i = row + x, gx = x + cx, world = wy * TOWN_W + gx;
+                    bool inTown = (uint)gx < TOWN_W;
+                    uint v = inTown ? MAIN[world] : 0;
+                    bool emits = v != 0 && EMIT[world] != 0;
+                    double opacity = 1;
+                    if (inTown && elevated < 1)
+                    {
+                        uint street = streetMain[world];
+                        if (elevated == 0)
+                        {
+                            v = street;
+                            emits = v != 0 && streetEmit[world] != 0;
+                        }
+                        else if (v != street)
+                        {
+                            if (street == 0) opacity = elevated;
+                            else if (v == 0)
+                            {
+                                v = street;
+                                opacity = 1 - elevated;
+                                emits = streetEmit[world] != 0;
+                            }
+                            else
+                            {
+                                v = Parallax.Over(street, Parallax.Alpha(v, (uint)(elevated * 255) << 24));
+                                emits |= streetEmit[world] != 0;
+                            }
+                        }
+                    }
+                    uint structure = 0;
                     if (v != 0)
                     {
-                        outc[i] = D > 0.01 ? MainDay(Lift(v), wy, EMIT[wy * TOWN_W + gx] != 0, D) : Lift(v);
-                        if (lv[i] > 0.02 && EMIT[wy * TOWN_W + gx] == 0) LB[i] = unchecked((uint)(unchecked((int)0xff000000) | (Pf.ToInt32(Math.Min(255, TB[i] * 0.9)) << 16) | (Pf.ToInt32(Math.Min(255, TG[i] * 0.9)) << 8) | Pf.ToInt32(Math.Min(255, TR[i] * 0.9))));
-                        continue;
+                        structure = D > 0.01 ? MainDay(Lift(v), wy, emits, D) : Lift(v);
+                        if (opacity == 1)
+                        {
+                            outc[i] = structure;
+                            if (lv[i] > 0.02 && !emits) LB[i] = unchecked((uint)(unchecked((int)0xff000000) | (Pf.ToInt32(Math.Min(255, TB[i] * 0.9)) << 16) | (Pf.ToInt32(Math.Min(255, TG[i] * 0.9)) << 8) | Pf.ToInt32(Math.Min(255, TR[i] * 0.9))));
+                            continue;
+                        }
                     }
                     double r, g, b, k, gray;
                     uint skyColor = DaySky(skyRow.Sample(x), wy);
@@ -466,8 +525,19 @@ namespace ZeroStar
                         if (sh > 0) { sh *= shaftRow[wy] * SUNK; r += 255 * sh; g += 244 * sh; b += 206 * sh; }
                     }
                     uint scene = Pack(r, g, b);
-                    if (constructionPreview != null && (uint)gx < TOWN_W)
-                        scene = Parallax.Over(scene, constructionPreview[wy * TOWN_W + gx]);
+                    if (inTown)
+                    {
+                        uint asBuilt = constructionPreview == null ? 0 : constructionPreview[world];
+                        if (elevated < 1)
+                        {
+                            uint onStreet = streetPreview == null ? 0 : streetPreview[world];
+                            if (onStreet != asBuilt)
+                                asBuilt = elevated == 0 ? onStreet : Parallax.Alpha(asBuilt, (uint)((asBuilt >> 24) * elevated) << 24);
+                        }
+                        scene = Parallax.Over(scene, asBuilt);
+                    }
+                    if (structure != 0)
+                        scene = Parallax.Over(scene, Parallax.Alpha(structure, (uint)(opacity * 255) << 24));
                     outc[i] = scene;
                 }
             }
@@ -502,28 +572,44 @@ namespace ZeroStar
                 double t = (time * 0.3 + n / 6.0) % 1; int sx = 607 + workshopMove.x + (int)Pf.Round(Pf.Sin(t * 6 + n) * 3 + t * 12) - cx, sy2 = FLOOR - 128 + workshopMove.y - (int)Pf.Round(t * 50) - cy, R = 3 + (int)Pf.Round(t * 6);
                 for (int y = -R; y <= R; y++) for (int x = -R; x <= R; x++) { double f = 1 - Pf.Hypot(x, y) / R; if (f > 0) Add(sx + x, sy2 + y, 120, 110, 140, f * (1 - t) * 0.45); }
             }
-            TownSnow.DrawCover(frame, time, SnowK(), DAY);   // 積雪（場景的一部分，角色站在雪前面）
-            if (PostFx.ActiveFor(frame)) frame.BeginWeatherMask();   // 場景畫完：之後角色、雨、水珠改過的格子不算場景（shader 的變濕、積水只改場景）
-            TownRainHits.Draw(frame, time, wi.rain, DAY);   // 雨打屋頂、屋簷滴水、房子變濕（Unity 版自己的）：在角色之前畫
+            TownSnow.DrawCover(frame, time, SnowK(), DAY, elevated);   // 積雪（場景的一部分，角色站在雪前面）
+            if (PostFx.ActiveFor(frame))
+            {
+                frame.BeginWeatherMask();   // 角色和雨不參與屋頂變濕。
+                if (streetMain != null && elevated < 0.75 && TownPuddles.Wet > 0.02)
+                    for (int y = 0; y < frame.H; y++)
+                    for (int x = 0; x < W; x++)
+                        if (!WeatherSurfaceVisible(x + cx, y + cy, elevated)) frame.ExcludeWeather(y * W + x);
+            }
+            TownRainHits.Draw(frame, time, wi.rain, DAY, elevated);   // 雨打屋頂與屋簷滴水：在角色之前畫
         }
         /// 前景（在主角和居民之後畫）：比主角近的草葉＝深色剪影（框住畫面、增加景深），最後四角微微壓暗
-        public static void DrawFg(Frame frame)
+        public static void DrawFg(Frame frame, double playerX, double playerY)
         {
             frame.ProtectLegacyDraws();   // 角色和雨都畫好了：算場景遮罩（前景畫過的格子在下面扣掉）
             int W = frame.W, cy = frame.Oy; var outc = frame.Color;
             double ofg = Parallax.Offset(frame.Ox, frame.CameraFractionX, 1.3);
-            const int LIFT = 2;
+            const int Lower = 12;
+            double night = 1 - DayInfo().d;
             for (int y = 0; y < frame.H; y++)
             {
-                int wy = y + cy + LIFT - StreetTop;
+                int worldY = y + cy, wy = worldY - Lower - StreetTop;
                 if (wy < 0 || wy >= LegacyHeight) continue;
                 var sample = new Parallax.Row(FG, FG_W, LegacyHeight, ofg, wy);
                 for (int x = 0; x < W; x++)
                 {
                     uint v = sample.Sample(x);
                     if ((v >> 24) == 0) continue;
+                    double alpha = (v >> 24) / 255.0;
+                    if (worldY >= playerY - 25 && worldY <= playerY + 8)
+                    {
+                        double distance = Math.Abs(x + frame.Ox - playerX);
+                        alpha *= 0.28 + 0.72 * Math.Max(0, Math.Min(1, (distance - 12) / 12));
+                    }
                     frame.ExcludeWeather(y * W + x);
-                    outc[y * W + x] = Parallax.Over(outc[y * W + x], Parallax.Alpha(Pack((v & 255) * 0.154 + 18.7, ((v >> 8) & 255) * 0.154 + 28.8, ((v >> 16) & 255) * 0.154 + 41.8), v));
+                    uint color = Pack((v & 255) * 0.154 + 18.7 + 6 * night, ((v >> 8) & 255) * 0.154 + 28.8 + 4 * night,
+                        ((v >> 16) & 255) * 0.154 + 41.8 + 13 * night);
+                    outc[y * W + x] = Parallax.Over(outc[y * W + x], Parallax.Alpha(color, (uint)(alpha * 255) << 24));
                 }
             }
             // 暗角只調整亮度，不改變像素所屬圖層。

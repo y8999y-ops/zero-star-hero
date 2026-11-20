@@ -224,13 +224,13 @@ namespace ZeroStar
         }
 
         /// 畫在建築之後、角色之前（角色會擋住屋簷滴下來的水）。rain＝雨量 0～1、day＝白天程度
-        public static void Draw(Frame frame, double time, double rain, double day)
+        public static void Draw(Frame frame, double time, double rain, double day, double elevated = 1)
         {
             if (main == null) return;
             double dt = lastT < 0 ? 0 : Math.Max(0, Math.Min(0.1, time - lastT)); lastT = time;
             double wet = TownPuddles.Wet;
             int W = frame.W, cx = frame.Ox, cy = frame.Oy;
-            if (wet > 0.02 && !PostFx.TownOnGpu(frame)) WetPass(frame, time, wet, day);   // 有 shader 就交給顯示卡（PostFx.shader）
+            if (wet > 0.02 && !PostFx.TownOnGpu(frame)) WetPass(frame, time, wet, day, elevated);   // 有 shader 就交給顯示卡（PostFx.shader）
             uint hot = Pack(232, 242, 255), cool = Pack(150 + 60 * day, 178 + 50 * day, 215 + 30 * day);
 
             // 雨打在屋頂、物件頂：每 1/30 秒一個時段，畫面內抽幾欄
@@ -251,6 +251,7 @@ namespace ZeroStar
                 var h = hits[i]; h.t += dt;
                 if (h.t > 0.28) { hits.RemoveAt(i); continue; }
                 hits[i] = h;
+                if (!TownArt.WeatherSurfaceVisible(h.x, h.y, elevated)) continue;
                 if (h.t < 0.05) { Px(frame, h.x, h.y - 1, hot); continue; }
                 double u = (h.t - 0.05) / 0.23;
                 for (int sgn = -1; sgn <= 1; sgn += 2)
@@ -266,6 +267,7 @@ namespace ZeroStar
                 {
                     var d = drips[i];
                     if (d.x - cx < -2 || d.x - cx > W + 2) continue;
+                    if (!TownArt.WeatherSurfaceVisible(d.x, d.y0, elevated)) continue;
                     double per = d.period / Math.Max(0.25, Math.Min(1, rain + wet * 0.5));
                     double ph = (time + d.phase) / per; int cyc = (int)Math.Floor(ph); double u = (ph - cyc) * per;
                     const double HANG = 0.35, G = 320;
@@ -289,7 +291,7 @@ namespace ZeroStar
                 }
         }
 
-        static void WetPass(Frame frame, double time, double wet, double day)
+        static void WetPass(Frame frame, double time, double wet, double day, double elevated)
         {
             int W = frame.W, Hh = frame.H, cx = frame.Ox, cy = frame.Oy; var C = frame.Color;
             double thr = 1.0 - 1.1 * wet; int T = (int)(thr * 200 + 40);
@@ -304,6 +306,7 @@ namespace ZeroStar
                     for (int x = 0; x < W; x++)
                     {
                         int gx = x + cx; if (gx < 0 || gx >= TOWN_W) continue;
+                        if (!TownArt.WeatherSurfaceVisible(gx, wy, elevated)) continue;
                         int k = wrow + gx; byte s = score[k];
                         if (plat[k] != 0 && wet * 255 > platNeed[k])
                         {

@@ -97,8 +97,15 @@ namespace ZeroStar.Tests
             if (touch.Player.Y != 270 || touch.TownClimbing) throw new InvalidOperationException("觸控上拖不能爬上鐘樓");
             touch.Input.TouchVertical = 0; Advance(touch);
             touch.Input.TouchVertical = -1;
+            for (int i = 0; i < 22; i++) Advance(touch);
+            if (!touch.TownClimbing || touch.Player.Y <= 270) throw new InvalidOperationException("觸控下拖不能從梯頂抓梯");
+            for (int i = 0; i < 170 && touch.TownClimbing; i++) Advance(touch);
+            if (touch.Player.Y != TownArt.FLOOR) throw new InvalidOperationException("往下爬沒有踩到街道");
+            Place(touch, 705, 270);
+            touch.Input.TouchVertical = 0; Advance(touch);
+            touch.Input.TouchVertical = -1;
             for (int i = 0; i < 12; i++) Advance(touch);
-            if (touch.Player.Y <= 270) throw new InvalidOperationException("觸控下拖沒有穿過平台");
+            if (touch.Player.Y <= 270 || touch.TownClimbing) throw new InvalidOperationException("離開梯口的觸控下拖沒有穿過平台");
 
             var jump = Start();
             jump.Player.X = 665;
@@ -123,6 +130,97 @@ namespace ZeroStar.Tests
                 + $"  \"ticks\": {shots.Last() + 21}, \"shotTicks\": [{string.Join(",", shots)}],\n  \"events\": [\n"
                 + string.Join(",\n", trace.Select(e => $"    [{e.tick},\"{e.type}\",\"{e.code}\"]")) + "\n  ]\n}\n");
             Debug.Log("[TownTraversal] PASS: keyboard route, touch vertical controls, drop-through, jump off, stair step and waypoint");
+        }
+
+        public static void VerifyApproaches()
+        {
+            Rnd.R = new Rng(12345);
+            Game.W = 384;
+            TownArt.DayOverride = 0.25;
+            TownArt.WeatherOverride = "clear";
+            string directory = Path.GetFullPath(Path.Combine(Application.dataPath, "../Golden/town-framing-repair"));
+            Directory.CreateDirectory(directory);
+
+            var game = new Game("town");
+            game.SetTestTownConstruction(new[] { "tower" });
+            game.StartStage();
+            Place(game, 907, 270);
+            Walk(game, "KeyD", 70);
+            Require(game.Player.X < 960 && game.Player.Y == 270 && game.Player.Grounded,
+                $"只完工鐘樓時應在橋端停住，實際 {game.Player.X:F1},{game.Player.Y:F1}");
+            Require(game.NearNow?.Id == "terrace", "橋端應可讀取石台地施工告示");
+            Capture(game, Path.Combine(directory, "02-吊橋工地.png"));
+            Place(game, 1140, 140);
+            Walk(game, "KeyD", 65);
+            Require(game.Player.X < 1184 && game.Player.Y == 140 && game.Player.Grounded, "上層施工橋端應擋住");
+            Place(game, 910, TownArt.FLOOR);
+            Walk(game, "KeyD", 70);
+            Require(game.Player.X > 980 && game.Player.Y == TownArt.FLOOR, "橋端下方的地面仍須通行");
+
+            game.SetTestTownConstruction(TownProject.All.Select(p => p.Id));
+            Place(game, 907, 270);
+            Walk(game, "KeyD", 70);
+            Require(game.Player.X > 960 && game.Player.Y == 270 && game.Player.Grounded, "石台地開放後可以走過橋端");
+            Capture(game, Path.Combine(directory, "03-石台地完工.png"));
+            Place(game, 178, TownArt.FLOOR);
+            Climb(game, "KeyW", 270);
+            Climb(game, "KeyS", TownArt.FLOOR);
+            Place(game, 1553, TownArt.FLOOR);
+            Climb(game, "KeyW", 342);
+            Climb(game, "KeyS", TownArt.FLOOR);
+            Place(game, 2166, TownArt.FLOOR);
+            Climb(game, "KeyW", 287);
+            Place(game, 2192, 287);
+            Climb(game, "KeyW", 202);
+            Climb(game, "KeyW", 140);
+            Capture(game, Path.Combine(directory, "04-樹冠落腳面.png"));
+            Climb(game, "KeyS", 202);
+
+            foreach (var (day, label) in new[] { (0.25, "白天"), (0.75, "晚上") })
+            {
+                TownArt.DayOverride = day;
+                foreach (var (x, name) in new[] { (120, "城門"), (325, "公會"), (665, "鐘樓"), (800, "廣場"),
+                    (962, "工坊"), (1360, "旅館"), (2166, "大樹") })
+                {
+                    Place(game, x, TownArt.FLOOR);
+                    var v = Game.ViewRect();
+                    Require(Game.Zoom == Game.TOWN_ZOOM && game.CamY + v.y0 + v.h <= Game.SewerCeiling,
+                        $"{name}的街道鏡頭應維持既有倍率並對齊地下拱頂");
+                    Capture(game, Path.Combine(directory, $"01-{label}-{name}.png"));
+                }
+            }
+            Debug.Log("[TownApproaches] PASS: blocked passages, street camera, castle, house and tree ladders");
+        }
+
+        static void Require(bool condition, string message)
+        {
+            if (!condition) throw new InvalidOperationException(message);
+        }
+
+        static void Place(Game game, float x, float y)
+        {
+            game.Input.ReleaseAll();
+            game.SetTestPosition(new Vector2(x, y));
+            game.Player.Vx = game.Player.Vy = game.Player.DropT = 0;
+            game.Player.Grounded = true;
+        }
+
+        static void Walk(Game game, string key, int ticks)
+        {
+            game.Input.KeyDown(key);
+            for (int tick = 0; tick < ticks; tick++) Advance(game);
+            game.Input.KeyUp(key);
+        }
+
+        static void Climb(Game game, string key, int target)
+        {
+            Walk(game, key, 1);
+            game.Input.KeyDown(key);
+            for (int tick = 0; tick < 200 && (game.Player.Y != target || game.TownClimbing); tick++) Advance(game);
+            game.Input.KeyUp(key);
+            for (int tick = 0; tick < 10; tick++) Advance(game);
+            Require(game.Player.Y == target && game.Player.Grounded,
+                $"{key}應落在 {target}，實際 {game.Player.X:F1},{game.Player.Y:F1}");
         }
 
         static Game Start()

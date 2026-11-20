@@ -1066,7 +1066,7 @@ namespace ZeroStar
             Ult.Draw(frame);
             Prof.Mark("大招畫");
             if (!Town) DrawLowHp(frame);
-            if (Town && !TownUnderground) { TownPuddles.Player(Player.X, Player.Vx, Player.Grounded && Math.Abs(Player.Y - TownArt.FLOOR) < 1); TownArt.DrawWeather(frame, sceneClock); TownArt.DrawFg(frame); }
+            if (Town && !TownUnderground) { TownPuddles.Player(Player.X, Player.Vx, Player.Grounded && Math.Abs(Player.Y - TownArt.FLOOR) < 1); TownArt.DrawWeather(frame, sceneClock); TownArt.DrawFg(frame, Player.X, Player.Y); }
             if (Director?.Lock != null) DrawBarrier(frame, Director.Lock.Value);
             if (!Town) Art.DrawForeground(frame);
             layout?.Draw(frame, SceneryLayer.Foreground, frame.Color);

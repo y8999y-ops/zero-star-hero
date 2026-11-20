@@ -1,7 +1,7 @@
 using UnityEngine;
 namespace ZeroStar
 {
-    public enum StampKind { Terrain, Decor, Solid, Platform, Back, Far, Mid, Near, Fg, UpFar, UpMid, Torch, Crystal, Start, Exit, Chest, Altar, Feature, Hazard, Cloud, Tuft, Box, SmallCrystal, Puddle, Hang, Critter, Swarm, Resident, EnemySpawn, PaintedGround, PaintedPlatform, RewardChest, Climb, TownStep, TownMarker, PaintedDetail }
+    public enum StampKind { Terrain, Decor, Solid, Platform, Back, Far, Mid, Near, Fg, UpFar, UpMid, Torch, Crystal, Start, Exit, Chest, Altar, Feature, Hazard, Cloud, Tuft, Box, SmallCrystal, Puddle, Hang, Critter, Swarm, Resident, EnemySpawn, PaintedGround, PaintedPlatform, RewardChest, Climb, TownStep, TownMarker, PaintedDetail, TownBarrier, TownPathArt }
     // 圖片左上角為原點，互動物件則以遊戲內的腳底或效果掛點為原點。
     public sealed class WorldStamp : MonoBehaviour
     {
@@ -19,6 +19,7 @@ namespace ZeroStar
         [HideInInspector] public bool useBakedEmission = true;
         [Tooltip("這項城鎮建設完成後才顯示物件、碰撞或互動點。")] public string townProject;
         [Tooltip("施工中以淡色顯示輪廓。")] public bool townPreview;
+        [Tooltip("走在地面時隱去，登高時隨鏡頭顯現。")] public bool aboveStreet;
         public Vector2Int Position(Transform root)
         {
             Vector3 p=root.InverseTransformPoint(transform.position);

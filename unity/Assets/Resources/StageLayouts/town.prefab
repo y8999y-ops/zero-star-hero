@@ -1377,6 +1377,125 @@ MonoBehaviour:
   lightRadius: 0
   lightColor: {r: 1, g: 0.65, b: 0.2, a: 1}
   sparks: 0
+--- !u!1 &870319968511281983
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8157525933765445855}
+  - component: {fileID: 6582985514295991445}
+  - component: {fileID: 3359053235509858978}
+  m_Layer: 0
+  m_Name: "\u57CE\u7246\u68AF\u5B50\u4E0A\u6BB5"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8157525933765445855
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 870319968511281983}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 165, y: -270, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1512946578155551268}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6582985514295991445
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 870319968511281983}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba925f2ca43032f4e88c74bb60f14274, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
+  kind: 37
+  size: {x: 26, y: 54}
+  rewardId:
+  blocksLight: 0
+  blocksSparks: 0
+  index: -1
+  original: {x: 165, y: 270}
+  role:
+  lights:
+  sourceTop: 0
+  sourceInsetX: 0
+  useBakedEmission: 1
+  townProject: wall
+  aboveStreet: 1
+--- !u!212 &3359053235509858978
+SpriteRenderer:
+  serializedVersion: 3
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 870319968511281983}
+  m_Enabled: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 0
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_Sprite: {fileID: 21300000, guid: 17d71643bec4b014d9e619f8b838e09f, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_FlipX: 0
+  m_FlipY: 0
+  m_DrawMode: 2
+  m_Size: {x: 26, y: 54}
+  m_AdaptiveModeThreshold: 0.5
+  m_SpriteTileMode: 0
+  m_WasSpriteAssigned: 1
+  m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!1 &912573782989334029
 GameObject:
   m_ObjectHideFlags: 0
@@ -1667,6 +1786,7 @@ MonoBehaviour:
   useBakedEmission: 1
   townProject: star
   townPreview: 1
+  aboveStreet: 1
 --- !u!212 &1843327499368770481
 SpriteRenderer:
   serializedVersion: 3
@@ -2050,6 +2170,63 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+--- !u!1 &1152547232227746003
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7317172582526482339}
+  - component: {fileID: 7453235212543200297}
+  m_Layer: 0
+  m_Name: "\u6A39\u51A0\u81F3\u89C0\u661F\u53F0"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7317172582526482339
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1152547232227746003}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 2016, y: -116, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3758658709053765670}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7453235212543200297
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1152547232227746003}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba925f2ca43032f4e88c74bb60f14274, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
+  kind: 36
+  size: {x: 8, y: 24}
+  rewardId:
+  blocksLight: 0
+  blocksSparks: 0
+  index: -1
+  original: {x: 2016, y: 116}
+  role: star
+  lights:
+  sourceTop: 0
+  sourceInsetX: 0
+  useBakedEmission: 1
+  townProject: tree
 --- !u!1 &1219605637521459660
 GameObject:
   m_ObjectHideFlags: 0
@@ -2108,6 +2285,7 @@ MonoBehaviour:
   sourceInsetX: 0
   useBakedEmission: 1
   townProject: tower
+  aboveStreet: 1
 --- !u!212 &8340007063311646593
 SpriteRenderer:
   serializedVersion: 3
@@ -2549,6 +2727,7 @@ MonoBehaviour:
   sourceInsetX: 0
   useBakedEmission: 1
   townProject: star
+  aboveStreet: 1
 --- !u!212 &7842644531117882550
 SpriteRenderer:
   serializedVersion: 3
@@ -3492,7 +3671,7 @@ Transform:
   m_GameObject: {fileID: 1752861445218785390}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 124, y: -270, z: 0}
+  m_LocalPosition: {x: 166, y: -270, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4759,6 +4938,63 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+--- !u!1 &2165735268824079421
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6925665323472445703}
+  - component: {fileID: 1249513744262276738}
+  m_Layer: 0
+  m_Name: "\u540A\u6A4B\u81F3\u77F3\u53F0\u5730"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6925665323472445703
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2165735268824079421}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 960, y: -246, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3758658709053765670}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1249513744262276738
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2165735268824079421}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba925f2ca43032f4e88c74bb60f14274, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
+  kind: 36
+  size: {x: 8, y: 24}
+  rewardId:
+  blocksLight: 0
+  blocksSparks: 0
+  index: -1
+  original: {x: 960, y: 246}
+  role: terrace
+  lights:
+  sourceTop: 0
+  sourceInsetX: 0
+  useBakedEmission: 1
+  townProject: tower
 --- !u!1 &2190902943993705173
 GameObject:
   m_ObjectHideFlags: 0
@@ -5460,6 +5696,7 @@ MonoBehaviour:
   useBakedEmission: 1
   townProject: tower
   townPreview: 1
+  aboveStreet: 1
 --- !u!212 &6997017103974604568
 SpriteRenderer:
   serializedVersion: 3
@@ -5547,7 +5784,7 @@ Transform:
   m_GameObject: {fileID: 2497120774163716097}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 123, y: -270, z: 0}
+  m_LocalPosition: {x: 165, y: -324, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5565,8 +5802,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ba925f2ca43032f4e88c74bb60f14274, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
-  kind: 35
-  size: {x: 26, y: 170}
+  kind: 37
+  size: {x: 26, y: 116}
   rewardId: 
   blocksLight: 0
   blocksSparks: 0
@@ -5632,7 +5869,7 @@ SpriteRenderer:
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 2
-  m_Size: {x: 26, y: 170}
+  m_Size: {x: 26, y: 116}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
@@ -5697,6 +5934,7 @@ MonoBehaviour:
   useBakedEmission: 1
   townProject: tree
   townPreview: 1
+  aboveStreet: 1
 --- !u!212 &7314645378887781006
 SpriteRenderer:
   serializedVersion: 3
@@ -5795,6 +6033,7 @@ Transform:
   - {fileID: 3563111905102873224}
   - {fileID: 4585956062475330166}
   - {fileID: 4068018760318412757}
+  - {fileID: 930867174327106325}
   m_Father: {fileID: 6105444368955095714}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2572248472436259658
@@ -6031,6 +6270,7 @@ Transform:
   - {fileID: 9048623610432603793}
   - {fileID: 3527149884038960724}
   - {fileID: 138217842376040095}
+  - {fileID: 3453579730439182224}
   m_Father: {fileID: 6105444368955095714}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2664105843201113546
@@ -6354,6 +6594,7 @@ MonoBehaviour:
   sourceInsetX: 0
   useBakedEmission: 1
   townProject: tower
+  aboveStreet: 1
 --- !u!212 &1600186198205014684
 SpriteRenderer:
   serializedVersion: 3
@@ -6704,6 +6945,7 @@ MonoBehaviour:
   useBakedEmission: 0
   townProject: star
   townPreview: 1
+  aboveStreet: 1
 --- !u!212 &7879542136792970249
 SpriteRenderer:
   serializedVersion: 3
@@ -6822,6 +7064,7 @@ MonoBehaviour:
   sourceInsetX: 0
   useBakedEmission: 1
   townProject: terrace
+  aboveStreet: 1
 --- !u!212 &3698733304753773615
 SpriteRenderer:
   serializedVersion: 3
@@ -6939,6 +7182,161 @@ MonoBehaviour:
   sourceInsetX: 0
   useBakedEmission: 1
   townProject: star
+--- !u!1 &3005808133407571739
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3758658709053765670}
+  m_Layer: 0
+  m_Name: "\u6A4B\u7AEF\u5DE5\u5730\u8207\u51FA\u5165\u53E3"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3758658709053765670
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3005808133407571739}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 6925665323472445703}
+  - {fileID: 149483697799571671}
+  - {fileID: 3099267192692462258}
+  - {fileID: 4760502658757327678}
+  - {fileID: 7317172582526482339}
+  m_Father: {fileID: 6105444368955095714}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &3115000956510788541
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 930867174327106325}
+  - component: {fileID: 2608834114572995014}
+  - component: {fileID: 4711456419424199052}
+  m_Layer: 0
+  m_Name: "\u6A39\u51A0\u843D\u8173\u6728\u677F"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &930867174327106325
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3115000956510788541}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 2060, y: -115, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5916695673651456233}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2608834114572995014
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3115000956510788541}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba925f2ca43032f4e88c74bb60f14274, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
+  kind: 37
+  size: {x: 156, y: 33}
+  rewardId:
+  blocksLight: 0
+  blocksSparks: 0
+  index: -1
+  original: {x: 2060, y: 115}
+  role:
+  lights:
+  sourceTop: 0
+  sourceInsetX: 0
+  useBakedEmission: 1
+  townProject: tree
+  aboveStreet: 1
+--- !u!212 &4711456419424199052
+SpriteRenderer:
+  serializedVersion: 3
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3115000956510788541}
+  m_Enabled: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 0
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_Sprite: {fileID: 21300000, guid: 4c0829767c1ad6549904818d637e250a, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_FlipX: 0
+  m_FlipY: 0
+  m_DrawMode: 2
+  m_Size: {x: 156, y: 33}
+  m_AdaptiveModeThreshold: 0.5
+  m_SpriteTileMode: 0
+  m_WasSpriteAssigned: 1
+  m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!1 &3124102849743254321
 GameObject:
   m_ObjectHideFlags: 0
@@ -7307,7 +7705,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ba925f2ca43032f4e88c74bb60f14274, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
-  kind: 35
+  kind: 37
   size: {x: 26, y: 85}
   rewardId: 
   blocksLight: 0
@@ -7320,6 +7718,7 @@ MonoBehaviour:
   sourceInsetX: 0
   useBakedEmission: 1
   townProject: tree
+  aboveStreet: 1
 --- !u!212 &2256610253537223081
 SpriteRenderer:
   serializedVersion: 3
@@ -7655,7 +8054,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ba925f2ca43032f4e88c74bb60f14274, type: 3}
   m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
-  kind: 35
+  kind: 37
   size: {x: 26, y: 54}
   rewardId:
   blocksLight: 0
@@ -7912,6 +8311,63 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!1 &3505765010055177363
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3453579730439182224}
+  - component: {fileID: 803074273097272192}
+  m_Layer: 0
+  m_Name: "\u8611\u83C7\u4F4F\u5B85\u53F3\u5074\u68AF\u5B50"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3453579730439182224
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3505765010055177363}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1541, y: -342, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 6759449716473724293}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &803074273097272192
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3505765010055177363}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba925f2ca43032f4e88c74bb60f14274, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
+  kind: 32
+  size: {x: 24, y: 98}
+  rewardId:
+  blocksLight: 0
+  blocksSparks: 0
+  index: -1
+  original: {x: 1541, y: 342}
+  role:
+  lights:
+  sourceTop: 0
+  sourceInsetX: 0
+  useBakedEmission: 1
+  townProject: house-c
 --- !u!1 &3559229677677898042
 GameObject:
   m_ObjectHideFlags: 0
@@ -8644,6 +9100,7 @@ MonoBehaviour:
   sourceInsetX: 0
   useBakedEmission: 1
   townProject: tower
+  aboveStreet: 1
 --- !u!212 &7603188592650580496
 SpriteRenderer:
   serializedVersion: 3
@@ -9993,6 +10450,7 @@ MonoBehaviour:
   sourceInsetX: 0
   useBakedEmission: 1
   townProject: star
+  aboveStreet: 1
 --- !u!212 &852330987328174909
 SpriteRenderer:
   serializedVersion: 3
@@ -11020,6 +11478,7 @@ MonoBehaviour:
   useBakedEmission: 1
   townProject: terrace
   townPreview: 1
+  aboveStreet: 1
 --- !u!212 &8089384299060845104
 SpriteRenderer:
   serializedVersion: 3
@@ -11532,6 +11991,7 @@ MonoBehaviour:
   useBakedEmission: 0
   townProject: terrace
   townPreview: 1
+  aboveStreet: 1
 --- !u!212 &4909677598951037148
 SpriteRenderer:
   serializedVersion: 3
@@ -11651,6 +12111,7 @@ MonoBehaviour:
   useBakedEmission: 1
   townProject: tower
   townPreview: 1
+  aboveStreet: 1
 --- !u!212 &1345103609811804810
 SpriteRenderer:
   serializedVersion: 3
@@ -11873,7 +12334,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ba925f2ca43032f4e88c74bb60f14274, type: 3}
   m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
-  kind: 35
+  kind: 37
   size: {x: 26, y: 62}
   rewardId:
   blocksLight: 0
@@ -11886,6 +12347,7 @@ MonoBehaviour:
   sourceInsetX: 0
   useBakedEmission: 1
   townProject: tree
+  aboveStreet: 1
 --- !u!212 &5000162478032337918
 SpriteRenderer:
   serializedVersion: 3
@@ -12445,6 +12907,7 @@ MonoBehaviour:
   useBakedEmission: 0
   townProject: terrace
   townPreview: 1
+  aboveStreet: 1
 --- !u!212 &6953211573792617687
 SpriteRenderer:
   serializedVersion: 3
@@ -12711,6 +13174,63 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+--- !u!1 &6024752284112335845
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 149483697799571671}
+  - component: {fileID: 2441545313639702852}
+  m_Layer: 0
+  m_Name: "\u4E0A\u5C64\u897F\u5074\u81F3\u89C0\u661F\u53F0"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &149483697799571671
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6024752284112335845}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1184, y: -116, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3758658709053765670}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2441545313639702852
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6024752284112335845}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba925f2ca43032f4e88c74bb60f14274, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
+  kind: 36
+  size: {x: 8, y: 24}
+  rewardId:
+  blocksLight: 0
+  blocksSparks: 0
+  index: -1
+  original: {x: 1184, y: 116}
+  role: star
+  lights:
+  sourceTop: 0
+  sourceInsetX: 0
+  useBakedEmission: 1
+  townProject: tower
 --- !u!1 &6044670366191550392
 GameObject:
   m_ObjectHideFlags: 0
@@ -12995,6 +13515,7 @@ Transform:
   - {fileID: 8589762307726437795}
   - {fileID: 5916695673651456233}
   - {fileID: 8294358348672379439}
+  - {fileID: 3758658709053765670}
   m_Father: {fileID: 2173468228228107806}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &6082640303306247214
@@ -13609,6 +14130,63 @@ MonoBehaviour:
   sourceInsetX: 0
   useBakedEmission: 1
   townProject: terrace
+--- !u!1 &6708028948309351579
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4760502658757327678}
+  - component: {fileID: 5177225297182199390}
+  m_Layer: 0
+  m_Name: "\u89C0\u661F\u53F0\u81F3\u6A39\u51A0"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4760502658757327678
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6708028948309351579}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 2024, y: -116, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3758658709053765670}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5177225297182199390
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6708028948309351579}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba925f2ca43032f4e88c74bb60f14274, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
+  kind: 36
+  size: {x: 8, y: 24}
+  rewardId:
+  blocksLight: 0
+  blocksSparks: 0
+  index: -1
+  original: {x: 2024, y: 116}
+  role: tree
+  lights:
+  sourceTop: 0
+  sourceInsetX: 0
+  useBakedEmission: 1
+  townProject: star
 --- !u!1 &6783802615196494350
 GameObject:
   m_ObjectHideFlags: 0
@@ -15969,6 +16547,7 @@ Transform:
   - {fileID: 3121290223830204356}
   - {fileID: 1029134655170833449}
   - {fileID: 5916124152380347127}
+  - {fileID: 8157525933765445855}
   m_Father: {fileID: 6105444368955095714}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &8120633375240252570
@@ -16519,7 +17098,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
   kind: 30
-  size: {x: 153, y: 44}
+  size: {x: 197, y: 44}
   rewardId: 
   blocksLight: 0
   blocksSparks: 0
@@ -16532,6 +17111,7 @@ MonoBehaviour:
   useBakedEmission: 1
   townProject: wall
   townPreview: 1
+  aboveStreet: 1
 --- !u!212 &2518805667895684453
 SpriteRenderer:
   serializedVersion: 3
@@ -16586,7 +17166,7 @@ SpriteRenderer:
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 2
-  m_Size: {x: 153, y: 44}
+  m_Size: {x: 197, y: 44}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
@@ -16833,6 +17413,63 @@ MonoBehaviour:
   sourceInsetX: 0
   useBakedEmission: 1
   townProject: tree
+--- !u!1 &8691702843938567931
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3099267192692462258}
+  - component: {fileID: 6153909177901163955}
+  m_Layer: 0
+  m_Name: "\u89C0\u661F\u53F0\u81F3\u4E0A\u5C64\u897F\u5074"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3099267192692462258
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8691702843938567931}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1184, y: -116, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3758658709053765670}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6153909177901163955
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8691702843938567931}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba925f2ca43032f4e88c74bb60f14274, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::ZeroStar.WorldStamp
+  kind: 36
+  size: {x: 8, y: 24}
+  rewardId:
+  blocksLight: 0
+  blocksSparks: 0
+  index: -1
+  original: {x: 1184, y: 116}
+  role: tower
+  lights:
+  sourceTop: 0
+  sourceInsetX: 0
+  useBakedEmission: 1
+  townProject: star
 --- !u!1 &8697909431114985879
 GameObject:
   m_ObjectHideFlags: 0

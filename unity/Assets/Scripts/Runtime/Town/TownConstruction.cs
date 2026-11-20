@@ -23,7 +23,7 @@ namespace ZeroStar
             new TownProject("plaza", "中央廣場", "噴水池、廣場人孔", 150, 10, 0, 758, 440),
             new TownProject("tower", "鐘樓修繕", "鐘樓繩梯、陽台、通往中層的吊橋", 300, 20, 5, 656, 440, "1-1"),
             new TownProject("terrace", "石台地", "中層石台地、鎮長家、中層路標", 400, 30, 0, 969, 270, requires: "tower"),
-            new TownProject("wall", "城牆步道", "城牆梯子、中層西側步道", 250, 15, 0, 136, 440, requires: "terrace"),
+            new TownProject("wall", "城牆步道", "城牆梯子、中層西側步道", 250, 15, 0, 178, 440, requires: "terrace"),
             new TownProject("sewer", "下水道清理", "人孔通道、地下走道、地下路標", 300, 0, 10, 882, 440, "1-2", "plaza"),
             new TownProject("tree", "大樹樹屋", "樹屋繩梯與枝幹、上層東側、練習場", 350, 25, 0, 2167, 440, "1-2"),
             new TownProject("star", "觀星台", "觀星台步道與上層路標", 600, 40, 10, 1198, 140, "1-3"),
@@ -44,7 +44,9 @@ namespace ZeroStar
         public double? TownRaceSeconds;
         public Action OnTownBuilt;
         public bool IsTownBuilt(string id) => townBuilt.Contains(id);
-        bool TownStampOpen(WorldStamp stamp) => string.IsNullOrEmpty(stamp.townProject) || IsTownBuilt(stamp.townProject);
+        bool TownStampOpen(WorldStamp stamp) =>
+            (string.IsNullOrEmpty(stamp.townProject) || IsTownBuilt(stamp.townProject))
+            && (stamp.kind != StampKind.TownBarrier || !IsTownBuilt(stamp.role));
 
         internal void RestoreTownConstruction(IEnumerable<string> ids, bool track)
         {
@@ -130,12 +132,26 @@ namespace ZeroStar
         void DrawTownWorksites(Frame frame)
         {
             var p = new Painter(frame);
+            double elevated = TownArt.ElevatedVisibility(frame.Oy + frame.CameraFractionY);
+            foreach (var gate in townBarriers)
+            {
+                if (elevated <= 0 || gate.x + gate.w + 9 < frame.Ox || gate.x - 9 > frame.Ox + frame.W) continue;
+                p.Fade = elevated;
+                int x = gate.x + gate.w / 2, y = gate.y + gate.h;
+                p.Rect(gate.x, gate.y, gate.w, gate.h, 0xff333041);
+                p.Rect(gate.x + 2, gate.y + 3, gate.w - 4, gate.h - 3, 0xff69607c);
+                p.Rect(x - 9, y - 19, 18, 13, 0xff493d54);
+                p.Rect(x - 8, y - 18, 16, 11, 0xff92d5f1);
+                p.Rect(x - 1, y - 16, 2, 4, 0xff493d54);
+                p.Rect(x - 1, y - 11, 2, 2, 0xff493d54);
+            }
             foreach (var site in TownProject.All)
             {
                 int x = site.X, y = site.Y;
                 if (IsTownBuilt(site.Id) || x < frame.Ox - 24 || x > frame.Ox + frame.W + 24
-                    || y < frame.Oy || y - 24 >= frame.Oy + frame.H) continue;
+                    || y < frame.Oy || y - 24 >= frame.Oy + frame.H || y < TownArt.FLOOR) continue;
                 // 通行的街道留在圍欄前方。梯子、踏面和入口由同一個工程狀態鎖住。
+                p.Fade = 1;
                 p.Rect(x - 20, y - 14, 3, 14, 0xff333041);
                 p.Rect(x + 17, y - 14, 3, 14, 0xff333041);
                 p.Rect(x - 22, y - 12, 44, 7, 0xff493d54);

@@ -19,7 +19,7 @@ namespace ZeroStar
             root=prefab.transform;
             // 原圖先鋪地面、再放道具、最後疊平台。Hierarchy 分組並非繪製順序。
             allStamps=prefab.GetComponentsInChildren<WorldStamp>()
-                .OrderBy(s => s.kind==StampKind.Platform ? 2 : s.kind==StampKind.Decor ? 1 : 0)
+                .OrderBy(s => s.kind==StampKind.TownPathArt ? 3 : s.kind==StampKind.Platform ? 2 : s.kind==StampKind.Decor ? 1 : 0)
                 .ThenBy(s => s.TryGetComponent<SpriteRenderer>(out var renderer) ? renderer.sortingOrder : 0).ToArray();
             SelectTownStamps(null);
         }
@@ -30,6 +30,7 @@ namespace ZeroStar
             anchors.Clear();
             foreach (var s in stamps) anchors[(s.kind,s.index)] = s;
         }
+        internal bool HasStreetView => allStamps.Any(s => s.aboveStreet);
         public static WorldComposition Load(string id)
         {
             var prefab=Resources.Load<GameObject>("StageLayouts/"+id);
@@ -133,7 +134,7 @@ namespace ZeroStar
             {
                 var pos = s.Position(root);
                 if (s.size.x <= 0) continue;
-                if (s.kind == StampKind.Solid || s.kind == StampKind.PaintedGround)
+                if (s.kind == StampKind.Solid || s.kind == StampKind.PaintedGround || s.kind == StampKind.TownBarrier)
                 {
                     if (s.size.y <= 0) continue;
                     hasStreet |= s.role == "town-street";
@@ -156,7 +157,7 @@ namespace ZeroStar
                 defs.Add(new Features.Def{t="safe",stableId="reward-"+s.rewardId,x=p.x,y=p.y});
             }
         }
-        public void Apply(LevelData data)
+        public void Apply(LevelData data, bool streetView = false)
         {
             worldWidth=data.W;worldHeight=data.H;blockers=new byte[data.W*data.H];shadowCache.Clear();
             OriginalSolids=data.Solids; OriginalPlatforms=data.Platforms; OriginalTorches=data.Torches;
@@ -168,10 +169,11 @@ namespace ZeroStar
             var images=new Dictionary<Sprite,Img>();
             var originalLayers=new Dictionary<StampKind,Img>{{StampKind.Back,data.Back},{StampKind.Far,data.Far},{StampKind.Mid,data.Mid},{StampKind.Near,data.Near},{StampKind.Fg,data.Fg},{StampKind.UpFar,data.UpFar},{StampKind.UpMid,data.UpMid}};
             foreach(var layer in originalLayers.Values) if(layer!=null && layer.Px!=null) Array.Clear(layer.Px,0,layer.Px.Length);
-            data.TownPreview = townPreviews?.Count > 0 ? new uint[data.PF.Length] : null;
+            data.TownPreview = townPreviews?.Any(s => !streetView || !s.aboveStreet) == true ? new uint[data.PF.Length] : null;
             var drawing = data.TownPreview != null ? stamps.Concat(townPreviews.OrderBy(s => s.index)) : (IEnumerable<WorldStamp>)stamps;
             foreach(var s in drawing)
             {
+                if (streetView && s.aboveStreet) continue;
                 if(s.kind==StampKind.RewardChest)continue; // 寶箱由 Features 繪製，Prefab 圖片是編輯預覽。
                 var pos=s.Position(root); var delta=pos-s.original;
                 var sr=s.GetComponent<SpriteRenderer>(); Img img=null;
@@ -201,6 +203,7 @@ namespace ZeroStar
                     case StampKind.PaintedGround:
                     case StampKind.PaintedPlatform:
                     case StampKind.PaintedDetail:
+                    case StampKind.TownPathArt:
                         if(img==null)continue;
                         if(s.kind==StampKind.PaintedGround)solids.Add(new RectD{X=pos.x,Y=pos.y,W=s.size.x,H=s.size.y});
                         else if(s.kind==StampKind.PaintedPlatform) platforms.Add(new Platform{X=pos.x,Y=pos.y,W=s.size.x});
@@ -210,7 +213,7 @@ namespace ZeroStar
                         for(int x=Math.Max(0,-pos.x);x<Math.Min(s.size.x,data.W-pos.x);x++)
                         {
                             uint c=img.Px[((y+s.sourceTop)%img.H)*img.W+inset+x%period];
-                            if(s.kind==StampKind.PaintedDetail && c==0)continue;
+                            if((s.kind==StampKind.PaintedDetail || s.kind==StampKind.TownPathArt) && c==0)continue;
                             int dest=(pos.y+y)*data.W+pos.x+x;data.PF[dest]=c;data.PFE[dest]=0;
                         }
                         continue;
