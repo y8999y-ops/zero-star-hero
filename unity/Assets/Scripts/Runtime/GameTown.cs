@@ -61,7 +61,7 @@ namespace ZeroStar
         {
             var mayor = TownMayorPosition;
             if (Math.Abs(x - mayor.x) < 24 && Math.Abs(y - mayor.y) < 17)
-                return new Near { Id = "town-mayor", Name = "鎮長", Place = "town-mayor", X = mayor.x, FootY = mayor.y, Hgt = 22 };
+                return new Near { Id = "town-mayor", Name = "鎮長", Place = "town-mayor", X = mayor.x, FootY = mayor.y, Hgt = TownArt.NpcSize("mayor").h };
             foreach (var n in TownArt.NPCS) if (Math.Abs(n.x - x) < 26 && Math.Abs(TownArt.FootY(n.id)-y)<32) return new Near { Id = n.id, Name = n.name, Place = n.place, X = n.x };
             var destination = FindTownStop(x, y);
             if (destination != null) return destination;
@@ -182,15 +182,11 @@ namespace ZeroStar
             TownArt.SnapPeople(frame);
             TownArt.DrawNpcs(frame, sceneClock);
             Folk.Draw(frame);
-            // 鎮長專用角色圖待補。
+            // 鎮長：藍紫色貓頭鷹（game/fx/town/owl.js，2026-11-20 使用者通過）。跟他說話（建設委託視窗開著）時播說話＋揮翅膀
             if (mayorVisible > 0)
             {
-                var mayorPainter = new Painter(frame).Place(mayor.x, mayor.y);
-                mayorPainter.Fade = mayorVisible;
-                mayorPainter.Rect(-7, -16, 14, 16, 0xff594066);
-                mayorPainter.Rect(-5, -20, 10, 9, 0xffa0b5dd);
-                mayorPainter.Rect(-7, -22, 14, 4, 0xff594066);
-                mayorPainter.Rect(-4, -12, 8, 2, 0xff71c8e7);
+                bool talking = TownBusy && NearNow?.Place == "town-mayor";
+                Blit.Draw(frame, Baked.Anim(talking ? "npc:mayor:talk" : "npc:mayor"), sceneClock, mayor.x, mayor.y + 1, false, mayorVisible);
             }
             townPeopleDrawn = true;
             // 引導：要去的地方頭上跳一個「!」

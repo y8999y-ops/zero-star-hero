@@ -88,6 +88,7 @@ const comboKeys = {};   // 形態 → [{ anim 名稱, 招式 }]
   // 碎星鎮的居民、路人（npcs.js）：npc:id（待機）、npc:id:walk（走路）
   const { npcAnim, NPC_IDS } = await import("../../src/npcs.js");
   for (const id of NPC_IDS) { anims["npc:" + id] = npcAnim(id); anims["npc:" + id + ":walk"] = npcAnim(id, true); }
+  anims["npc:mayor:talk"] = npcAnim("mayor", true);   // 鎮長的第二個動作是說話（揮翅膀），不是走路
   // 第 2 章的新魔物（只做在 Unity 版，網頁版沒有）：毒菇怪（game/fx/forest/poison-shroom.js）
   {
     const { bake } = await import("../../src/bake.js");

@@ -8,6 +8,7 @@ import * as townSlime from "../fx/town/town-slime.js";
 import * as golem from "../fx/town/golem.js";
 import * as mushroom from "../fx/town/mushroom.js";
 import * as turtle from "../fx/town/turtle.js";
+import * as owl from "../fx/town/owl.js";
 
 // id → [特效, 待機的選項, 走路的選項]
 const DEFS = {
@@ -18,6 +19,7 @@ const DEFS = {
   turtle: [turtle, { mode: "idle" }, { mode: "walk" }],
   pebble: [golem, { kind: "pupil", mode: "idle" }, { kind: "pupil", mode: "walk" }],
   shroom: [mushroom, { kind: "kid", mode: "idle" }, { kind: "kid", mode: "walk" }],
+  mayor: [owl, { mode: "idle" }, { mode: "talk" }],   // 2026-11-20 鎮長：藍紫色貓頭鷹＋魔法帽；第三格是「說話」（Unity 用 npc:mayor:talk）
   shroom2: [mushroom, { kind: "kid", mode: "idle" }, { kind: "kid", mode: "walk", lag: 0.25 }],   // 後面那顆慢一點
 };
 const cache = {};
