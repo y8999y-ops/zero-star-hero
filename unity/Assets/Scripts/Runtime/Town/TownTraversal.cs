@@ -25,6 +25,10 @@ namespace ZeroStar
 
         void ReadTownTraversal()
         {
+            townLadders.Clear();
+            townStops.Clear();
+            townManhole = null;
+            activeLadder = null;
             if (composition == null) return;
             foreach (var (role, p, size) in composition.TownStamps(StampKind.Climb))
                 if (size.x > 0 && size.y > 0) townLadders.Add(new RectD { X = p.x, Y = p.y, W = size.x, H = size.y });

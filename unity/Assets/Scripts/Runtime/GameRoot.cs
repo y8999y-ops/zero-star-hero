@@ -77,7 +77,13 @@ namespace ZeroStar
             mapWin.OnPick = (x, y) => { string id = map?.Pick(x, y); if (id != null) { if (map.Select(id)) MapGo(id); else game.Sfx("ui"); } };   // 階段 4b：UI Toolkit 的 HUD；4c：視窗、介面特效
             win.Sfx = s => game.Sfx(s); win.Money = () => (game.Money, game.Scrap);
             ZeroStar.UI.TownWins.W = win; ZeroStar.UI.TownWins.Fx = uiFx;
-            hud.OnTrack = () => { if (!dlg.Open && !win.Open && !game.TownBusy) { game.Sfx("ui"); _ = ZeroStar.UI.TownWins.OpenQuests(game, false, game.Quests.Tracked.Count > 0 ? "guild" : "sys"); } };
+            hud.OnTrack = () =>
+            {
+                if (dlg.Open || win.Open || game.TownBusy) return;
+                game.Sfx("ui");
+                string tab = game.TrackedTownProject != null ? "build" : game.Quests.Tracked.Count > 0 ? "guild" : "sys";
+                _ = ZeroStar.UI.TownWins.OpenQuests(game, false, tab);
+            };
             hud.CanvasToScreen = screen.CanvasToScreen;
             hud.OnMenu = k => { if (k == "set") { if (!dlg.Open) settings.Toggle(!game.Town); return; } if (Busy()) return; if (k == "bag" || k == "hero") inv.Show(game); else if (k == "tree") OpenTree(); else if (k == "map") OpenLevelMap(); };
             hud.OnForm = f => { if (!game.Town) game.PendingForm = f; };
@@ -280,6 +286,7 @@ namespace ZeroStar
             game.OnLeave = () => game.After(380, () => pending = shotDir != null ? NextStage() : game.Custom ? game.Custom.destination : "town");   // 進傳送門：回碎星鎮（自動玩（-shot）照舊直接到下一關）
             // 碎星鎮：路標＝打開選關地圖；店家、路人的對話和視窗在階段 4b、4c
             game.OnTalk = n => _ = ZeroStar.UI.TownTalk.Interact(game, dlg, n, () => OpenMap(false));
+            game.OnTownBuilt = Save;
 #if UNITY_ANDROID || UNITY_IOS
             game.Vibrate = () => Handheld.Vibrate();   // 大招落地震一下（手機）
 #endif
@@ -576,6 +583,7 @@ namespace ZeroStar
             var order = new[] { "1-1", "1-2", "1-3", "1-4" };
             for (int i = 0; i < Array.IndexOf(order, sc.stage); i++) g.Cleared_.Add(order[i]);   // 前面的關卡算打過了
             if (root.ContainsKey("cleared")) foreach (string id in (List<object>)root["cleared"]) g.Cleared_.Add(id);   // 城鎮：腳本指定打過哪幾關
+            if (root.TryGetValue("town", out var town)) SaveData.ReadTown(g, town);
         }
         static Item SpecItem(OrderedDict sp)
         {

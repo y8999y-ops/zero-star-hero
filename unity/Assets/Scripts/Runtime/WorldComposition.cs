@@ -10,16 +10,25 @@ namespace ZeroStar
     {
         readonly Transform root;
         public bool HasCloudObjects => root.GetComponent<WorldClouds>() != null;
-        readonly WorldStamp[] stamps;
+        readonly WorldStamp[] allStamps;
+        WorldStamp[] stamps;
+        HashSet<WorldStamp> townPreviews;
         readonly Dictionary<(StampKind,int),WorldStamp> anchors = new Dictionary<(StampKind,int),WorldStamp>();
         public WorldComposition(GameObject prefab)
         {
             root=prefab.transform;
             // 原圖先鋪地面、再放道具、最後疊平台。Hierarchy 分組並非繪製順序。
-            stamps=prefab.GetComponentsInChildren<WorldStamp>()
+            allStamps=prefab.GetComponentsInChildren<WorldStamp>()
                 .OrderBy(s => s.kind==StampKind.Platform ? 2 : s.kind==StampKind.Decor ? 1 : 0)
                 .ThenBy(s => s.TryGetComponent<SpriteRenderer>(out var renderer) ? renderer.sortingOrder : 0).ToArray();
-            foreach(var s in stamps) anchors[(s.kind,s.index)]=s;
+            SelectTownStamps(null);
+        }
+        internal void SelectTownStamps(Func<WorldStamp, bool> open)
+        {
+            stamps = open == null ? allStamps : allStamps.Where(open).ToArray();
+            townPreviews = open == null ? null : new HashSet<WorldStamp>(allStamps.Where(s => s.townPreview && !open(s)));
+            anchors.Clear();
+            foreach (var s in stamps) anchors[(s.kind,s.index)] = s;
         }
         public static WorldComposition Load(string id)
         {
@@ -159,12 +168,19 @@ namespace ZeroStar
             var images=new Dictionary<Sprite,Img>();
             var originalLayers=new Dictionary<StampKind,Img>{{StampKind.Back,data.Back},{StampKind.Far,data.Far},{StampKind.Mid,data.Mid},{StampKind.Near,data.Near},{StampKind.Fg,data.Fg},{StampKind.UpFar,data.UpFar},{StampKind.UpMid,data.UpMid}};
             foreach(var layer in originalLayers.Values) if(layer!=null && layer.Px!=null) Array.Clear(layer.Px,0,layer.Px.Length);
-            foreach(var s in stamps)
+            data.TownPreview = townPreviews?.Count > 0 ? new uint[data.PF.Length] : null;
+            var drawing = data.TownPreview != null ? stamps.Concat(townPreviews.OrderBy(s => s.index)) : (IEnumerable<WorldStamp>)stamps;
+            foreach(var s in drawing)
             {
                 if(s.kind==StampKind.RewardChest)continue; // 寶箱由 Features 繪製，Prefab 圖片是編輯預覽。
                 var pos=s.Position(root); var delta=pos-s.original;
                 var sr=s.GetComponent<SpriteRenderer>(); Img img=null;
                 if(sr && sr.enabled && sr.sprite && !images.TryGetValue(sr.sprite,out img)) images[sr.sprite]=img=ImageOf(sr.sprite);
+                if (townPreviews?.Contains(s) == true)
+                {
+                    if (img != null) DrawTownPreview(s, img, pos, data);
+                    continue;
+                }
                 if(originalLayers.TryGetValue(s.kind,out var layer))
                 {
                     if(img!=null && layer!=null)
@@ -216,6 +232,21 @@ namespace ZeroStar
             }
             if(data.Stage!="town"){data.Solids=solids;data.Platforms=platforms;}
             data.PropLights=lights;data.Torches=torches;data.BigCrystals=crystals;
+        }
+        static void DrawTownPreview(WorldStamp stamp, Img img, Vector2Int pos, LevelData data)
+        {
+            bool tiled = stamp.kind == StampKind.PaintedPlatform || stamp.kind == StampKind.PaintedDetail;
+            int width = tiled ? stamp.size.x : img.W, height = tiled ? stamp.size.y : img.H;
+            int inset = tiled ? Math.Max(0, Math.Min(stamp.sourceInsetX, (img.W - 1) / 2)) : 0;
+            int period = img.W - 2 * inset;
+            for (int y = Math.Max(0, -pos.y); y < Math.Min(height, data.H - pos.y); y++)
+            for (int x = Math.Max(0, -pos.x); x < Math.Min(width, data.W - pos.x); x++)
+            {
+                uint c = img.Px[((y + stamp.sourceTop) % img.H) * img.W + inset + x % period];
+                if (c == 0) continue;
+                uint muted = Parallax.Over(c | 0xff000000, 0xb399847a);
+                data.TownPreview[(pos.y + y) * data.W + pos.x + x] = (muted & 0xffffff) | ((c >> 24) / 4 << 24);
+            }
         }
         static void Blit(Img img,uint[] dest,int w,int h,Vector2Int pos,byte[] mask,byte[] originalMask,Vector2Int original,bool wrap)
         {

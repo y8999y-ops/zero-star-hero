@@ -23,7 +23,7 @@ namespace ZeroStar
         };
         public class O
         {
-            public string Id; public Info Info; public double X, Min, Max, Dir, T; public string State = "walk";
+            public string Id, Home; public Info Info; public double X, Min, Max, Dir, T; public string State = "walk";
             public double? Clock; public bool Moving, Talking; public int TalkN; public O Follow;
         }
         public readonly List<O> List = new List<O>();
@@ -36,6 +36,18 @@ namespace ZeroStar
             for (int i = 0; i < defs.Length; i++) { var (id, x, mn, mx) = defs[i]; List.Add(new O { Id = id, X = x, Min = mn, Max = mx, Info = INFO[id], Dir = i % 2 != 0 ? -1 : 1, T = 2 + i }); }
             var lead = List.First(o => o.Id == "shroom");
             List.Add(new O { Id = "shroom2", Info = INFO["shroom"], X = lead.X - 14, Dir = lead.Dir, Follow = lead });
+        }
+
+        public void SetResident(string home, string sprite, string name, double x, bool housed, string line)
+        {
+            var resident = List.Find(o => o.Home == home);
+            if (!housed) { if (resident != null) List.Remove(resident); return; }
+            if (resident != null) return;
+            List.Add(new O
+            {
+                Id = sprite, Home = home, X = x, Min = x - 14, Max = x + 14, Dir = 1, T = 3,
+                Info = new Info { Name = name, Speed = 10, Ambient = new[] { line }, Talk = new[] { new[] { line } } }
+            });
         }
 
         public void Update(double dt, double playerX)

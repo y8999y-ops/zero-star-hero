@@ -396,7 +396,6 @@ namespace ZeroStar
             var prefab=layoutRoot ? layoutRoot : Resources.Load<GameObject>("StageLayouts/"+stage);
             Custom=prefab ? prefab.GetComponent<CustomMap>() : null;
             layout=prefab ? new StageLayout(prefab) : null;
-            composition=prefab && prefab.GetComponentInChildren<WorldStamp>() ? new WorldComposition(prefab) : null;
             if(Custom)stage=Custom.template;
             Town = stage == "town"; Endless = stage == "endless";
             VIEW_DY = (int)Pf.Round((Town ? 0.10 : 0.05) * H / ZOOM);
@@ -405,6 +404,8 @@ namespace ZeroStar
             SceneLight.Reset();
             Fresh = Items.StarterGear();
             if (from != null) CarryOver(from);
+            composition=prefab && prefab.GetComponentInChildren<WorldStamp>() ? new WorldComposition(prefab) : null;
+            if (Town) composition?.SelectTownStamps(TownStampOpen);
             Status = new Status(this) { Allow = stage == "1-1" ? new HashSet<string> { "burn", "slime" } : null };   // 1-1 只有燃燒和黏液
             Ult = new Ult(this);
             FxSystem.WarmUp();
@@ -435,13 +436,16 @@ namespace ZeroStar
             var brazier = Baked.Anim("brazier");
             foreach (var t in Data.Torches) Fx.Spawn(brazier, t.x, t.y, back: true, keep: true).Update(Rnd.Next() * 3);
             if (PortalX != null) Fx.Spawn(Baked.Anim("portal"), PortalX.Value, PortalY, back: true, keep: true);
-            if (Town) { Folk = new Folk(TownArt.FLOOR); var fo = new FxOptions { Seed = 3, Light = 0.2 }; Fx.SpawnLive("frog", 742, TownArt.FLOOR, fo, 1, back: true, keep: true); }   // 路人、青蛙
+            if (Town) { Folk = new Folk(TownArt.FLOOR); UpdateTownResidents(); var fo = new FxOptions { Seed = 3, Light = 0.2 }; Fx.SpawnLive("frog", 742, TownArt.FLOOR, fo, 1, back: true, keep: true); }   // 路人、青蛙
         }
         /// 場景物件（props、scenery、hazards、features）：搬好之後在這裡建立
         partial void InitStageObjects();
         /// 換關：網頁版是存檔、重新載入頁面；這裡直接把存檔裡會留下來的東西抄過來
         void CarryOver(Game f)
         {
+            townBuilt.UnionWith(f.townBuilt);
+            TrackTownConstruction = f.TrackTownConstruction;
+            TownWishDate = f.TownWishDate; TownStarDate = f.TownStarDate; TownRaceSeconds = f.TownRaceSeconds;
             Lv = f.Lv; Xp = f.Xp; Money = f.Money; Scrap = f.Scrap;
             foreach (var k in f.Equip.Keys) Equip[k] = f.Equip[k];
             Inv.AddRange(f.Inv);

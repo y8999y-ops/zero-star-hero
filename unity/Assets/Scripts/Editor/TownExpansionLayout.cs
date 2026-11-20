@@ -71,6 +71,7 @@ namespace ZeroStar.EditorTools
                             && stamp.TryGetComponent<SpriteRenderer>(out var art) && art.sprite
                             && art.sprite.rect.width == 260)
                         { stamp.sourceInsetX = 2; changed = true; }
+                    changed |= TagConstruction(existing, prefab.transform);
                     if (changed) PrefabUtility.SaveAsPrefabAsset(prefab, PrefabPath);
                     return;
                 }
@@ -178,10 +179,48 @@ namespace ZeroStar.EditorTools
                 // 只取參考圖的石磚帶。下方的水由 PixelFX 繪製。
                 Paint(tunnel, "下水道石磚", ImportSprite("sewer-floor"), 400, Game.SewerFloor, 1304, 20, StampKind.PaintedGround, 2);
                 Waypoint(tunnel, "下水道路標", "sewer", 882, Game.SewerFloor);
+                TagConstruction(root, prefab.transform);
                 PrefabUtility.SaveAsPrefabAsset(prefab, PrefabPath);
             }
             finally { PrefabUtility.UnloadPrefabContents(prefab); }
             Debug.Log("[TownExpansion] 四層攀爬、踏面與路標擺設已寫入 town.prefab。");
+        }
+
+        static bool TagConstruction(Transform expansion, Transform root)
+        {
+            bool changed = false;
+            foreach (Transform group in expansion)
+            foreach (var stamp in group.GetComponentsInChildren<WorldStamp>())
+            {
+                if (!string.IsNullOrEmpty(stamp.townProject)) continue;
+                int x = stamp.Position(root).x;
+                string key = group.name switch
+                {
+                    "地面街景" => stamp.name switch
+                    {
+                        "plaza" or "market" or "cart" or "manhole" or "廣場人孔" => "plaza",
+                        "bell-tower" or "wood-step" or "鐘樓西側階梯" => "tower",
+                        "training" or "big-tree" => "tree",
+                        "house-a" or "石屋平屋頂" => "house-a",
+                        "house-b" or "木屋平屋頂" => "house-b",
+                        "house-c" or "蘑菇屋平屋頂" => "house-c",
+                        _ => null
+                    },
+                    "鐘樓與中層吊橋" => "tower",
+                    "中層台地" => x < 200 ? "wall" : "terrace",
+                    "上層台地" => x < 1100 ? "tower" : x >= 2020 ? "tree" : "star",
+                    "大樹繩梯" => "tree",
+                    "地下走道" => "sewer",
+                    _ => null
+                };
+                if (key == null) continue;
+                stamp.townProject = key;
+                stamp.townPreview = group.name == "中層台地" || group.name == "上層台地"
+                    ? stamp.kind == StampKind.PaintedPlatform || stamp.kind == StampKind.Decor
+                    : stamp.name == "bell-tower" || stamp.name == "big-tree";
+                changed = true;
+            }
+            return changed;
         }
 
         static Transform Group(Transform parent, string name)

@@ -59,10 +59,16 @@ namespace ZeroStar
 
         Near TownNearby(double x,double y)
         {
+            var mayor = TownMayorPosition;
+            if (Math.Abs(x - mayor.x) < 24 && Math.Abs(y - mayor.y) < 17)
+                return new Near { Id = "town-mayor", Name = "鎮長", Place = "town-mayor", X = mayor.x, FootY = mayor.y, Hgt = 22 };
             foreach (var n in TownArt.NPCS) if (Math.Abs(n.x - x) < 26 && Math.Abs(TownArt.FootY(n.id)-y)<32) return new Near { Id = n.id, Name = n.name, Place = n.place, X = n.x };
             var destination = FindTownStop(x, y);
             if (destination != null) return destination;
             if (townStops.Count == 0 && Math.Abs(TownArt.SIGNPOST_X - x) < 22 && Math.Abs(TownArt.FootY("sign")-y)<32) return new Near { Id = "sign", Name = "路標", X = TownArt.SIGNPOST_X, Place = "sign" };
+            foreach (var site in TownProject.All)
+                if (!IsTownBuilt(site.Id) && Math.Abs(x - site.X) < 18 && Math.Abs(y - site.Y) < 17)
+                    return new Near { Id = site.Id, Name = $"{site.Name}・施工中", Place = "town-worksite", X = site.X, FootY = site.Y, Hgt = 24 };
             return null;
         }
 
@@ -145,6 +151,9 @@ namespace ZeroStar
                 return;
             }
             // 腳下的影子 → 記下畫面（之後幫角色描外框、加邊緣光）→ 居民、路人
+            DrawTownWorksites(frame);
+            var mayor = TownMayorPosition;
+            TownArt.Shadow(frame, mayor.x, 7, footY: mayor.y);
             foreach (var n in TownArt.NPCS) TownArt.Shadow(frame, n.x, (int)(TownArt.NpcSize(n.id).w * 0.36),footY:TownArt.FootY(n.id));
             foreach (var o in Folk.List) TownArt.Shadow(frame, o.X, (int)(TownArt.NpcSize(o.Id).w * 0.36));
             {
@@ -155,6 +164,12 @@ namespace ZeroStar
             TownArt.SnapPeople(frame);
             TownArt.DrawNpcs(frame, sceneClock);
             Folk.Draw(frame);
+            // 鎮長專用角色圖待補。
+            var mayorPainter = new Painter(frame).Place(mayor.x, mayor.y);
+            mayorPainter.Rect(-7, -16, 14, 16, 0xff594066);
+            mayorPainter.Rect(-5, -20, 10, 9, 0xffa0b5dd);
+            mayorPainter.Rect(-7, -22, 14, 4, 0xff594066);
+            mayorPainter.Rect(-4, -12, 8, 2, 0xff71c8e7);
             townPeopleDrawn = true;
             // 引導：要去的地方頭上跳一個「!」
             if (!TownBusy)

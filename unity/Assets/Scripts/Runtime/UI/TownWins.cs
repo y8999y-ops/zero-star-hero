@@ -144,7 +144,63 @@ namespace ZeroStar.UI
             // 主線一開始就有；支線（公會）要登記之後才出現
             var tabs = new List<Win.Tab> { new Win.Tab { Id = "sys", Label = "主線", Icon = "xp", Theme = "sys", Emblem = "xp", Title = "主線任務", Render = SysTab } };
             if (g.GuildRegistered) tabs.Add(new Win.Tab { Id = "guild", Label = "支線", Icon = "guild", Title = atGuild ? "冒險者公會" : "支線任務", Render = GuildTab });
-            return W.Show(atGuild ? "冒險者公會" : "任務", "guild", "guild", tabs, g.GuildRegistered ? tab : "sys");
+            if (g.Town || g.GuildRegistered || g.TrackTownConstruction)
+                tabs.Add(ConstructionTab(g, false));
+            return W.Show(atGuild ? "冒險者公會" : "任務", "guild", "guild", tabs, tabs.Any(t => t.Id == tab) ? tab : "sys");
+        }
+
+        public static Task OpenConstruction(Game g) =>
+            W.Show("建設委託", "forge", "hammer", new List<Win.Tab> { ConstructionTab(g, true) }, "build");
+
+        static Win.Tab ConstructionTab(Game g, bool withMayor)
+        {
+            return new Win.Tab { Id = "build", Label = "建設", Icon = "hammer", Theme = "forge",
+                Emblem = "hammer", Title = "建設委託", Render = body => DrawConstruction(g, body, withMayor) };
+        }
+
+        static void DrawConstruction(Game g, VisualElement body, bool withMayor)
+        {
+            var top = Row(body);
+            top.style.justifyContent = Justify.SpaceBetween;
+            Text(top, $"完工 {g.TownBuiltIds.Count()}/{TownProject.All.Count}", 14, W.Acc, true);
+            W.IBtn(top, "star", g.TrackTownConstruction ? "取消追蹤" : "追蹤建設", () =>
+            {
+                g.TrackTownConstruction = !g.TrackTownConstruction;
+                g.Sfx("ui"); W.Render();
+            }, "plain");
+            if (!withMayor) W.Say(body, "建設委託", "與鎮長交談即可動工。");
+            int junk = g.TownBuildJunk;
+            foreach (var project in TownProject.All)
+            {
+                bool built = g.IsTownBuilt(project.Id);
+                string required = built ? null : g.TownBuildRequirement(project);
+                string missing = built ? null : g.TownBuildShortage(project, junk);
+                var card = Win.Card(body, "forge");
+                QIc(card, built ? "check" : "hammer");
+                var main = Box(card);
+                main.style.flexGrow = 1;
+                main.style.flexShrink = 1;
+                main.style.minWidth = 0;
+                var title = Row(main);
+                Text(title, project.Name, 14, "#fff2c8", true);
+                if (built) Tag(title, "完工", true);
+                Text(main, project.Opens, 12, "#d8cce8").style.whiteSpace = WhiteSpace.Normal;
+                if (built) continue;
+                var cost = Row(main);
+                cost.style.flexWrap = Wrap.Wrap;
+                W.Chip(cost, "coin", project.Coins.ToString());
+                if (project.Scrap > 0) W.Chip(cost, "scrap", project.Scrap.ToString());
+                if (project.Junk > 0) W.Chip(cost, "q_junk", project.Junk.ToString());
+                if (required != null) Text(main, $"條件　{required}", 12, "#ffcf9e").style.whiteSpace = WhiteSpace.Normal;
+                if (missing != null) Text(main, $"缺　{missing}", 12, "#ffcf9e").style.whiteSpace = WhiteSpace.Normal;
+                if (withMayor)
+                    W.IBtn(card, "hammer", "建設", () =>
+                    {
+                        bool ok = g.TryBuildTown(project.Id);
+                        W.Render();
+                        W.Msg(ok ? $"{project.Name}完工" : "建設條件或材料不足", ok);
+                    }, off: required != null || missing != null);
+            }
         }
 
         // ================= 鍛造 =================

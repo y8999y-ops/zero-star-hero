@@ -31,7 +31,14 @@ namespace ZeroStar.UI
                 else if (n.Place == "workshop") await Workshop(g, dlg, n.Name);
                 else if (n.Place == "inn") await Inn(g, dlg, n.Name);
                 else if (n.Place == "town-waypoint") await Waypoint(g, dlg, n, openMap);
-                else if (n.Place == "town-manhole") await TownWins.W.FadeBlack(0.6f, () => g.TravelTown("sewer"));
+                else if (n.Place == "town-mayor") await TownWins.OpenConstruction(g);
+                else if (n.Place == "town-worksite")
+                    await dlg.Talk("施工告示", new[] { n.Name, "建設委託請洽鎮長。" });
+                else if (n.Place == "town-manhole")
+                {
+                    if (g.IsTownBuilt("sewer")) await TownWins.W.FadeBlack(0.6f, () => g.TravelTown("sewer"));
+                    else await dlg.Talk("施工告示", new[] { "人孔上了鎖。請向鎮長接下下水道清理委託。" });
+                }
                 else await Travel(g, dlg, openMap);
             }
             finally { g.TownBusy = false; }

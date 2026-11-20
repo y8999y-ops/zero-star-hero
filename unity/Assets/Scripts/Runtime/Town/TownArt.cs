@@ -35,7 +35,7 @@ namespace ZeroStar
 
         // ---- 匯出的圖層
         static int FAR_W, MID_W, FG_W;
-        static uint[] FAR, MID, MAIN, FG; static byte[] EMIT;
+        static uint[] FAR, MID, MAIN, FG, constructionPreview; static byte[] EMIT;
         static Img upperFar, upperMid;
         static Img sewerBack;
         static FxRun sewerWater;
@@ -223,8 +223,23 @@ namespace ZeroStar
         /// 換場景（新的一局）時重設：網頁版每次載入頁面都是新的模組狀態
         public static void Reset(WorldComposition composition=null)
         {
+            RebuildStructures(composition);
+            SkyInit();
+            rain = new FxRun[3];
+            for (int k = 0; k < 3; k++) { var o = new FxOptions { X = 0, Y = FLOOR }; o.Num["density"] = 1; rain[k] = new FxRun(FxSystem.Def("town-rain"), o); }
+            rainT = null; skyT = null;
+            sewerWater = new FxRun(FxSystem.Def("sewer-current"),
+                new FxOptions { X = SewerLeft, Y = Game.SewerFloor + SewerStoneHeight, Light = 0 }
+                    .Set("width", SewerRight - SewerLeft).Set("depth", H - Game.SewerFloor - SewerStoneHeight));
+            TownPuddles.Reset();
+            TownSnow.Reset();
+        }
+
+        internal static void RebuildStructures(WorldComposition composition)
+        {
             // 城鎮的畫布是靜態快取，每次重組都要從原始資料開始。
             hasCloudObjects=composition!=null && composition.HasCloudObjects;
+            constructionPreview = null;
             LIGHTS.Clear(); loaded=false; Load();
             if(composition!=null)
             {
@@ -232,6 +247,7 @@ namespace ZeroStar
                 var d=new LevelData{Stage="town",W=TOWN_W,H=H,PF=MAIN,PFE=EMIT,Far=Layer(FAR,FAR_W),Mid=Layer(MID,MID_W),Fg=Layer(FG,FG_W)};
                 foreach(var l in LIGHTS)d.PropLights.Add(new LightSrc(l.x,l.y,l.r,l.lv,l.col));
                 composition.Apply(d); MAIN=d.PF;EMIT=d.PFE;
+                constructionPreview = d.TownPreview;
                 LIGHTS.Clear();foreach(var l in d.PropLights)LIGHTS.Add((l.X,l.Y,l.R,l.Lv,l.Col));
             }
             ExtendStreet();
@@ -243,16 +259,8 @@ namespace ZeroStar
             }
             npcOffsetY["sign"]=Move("sign").y;
             SIGNPOST_X=1150+Move("sign").x; workshopMove=Move("workshop"); farMove=Move("Far");cloudMove=Move("Cloud");
-            SkyInit();
-            rain = new FxRun[3];
-            for (int k = 0; k < 3; k++) { var o = new FxOptions { X = 0, Y = FLOOR }; o.Num["density"] = 1; rain[k] = new FxRun(FxSystem.Def("town-rain"), o); }
-            rainT = null; skyT = null;
-            sewerWater = new FxRun(FxSystem.Def("sewer-current"),
-                new FxOptions { X = SewerLeft, Y = Game.SewerFloor + SewerStoneHeight, Light = 0 }
-                    .Set("width", SewerRight - SewerLeft).Set("depth", H - Game.SewerFloor - SewerStoneHeight));
-            TownPuddles.Reset();
             TownRainHits.Build(MAIN, EMIT, composition);   // 建築擺好後算雨打屋頂與屋簷滴水
-            TownSnow.Reset(); TownSnow.Build(MAIN);   // 下雪：每一欄能堆多少雪（要在結構圖之後）
+            TownSnow.Build(MAIN);   // 下雪：每一欄能堆多少雪（要在結構圖之後）
         }
         internal static void TickSewerWater(double dt) => sewerWater?.Update(dt);
 
@@ -457,7 +465,10 @@ namespace ZeroStar
                         if (t2 > 0) sh += t2 * t2 * (3 - 2 * t2) * 0.07;
                         if (sh > 0) { sh *= shaftRow[wy] * SUNK; r += 255 * sh; g += 244 * sh; b += 206 * sh; }
                     }
-                    outc[i] = Pack(r, g, b);
+                    uint scene = Pack(r, g, b);
+                    if (constructionPreview != null && (uint)gx < TOWN_W)
+                        scene = Parallax.Over(scene, constructionPreview[wy * TOWN_W + gx]);
+                    outc[i] = scene;
                 }
             }
             Prof.Mark("T:像素");

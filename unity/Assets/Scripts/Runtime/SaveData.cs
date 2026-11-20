@@ -39,6 +39,11 @@ namespace ZeroStar
                 ["auto"] = g.Auto, ["clears"] = g.Clears,
                 ["forms"] = new Dictionary<string, object> { ["owned"] = forms, ["carry"] = g.Carry.Cast<object>().ToList(), ["cur"] = g.Player.Form },
                 ["guild"] = new Dictionary<string, object> { ["registered"] = g.GuildRegistered, ["done"] = g.GuildDone, ["quest"] = null },
+                ["town"] = new Dictionary<string, object>
+                {
+                    ["built"] = g.TownBuiltIds.Cast<object>().ToList(), ["track"] = g.TrackTownConstruction,
+                    ["wish"] = g.TownWishDate, ["star"] = g.TownStarDate, ["race"] = g.TownRaceSeconds,
+                },
                 ["quests"] = new Dictionary<string, object>
                 {
                     ["active"] = g.Quests.Active.Select(q => (object)QuestJson(q)).ToList(), ["board"] = g.Quests.Board.Select(q => (object)QuestJson(q)).ToList(),
@@ -103,6 +108,15 @@ namespace ZeroStar
         static string S(object o, string k) => o is OrderedDict d && d.TryGetValue(k, out var v) ? v as string : null;
         static bool B(object o, string k) => o is OrderedDict d && d.TryGetValue(k, out var v) && (v is bool b ? b : v is double x && x != 0);
 
+        internal static void ReadTown(Game g, object town)
+        {
+            g.TownWishDate = S(town, "wish");
+            g.TownStarDate = S(town, "star");
+            double race = N(town, "race", -1);
+            g.TownRaceSeconds = race >= 0 ? race : (double?)null;
+            g.RestoreTownConstruction(L(town, "built")?.OfType<string>() ?? Enumerable.Empty<string>(), B(town, "track"));
+        }
+
         /// 把存檔套到一個剛建好的遊戲上（等級、裝備、形態……全部換成存檔的）。存檔是 ver 2 以前的：裝備清掉換起始裝備（跟網頁版一樣）
         public static void Apply(Game g, string json)
         {
@@ -156,6 +170,7 @@ namespace ZeroStar
             var pi = O(p, "pity"); g.PityLegend = (int)N(pi, "legend"); g.PityMyth = (int)N(pi, "myth");
             g.Lore = (int)N(p, "lore"); g.TipUse = B(p, "tipUse"); g.SeenSet = B(p, "seenSet"); g.SeenCoreTip = B(p, "seenCoreTip"); g.SeenIntro = B(p, "seenIntro");
             g.TGuide = p.ContainsKey("tguide") && p["tguide"] is double tg ? (int)tg : -1;
+            ReadTown(g, O(p, "town"));
             g.ApplyStats(); g.Player.Hp = g.Player.MaxHp;
         }
         static Item ReadItem(OrderedDict o, Game g)

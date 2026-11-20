@@ -1,5 +1,6 @@
 {
   "stage": "town", "day": 0.25, "weather": "clear",
+  "town": {"built": ["plaza", "tower", "terrace", "wall", "sewer", "tree", "star", "house-a", "house-b", "house-c"]},
   "ticks": 1098, "shotTicks": [289,625,1051,1077],
   "events": [
     [20,"d","KeyD"],

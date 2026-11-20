@@ -17,6 +17,8 @@ namespace ZeroStar
         [HideInInspector] public int sourceTop;
         [HideInInspector] public int sourceInsetX;
         [HideInInspector] public bool useBakedEmission = true;
+        [Tooltip("這項城鎮建設完成後才顯示物件、碰撞或互動點。")] public string townProject;
+        [Tooltip("施工中以淡色顯示輪廓。")] public bool townPreview;
         public Vector2Int Position(Transform root)
         {
             Vector3 p=root.InverseTransformPoint(transform.position);

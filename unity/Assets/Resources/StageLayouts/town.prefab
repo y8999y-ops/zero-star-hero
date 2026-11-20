@@ -496,6 +496,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: terrace
 --- !u!1 &525858044567853829
 GameObject:
   m_ObjectHideFlags: 0
@@ -701,6 +702,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: house-c
 --- !u!1 &643014071707260324
 GameObject:
   m_ObjectHideFlags: 0
@@ -1663,6 +1665,8 @@ MonoBehaviour:
   sourceTop: 2
   sourceInsetX: 2
   useBakedEmission: 1
+  townProject: star
+  townPreview: 1
 --- !u!212 &1843327499368770481
 SpriteRenderer:
   serializedVersion: 3
@@ -1929,6 +1933,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 0
+  townProject: tower
 --- !u!212 &3329487586534879848
 SpriteRenderer:
   serializedVersion: 3
@@ -2102,6 +2107,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tower
 --- !u!212 &8340007063311646593
 SpriteRenderer:
   serializedVersion: 3
@@ -2542,6 +2548,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: star
 --- !u!212 &7842644531117882550
 SpriteRenderer:
   serializedVersion: 3
@@ -3016,6 +3023,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tower
 --- !u!212 &9161508804187277270
 SpriteRenderer:
   serializedVersion: 3
@@ -3514,6 +3522,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: wall
 --- !u!1 &1775766335508004208
 GameObject:
   m_ObjectHideFlags: 0
@@ -3663,6 +3672,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 0
+  townProject: plaza
 --- !u!212 &8699376497446715015
 SpriteRenderer:
   serializedVersion: 3
@@ -4044,6 +4054,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tree
 --- !u!1 &1917108450097815594
 GameObject:
   m_ObjectHideFlags: 0
@@ -4284,6 +4295,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: sewer
 --- !u!1 &1996109123586170043
 GameObject:
   m_ObjectHideFlags: 0
@@ -4341,6 +4353,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 0
+  townProject: plaza
 --- !u!212 &4891827002037030531
 SpriteRenderer:
   serializedVersion: 3
@@ -4574,6 +4587,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: house-b
 --- !u!1 &2123545352536435561
 GameObject:
   m_ObjectHideFlags: 0
@@ -4630,6 +4644,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: star
 --- !u!1 &2123780185153079285
 GameObject:
   m_ObjectHideFlags: 0
@@ -4973,6 +4988,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tower
 --- !u!1 &2334708103258460353
 GameObject:
   m_ObjectHideFlags: 0
@@ -5327,6 +5343,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: star
 --- !u!1 &2427517242458064763
 GameObject:
   m_ObjectHideFlags: 0
@@ -5441,6 +5458,8 @@ MonoBehaviour:
   sourceTop: 2
   sourceInsetX: 2
   useBakedEmission: 1
+  townProject: tower
+  townPreview: 1
 --- !u!212 &6997017103974604568
 SpriteRenderer:
   serializedVersion: 3
@@ -5558,6 +5577,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: wall
 --- !u!212 &1801699855457258523
 SpriteRenderer:
   serializedVersion: 3
@@ -5675,6 +5695,8 @@ MonoBehaviour:
   sourceTop: 2
   sourceInsetX: 2
   useBakedEmission: 1
+  townProject: tree
+  townPreview: 1
 --- !u!212 &7314645378887781006
 SpriteRenderer:
   serializedVersion: 3
@@ -5923,6 +5945,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tower
 --- !u!1 &2605860524022998751
 GameObject:
   m_ObjectHideFlags: 0
@@ -6066,6 +6089,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tree
 --- !u!1 &2687099012200556203
 GameObject:
   m_ObjectHideFlags: 0
@@ -6179,6 +6203,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tree
 --- !u!1 &2738363542673865487
 GameObject:
   m_ObjectHideFlags: 0
@@ -6328,6 +6353,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tower
 --- !u!212 &1600186198205014684
 SpriteRenderer:
   serializedVersion: 3
@@ -6676,6 +6702,8 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 0
+  townProject: star
+  townPreview: 1
 --- !u!212 &7879542136792970249
 SpriteRenderer:
   serializedVersion: 3
@@ -6793,6 +6821,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: terrace
 --- !u!212 &3698733304753773615
 SpriteRenderer:
   serializedVersion: 3
@@ -6909,6 +6938,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: star
 --- !u!1 &3124102849743254321
 GameObject:
   m_ObjectHideFlags: 0
@@ -6965,6 +6995,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tower
 --- !u!1 &3153228182620131043
 GameObject:
   m_ObjectHideFlags: 0
@@ -7288,6 +7319,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tree
 --- !u!212 &2256610253537223081
 SpriteRenderer:
   serializedVersion: 3
@@ -7577,6 +7609,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tower
 --- !u!1 &3281015224284861052
 GameObject:
   m_ObjectHideFlags: 0
@@ -7634,6 +7667,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tree
 --- !u!212 &7712005347823635460
 SpriteRenderer:
   serializedVersion: 3
@@ -8084,6 +8118,8 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 0
+  townProject: tower
+  townPreview: 1
 --- !u!212 &4327592291879711005
 SpriteRenderer:
   serializedVersion: 3
@@ -8318,6 +8354,7 @@ MonoBehaviour:
   sourceTop: 2
   sourceInsetX: 2
   useBakedEmission: 1
+  townProject: sewer
 --- !u!212 &9049688723951060844
 SpriteRenderer:
   serializedVersion: 3
@@ -8548,6 +8585,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tower
 --- !u!1 &3900544176294521721
 GameObject:
   m_ObjectHideFlags: 0
@@ -8605,6 +8643,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tower
 --- !u!212 &7603188592650580496
 SpriteRenderer:
   serializedVersion: 3
@@ -8840,6 +8879,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 0
+  townProject: house-a
 --- !u!212 &5174035816376695873
 SpriteRenderer:
   serializedVersion: 3
@@ -8956,6 +8996,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tower
 --- !u!1 &4100039888402578893
 GameObject:
   m_ObjectHideFlags: 0
@@ -9012,6 +9053,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tree
 --- !u!1 &4126096564198984136
 GameObject:
   m_ObjectHideFlags: 0
@@ -9601,6 +9643,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tree
 --- !u!1 &4441903440059333094
 GameObject:
   m_ObjectHideFlags: 0
@@ -9658,6 +9701,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 0
+  townProject: plaza
 --- !u!212 &6449915857344582614
 SpriteRenderer:
   serializedVersion: 3
@@ -9948,6 +9992,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: star
 --- !u!212 &852330987328174909
 SpriteRenderer:
   serializedVersion: 3
@@ -10438,6 +10483,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tower
 --- !u!1 &5043677594900020326
 GameObject:
   m_ObjectHideFlags: 0
@@ -10494,6 +10540,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: plaza
 --- !u!1 &5180511472461376864
 GameObject:
   m_ObjectHideFlags: 0
@@ -10796,6 +10843,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 0
+  townProject: house-b
 --- !u!212 &7747013640688906291
 SpriteRenderer:
   serializedVersion: 3
@@ -10970,6 +11018,8 @@ MonoBehaviour:
   sourceTop: 2
   sourceInsetX: 2
   useBakedEmission: 1
+  townProject: terrace
+  townPreview: 1
 --- !u!212 &8089384299060845104
 SpriteRenderer:
   serializedVersion: 3
@@ -11480,6 +11530,8 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 0
+  townProject: terrace
+  townPreview: 1
 --- !u!212 &4909677598951037148
 SpriteRenderer:
   serializedVersion: 3
@@ -11597,6 +11649,8 @@ MonoBehaviour:
   sourceTop: 2
   sourceInsetX: 2
   useBakedEmission: 1
+  townProject: tower
+  townPreview: 1
 --- !u!212 &1345103609811804810
 SpriteRenderer:
   serializedVersion: 3
@@ -11831,6 +11885,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tree
 --- !u!212 &5000162478032337918
 SpriteRenderer:
   serializedVersion: 3
@@ -12153,6 +12208,8 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 0
+  townProject: tree
+  townPreview: 1
 --- !u!212 &1958728908368564476
 SpriteRenderer:
   serializedVersion: 3
@@ -12386,6 +12443,8 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 0
+  townProject: terrace
+  townPreview: 1
 --- !u!212 &6953211573792617687
 SpriteRenderer:
   serializedVersion: 3
@@ -12594,6 +12653,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: house-a
 --- !u!1 &6007795521964866574
 GameObject:
   m_ObjectHideFlags: 0
@@ -12800,6 +12860,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 0
+  townProject: plaza
 --- !u!212 &508977662827847363
 SpriteRenderer:
   serializedVersion: 3
@@ -13547,6 +13608,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: terrace
 --- !u!1 &6783802615196494350
 GameObject:
   m_ObjectHideFlags: 0
@@ -13870,6 +13932,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 0
+  townProject: house-c
 --- !u!212 &2147605655086010414
 SpriteRenderer:
   serializedVersion: 3
@@ -14192,6 +14255,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tower
 --- !u!1 &7278711947695167757
 GameObject:
   m_ObjectHideFlags: 0
@@ -14775,6 +14839,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: sewer
 --- !u!1 &7546222880414859068
 GameObject:
   m_ObjectHideFlags: 0
@@ -15072,6 +15137,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tower
 --- !u!1 &7662487044789761113
 GameObject:
   m_ObjectHideFlags: 0
@@ -15510,6 +15576,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tower
 --- !u!1 &7941823545333551565
 GameObject:
   m_ObjectHideFlags: 0
@@ -15684,6 +15751,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 0
+  townProject: tree
 --- !u!212 &6830322044031441317
 SpriteRenderer:
   serializedVersion: 3
@@ -15801,6 +15869,8 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 0
+  townProject: star
+  townPreview: 1
 --- !u!212 &1700655936734110779
 SpriteRenderer:
   serializedVersion: 3
@@ -16049,6 +16119,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: sewer
 --- !u!1 &8346413604989563053
 GameObject:
   m_ObjectHideFlags: 0
@@ -16459,6 +16530,8 @@ MonoBehaviour:
   sourceTop: 2
   sourceInsetX: 2
   useBakedEmission: 1
+  townProject: wall
+  townPreview: 1
 --- !u!212 &2518805667895684453
 SpriteRenderer:
   serializedVersion: 3
@@ -16759,6 +16832,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tree
 --- !u!1 &8697909431114985879
 GameObject:
   m_ObjectHideFlags: 0
@@ -17381,6 +17455,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 1
+  townProject: tower
 --- !u!1 &9048836668310623345
 GameObject:
   m_ObjectHideFlags: 0
@@ -17613,6 +17688,7 @@ MonoBehaviour:
   sourceTop: 0
   sourceInsetX: 0
   useBakedEmission: 0
+  townProject: sewer
 --- !u!212 &590048630886166498
 SpriteRenderer:
   serializedVersion: 3

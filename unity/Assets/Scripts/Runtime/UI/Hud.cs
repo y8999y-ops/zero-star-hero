@@ -232,9 +232,12 @@ namespace ZeroStar.UI
             Q.Tracked.RemoveAll(k => !Q.Active.Any(q => q.Id == k));
             string main = g.MainQuestTitle();
             var tq = Q.Tracked.Count > 0 ? Q.Active.First(q => q.Id == Q.Tracked[0]) : null;
+            var build = g.TrackedTownProject;
+            string buildDetail = build == null ? null : g.TownBuildRequirement(build)
+                ?? (g.TownBuildShortage(build, g.TownBuildJunk) is string missing ? $"缺 {missing}" : "可建設");
             var meal = g.Meal != null && Game.MEALS.TryGetValue(g.Meal, out var m) ? m : default;
             bool hint = tq == null && Q.Active.Count > 0;
-            string key = $"{main}|{tq?.Id}:{tq?.Have}|{g.Meal}|{hint}";
+            string key = $"{main}|{tq?.Id}:{tq?.Have}|{g.Meal}|{hint}|{build?.Id}:{buildDetail}";
             if (key == qtrackKey) return;
             qtrackKey = key; qtrack.Clear();
             VisualElement Line(string icon, string text, string col)
@@ -254,6 +257,13 @@ namespace ZeroStar.UI
                 if (ok) f.style.backgroundColor = C("#3ad06a"); else Stretch(f, Gen(16, 1, (x, y) => Color.Lerp(C("#c8861a"), C("#ffd84a"), (x + 0.5f) / 16)));
             }
             if (meal.name != null) Line(meal.icon, meal.buff, "#ffc89a");
+            if (build != null)
+            {
+                Line("hammer", build.Name, "#ffe7a0");
+                var detail = Text(qtrack, buildDetail, 12, "#e8e0f4", true, 1);
+                detail.style.marginLeft = 20;
+                detail.style.whiteSpace = WhiteSpace.Normal;
+            }
             if (hint) Line("paper", "點這裡選要追蹤的支線", "#a59fbd");
             qtrack.style.display = qtrack.childCount > 0 ? DisplayStyle.Flex : DisplayStyle.None;
         }

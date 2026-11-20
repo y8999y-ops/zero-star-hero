@@ -60,7 +60,7 @@ namespace ZeroStar
         public string Stage;
         public int W, H, Floor, UH, Pin;
         public bool Tall;
-        public uint[] PF;
+        public uint[] PF, TownPreview;
         public byte[] PFE;
         public Img Back, Far, Mid, Near, Fg, UpFar, UpMid;
         public List<LightSrc> CrystalLights = new List<LightSrc>(), PropLights = new List<LightSrc>();

@@ -119,6 +119,7 @@ namespace ZeroStar.Tests
 
             File.WriteAllText(Path.Combine(directory, "unity-trace-script-town-climb.json"),
                 "{\n  \"stage\": \"town\", \"day\": 0.25, \"weather\": \"clear\",\n"
+                + "  \"town\": {\"built\": [" + string.Join(", ", TownProject.All.Select(p => $"\"{p.Id}\"")) + "]},\n"
                 + $"  \"ticks\": {shots.Last() + 21}, \"shotTicks\": [{string.Join(",", shots)}],\n  \"events\": [\n"
                 + string.Join(",\n", trace.Select(e => $"    [{e.tick},\"{e.type}\",\"{e.code}\"]")) + "\n  ]\n}\n");
             Debug.Log("[TownTraversal] PASS: keyboard route, touch vertical controls, drop-through, jump off, stair step and waypoint");
@@ -127,6 +128,7 @@ namespace ZeroStar.Tests
         static Game Start()
         {
             var g = new Game("town");
+            g.SetTestTownConstruction(TownProject.All.Select(project => project.Id));
             g.StartStage();
             return g;
         }
@@ -138,7 +140,7 @@ namespace ZeroStar.Tests
             g.SimMs += 1000.0 / 60;
         }
 
-        static void Capture(Game g, string path)
+        internal static void Capture(Game g, string path)
         {
             var frame = new Frame(Game.W, Game.H) { SoftLight = true, UseGpuWeather = PostFx.Supported && PostFx.Enabled };
             var rgba = new byte[Game.W * Game.H * 4];

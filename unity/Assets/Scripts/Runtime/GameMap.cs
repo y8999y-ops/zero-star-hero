@@ -19,6 +19,12 @@ namespace ZeroStar
             this.steps = steps;
             gw = (int)Math.Ceiling(w / TILE); gh = (int)Math.Ceiling(h / TILE);
             grid = new byte[gw * gh];
+            LoadSolids(solids);
+        }
+
+        internal void LoadSolids(List<RectD> solids)
+        {
+            Array.Clear(grid, 0, grid.Length);
             foreach (var r in solids) SetSolid(r, true);
         }
 
