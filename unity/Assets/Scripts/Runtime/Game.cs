@@ -1003,7 +1003,7 @@ namespace ZeroStar
             frame.CameraFractionX = DisplayCamera.FractionX;
             frame.CameraFractionY = DisplayCamera.FractionY;
             Array.Clear(frame.Light, 0, frame.Light.Length);
-            var lights = Town ? TownArt.Lights(sceneClock) : Art.SceneLights(x, W, sceneClock);
+            var lights = Town ? TownArt.Lights(sceneClock, TownUnderground) : Art.SceneLights(x, W, sceneClock);
             composition?.ShadeFixedLights(lights);
             lights.Add(new LightSrc(Player.X, Player.Y - 10, 64, 1.6, "#ffcf6a"));
             foreach (var e in Enemies) e.Lights(lights);

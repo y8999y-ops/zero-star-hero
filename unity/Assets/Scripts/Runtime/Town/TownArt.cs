@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace ZeroStar
 {
-    public static class TownArt
+    public static partial class TownArt
     {
         public static int TOWN_W { get; } = 2400;
         public static int H { get; } = 560;
@@ -37,7 +37,7 @@ namespace ZeroStar
         static int FAR_W, MID_W, FG_W;
         static uint[] FAR, MID, MAIN, FG, constructionPreview, streetMain, streetPreview;
         static byte[] EMIT, streetEmit;
-        static Img upperFar, upperMid;
+        static Img upperFar, upperMid, craterWall;
         static Img sewerBack;
         static FxRun sewerWater;
         internal const int SewerLeft = 400, SewerRight = 1704, SewerStoneHeight = 20;
@@ -68,6 +68,7 @@ namespace ZeroStar
             int nl = I32(); for (int i = 0; i < nl; i++) LIGHTS.Add((F64(), F64() + StreetTop, F64(), F64(), Str()));
             upperFar ??= ReadSceneTexture("far-up");
             upperMid ??= ReadSceneTexture("mid-up");
+            craterWall ??= ReadSceneTexture("crater-wall");
             sewerBack ??= ReadSceneTexture("sewer-back");
             BuildClouds();
             cloudPixels = CLOUDS.Select(c => c == 0 ? 0u : c == 2 ? Pack(255, 253, 246) : c == 1 ? Pack(234, 240, 249) : Pack(204, 217, 238)).ToArray();
@@ -88,18 +89,16 @@ namespace ZeroStar
             return img;
         }
 
-        static readonly byte[] backdropThreshold = { 0,8,2,10, 12,4,14,6, 3,11,1,9, 15,7,13,5 };
         static Parallax.Row UpperRow(Img upper, double x, double y) =>
             upper == null ? default : new Parallax.Row(upper.Px, upper.W, upper.H, x, upper.H / 2.0 + y);
 
-        static uint BlendBackdrop(Parallax.Row original, Parallax.Row upper, int x, int wx, int wy, double y, double edge)
+        static uint BlendBackdrop(Parallax.Row original, Parallax.Row upper, int x, double y, double edge)
         {
             uint legacy = original.Sample(x);
-            if (legacy >> 24 == 255 || y >= edge) return legacy;
-            // 只在新增圖層底端的 16 格交錯，街面的小幅鏡頭上移不替整片天空加抖色。
-            double amount = Math.Min(1, (edge - y) / 16);
-            if (backdropThreshold[(wy & 3) * 4 + (wx & 3)] >= amount * 16) return legacy;
-            return Parallax.Over(upper.Sample(x), legacy);
+            if (y >= edge) return legacy;
+            uint extension = upper.Sample(x);
+            double t = Math.Min(1, (edge - y) / 46);
+            return Parallax.Mix(legacy, Parallax.Over(legacy, extension), t * t * (3 - 2 * t));
         }
 
         // ---- 2026-11-12 美術優化（照 Ori 的層次，維持像素畫）：白天的雲、霧、光束、遠近的淡化、角色外框。
@@ -229,9 +228,7 @@ namespace ZeroStar
             rain = new FxRun[3];
             for (int k = 0; k < 3; k++) { var o = new FxOptions { X = 0, Y = FLOOR }; o.Num["density"] = 1; rain[k] = new FxRun(FxSystem.Def("town-rain"), o); }
             rainT = null; skyT = null;
-            sewerWater = new FxRun(FxSystem.Def("sewer-current"),
-                new FxOptions { X = SewerLeft, Y = Game.SewerFloor + SewerStoneHeight, Light = 0 }
-                    .Set("width", SewerRight - SewerLeft).Set("depth", H - Game.SewerFloor - SewerStoneHeight));
+            ResetSewerEffects();
             TownPuddles.Reset();
             TownSnow.Reset();
         }
@@ -255,6 +252,7 @@ namespace ZeroStar
                     streetEmit = street.PFE;
                     streetPreview = street.TownPreview;
                     ExtendStreet(streetMain);
+                    PaintSewerVault(streetMain, false);
                 }
                 var d=new LevelData{Stage="town",W=TOWN_W,H=H,PF=MAIN,PFE=EMIT,Far=Layer(FAR,FAR_W),Mid=Layer(MID,MID_W),Fg=Layer(FG,FG_W)};
                 foreach(var l in LIGHTS)d.PropLights.Add(new LightSrc(l.x,l.y,l.r,l.lv,l.col));
@@ -263,6 +261,7 @@ namespace ZeroStar
                 LIGHTS.Clear();foreach(var l in d.PropLights)LIGHTS.Add((l.X,l.Y,l.R,l.Lv,l.Col));
             }
             ExtendStreet(MAIN);
+            PaintSewerVault(MAIN, true);
             Vector2Int Move(string role)=>composition?.Role(role)??Vector2Int.zero;
             for(int i=0;i<NPCS.Length;i++)
             {
@@ -274,35 +273,6 @@ namespace ZeroStar
             TownRainHits.Build(MAIN, EMIT, composition);   // 建築擺好後算雨打屋頂與屋簷滴水
             TownSnow.Build(MAIN);   // 下雪：每一欄能堆多少雪（要在結構圖之後）
         }
-        internal static void TickSewerWater(double dt) => sewerWater?.Update(dt);
-
-        static void DrawSewer(Frame f, float[] lv)
-        {
-            double offset = Parallax.Offset(f.Ox, f.CameraFractionX, 0.6);
-            for (int y = 0; y < f.H; y++)
-            {
-                int wy = y + f.Oy, row = y * f.W;
-                var backdrop = sewerBack == null ? default : new Parallax.Row(sewerBack.Px,
-                    sewerBack.W, sewerBack.H, offset, wy - (H - sewerBack.H));
-                for (int x = 0; x < f.W; x++)
-                {
-                    int wx = x + f.Ox, i = row + x;
-                    if (wx < SewerLeft || wx >= SewerRight) { f.Color[i] = 0xff201621; continue; }
-                    uint c = backdrop.Sample(x);
-                    if (wy >= Game.SewerCeiling && wy < H)
-                    {
-                        uint stone = MAIN[wy * TOWN_W + wx];
-                        if (stone != 0) c = stone;
-                    }
-                    if (c == 0) { f.Color[i] = 0xff261b28; continue; }
-                    double lit = Math.Min(1, Math.Max(0, lv[i]));
-                    double k = wy < Game.SewerCeiling ? 0.35 : 0.61 + lit * 0.25;
-                    f.Color[i] = Pack((c & 255) * k, ((c >> 8) & 255) * k, ((c >> 16) & 255) * k * 1.08);
-                }
-            }
-            sewerWater?.Draw(f);
-        }
-
         static void ExtendStreet(uint[] pixels)
         {
             // 延伸街道沿用舊街地表，重複鋪在右側尚未開放的區域。
@@ -350,11 +320,13 @@ namespace ZeroStar
         }
 
         /// 鎮上的固定光源
-        public static List<LightSrc> Lights(double time)
+        public static List<LightSrc> Lights(double time, bool underground = false)
         {
+            if (underground) return SewerLights(time);
             double dl = 1 - 0.75 * DayInfo().d * (1 - 0.5 * WeatherInfo().cloud);
             var list = LIGHTS.Select(l => new LightSrc(l.x, l.y, l.r + (l.r > 50 ? Math.Floor(time * 6) % 2 : 0), l.lv * dl, l.col)).ToList();
             list.Add(new LightSrc(106 + farMove.x, StreetTop + 128 + farMove.y, 110, 1.6 * dl, "#ffd27a", 0.12));   // 坑底的大星星（遠景圖左邊那顆）
+            foreach (int x in new[] { 1623, 1876, 2291 }) list.Add(new LightSrc(x, FLOOR - 50, 40, 0.7 * dl, "#ffdc93"));
             return list;
         }
 
@@ -413,11 +385,13 @@ namespace ZeroStar
             double oc = Parallax.Offset(cx, rx, 0.05) + time * 1.2;
             double extension = Math.Min(124, (StreetTop - cy - 56) * 1.6);
             double elevated = streetMain == null ? 1 : ElevatedVisibility(cy + frame.CameraFractionY);
+            double nearOffset = Parallax.Offset(cx, rx, 0.8);
             for (int y = 0; y < H; y++)
             {
                 int localY = y - StreetTop;
-                fog1[y] = Math.Max(0, Math.Min(1, (localY - 96) / 70.0)) * 0.36 * D;
-                fog2[y] = Math.Max(0, Math.Min(1, (localY - 132) / 50.0)) * 0.30 * D;
+                double streetFog = 1 - 0.5 * elevated * Math.Max(0, Math.Min(1, (FLOOR - y) / 145.0));
+                fog1[y] = Math.Max(0, Math.Min(1, (localY - 96) / 70.0)) * 0.36 * D * streetFog;
+                fog2[y] = Math.Max(0, Math.Min(1, (localY - 132) / 50.0)) * 0.30 * D * streetFog;
                 sunRow[y] = 1 + (0.06 - 0.16 * Math.Max(0, Math.Min(1, (localY - 20) / 164.0))) * D;
                 coolRow[y] = Math.Max(0, Math.Min(1, (localY - 120) / 64.0)) * 0.16 * D;
                 shaftRow[y] = 1 - 0.75 * Math.Max(0, Math.Min(1, (localY - 50) / 120.0));
@@ -437,6 +411,10 @@ namespace ZeroStar
                 var farRow = new Parallax.Row(FAR, FAR_W, LegacyHeight, of, farY);
                 var farUpper = UpperRow(upperFar, of, farY);
                 var midUpper = UpperRow(upperMid, om, midY);
+                var rock = craterWall == null ? default : new Parallax.Row(craterWall.Px, craterWall.W, craterWall.H,
+                    nearOffset, y + cy * 0.8 - 14);
+                double cliffAlpha = elevated * Math.Max(0, Math.Min(1, (352 - wy) / 56.0));
+                double backdropGrade = 1 - 0.5 * elevated * Math.Max(0, Math.Min(1, (FLOOR - wy) / 170.0));
                 var skyRow = new Parallax.Row(SKYP, SKY_W, SKY_H, os, sy);
                 var cloudRow = new Parallax.Row(cloudPixels, CLOUD_W, CLOUD_H, oc - cloudMove.x, localY - cloudMove.y);
                 for (int x = 0; x < W; x++)
@@ -493,25 +471,25 @@ namespace ZeroStar
                         k = (cloud >> 24) / 255.0 * 0.9 * SUNK;
                         r += ((cloud & 255) - r) * k; g += (((cloud >> 8) & 255) - g) * k; b += (((cloud >> 16) & 255) - b) * k;
                     }
-                    uint bg = BlendBackdrop(farRow, farUpper, x, gx, wy, farY, extension);
+                    uint bg = BlendBackdrop(farRow, farUpper, x, farY, extension);
                     if (bg != 0)
                     {
                         bool warm = (bg & 255) > ((bg >> 16) & 255) * 1.25 && (bg & 255) > 150;
                         uint c = Lift(bg); double fr = c & 255, fg = (c >> 8) & 255, fb = (c >> 16) & 255;
-                        gray = fr * 0.3 + fg * 0.59 + fb * 0.11; k = (warm ? 0.15 : 0.35) * D;
+                        gray = fr * 0.3 + fg * 0.59 + fb * 0.11; k = (warm ? 0.15 : 0.35) * D * backdropGrade;
                         fr += (gray - fr) * k; fg += (gray - fg) * k; fb += (gray - fb) * k;
-                        k = (warm ? 0.42 : 0.58) * D;
+                        k = (warm ? 0.42 : 0.58) * D * backdropGrade;
                         fr += ((warm ? 250 : 206) - fr) * k; fg += ((warm ? 236 : 222) - fg) * k; fb += ((warm ? 200 : 244) - fb) * k;
                         k = (bg >> 24) / 255.0; r += (fr - r) * k; g += (fg - g) * k; b += (fb - b) * k;
                     }
                     k = fog1[wy]; r += (236 - r) * k; g += (240 - g) * k; b += (244 - b) * k;
-                    bg = BlendBackdrop(midRow, midUpper, x, gx, wy, midY, extension);
+                    bg = BlendBackdrop(midRow, midUpper, x, midY, extension);
                     if (bg != 0)
                     {
                         uint c = Lift(bg); double mr = c & 255, mg = (c >> 8) & 255, mb = (c >> 16) & 255;
-                        gray = mr * 0.3 + mg * 0.59 + mb * 0.11; k = 0.25 * D;
+                        gray = mr * 0.3 + mg * 0.59 + mb * 0.11; k = 0.25 * D * backdropGrade;
                         mr += (gray - mr) * k; mg += (gray - mg) * k; mb += (gray - mb) * k;
-                        k = 0.34 * D; mr += (188 - mr) * k; mg += (208 - mg) * k; mb += (236 - mb) * k;
+                        k = 0.34 * D * backdropGrade; mr += (188 - mr) * k; mg += (208 - mg) * k; mb += (236 - mb) * k;
                         k = (bg >> 24) / 255.0; r += (mr - r) * k; g += (mg - g) * k; b += (mb - b) * k;
                     }
                     k = fog2[wy]; r += (228 - r) * k; g += (236 - g) * k; b += (244 - b) * k;       // 中景和街道之間的霧
@@ -525,6 +503,13 @@ namespace ZeroStar
                         if (sh > 0) { sh *= shaftRow[wy] * SUNK; r += 255 * sh; g += 244 * sh; b += 206 * sh; }
                     }
                     uint scene = Pack(r, g, b);
+                    if (cliffAlpha > 0)
+                    {
+                        uint cliff = rock.Sample(x);
+                        if (cliff != 0) scene = Parallax.Over(scene,
+                            Parallax.Alpha(Parallax.Mix(cliff | 0xff000000, 0xff827084, D * 0.19),
+                                (uint)((cliff >> 24) * cliffAlpha) << 24));
+                    }
                     if (inTown)
                     {
                         uint asBuilt = constructionPreview == null ? 0 : constructionPreview[world];

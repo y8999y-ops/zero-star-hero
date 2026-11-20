@@ -146,11 +146,19 @@ namespace ZeroStar
         void SnapTownCamera()
         {
             var v = ViewRect();
-            CamX = Math.Max(-v.x0, Math.Min(Data.W - v.x0 - v.w, Player.X - W / 2.0));
+            CamX = ClampTownCameraX(Player.X - W / 2.0);
             CamY = TownUnderground ? Data.H - v.y0 - v.h
                 : Math.Max(-v.y0, Math.Min(TownArt.StreetTop, Player.Y - TownArt.LegacyFloor));
             camLand = null;
             camRefY = Player.Y;
+        }
+
+        double ClampTownCameraX(double origin)
+        {
+            var v = ViewRect();
+            double left = TownUnderground ? TownArt.SewerLeft : 0;
+            double right = TownUnderground ? TownArt.SewerRight : Data.W;
+            return Math.Max(left - v.x0, Math.Min(right - v.x0 - v.w, origin));
         }
 
         void FollowTownHeight(double dt)

@@ -24,6 +24,7 @@ namespace ZeroStar
             ["ground-slam"] = PixelFX.Fx.GroundSlam.Def, ["star-fall"] = PixelFX.Fx.StarFall.Def, ["level-up"] = PixelFX.Fx.LevelUp.Def, ["poof"] = PixelFX.Fx.Poof.Def, ["splash"] = PixelFX.Fx.Splash.Def, ["treasure-chest"] = PixelFX.Fx.TreasureChest.Def,
             ["shooting-stars"] = PixelFX.Fx.ShootingStars.Def, ["frog"] = PixelFX.Fx.Frog.Def, ["town-rain"] = PixelFX.Fx.TownRain.Def,
             ["sewer-current"] = PixelFX.Fx.SewerCurrent.Def,
+            ["sewer-light"] = PixelFX.Fx.SewerLight.Def,
             ["parry"] = PixelFX.Fx.Parry.Def, ["quest-complete"] = PixelFX.Fx.QuestComplete.Def, ["quest-complete-zh"] = PixelFX.Fx.QuestCompleteZh.Def, ["coin-collect"] = PixelFX.Fx.CoinCollect.Def,
             ["meteor"] = PixelFX.Fx.Meteor.Def, ["star-meteor"] = PixelFX.Fx.Meteor.StarDef, ["slime"] = PixelFX.Fx.Slime.Def,   // 開場動畫用
         };

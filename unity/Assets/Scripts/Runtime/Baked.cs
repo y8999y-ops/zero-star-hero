@@ -53,7 +53,18 @@ namespace ZeroStar
 
     public class BigCrystal { public string Col; public double X, Y, X0, Y0; public Img Img; }
     public struct RectD { public double X, Y, W, H; }
-    public struct Platform { public double X, Y, W; }
+    public struct Platform
+    {
+        public double X, Y, W;
+        internal double[] Deck;
+        public double At(double x)
+        {
+            if (Deck == null) return Y;
+            double u = Math.Max(0, Math.Min(Deck.Length - 1, x - X));
+            int a = (int)u, b = Math.Min(a + 1, Deck.Length - 1);
+            return Y + Deck[a] + (Deck[b] - Deck[a]) * (u - a);
+        }
+    }
 
     public class LevelData
     {

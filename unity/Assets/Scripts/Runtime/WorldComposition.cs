@@ -14,12 +14,14 @@ namespace ZeroStar
         WorldStamp[] stamps;
         HashSet<WorldStamp> townPreviews;
         readonly Dictionary<(StampKind,int),WorldStamp> anchors = new Dictionary<(StampKind,int),WorldStamp>();
+        static SpriteRenderer StampRenderer(WorldStamp s) => s.kind == StampKind.TownBridge
+            ? s.GetComponentInChildren<SpriteRenderer>() : s.GetComponent<SpriteRenderer>();
         public WorldComposition(GameObject prefab)
         {
             root=prefab.transform;
             // 原圖先鋪地面、再放道具、最後疊平台。Hierarchy 分組並非繪製順序。
             allStamps=prefab.GetComponentsInChildren<WorldStamp>()
-                .OrderBy(s => s.kind==StampKind.TownPathArt ? 3 : s.kind==StampKind.Platform ? 2 : s.kind==StampKind.Decor ? 1 : 0)
+                .OrderBy(s => s.kind==StampKind.TownPathArt || s.kind==StampKind.TownBridge ? 3 : s.kind==StampKind.Platform ? 2 : s.kind==StampKind.Decor ? 1 : 0)
                 .ThenBy(s => s.TryGetComponent<SpriteRenderer>(out var renderer) ? renderer.sortingOrder : 0).ToArray();
             SelectTownStamps(null);
         }
@@ -146,6 +148,12 @@ namespace ZeroStar
                     data.Platforms.Add(p);
                     if (s.kind == StampKind.TownStep) data.TownSteps.Add(p);
                 }
+                else if (s.kind == StampKind.TownBridge)
+                {
+                    var art = StampRenderer(s);
+                    if (art && art.sprite)
+                        data.Platforms.Add(TownBridgeShape.FromWidth((int)art.sprite.rect.width).Platform(pos.x, pos.y, s.size.x));
+                }
             }
             return hasStreet;
         }
@@ -176,7 +184,7 @@ namespace ZeroStar
                 if (streetView && s.aboveStreet) continue;
                 if(s.kind==StampKind.RewardChest)continue; // 寶箱由 Features 繪製，Prefab 圖片是編輯預覽。
                 var pos=s.Position(root); var delta=pos-s.original;
-                var sr=s.GetComponent<SpriteRenderer>(); Img img=null;
+                var sr=StampRenderer(s); Img img=null;
                 if(sr && sr.enabled && sr.sprite && !images.TryGetValue(sr.sprite,out img)) images[sr.sprite]=img=ImageOf(sr.sprite);
                 if (townPreviews?.Contains(s) == true)
                 {
@@ -200,6 +208,9 @@ namespace ZeroStar
                 }
                 switch(s.kind)
                 {
+                    case StampKind.TownBridge:
+                        if (img != null) TownBridgeShape.FromWidth(img.W).Paint(img, data, pos.x, pos.y, s.size.x);
+                        continue;
                     case StampKind.PaintedGround:
                     case StampKind.PaintedPlatform:
                     case StampKind.PaintedDetail:

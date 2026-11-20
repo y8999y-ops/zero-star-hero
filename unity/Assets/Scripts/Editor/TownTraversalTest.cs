@@ -101,7 +101,7 @@ namespace ZeroStar.Tests
             if (!touch.TownClimbing || touch.Player.Y <= 270) throw new InvalidOperationException("觸控下拖不能從梯頂抓梯");
             for (int i = 0; i < 170 && touch.TownClimbing; i++) Advance(touch);
             if (touch.Player.Y != TownArt.FLOOR) throw new InvalidOperationException("往下爬沒有踩到街道");
-            Place(touch, 705, 270);
+            Place(touch, 705, (float)touch.Map.FloorAt(705, 270));
             touch.Input.TouchVertical = 0; Advance(touch);
             touch.Input.TouchVertical = -1;
             for (int i = 0; i < 12; i++) Advance(touch);
@@ -195,6 +195,79 @@ namespace ZeroStar.Tests
         static void Require(bool condition, string message)
         {
             if (!condition) throw new InvalidOperationException(message);
+        }
+
+        [MenuItem("ZeroStar/Tests/碎星鎮修復總驗收")]
+        public static void VerifyRepairs()
+        {
+            Rnd.R = new Rng(12345);
+            TownArt.DayOverride = 0.25;
+            TownArt.WeatherOverride = "clear";
+            Game.W = 384;
+            string path = Path.GetFullPath(Path.Combine(Application.dataPath, "../Golden/town-repair-complete"));
+            Directory.CreateDirectory(path);
+            var game = new Game("town");
+            game.StartStage();
+            void Shot(string file, float x, float y)
+            {
+                Place(game, x, y);
+                Advance(game);
+                Capture(game, Path.Combine(path, file + ".png"));
+            }
+            Shot("新存檔-東街", 1920, 440);
+            Require(game.Map.Platforms.Count == 0 && game.TownStops.Count == 1
+                && !game.TravelTown("sewer"), "新存檔只能走地面");
+            Place(game, 882, 440); Advance(game);
+            Require(game.NearNow?.Place != "town-manhole", "廣場未建不應有可互動的人孔");
+            game.SetTestTownConstruction(new[] { "plaza" });
+            Shot("已建廣場-人孔關閉", 835, 440);
+            Place(game, 882, 440); Advance(game);
+            Require(game.NearNow?.Place == "town-manhole" && !game.TravelTown("sewer"), "廣場人孔關閉時仍須提示");
+            game.SetTestTownConstruction(new[] { "tower" });
+            Place(game, 909, (float)game.Map.FloorAt(909, 270));
+            Walk(game, "KeyD", 75);
+            Require(game.Player.Grounded && game.Player.X < 960 && game.Player.Y <= 271, "只有鐘樓時橋端必須擋住");
+            Capture(game, Path.Combine(path, "只完工鐘樓-施工橋端.png"));
+
+            game.SetTestTownConstruction(TownProject.All.Select(p => p.Id));
+            Place(game, 191, 270);
+            game.Input.KeyDown("KeyD");
+            double deepest = 270;
+            for (int i = 0; i < 370 && game.Player.X < 664; i++)
+            {
+                Advance(game);
+                if (game.Player.X >= 212 && game.Player.X < 640)
+                {
+                    double deck = game.Map.FloorAt(game.Player.X, 269);
+                    Require(Math.Abs(game.Player.Y - deck) < 1.1, $"城牆吊橋踏面失配 {game.Player.X:F1},{game.Player.Y:F1} vs {deck:F1}");
+                }
+                deepest = Math.Max(deepest, game.Player.Y);
+            }
+            game.Input.KeyUp("KeyD");
+            Require(game.Player.X >= 664 && game.Player.Y == 270 && deepest >= 284 && deepest < 289,
+                $"城牆吊橋要可雙端通行並有下垂，實際 {game.Player.X:F1},{game.Player.Y:F1}, lowest {deepest:F1}");
+            game.Input.KeyDown("KeyA");
+            for (int i = 0; i < 390 && game.Player.X > 190; i++) Advance(game);
+            game.Input.KeyUp("KeyA");
+            Require(game.Player.X <= 190 && game.Player.Y == 270 && game.Player.Grounded, "城牆吊橋回程");
+            Place(game, 1110, 270);
+            Require(game.TravelTown("sewer") && game.Player.Y == 528, "路標進入下水道");
+            Shot("白天-下水道西端", 423, 528);
+            Require(game.CamX >= 400, "西端鏡頭不得超出下水道");
+            Shot("白天-下水道東端", 1678, 528);
+            Require(game.CamX + Game.ViewRect().w <= 1704, "東端鏡頭不得超出下水道");
+
+            foreach (var (day, label) in new[] { (0.25, "白天"), (0.75, "夜晚") })
+            {
+                TownArt.DayOverride = day;
+                Shot(label + "-地面廣場", 830, 440);
+                Shot(label + "-東街", 1960, 440);
+                Shot(label + "-城牆吊橋", 430, (float)game.Map.FloorAt(430, 270));
+                Shot(label + "-鎮長家", 1105, 270);
+                Shot(label + "-觀星台", 1480, 140);
+                Shot(label + "-下水道", 882, 528);
+            }
+            Debug.Log("[TownRepair] PASS: fresh, plaza locked, tower only, two-way sagging bridge, all built, sewer bounds and day/night render");
         }
 
         static void Place(Game game, float x, float y)

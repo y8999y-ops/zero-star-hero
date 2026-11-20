@@ -46,6 +46,7 @@ namespace ZeroStar
         public bool IsTownBuilt(string id) => townBuilt.Contains(id);
         bool TownStampOpen(WorldStamp stamp) =>
             (string.IsNullOrEmpty(stamp.townProject) || IsTownBuilt(stamp.townProject))
+            && (string.IsNullOrEmpty(stamp.townHiddenAfter) || !IsTownBuilt(stamp.townHiddenAfter))
             && (stamp.kind != StampKind.TownBarrier || !IsTownBuilt(stamp.role));
 
         internal void RestoreTownConstruction(IEnumerable<string> ids, bool track)
@@ -152,6 +153,15 @@ namespace ZeroStar
                     || y < frame.Oy || y - 24 >= frame.Oy + frame.H || y < TownArt.FLOOR) continue;
                 // 通行的街道留在圍欄前方。梯子、踏面和入口由同一個工程狀態鎖住。
                 p.Fade = 1;
+                if (site.Id == "sewer" && IsTownBuilt("plaza"))
+                {
+                    // 人孔本身要露出來，封閉告示移到鐵蓋旁邊。
+                    p.Rect(x + 26, y - 11, 2, 11, 0xff333041);
+                    p.Rect(x + 22, y - 16, 10, 9, 0xff493d54);
+                    p.Rect(x + 23, y - 15, 8, 7, 0xff92d5f1);
+                    p.Rect(x + 26, y - 14, 2, 4, 0xff493d54);
+                    continue;
+                }
                 p.Rect(x - 20, y - 14, 3, 14, 0xff333041);
                 p.Rect(x + 17, y - 14, 3, 14, 0xff333041);
                 p.Rect(x - 22, y - 12, 44, 7, 0xff493d54);

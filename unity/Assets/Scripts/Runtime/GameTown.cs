@@ -103,9 +103,8 @@ namespace ZeroStar
             else { Player.Vx = 0; prevTownAtk = true; }
             Drops.Update(dt, Player, 16, Map, PickUp);
             Fx.Update(dt);
-            var v = ViewRect();
             CamX = DeadFollow(CamX + W / 2.0, Player.X + LookAhead(dt, 30), 14, 5, dt) - W / 2.0;
-            CamX = Math.Max(-v.x0, Math.Min(TownArt.TOWN_W - v.x0 - v.w, CamX));
+            CamX = ClampTownCameraX(CamX);
             FollowTownHeight(dt);
             if (TownUnderground) TownArt.TickSewerWater(dt);
             Say.Update();

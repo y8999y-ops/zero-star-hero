@@ -33,6 +33,14 @@ namespace ZeroStar
         {
             if (steps == null || nextX == x) return null;
             double? result = null;
+            foreach (var bridge in Platforms)
+            {
+                if (bridge.Deck == null || x < bridge.X - 1 || x > bridge.X + bridge.W + 1
+                    || nextX < bridge.X || nextX > bridge.X + bridge.W) continue;
+                if (Math.Abs(bridge.At(x) - footY) > 0.5) continue;
+                double y = bridge.At(nextX);
+                if (y >= footY || CeilingAt(nextX, footY, y, height) == null) return y;
+            }
             foreach (var step in steps)
             {
                 if (step.Y >= footY || footY - step.Y > TILE) continue;
@@ -64,7 +72,12 @@ namespace ZeroStar
         public double? GroundAt(double x, double prevY, double y, bool dropping = false)
         {
             double? best = null;
-            if (!dropping) foreach (var p in Platforms) if (x >= p.X - 2 && x <= p.X + p.W + 2 && prevY <= p.Y + 0.5 && y >= p.Y && (best == null || p.Y < best)) best = p.Y;
+            if (!dropping) foreach (var p in Platforms)
+            {
+                if (x < p.X - 2 || x > p.X + p.W + 2) continue;
+                double top = p.At(x);
+                if (prevY <= top + 0.5 && y >= top && (best == null || top < best)) best = top;
+            }
             for (double ty = Math.Floor(prevY / TILE); ty <= Math.Floor(y / TILE); ty++)
             {
                 double top = ty * TILE;
@@ -78,7 +91,7 @@ namespace ZeroStar
         public bool OnPlatform(double x, double y)
         {
             bool any = false;
-            foreach (var p in Platforms) if (Math.Abs(y - p.Y) < 0.5 && x >= p.X - 2 && x <= p.X + p.W + 2) { any = true; break; }
+            foreach (var p in Platforms) if (x >= p.X - 2 && x <= p.X + p.W + 2 && Math.Abs(y - p.At(x)) < 0.5) { any = true; break; }
             return any && !SolidAt(x, y + 0.5);
         }
 
@@ -86,7 +99,12 @@ namespace ZeroStar
         public double FloorAt(double x, double y)
         {
             double best = H;
-            foreach (var p in Platforms) if (x >= p.X && x <= p.X + p.W && p.Y >= y - 0.5 && p.Y < best) best = p.Y;
+            foreach (var p in Platforms)
+            {
+                if (x < p.X || x > p.X + p.W) continue;
+                double top = p.At(x);
+                if (top >= y - 0.5 && top < best) best = top;
+            }
             for (double ty = Math.Max(0, Math.Floor(y / TILE)); ty < gh; ty++)
             {
                 double top = ty * TILE;

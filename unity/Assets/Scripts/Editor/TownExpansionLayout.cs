@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace ZeroStar.EditorTools
 {
-    public static class TownExpansionLayout
+    public static partial class TownExpansionLayout
     {
         const string PrefabPath = "Assets/Resources/StageLayouts/town.prefab";
         const string SpriteFolder = "Assets/StagePieces/World/TownExpansion/";
