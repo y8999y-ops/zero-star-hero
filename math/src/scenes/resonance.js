@@ -4,7 +4,7 @@ import { el, show } from "../ui.js";
 import { ATTRS, ATTR_IDS } from "../data.js";
 import { writeSave } from "../save.js";
 import { sfx } from "../audio.js";
-import { Stage } from "../battle/stage.js";
+import { Stage, fitWidth } from "../battle/stage.js";
 
 let data = null;
 async function load() {
@@ -79,6 +79,7 @@ function reveal(root, attr, mood) {
       el("button.btn.gold.big", { onclick: () => { running = false; res(); } }, "好！"),
     ].filter(Boolean));
     // 示範一次第二級魔法
+    fitWidth(16 / 9);
     const st = new Stage(canvas, "g1", "girl", attr);
     st.gray = 0;
     st.spawn();

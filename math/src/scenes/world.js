@@ -11,7 +11,7 @@ import { GAMES } from "./minigame.js";
 import { STUDENTS, PAGES, CHESTS, QUESTS, riddleFor, daily } from "../world/island-life.js";
 import { writeSave } from "../save.js";
 import { loadMap } from "../world/maps.js";
-import { World, VW, VH } from "../world/world.js";
+import { World, VW, VH, fitView } from "../world/world.js";
 import { talk } from "../world/talk.js";
 
 let current = null;        // 同時只跑一個地圖畫面
@@ -29,6 +29,8 @@ export async function worldScene(game, { map, from } = {}) {
   const restoring = M.grade && s.flags?.restore === M.grade;   // 剛打倒這一區的王：回到地圖時演「恢復色彩」
   if (restoring) W.gray = 1;
 
+  const app = document.querySelector("#app");
+  fitView(app.clientWidth / app.clientHeight);
   const cv = el("canvas.world", { width: VW, height: VH });
   const ctx = cv.getContext("2d");
   const stick = el("div.stick", {}, el("div.knob"));
@@ -240,7 +242,10 @@ export async function worldScene(game, { map, from } = {}) {
 
   function savePos() { s.world = { map, x: Math.round(W.hero.x), y: Math.round(W.hero.y), dir: W.hero.dir }; writeSave(s); }
   function leave() { savePos(); stop(); }
-  function stop() { running = false; window.removeEventListener("keydown", onKey); window.removeEventListener("keyup", onKey); if (current === api) current = null; }
+  // 轉螢幕、進出全螢幕：畫面比例變了就重算寬度
+  const onResize = () => { fitView(app.clientWidth / app.clientHeight); cv.width = VW; W.snapCam(); };
+  window.addEventListener("resize", onResize);
+  function stop() { window.removeEventListener("resize", onResize); running = false; window.removeEventListener("keydown", onKey); window.removeEventListener("keyup", onKey); if (current === api) current = null; }
   const api = { stop };
   current = api;
 

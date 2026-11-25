@@ -1,0 +1,9 @@
+{
+  "name": "魔數學院",
+  "short_name": "魔數學院",
+  "start_url": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#17122a",
+  "theme_color": "#17122a"
+}

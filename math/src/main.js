@@ -1,6 +1,7 @@
 // 《魔數學院》入口：讀存檔、切換畫面。
 
 import { loadSave } from "./save.js";
+import { autoFullscreen } from "./fullscreen.js";
 import { applySettings } from "./settings.js";
 import { settingsScene } from "./scenes/settings.js";
 import { titleScene, lookScene, introScene, afterResonance, afterTutorial } from "./scenes/intro.js";
@@ -44,5 +45,6 @@ const game = {
 };
 
 applySettings(game.save.settings);
+autoFullscreen();
 window.__game = game;   // 開發用：在主控台看存檔
 game.go("title");

@@ -10,8 +10,9 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--bg); }
 body { display: flex; justify-content: center; align-items: center; overflow: hidden; height: 100dvh; background: #000; }
-/* 橫版 16:9：畫面永遠是 16:9，視窗比例不同時上下或左右留黑邊 */
-#app { position: relative; width: min(100vw, calc(100dvh * 16 / 9)); height: min(100dvh, calc(100vw * 9 / 16)); overflow-y: auto; background: var(--bg); }
+/* 整個螢幕都用（手機、平板都填滿，不留黑邊）。戰鬥和大地圖的畫布寬度跟著螢幕比例算（stage.js fitWidth、world.js fitView） */
+#app { position: relative; width: 100vw; height: 100dvh; overflow-y: auto; background: var(--bg); padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+#app:has(.battle, .worldscr, .openingscr) { padding: 0; }
 /* 手機直拿：請玩家轉成橫的 */
 .rotate { display: none; position: fixed; inset: 0; z-index: 100; background: var(--bg); color: var(--text); flex-direction: column; align-items: center; justify-content: center; gap: 14px; font-size: 18px; text-align: center; padding: 24px; }
 .rotate .phone { width: 46px; height: 76px; border: 4px solid var(--gold); border-radius: 8px; animation: turn 1.6s ease-in-out infinite; }
@@ -175,7 +176,7 @@ canvas.stage.small { width: min(100%, 480px); aspect-ratio: 16 / 9; height: auto
 #app.lefty .answers .btn { direction: ltr; }
 
 /* 戰鬥轉場 */
-.transition { position: fixed; z-index: 50; image-rendering: pixelated; }
+.transition { position: fixed; z-index: 50; image-rendering: pixelated; object-fit: cover; }
 
 /* ── 大地圖（scenes/world.js） ── */
 .screen.worldscr { padding: 0; position: relative; height: 100%; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
@@ -219,7 +220,7 @@ canvas.libpage { width: 64px; height: 80px; image-rendering: pixelated; }
 
 /* ── 開場動畫（scenes/opening.js） ── */
 .screen.openingscr { padding: 0; position: relative; height: 100%; overflow: hidden; background: #0b0a22; }
-canvas.opening { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+canvas.opening { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; object-fit: cover; }
 .ocap { position: absolute; left: 8%; right: 8%; bottom: 7%; text-align: center; font-size: 17px; font-weight: 700; color: #fff; text-shadow: 0 2px 0 #000, 0 0 8px #000; min-height: 1.4em; }
 .opicks { position: absolute; left: 50%; top: 70%; transform: translateX(-50%); display: flex; gap: 120px; }
 .opicks[hidden] { display: none; }

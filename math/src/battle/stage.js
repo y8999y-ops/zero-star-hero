@@ -24,13 +24,22 @@ import { MathMagic, PopNumber } from "./mathmagic.js";
 import { areaArtNow } from "./areaart.js";
 import { Ambience } from "./ambience.js";
 
-export const W = 384, H = 216, GROUND = 144;
+// 高度固定 216；寬度跟著螢幕比例（手機比較寬、平板比較方），背景圖 384 寬放在中間，兩邊不夠就鏡射補上
+export let W = 384;
+export const H = 216, GROUND = 144;
+const ART_W = 384;
 const PX = 76;               // 玩家腳下 x
 const REACH = 132;           // 怪物走到這裡＝撞到玩家
-const START = 356;           // 怪物出現的位置
-const WAIT = 262;            // 不限時：怪物停在這裡等
+let START = 356;             // 怪物出現的位置（離右邊 28）
+let WAIT = 262;              // 不限時：怪物停在這裡等（離右邊 122）
 // 數學變魔法的版面原本以 288 寬設計，整塊往右、往上移到畫面中央偏上
-const MAGIC_OX = W / 2 - 144, MAGIC_OY = -26;
+let MAGIC_OX = W / 2 - 144; const MAGIC_OY = -26;
+/** 依畫面比例設定戰鬥畫面的寬度（每次開新戰鬥時） */
+export function fitWidth(aspect) {
+  W = Math.max(288, Math.min(480, Math.round((H * aspect) / 2) * 2));
+  START = W - 28; WAIT = W - 122; MAGIC_OX = W / 2 - 144;
+  return W;
+}
 
 export class Stage {
   constructor(canvas, gradeId, look, attr, settings = {}) {
@@ -227,7 +236,15 @@ export class Stage {
     const sy = sk ? Math.round((Math.random() - 0.5) * sk) : 0;
     if (this.ambience) {
       // 正式背景＋動態；每一層都是彩色版上疊灰色版，gray 從 1 漸變到 0 就是「恢復色彩」
-      this.ambience.draw(ctx, sx, sy, this.gray);
+      const bx = Math.round((W - ART_W) / 2);
+      this.ambience.draw(ctx, sx + bx, sy, this.gray);
+      // 畫面比背景寬：兩邊用鏡射補滿
+      if (bx > 0) {
+        ctx.save(); ctx.scale(-1, 1);
+        ctx.drawImage(this.cv, bx, 0, bx, H, -bx, 0, bx, H);
+        ctx.drawImage(this.cv, W - bx * 2, 0, bx, H, -W, 0, bx, H);
+        ctx.restore();
+      }
     } else {
       ctx.drawImage(this.bg, sx, sy);
       if (this.gray > 0) { ctx.fillStyle = `rgba(40,34,60,${0.35 * this.gray})`; ctx.fillRect(0, 0, W, H); }

@@ -1,7 +1,7 @@
 // 一關的流程（企劃書 7.2～7.5）：出題 → 答題 → 施法或受傷 → 下一隻；王有護盾；結束時結算星星與成長。
 
 import { el, show, floatText, wait } from "../ui.js";
-import { Stage, W, H } from "./stage.js";
+import { Stage, fitWidth } from "./stage.js";
 import { buildStage, withChoices } from "../questions/pool.js";
 import { ATTRS, GRADES, spellTier, maxHp, abilityBonus, crystalLevel, EXP, RANKS } from "../data.js";
 import { recordAnswer, addExp } from "../growth.js";
@@ -76,6 +76,8 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
   const leave = tut ? null : el("button.btn.small.leave", { onclick: () => { if (confirm("離開這一關？這關的進度不會保存。")) { aborted = true; running = false; game.go("map"); } } }, "離開");
   const wrap = el("div.battle", {}, el("div.view", {}, canvas, hud, bubble, leave), wordPanel, line, answers, abilityBtn);
   show(wrap);
+  const app = document.querySelector("#app");
+  fitWidth(app.clientWidth / app.clientHeight);          // 戰鬥畫面的寬度跟著螢幕比例
   const stage = new Stage(canvas, gradeId, s.look, s.attr, s.settings);
   onReady?.();   // 戰鬥畫面準備好了（轉場可以打開）
   window.__stage = stage;   // 開發用：在主控台操作戰鬥畫面

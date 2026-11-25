@@ -1,6 +1,7 @@
 // 設定畫面（企劃書 3.4）：聲音、遊戲、操作、畫面、其他。從標題和學院地圖都能打開。
 
 import { el, show } from "../ui.js";
+import { enterFullscreen } from "../fullscreen.js";
 import { writeSave, resetSave } from "../save.js";
 import { applySettings } from "../settings.js";
 import { sfx } from "../audio.js";
@@ -56,12 +57,13 @@ export function settingsScene(game, { from = "title" } = {}) {
     group("畫面",
       toggle("畫面晃動", "shake"),
       choice("閃光效果", "flash", [["full", "開"], ["soft", "減弱"]]),
-      choice("地圖美術", "art", [["raw", "原圖"], ["pixel", "像素重繪"]])),
+      choice("地圖美術", "art", [["raw", "原圖"], ["pixel", "像素重繪"]]),
+      el("button.btn", { onclick: () => enterFullscreen() }, "進入全螢幕")),
     group("其他",
       el("button.btn", { onclick: () => game.go("opening", { replay: true, back: from }) }, "重看開場動畫"),
       s.attr ? el("button.btn", { onclick: () => game.go("resonance", { retest: true }) }, "重新做共鳴儀式") : null,
       clearBtn),
-    el("p.note", {}, "搖桿位置和點地移動會在大地圖完成後生效。"),
+    el("p.note", {}, "iPhone 的瀏覽器不能全螢幕：按分享 →「加入主畫面」，從主畫面打開就是全螢幕。"),
     el("button.btn.gold.big", { onclick: () => { sfx("click"); game.go(from); } }, "完成"),
   ));
 }

@@ -19,7 +19,10 @@ import * as leaves from "../../../pixelfx/src/fx/weather/falling-leaves.js";
 // 地圖上一直在動的特效（pixelfx）：學院周圍的特色
 const FX_MOD = { brazier, iceCrystal, plasmaBall, sparkArc, fountain: fountainFx, leaves };
 
-export const VW = 768, VH = 432;
+// 地圖畫面：高 324（比原本 432 近一點，使用者 2026-11-25「鏡頭要近一點」），寬度跟著螢幕比例
+export let VW = 576;
+export const VH = 324;
+export function fitView(aspect) { VW = Math.max(400, Math.min(720, Math.round((VH * aspect) / 2) * 2)); return VW; }
 const SPEED = 110;           // 每秒走幾格（像素）
 const CELL = 8;              // 找路用的格子
 const FOOT = 5;              // 腳底左右各算幾格寬（碰撞）
