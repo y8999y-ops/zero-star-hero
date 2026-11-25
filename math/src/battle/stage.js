@@ -6,6 +6,11 @@ import { createFrame, clearFrame, createFx, composite, painterFor, hex as pfHex 
 import { SPELLS, FX, INK, INK_POOF, crystalLight } from "./spells.js";
 import { GRADES, ATTRS } from "../data.js";
 import { heroFrame } from "../../fx/hero.js";
+import { inkDropFrame } from "../../fx/ink-drop.js";
+import { pagepageFrame } from "../../fx/pagepage.js";
+
+// 程式畫的角色、怪物：每個姿勢一個循環多長（秒），每秒畫 12 格，畫過就快取
+const SPRITES = { ink: { fn: inkDropFrame, loop: 1.2 }, page: { fn: pagepageFrame, loop: 1.0 } };
 import { MathMagic, PopNumber } from "./mathmagic.js";
 import { areaArtNow } from "./areaart.js";
 import { Ambience } from "./ambience.js";
@@ -39,6 +44,7 @@ export class Stage {
     this.bossLayer.width = 112; this.bossLayer.height = 88;
     // 見習魔數師（fx/hero.js），每個姿勢的每一格畫好就快取起來
     this.heroCache = new Map();
+    this.pagePose = "idle"; this.pageUntil = 0;
     this.magic = null;        // 數學變魔法（mathmagic.js）
     this.pops = [];           // 打中時跳出的答案數字
     this.fx = [];            // { inst, x, y, from, to, delay, t, dur, speed, follow }
@@ -76,10 +82,10 @@ export class Stage {
   }
 
   spawn(boss = false) {
-    this.monster = {
-      boss, x: START, hp: 1, state: "walk", t: 0, alpha: 1,
-      inst: createFx(FX.slime, { palette: INK, seed: 1 + Math.floor(Math.random() * 50), hop: boss ? 14 : 22 }),
-    };
+    // 一般的墨水怪＝墨水滴（fx/ink-drop.js）；王先用放大的 pixelfx 史萊姆（第 3 批換成墨水大王）
+    this.monster = boss
+      ? { boss, kind: "slime", x: START, hp: 1, state: "walk", t: 0, alpha: 1, inst: createFx(FX.slime, { palette: INK, seed: 1 + Math.floor(Math.random() * 50), hop: 14 }) }
+      : { boss, kind: "ink", x: START, hp: 1, state: "walk", t: 0, alpha: 1, phase: Math.random() * 1.2 };
   }
 
   /** 怪物往前走；timeFrac：0～1 已經過的時間比例（限時），null＝不限時 */
@@ -145,7 +151,7 @@ export class Stage {
     const m = this.monster;
     if (m) {
       m.t += dt;
-      m.inst.update(dt);
+      m.inst?.update(dt);
       if (m.state === "walk" && m.target != null) m.x += (m.target - m.x) * Math.min(1, dt * 3);
       if (m.state === "bump") {
         const u = Math.min(1, m.t / 0.5);
@@ -192,11 +198,6 @@ export class Stage {
     }
 
     const m = this.monster;
-    if (m && !m.boss) {
-      m.inst.options.x = Math.round(m.x); m.inst.options.y = GROUND;
-      m.inst.options.flip = true;
-      if (m.alpha > 0) m.inst.draw(frame);
-    }
 
     for (const f of this.fx) if (f.inst) f.inst.draw(frame, "front");
     this.magic?.draw(p);
@@ -225,6 +226,16 @@ export class Stage {
       ctx.globalAlpha = 1;
     }
     if (this.hero) ctx.drawImage(this.hero.canvas, PX - this.hero.ox + sx, GROUND - this.hero.oy + sy);
+    // 頁頁：浮在主角左上方，表情跟著戰鬥變
+    const pg = this.sprite("page", this.t > this.pageUntil ? "idle" : this.pagePose, this.t);
+    ctx.drawImage(pg.canvas, PX - 30 - pg.ox + sx, GROUND - 26 - pg.oy + sy);
+    // 墨水滴：被打中散開時是壓扁的＞＜
+    if (m && m.kind === "ink" && m.alpha > 0) {
+      const sp = this.sprite("ink", m.state === "die" ? "hurt" : "idle", m.t + m.phase);
+      ctx.globalAlpha = m.alpha;
+      ctx.drawImage(sp.canvas, Math.round(m.x) - sp.ox + sx, GROUND - sp.oy + sy);
+      ctx.globalAlpha = 1;
+    }
     composite(frame, this.img.data, null, this.opt.softFlash ? 0.55 : 1);
     this.lctx.putImageData(this.img, 0, 0);
     ctx.drawImage(this.layer, sx, sy);
@@ -249,6 +260,29 @@ export class Stage {
   popNumber(text, combo) {
     const m = this.monster;
     this.pops.push(new PopNumber(String(text).replace("−", "-"), m ? m.x : 270, m?.boss ? GROUND - 120 : GROUND - 48, ATTRS[this.attr]?.color ?? "#8a7cff", combo >= 10 ? 4 : combo >= 6 ? 3 : 2));
+  }
+
+  /** 頁頁的表情：talk 說話、happy 開心、worried 擔心，維持 sec 秒後回到待機 */
+  setPage(pose, sec = 1.2) {
+    // 開心、擔心的表情還在的時候，說話不蓋掉它（頁頁會帶著那個表情說話）
+    if (pose === "talk" && this.t < this.pageUntil && (this.pagePose === "happy" || this.pagePose === "worried")) return;
+    this.pagePose = pose; this.pageUntil = this.t + sec;
+  }
+
+  /** 程式畫的角色、怪物某個姿勢、某一格的圖（快取） */
+  sprite(name, pose, t) {
+    const S = SPRITES[name], n = Math.floor((((t % S.loop) + S.loop) % S.loop) * 12);
+    const key = `${name}:${pose}:${n}`;
+    let c = this.heroCache.get(key);
+    if (!c) {
+      const f = S.fn(pose, n / 12);
+      const canvas = document.createElement("canvas");
+      canvas.width = f.w; canvas.height = f.h;
+      canvas.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(f.px.buffer.slice(0)), f.w, f.h), 0, 0);
+      c = { canvas, ox: f.ox, oy: f.oy };
+      this.heroCache.set(key, c);
+    }
+    return c;
   }
 
   /** 主角某個姿勢、某一格的圖（12 格／秒，畫過就快取） */

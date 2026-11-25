@@ -76,7 +76,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
   };
   requestAnimationFrame(loop);
 
-  const say = (t) => { line.textContent = t; };
+  const say = (t) => { line.textContent = t; if (t) stage?.setPage("talk", Math.min(2.4, 0.5 + t.length * 0.06)); };
   const drawHud = () => {
     hud.replaceChildren(
       el("div.hearts", {}, ...Array.from({ length: maxHp(s.lv) }, (_, i) => el(`span.heart${i < hp ? "" : ".empty"}`))),
@@ -131,6 +131,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
       }
       say(["", "咒語成立！", "魔法變強了！", "大魔法！", "終極魔法！！"][tier]);
       await stage.cast(tier, crystalLevel(s.crystals[s.attr]));
+      stage.setPage("happy", 1.6);
       // 答案數字跳出來；選擇題的答案可能是中文（像素字寫不出來），就跳一顆星
       const shown = String(q.answer).replace(/−|－/g, "-");
       stage.popNumber(printable(shown) && shown.length <= 8 ? shown : "!", combo);
@@ -144,6 +145,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
     } else {
       wrong++; combo = 0;
       if (!exam) { hp--; stage.hurt(); sfx("hurt"); }
+      stage.setPage("worried", 3);
       bubble.textContent = "";
       await showExplain(q, result.timeout);
       if (!boss) stage.purify();
@@ -212,6 +214,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
           retry = false; uses--; drawAbility();
           b.disabled = true; b.classList.add("wrong");
           say("回流！這題可以再選一次，不扣魔力。");
+          stage.setPage("worried", 1.6);
           sfx("tick");
           return;
         }
