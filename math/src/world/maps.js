@@ -26,15 +26,15 @@ const inBox = (x, y, b) => x > b[0] && x < b[2] && y > b[1] && y < b[3];
 const propObjects = (dir, props) => props.map((p) => ({ art: p.art, file: `${dir}/${p.art}.png`, x: p.x, y: p.y, base: p.y + p.h - 4 }));
 
 export const DEF = {
-  // 學院島 v3：同心圓（世界觀 3.0、企劃書 3.7）
+  // 學院島 v5：三層台地、中軸線、水道（docs/地圖設計.md）。能走的地方是拼圖腳本算好的格子（L.walk），這裡不手寫地形
   island(L, s, dir) {
-    const [icx, icy, irx, iry] = L.island;
+    const cell = L.cell, grid = L.walk, GW = grid[0].length, GH = grid.length;
+    const onGrid = (x, y) => { const i = Math.floor(x / cell), j = Math.floor(y / cell); return i >= 0 && j >= 0 && i < GW && j < GH && grid[j][i] === "1"; };
     const W = L.objects.well.at, WELL = { cx: W[0] + 81, cy: W[1] + 103, rx: 66, ry: 36 };
     const D = L.objects.dock.at, DOCK = { x: D[0], y: D[1] };
     const boxes = propBoxes(L.props);
     const B = Object.fromEntries(L.buildings.map((b) => [b.art, b]));
     const lib = B.library;
-    const westX = icx - irx;
     const inBuilding = (x, y) => L.buildings.some((b) => {
       const bottom = b.y + b.h;
       if (!(x > b.x + 6 && x < b.x + b.w - 6 && y > b.y + b.h * 0.3 && y < bottom - 4)) return false;
@@ -43,20 +43,14 @@ export const DEF = {
     const FXB = [[B.fire.x - 16, B.fire.y + B.fire.h - 6, 12], [B.fire.x + B.fire.w + 16, B.fire.y + B.fire.h - 6, 12],
       [B.ice.x - 14, B.ice.y + B.ice.h - 30, 10], [B.ice.x + B.ice.w + 14, B.ice.y + B.ice.h - 30, 10],
       [B.thunder.x - 18, B.thunder.y + B.thunder.h - 4, 14], [B.thunder.x + B.thunder.w + 26, B.thunder.y + B.thunder.h - 4, 16],
-      [B.water.x + B.water.w + 40, B.water.y + B.water.h - 6, 22]];
+      [B.water.x - 34, B.water.y + B.water.h - 6, 22]];
     const map = {
       id: "island", name: "學院島", size: L.size,
       ground: `${dir}/ground.png`,
       overlay: `${dir}/clouds-front.png`,          // 島南邊蓋在斷崖前面的雲（最上層）
-      start: { x: DOCK.x + 70, y: DOCK.y + 90, dir: "left" },      // 剛下浮空船
+      start: { x: L.start[0], y: L.start[1], dir: "left" },      // 剛下浮空船
       walkable(x, y) {
-        const k = ((x - icx) / (irx - 6)) ** 2 + ((y - icy) / (iry - 10)) ** 2;   // 島邊留一點點（斷崖、雲）
-        const onDeck = x >= DOCK.x + 30 && x <= DOCK.x + 99 && y >= DOCK.y + 76 && y <= DOCK.y + 102;
-        const westRoad = x > westX - 2 && x < westX + 110 && Math.abs(y - L.ewY) < 10;   // 往花園的路接到島的邊緣
-        const eastRoad = x > icx + irx - 80 && x < DOCK.x + 40 && Math.abs(y - L.ewY) < 10;   // 碼頭的棧橋接到島上
-        if (k >= 1 && !onDeck && !westRoad && !eastRoad) return false;
-        const dx = (x - WELL.cx) / (WELL.rx * 0.72), dy = (y - (WELL.cy - 6)) / (WELL.ry * 0.8);
-        if (dx * dx + dy * dy < 1) return false;
+        if (!onGrid(x, y)) return false;                            // 地形（島、崖、水道、井）
         if (x >= DOCK.x && x < DOCK.x + 30 && y >= DOCK.y + 30 && y < DOCK.y + 112 && !(y > DOCK.y + 76 && y < DOCK.y + 103)) return false;
         if (inBuilding(x, y)) return false;
         for (const f of FXB) if (Math.hypot(x - f[0], (y - f[1]) * 1.6) < f[2]) return false;   // 火盆、冰晶這些特效站的地方
@@ -83,19 +77,19 @@ export const DEF = {
       spots: [
         { id: "well", x: WELL.cx, y: WELL.cy + 30, r: 52, label: "共鳴之井" },
         { id: "ship", x: DOCK.x + 92, y: DOCK.y + 88, r: 26, label: "浮空船" },
-        { id: "toGarden", x: westX + 4, y: L.ewY, r: 24, label: "往星芽花園", auto: true },
+        { id: "toGarden", x: L.toGarden[0], y: L.toGarden[1], r: 24, label: "往星芽花園", auto: true },
         { id: "library", x: lib.door[0], y: lib.door[1] - 4, r: 20, label: "千頁圖書館", auto: true },
         ...L.buildings.filter((b) => b.art !== "library").map((b) => ({ id: `b_${b.art}`, x: b.door[0], y: b.door[1] + 4, r: 26, label: BUILDING_NAME[b.art] })),
       ],
       board: L.props.find((p) => p.art === "board"),
-      arrive: { garden: { x: westX + 60, y: L.ewY, dir: "right" }, library: { x: lib.door[0], y: lib.door[1] + 22, dir: "down" } },
+      arrive: { garden: { x: L.arriveGarden[0], y: L.arriveGarden[1], dir: "right" }, library: { x: lib.door[0], y: lib.door[1] + 22, dir: "down" } },
       ambient: { sparkle: [WELL.cx, WELL.cy - 20], butterflies: [[640, 900], [300, 500], [980, 500]], zones: L.zones },
       // 學院周圍的特色特效（pixelfx）：火盆、冰晶、電漿球、電弧、噴泉、落葉
       fx: [
         { fx: "brazier", x: B.fire.x - 16, y: B.fire.y + B.fire.h - 6 }, { fx: "brazier", x: B.fire.x + B.fire.w + 16, y: B.fire.y + B.fire.h - 6 },
         { fx: "iceCrystal", x: B.ice.x - 14, y: B.ice.y + B.ice.h - 30 }, { fx: "iceCrystal", x: B.ice.x + B.ice.w + 14, y: B.ice.y + B.ice.h - 30 },
         { fx: "plasmaBall", x: B.thunder.x - 18, y: B.thunder.y + B.thunder.h - 4 }, { fx: "sparkArc", x: B.thunder.x + B.thunder.w + 26, y: B.thunder.y + B.thunder.h - 4 },
-        { fx: "fountain", x: B.water.x + B.water.w + 40, y: B.water.y + B.water.h - 6 },
+        { fx: "fountain", x: B.water.x - 34, y: B.water.y + B.water.h - 6 },
         // 落葉特效拿掉了（會在地上留一堆橘紅色的落葉，看起來很亂）
       ],
     };
@@ -103,7 +97,7 @@ export const DEF = {
     const spotsFree = (n, seed, used) => {
       const r = seeded(seed), out = [];
       for (let k = 0; k < 4000 && out.length < n; k++) {
-        const a = r() * Math.PI * 2, d = Math.sqrt(r()) * 0.92, x = icx + Math.cos(a) * irx * d, y = icy + Math.sin(a) * iry * d;
+        const x = r() * L.size[0], y = r() * L.size[1];
         if (!map.walkable(x, y) || !map.walkable(x - 12, y) || !map.walkable(x + 12, y) || !map.walkable(x, y - 14)) continue;
         if ([...used, ...out].some((p) => Math.hypot(p[0] - x, p[1] - y) < 90)) continue;
         if (L.buildings.some((b) => Math.hypot(b.door[0] - x, b.door[1] - y) < 70)) continue;
@@ -112,8 +106,9 @@ export const DEF = {
       return out;
     };
     const used = [[WELL.cx, WELL.cy], ...map.npcs.map((n) => [n.x, n.y])];
-    const pagePos = spotsFree(PAGES.length, "pages", used); used.push(...pagePos);
-    const chestPos = spotsFree(CHESTS.length, "chests", used); used.push(...chestPos);
+    // 書頁、寶箱：拼圖腳本選好的角落（L.pageSpots、L.chestSpots）；沒有的話才隨便找空地
+    const pagePos = L.pageSpots ?? spotsFree(PAGES.length, "pages", used); used.push(...pagePos);
+    const chestPos = L.chestSpots ?? spotsFree(CHESTS.length, "chests", used); used.push(...chestPos);
     const inkPos = spotsFree(3, `ink-${today()}`, used);
     const inkDir = dir.replace("island", "garden");
     s.pages ??= []; s.chests ??= [];

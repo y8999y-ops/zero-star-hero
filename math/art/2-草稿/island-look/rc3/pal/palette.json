@@ -3,73 +3,73 @@
   "name": "level",
   "colors": [
     {
-      "hex": "#171925"
+      "hex": "#0c0e1d"
     },
     {
-      "hex": "#4e3f2f"
+      "hex": "#1d1f29"
     },
     {
-      "hex": "#30673b"
+      "hex": "#44312d"
     },
     {
-      "hex": "#705cb0"
+      "hex": "#5e4533"
     },
     {
-      "hex": "#906447"
+      "hex": "#2f703a"
     },
     {
-      "hex": "#497f43"
+      "hex": "#8e5f47"
     },
     {
-      "hex": "#107abf"
+      "hex": "#4a7f43"
     },
     {
-      "hex": "#3a9433"
+      "hex": "#4e70b9"
     },
     {
-      "hex": "#ba774e"
+      "hex": "#c45c2c"
     },
     {
-      "hex": "#50a782"
+      "hex": "#b97a54"
     },
     {
-      "hex": "#089de6"
+      "hex": "#2e9be5"
     },
     {
-      "hex": "#bf926a"
+      "hex": "#7aa555"
+    },
+    {
+      "hex": "#bb906b"
     },
     {
       "hex": "#80c454"
     },
     {
-      "hex": "#9ac55e"
+      "hex": "#98c25d"
+    },
+    {
+      "hex": "#dfac72"
     },
     {
       "hex": "#78c8f8"
     },
     {
-      "hex": "#c4b2ef"
+      "hex": "#c4b2f0"
     },
     {
-      "hex": "#98e035"
-    },
-    {
-      "hex": "#a5cfef"
+      "hex": "#a4d065"
     },
     {
       "hex": "#c1d96d"
     },
     {
-      "hex": "#facd6c"
+      "hex": "#face6a"
     },
     {
-      "hex": "#aae8be"
+      "hex": "#abe8c5"
     },
     {
-      "hex": "#fbdcb7"
-    },
-    {
-      "hex": "#f5eddc"
+      "hex": "#fae0be"
     },
     {
       "hex": "#fcfeff"

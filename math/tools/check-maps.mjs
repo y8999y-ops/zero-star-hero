@@ -24,10 +24,10 @@ for (const [id, def] of Object.entries(DEF)) {
       while (st.length) { const k = st.pop(); if (k < 0 || k >= W * H || seen[k] || !ok[k]) continue; seen[k] = 1; const i = k % W; st.push(k + W, k - W); if (i > 0) st.push(k - 1); if (i < W - 1) st.push(k + 1); }
     };
     const near = (x, y, r) => { for (let j = Math.floor((y - r) / CELL); j <= Math.floor((y + r) / CELL); j++) for (let i = Math.floor((x - r) / CELL); i <= Math.floor((x + r) / CELL); i++) if (i >= 0 && j >= 0 && i < W && j < H && seen[j * W + i] && Math.hypot(i * CELL + 4 - x, j * CELL + 4 - y) <= r) return true; return false; };
-    flood(M.start.x, M.start.y);
-    for (const a of Object.values(M.arrive ?? {})) flood(a.x, a.y);
+    flood(M.start.x, M.start.y);                                  // 只從起點出發：每個地方都要從起點走得到
     const problems = [];
     if (!near(M.start.x, M.start.y, 10)) problems.push(`起點 (${M.start.x}, ${M.start.y}) 站不住`);
+    for (const [k, a] of Object.entries(M.arrive ?? {})) if (!near(a.x, a.y, 12)) problems.push(`從起點走不到入口「${k}」(${a.x}, ${a.y})`);
     for (const s of M.spots) if (!near(s.x, s.y, s.r)) problems.push(`走不到「${s.label ?? s.id}」(${Math.round(s.x)}, ${Math.round(s.y)})`);
     for (const n of M.npcs) if (!near(n.x, n.y, 34)) problems.push(`走不到 NPC「${n.name}」(${n.x}, ${n.y})`);
     for (const m of M.monsters ?? []) if (!m.boss && !near(m.x, m.y, 18)) problems.push(`碰不到墨水怪 ${m.id}`);
