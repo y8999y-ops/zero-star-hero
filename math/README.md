@@ -29,6 +29,7 @@
 | `npm run check` | 檢查改寫表：答案不變、數字不漏、沒有簡體字和中國用語、用詞符合世界觀 |
 | `npm run build` | 先跑 check，再把改寫表合併成 `data/questions/built/<學年>.json`（遊戲讀這個） |
 | `node tools/preview-hero.mjs out.png` | 見習魔數師預覽：女生／男生 × 各姿勢 × 五個屬性色，並檢查色數（上限 16） |
+| `node tools/preview-sprites.mjs fx/ink-drop.js inkDropFrame 12 out.png` | 角色／怪物預覽（姿勢 × 時間），並檢查色數；`POSES=idle,talk` 換姿勢 |
 | `node tools/test-generators.mjs` | 檢查計算題產生器：每個題型產生 2000 題，選項不重複、答案正確 |
 
 ## 資料夾
@@ -58,7 +59,7 @@ math/
     battle/          battle.js 一關的流程、stage.js 戰鬥畫面、spells.js 五屬性四級魔法、mathmagic.js 數學變魔法（加減乘除）與答案數字、mathmagic-more.js 其他題型的演出
     scenes/          標題與劇情、共鳴儀式、學院地圖、結算、設定
   dev/               開發用頁面（魔法一覽）
-  fx/                角色與怪物的像素圖（程式畫）：hero.js 見習魔數師
+  fx/                角色與怪物的像素圖（程式畫）：_grid.js 共用畫筆、hero.js 見習魔數師、ink-drop.js 墨水滴、pagepage.js 頁頁
   art/
     1-參考原圖/      AI 參考圖（提示詞在 docs/美術提示詞.md），依 map、battle/<區域>、chars 分
     2-草稿/          pixel-redraw 重畫中的稿

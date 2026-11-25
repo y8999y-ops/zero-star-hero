@@ -16,9 +16,7 @@ const FIXED = {
 };
 const HAIR = { girl: ["#a5563a", "#6e3326"], boy: ["#5a3f33", "#3a2822"] };   // 暗色也當鞋子
 
-const hex = (c) => { const n = parseInt(c.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
-const mixHex = (a, b, k) => { const A = hex(a), B = hex(b); return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * k).toString(16).padStart(2, "0")).join(""); };
-const toU32 = (c) => { const [r, g, b] = hex(c); return (0xff << 24) | (b << 16) | (g << 8) | r; };
+import { Grid, mixHex } from "./_grid.js";
 
 export function palette(look, attrHex) {
   const [hair, hairS] = HAIR[look];
@@ -26,50 +24,6 @@ export function palette(look, attrHex) {
     ...FIXED, hair, hairS,
     hat: attrHex, hatS: mixHex(attrHex, "#1a1030", 0.45), hatL: mixHex(attrHex, "#ffffff", 0.4),
   };
-}
-
-// ── 小格子畫筆 ──
-class Grid {
-  constructor() { this.c = new Array(W * H).fill(null); }
-  set(x, y, col) { x = Math.round(x) + OX; y = Math.round(y) + OY; if (x >= 0 && y >= 0 && x < W && y < H && col) this.c[y * W + x] = col; }
-  get(x, y) { x += OX; y += OY; return x >= 0 && y >= 0 && x < W && y < H ? this.c[y * W + x] : null; }
-  rect(x, y, w, h, col) { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) this.set(x + i, y + j, col); }
-  // 實心橢圓，fn(nx, ny) 回傳顏色（nx、ny 是 -1～1 的位置，拿來分明暗）
-  ellipse(cx, cy, rx, ry, fn) {
-    for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++)
-      for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
-        const nx = (x - cx) / (rx + 0.5), ny = (y - cy) / (ry + 0.5);
-        if (nx * nx + ny * ny <= 1) this.set(x, y, typeof fn === "function" ? fn(nx, ny) : fn);
-      }
-  }
-  // 多邊形（掃描線），fn(x, y) 回傳顏色
-  poly(pts, fn) {
-    const ys = pts.map((p) => p[1]), y0 = Math.floor(Math.min(...ys)), y1 = Math.ceil(Math.max(...ys));
-    for (let y = y0; y <= y1; y++) {
-      const xs = [];
-      for (let i = 0; i < pts.length; i++) {
-        const [ax, ay] = pts[i], [bx, by] = pts[(i + 1) % pts.length];
-        if ((ay <= y + 0.5 && by > y + 0.5) || (by <= y + 0.5 && ay > y + 0.5)) xs.push(ax + ((y + 0.5 - ay) / (by - ay)) * (bx - ax));
-      }
-      xs.sort((a, b) => a - b);
-      for (let k = 0; k + 1 < xs.length; k += 2)
-        for (let x = Math.round(xs[k]); x < Math.round(xs[k + 1]); x++) this.set(x, y, typeof fn === "function" ? fn(x, y) : fn);
-    }
-  }
-  line(x0, y0, x1, y1, col) {
-    const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
-    for (let i = 0; i <= n; i++) this.set(x0 + ((x1 - x0) * i) / n, y0 + ((y1 - y0) * i) / n, col);
-  }
-  // 外框：透明格子只要上下左右碰到有顏色的格子，就塗黑（外輪廓一律黑色）
-  outline() {
-    const out = this.c.slice();
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      if (this.c[y * W + x]) continue;
-      const n = (dx, dy) => { const X = x + dx, Y = y + dy; return X >= 0 && Y >= 0 && X < W && Y < H && this.c[Y * W + X] && this.c[Y * W + X] !== "#000000"; };
-      if (n(1, 0) || n(-1, 0) || n(0, 1) || n(0, -1)) out[y * W + x] = "#000000";
-    }
-    this.c = out;
-  }
 }
 
 // ── 姿勢參數 ──
@@ -93,7 +47,7 @@ function poseOf(pose, t) {
 export function heroFrame(look, pose = "idle", t = 0, attrHex = "#8a7cff") {
   const P = palette(look, attrHex);
   const q = poseOf(pose, t);
-  const g = new Grid();
+  const g = new Grid(W, H, OX, OY);
   const L = q.lean, Y = q.hop;          // 整個上半身往前／往後、跳起
   const hy = -q.bob + Y;                // 頭與帽子的上下
   const girl = look === "girl";
@@ -201,7 +155,5 @@ export function heroFrame(look, pose = "idle", t = 0, attrHex = "#8a7cff") {
   }
 
   g.outline();
-  const px = new Uint32Array(W * H);
-  for (let i = 0; i < px.length; i++) if (g.c[i]) px[i] = toU32(g.c[i]);
-  return { w: W, h: H, ox: OX, oy: OY, px, glow: [tip[0] + OX, tip[1] + OY], colors: new Set(g.c.filter(Boolean)).size };
+  return { ...g.pixels(), glow: [tip[0] + OX, tip[1] + OY] };
 }
