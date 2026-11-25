@@ -4,6 +4,10 @@
 
 import { heroWalkFrame, WALK_LOOP } from "../../fx/hero-walk.js";
 import { deanFrame } from "../../fx/dean.js";
+import { inkDropFrame } from "../../fx/ink-drop.js";
+import { crookedFlowerFrame } from "../../fx/crooked-flower.js";
+import { inkKingBabyFrame } from "../../fx/ink-king-baby.js";
+import { grayOf } from "../battle/areaart.js";
 
 export const VW = 768, VH = 432;
 const SPEED = 110;           // 每秒走幾格（像素）
@@ -11,6 +15,8 @@ const CELL = 8;              // 找路用的格子
 const FOOT = 5;              // 腳底左右各算幾格寬（碰撞）
 
 const NPC_ART = { dean: deanFrame };
+// 地圖上遊蕩的墨水怪（跟戰鬥同一張圖）：每個姿勢一輪幾秒
+const MON_ART = { ink: [inkDropFrame, 1.2], flower: [crookedFlowerFrame, 1.2], king: [inkKingBabyFrame, 2.0] };
 const imgCache = {};
 function loadImg(src) {
   return (imgCache[src] ??= new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; }));
@@ -32,13 +38,22 @@ export class World {
     this.t = 0;
     this.cache = new Map();
     this.npcs = map.npcs.map((n) => ({ ...n, talking: 0 }));
+    this.monsters = (map.monsters ?? []).filter((m) => !m.gone()).map((m, i) => ({ ...m, ph: i * 0.7, tx: m.x, ty: m.y, wait: 1 + i }));
+    this.gray = map.gray?.() ? 1 : 0;      // 1＝墨水灰；restoreColor() 慢慢變回彩色
+    this.grayTo = null;
     this.marker = null;      // 點地時的小圈圈
   }
 
   async load() {
     const base = new URL("../../assets/map/", import.meta.url);
-    const entries = await Promise.all(Object.entries(this.map.art).map(async ([k, f]) => [k, await loadImg(new URL(f, base).href)]));
+    const files = { ground: this.map.ground, ...Object.fromEntries(this.map.objects.map((o) => [o.art, o.file])) };
+    const entries = await Promise.all(Object.entries(files).map(async ([k, f]) => [k, await loadImg(new URL(f, base).href)]));
     this.img = Object.fromEntries(entries);
+    // 被墨水弄灰的版本（花園打倒王之前）
+    if (this.gray > 0) {
+      this.grayImg = {};
+      for (const [k, im] of Object.entries(this.img)) { const c = document.createElement("canvas"); c.width = im.width; c.height = im.height; c.getContext("2d").drawImage(im, 0, 0); this.grayImg[k] = grayOf(c); }
+    }
     // 碼頭的浮空船切出來，讓它輕輕浮
     for (const o of this.map.objects) if (o.ship) {
       const im = this.img[o.art], c = document.createElement("canvas"); c.width = im.width; c.height = im.height;
@@ -131,10 +146,29 @@ export class World {
     h.t = walking ? h.t + dt : 0;
     if (this.marker) this.marker.t += dt;
     for (const n of this.npcs) n.talking = Math.max(0, n.talking - dt);
+    if (this.grayTo != null) { this.gray = Math.max(this.grayTo, this.gray - dt * 0.45); if (this.gray <= this.grayTo) this.grayTo = null; }
+    // 墨水怪在自己的地盤附近慢慢晃
+    for (const m of this.monsters) {
+      if (m.still) continue;
+      m.wait -= dt;
+      if (m.wait <= 0) { m.tx = m.home[0] + (Math.random() - 0.5) * 70; m.ty = m.home[1] + (Math.random() - 0.5) * 36; m.wait = 2 + Math.random() * 2.5; }
+      const dx = m.tx - m.x, dy = m.ty - m.y, d = Math.hypot(dx, dy);
+      if (d > 1) { const sp = Math.min(d, 18 * dt); const nx = m.x + (dx / d) * sp, ny = m.y + (dy / d) * sp; if (this.map.walkable(nx, ny)) { m.x = nx; m.y = ny; } else m.wait = 0; m.face = dx > 0 ? 1 : -1; }
+    }
     // 鏡頭跟著主角（慢慢跟上），不超出地圖
     const tx = this.clampX(h.x - VW / 2), ty = this.clampY(h.y - 20 - VH / 2);
     this.cam.x += (tx - this.cam.x) * Math.min(1, dt * 8); this.cam.y += (ty - this.cam.y) * Math.min(1, dt * 8);
   }
+  /** 畫一層：彩色版上面疊灰色版（gray 0～1），alpha：整層透明度 */
+  layer(ctx, k, x, y, alpha = 1) {
+    if (alpha <= 0) return;
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(this.img[k], x, y);
+    if (this.gray > 0.001 && this.grayImg?.[k]) { ctx.globalAlpha = alpha * this.gray; ctx.drawImage(this.grayImg[k], x, y); }
+    ctx.globalAlpha = 1;
+  }
+  restoreColor() { this.grayTo = 0; }
+
   clampX(x) { return Math.max(0, Math.min(this.map.size[0] - VW, x)); }
   clampY(y) { return Math.max(0, Math.min(this.map.size[1] - VH, y)); }
   snapCam() { this.cam.x = this.clampX(this.hero.x - VW / 2); this.cam.y = this.clampY(this.hero.y - 20 - VH / 2); }
@@ -156,7 +190,7 @@ export class World {
   draw(ctx) {
     const cx = Math.round(this.cam.x), cy = Math.round(this.cam.y), t = this.t;
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(this.img.ground, -cx, -cy);
+    this.layer(ctx, "ground", -cx, -cy);
     // 點地的小圈圈
     if (this.marker) {
       const r = 3 + Math.floor((this.marker.t * 6) % 3);
@@ -165,14 +199,22 @@ export class World {
     }
     // 照 y 排：物件、NPC、主角
     const list = [];
-    for (const o of this.map.objects) list.push({ y: o.base, draw: () => {
+    for (const o of this.map.objects) if (!o.hidden?.() && !(o.ink && this.gray <= 0.001)) list.push({ y: o.base, draw: () => {
       if (o.body) {
         ctx.drawImage(o.body, o.x - cx, o.y - cy);
         ctx.drawImage(o.shipImg, o.x + o.ship.x - cx, o.y - cy + Math.round(Math.sin(t * 1.4) * 1.5));
-      } else ctx.drawImage(this.img[o.art], o.x - cx, o.y - cy);
+      } else this.layer(ctx, o.art, o.x - cx, o.y - cy, o.ink ? this.gray : 1);
     } });
     const shadow = (x, y, w) => { ctx.fillStyle = "rgba(20,40,20,0.28)"; ctx.fillRect(Math.round(x - w) - cx, Math.round(y) - 1 - cy, w * 2, 2); ctx.fillRect(Math.round(x - w + 2) - cx, Math.round(y) + 1 - cy, w * 2 - 4, 1); };
     for (const n of this.npcs) list.push({ y: n.y, draw: () => { const s = this.npcSprite(n); shadow(n.x, n.y, 10); ctx.drawImage(s.canvas, Math.round(n.x) - s.ox - cx, Math.round(n.y) - s.oy - cy); } });
+    for (const m of this.monsters) list.push({ y: m.y, draw: () => {
+      const [fn, loop] = MON_ART[m.kind], n = Math.floor((((this.t + m.ph) % loop) / loop) * loop * 12);
+      const sp = this.sprite(`mon:${m.kind}:${n}`, () => fn("idle", n / 12));
+      if (m.kind !== "king") shadow(m.x, m.y, 8);
+      // 遊蕩的時候面向走的方向（圖本來面向左）
+      if (m.face > 0) { ctx.save(); ctx.translate(Math.round(m.x) - cx, 0); ctx.scale(-1, 1); ctx.drawImage(sp.canvas, -sp.ox, Math.round(m.y) - sp.oy - cy); ctx.restore(); }
+      else ctx.drawImage(sp.canvas, Math.round(m.x) - sp.ox - cx, Math.round(m.y) - sp.oy - cy);
+    } });
     const h = this.hero;
     list.push({ y: h.y, draw: () => { const s = this.heroSprite(); shadow(h.x, h.y, 7); ctx.drawImage(s.canvas, Math.round(h.x) - s.ox - cx, Math.round(h.y) - s.oy - cy); } });
     list.sort((a, b) => a.y - b.y).forEach((d) => d.draw());
@@ -190,6 +232,15 @@ export class World {
       if (u < 0.3 && i % 3 === 0) { ctx.fillRect(Math.round(x) - cx - 1, Math.round(y) - cy, 3, 1); ctx.fillRect(Math.round(x) - cx, Math.round(y) - cy - 1, 1, 3); }
     }
     ctx.globalAlpha = 1;
+    // 花瓣（花園）：彩色時是粉紅花瓣飄，墨水灰時是慢慢落下的墨點
+    if (A.petals) for (let i = 0; i < 26; i++) {
+      const g = this.gray > 0.5, sp = (9 + rand(i + 9) * 8) * (g ? 0.4 : 1);
+      const x = ((rand(i) * VW + t * sp + Math.sin(t * 1.3 + i) * 6) % (VW + 20)) - 10, y = ((rand(i + 50) * VH + t * sp * 0.55) % (VH + 10)) - 5;
+      ctx.fillStyle = g ? (i % 2 ? "#463a78" : "#2d2350") : ["#eb88a0", "#f5eddd", "#f7b6c4"][i % 3];
+      const flip = Math.floor(t * 4 + i) % 2;
+      ctx.fillRect(Math.round(x), Math.round(y), g ? 1 : flip ? 2 : 1, g ? 1 : flip ? 1 : 2);
+    }
+    if (this.gray > 0.5) return;            // 墨水灰的時候沒有蝴蝶
     (A.butterflies ?? []).forEach(([bx, by], i) => {
       const u = t * 0.5 + i * 2.1, x = Math.round(bx + Math.sin(u) * 50) - cx, y = Math.round(by + Math.sin(u * 2) * 14 + Math.sin(t * 6 + i) * 1.5) - cy;
       const open = Math.floor(t * 9 + i * 3) % 2 === 0, c = i ? ["#fac85e", "#c08a2e"] : ["#c3a3db", "#8f6fc0"];
@@ -203,14 +254,21 @@ export class World {
     const h = this.hero;
     let best = null, bd = Infinity;
     for (const n of this.npcs) { const d = Math.hypot(n.x - h.x, (n.y - h.y) * 1.3); if (d < 34 && d < bd) { best = { kind: "npc", ...n, ref: n }; bd = d; } }
-    for (const s of this.map.spots) { const d = Math.hypot(s.x - h.x, s.y - h.y); if (d < s.r && d < bd) { best = { kind: "spot", ...s }; bd = d; } }
+    for (const s of this.map.spots) { if (s.hidden?.()) continue; const d = Math.hypot(s.x - h.x, s.y - h.y); if (d < s.r && d < bd) { best = { kind: "spot", ...s }; bd = d; } }
     return best;
+  }
+
+  /** 碰到的墨水怪（明雷：碰到就開打） */
+  touching() {
+    const h = this.hero;
+    return this.monsters.find((m) => Math.hypot(m.x - h.x, (m.y - h.y) * 1.4) < (m.boss ? 44 : 18)) ?? null;
   }
 
   /** 點到的東西（NPC：點身上；觸發點：點附近） */
   hit(wx, wy) {
     for (const n of this.npcs) if (Math.abs(wx - n.x) < 14 && wy < n.y + 4 && wy > n.y - 46) return { kind: "npc", ...n, ref: n };
-    for (const s of this.map.spots) if (!s.auto && Math.hypot(wx - s.x, wy - s.y) < s.r * 0.8) return { kind: "spot", ...s };
+    for (const m of this.monsters) if (Math.abs(wx - m.x) < (m.boss ? 40 : 16) && wy < m.y + 4 && wy > m.y - (m.boss ? 80 : 44)) return { kind: "monster", ...m, ref: m };
+    for (const s of this.map.spots) if (!s.auto && !s.hidden?.() && Math.hypot(wx - s.x, wy - s.y) < s.r * 0.8) return { kind: "spot", ...s };
     return null;
   }
 }

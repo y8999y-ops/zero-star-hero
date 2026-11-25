@@ -13,7 +13,6 @@ from PIL import Image
 HERE = Path(__file__).parent
 R = HERE / "read"
 OUT = HERE / "out"; OUT.mkdir(exist_ok=True)
-MW, MH = 1024, 640
 G = Image.open(R / "ground.png").convert("RGBA")
 E = Image.open(R / "edge.png").convert("RGBA")
 rnd = random.Random(7)
@@ -105,54 +104,80 @@ clouds = cloud_stamps()
 pond = E.crop((0, 113, 110, 222))
 
 # ── 組地面 ──
+MW, MH = 1024, 850
 img = Image.new("RGBA", (MW, MH), SKY)
-ISL = (40, 40, 860, 560)                                # 島（右邊接碼頭）
+ISL = (40, 40, 860, 770)                                # 島（右邊接碼頭，北邊是千頁圖書館）
 x0, y0, x1, y1 = ISL
-for i in range(60):                                     # 天空裡的雲（島外面）
+for i in range(70):                                     # 天空裡的雲（島外面）
     c = rnd.choice(clouds); x, y = rnd.randrange(-20, MW), rnd.randrange(-10, MH)
     img.alpha_composite(c, (x, y)) if 0 <= x <= MW - c.width and 0 <= y <= MH - c.height else None
 grass = Image.new("RGBA", (x1 - x0, y1 - y0), GRASS)
 img.alpha_composite(grass, (x0, y0))
-# 北、東、西三邊：草地邊一排深綠（看得出島的邊）
 for x in range(x0, x1):
     img.putpixel((x, y0), (28, 129, 53, 255)); img.putpixel((x, y0 + 1), (57, 162, 56, 255))
 for y in range(y0, y1):
     for x in (x0, x1 - 1): img.putpixel((x, y), (28, 129, 53, 255))
     img.putpixel((x0 + 1, y), (57, 162, 56, 255)); img.putpixel((x1 - 2, y), (57, 162, 56, 255))
-# 南邊斷崖
 img.alpha_composite(mirror_tile_h(cliff, x1 - x0), (x0, y1 - 6))
 
-# 小草、小花撒在草地上（避開等一下要放路、井、水池的地方）
-WELL_AT = (372, 190)                                     # 井的左上角
 blocked = []
 def free(x, y, w, h):
     return all(x + w < a or x > c or y + h < b or y > d for a, b, c, d in blocked)
 
-# 路（先記下位置）：井的外圈中心約 (579, 331)，外圈半寬 66、半高 36
-cx, cy = WELL_AT[0] + 81, WELL_AT[1] + 103
+WELL_AT = (372, 400)                                     # 井的左上角
+LIB = Image.open(HERE.parent / "library-look" / "read" / "library.png").convert("RGBA")
+LIB_AT = (453 - LIB.width // 2, 48)                      # 千頁圖書館（大門在下緣正中間）
+cx, cy = WELL_AT[0] + 81, WELL_AT[1] + 103               # 井外圈中心
 roads = []
-roads.append(("h", cx + 60, cy - 11, x1 - 5 - (cx + 60)))                     # 東：往碼頭
-roads.append(("h", x0 + 40, cy - 11, (cx - 60) - (x0 + 40)))    # 西：往星芽花園
-roads.append(("v", cx - 12, 70, (cy - 30) - 70))               # 北：往圖書館
+roads.append(("h", cx + 60, cy - 11, x1 - 5 - (cx + 60)))           # 東：往碼頭
+roads.append(("h", x0 + 4, cy - 11, (cx - 60) - (x0 + 4)))           # 西：往星芽花園（接到島的西邊）
+lib_bottom = LIB_AT[1] + LIB.height - 4
+roads.append(("v", cx - 12, lib_bottom, (cy - 30) - lib_bottom))      # 北：往圖書館
 for k, x, y, n in roads:
     piece = mirror_tile_h(road_h, n) if k == "h" else mirror_tile_v(road_v, n)
     img.alpha_composite(piece, (x, y)); blocked.append((x - 4, y - 4, x + piece.width + 4, y + piece.height + 4))
-POND_AT = (110, 380)
+POND_AT = (110, 590)
 img.alpha_composite(pond, POND_AT); blocked.append((POND_AT[0], POND_AT[1], POND_AT[0] + pond.width, POND_AT[1] + pond.height))
 blocked.append((WELL_AT[0], WELL_AT[1], WELL_AT[0] + 157, WELL_AT[1] + 142))
+blocked.append((LIB_AT[0], LIB_AT[1], LIB_AT[0] + LIB.width, LIB_AT[1] + LIB.height))
 DOCK_AT = (x1 - 48, cy - 90)
 blocked.append((DOCK_AT[0] - 10, DOCK_AT[1], MW, DOCK_AT[1] + 139))
-for i in range(1600):
+
+# ── 小物件（腳底中心的位置）：樹、樹叢、長椅、路燈、路牌、花台、木箱… ──
+P = HERE.parent / "props-look" / "split"
+NAMES = {"tree": 0, "pine": 1, "tree_s": 2, "bush": 3, "lamp": 4, "sign": 5, "bench": 7, "urn": 8, "planter": 9, "scope": 11, "crystal": 12, "board": 13, "barrel": 14, "crate": 15}
+PROPS = [
+    ("tree", 105, 170), ("pine", 175, 120), ("tree_s", 240, 215), ("tree", 790, 190), ("pine", 730, 120), ("tree_s", 650, 205),
+    ("bush", 270, 320), ("bush", 640, 320), ("bush", 150, 420), ("bush", 760, 380),
+    ("planter", 378, 268), ("planter", 528, 268),
+    ("lamp", 340, 488), ("lamp", 566, 488), ("lamp", 690, 488), ("lamp", 215, 488),
+    ("sign", 95, 486),
+    ("bench", 380, 600), ("bench", 528, 600), ("urn", 453, 640),
+    ("board", 780, 470), ("barrel", 790, 590), ("crate", 815, 600), ("crate", 805, 625),
+    ("scope", 815, 300), ("crystal", 255, 640),
+    ("tree", 330, 745), ("pine", 600, 740), ("tree_s", 700, 700), ("pine", 70, 740), ("bush", 520, 720), ("tree_s", 400, 740),
+]
+props = []
+for name, fx, fy in PROPS:
+    im = Image.open(P / f"props-{NAMES[name]}.png")
+    x, y = fx - im.width // 2, fy - im.height
+    props.append({"art": name, "x": x, "y": y, "w": im.width, "h": im.height})
+    blocked.append((x, y, x + im.width, y + im.height))
+for name, i in NAMES.items():
+    Image.open(P / f"props-{i}.png").save(OUT / f"{name}.png")
+
+for i in range(2000):
     s = rnd.choice(flowers if rnd.random() < 0.25 else tufts)
     x, y = rnd.randrange(x0 + 6, x1 - 6 - s.width), rnd.randrange(y0 + 6, y1 - 14 - s.height)
     if free(x, y, s.width, s.height): img.alpha_composite(s, (x, y)); blocked.append((x - 1, y - 1, x + s.width + 1, y + s.height + 1))
-
+LIB.save(OUT / "library.png")
 img.convert("RGB").save(OUT / "ground.png")
 Image.open(R / "well.png").save(OUT / "well.png")
 Image.open(R / "dock.png").save(OUT / "dock.png")
 json.dump({
     "size": [MW, MH], "tile": 16, "island": ISL,
-    "objects": {"well": {"at": WELL_AT, "size": [157, 142]}, "dock": {"at": DOCK_AT, "size": [170, 139]}},
+    "objects": {"well": {"at": WELL_AT, "size": [157, 142]}, "dock": {"at": DOCK_AT, "size": [170, 139]}, "library": {"at": LIB_AT, "size": list(LIB.size)}},
+    "props": props,
     "pond": {"at": POND_AT, "size": list(pond.size)},
     "roads": roads,
 }, open(OUT / "layout.json", "w"), indent=1)

@@ -174,7 +174,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
         shieldLeft--;
         stage.shake = 6;
         if (shieldLeft > 0) stage.flinch();
-        if (shieldLeft <= 0) { stage.purify(); if (!s.stars[`${gradeId}-boss`]) { stage.restoreColor(); setTimeout(() => sfx("restore"), 400); } }
+        if (shieldLeft <= 0) { stage.purify(); if (!s.stars[`${gradeId}-boss`]) { stage.restoreColor(); setTimeout(() => sfx("restore"), 400); s.flags = { ...(s.flags ?? {}), restore: gradeId }; } }
       } else stage.purify();
       await wait(650);
     } else {

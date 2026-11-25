@@ -24,7 +24,7 @@ function loadImg(src) {
 const canvas = (w = W, h = H) => { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; };
 
 // 被墨水弄灰：去掉大部分顏色、壓暗、帶一點墨水的藍紫
-function grayOf(src) {
+export function grayOf(src) {
   const c = canvas(src.width, src.height), x = c.getContext("2d");
   x.drawImage(src, 0, 0);
   const d = x.getImageData(0, 0, c.width, c.height), a = d.data;

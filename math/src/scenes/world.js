@@ -6,18 +6,22 @@ import { el, show } from "../ui.js";
 import { sfx } from "../audio.js";
 import { ATTRS, GRADES, RANKS } from "../data.js";
 import { writeSave } from "../save.js";
-import { MAPS } from "../world/maps.js";
+import { loadMap } from "../world/maps.js";
 import { World, VW, VH } from "../world/world.js";
 import { talk } from "../world/talk.js";
 
 let current = null;        // 同時只跑一個地圖畫面
 
-export async function worldScene(game, { map = "island" } = {}) {
+export async function worldScene(game, { map, from } = {}) {
   current?.stop();
   const s = game.save;
-  const M = MAPS[map];
-  const pos = s.world?.map === map ? s.world : null;
+  map ??= s.world?.map ?? "island";
+  const M = await loadMap(map, s);
+  // 站的位置：從別張地圖走過來＝那個入口；不然用存檔的位置
+  const pos = from ? M.arrive[from] : s.world?.map === map ? s.world : null;
   const W = new World(M, { look: s.look ?? "girl", attrHex: ATTRS[s.attr]?.color ?? "#8a7cff", pos });
+  const restoring = M.grade && s.flags?.restore === M.grade;   // 剛打倒這一區的王：回到地圖時演「恢復色彩」
+  if (restoring) W.gray = 1;
 
   const cv = el("canvas.world", { width: VW, height: VH });
   const ctx = cv.getContext("2d");
@@ -31,13 +35,15 @@ export async function worldScene(game, { map = "island" } = {}) {
   const root = el("div.screen.worldscr", {}, cv, label, hud, stick, act);
   show(root);
   await W.load();
+  if (W.gray > 0 && !W.grayImg) { W.gray = 0; }
 
   let busy = false, running = true, last = performance.now(), saveT = 0, stepT = 0;
   const keys = new Set();
   const joy = { id: null, ox: 0, oy: 0, vx: 0, vy: 0 };
   let pending = null;        // 點了 NPC／東西：走到旁邊再觸發
   let autoLock = null;       // 自動觸發的地方：離開以前不再觸發
-  { const n = W.nearby(); if (n?.auto) autoLock = n; }   // 從戰鬥回來時就站在路口：先不觸發
+  { const n = W.nearby(); if (n?.auto) autoLock = n; }
+  let touchLock = W.touching();   // 從戰鬥回來時就站在路口：先不觸發
 
   // ── 輸入 ──
   const toCanvas = (e) => { const r = cv.getBoundingClientRect(); return [((e.clientX - r.left) / r.width) * VW, ((e.clientY - r.top) / r.height) * VH]; };
@@ -99,22 +105,24 @@ export async function worldScene(game, { map = "island" } = {}) {
     ship: async () => {
       await say([{ who: null, name: "浮空船", text: "載你來學院的浮空船。船長說，等你更厲害一點，可以載你去其他浮空島看看。" }]);
     },
-    garden: async () => {
-      const g = GRADES.g1, st = [1, 2, 3].map((k) => s.stars[`g1-${k}`] ?? 0);
-      const opts = [1, 2, 3].map((k) => `第 ${k} 關 ${"★".repeat(st[k - 1])}`).filter((_, k) => k === 0 || st[k - 1] > 0);
-      if (st[2] > 0) opts.push(`墨水大王 ${"★".repeat(s.stars["g1-boss"] ?? 0)}`);
-      opts.push("先不要");
-      const r = await say([{ who: null, name: g.area, text: s.stars["g1-boss"] ? "花園已經恢復色彩了，花香飄過來。要再進去練習嗎？" : "前面是星芽花園。花都被墨水染灰了，裡面有墨水怪在遊蕩……" }], opts);
-      if (r == null || r === opts.length - 1) { backOff(); return; }
-      leave();
-      if (st[2] > 0 && r === opts.length - 2) game.go("battle", { grade: "g1", mode: "boss" });
-      else game.go("battle", { grade: "g1", mode: "stage", stage: r });
+    toGarden: async () => { go("garden", "island"); },
+    toIsland: async () => { go("island", "garden"); },
+    gate: async () => {
+      const left = [1, 2, 3].filter((k) => !(s.stars[`g1-${k}`] > 0)).length;
+      await say([{ who: "page", name: "頁頁", text: `墨水把門封住了……裡面有好濃的墨水味，是墨水大王！花園裡還有 ${left} 群墨水怪，先把它們淨化，封印就會變弱。` }]);
     },
-    library: async () => {
-      const r = await say([{ who: null, name: "千頁圖書館", text: "北邊是千頁圖書館。館裡的書還在整理中，暫時進不去。要先打開學院選單，去其他學年的區域嗎？" }], ["打開學院選單", "先不要"]);
-      if (r === 0) { leave(); game.go("menu"); } else backOff();
-    },
+    gardenSign: async () => { await say([{ who: null, name: "路牌", text: "← 花園深處　　→ 學院島（共鳴之井）" }]); },
+    library: async () => { leave(); game.go("library"); },
   };
+  // 換地圖：存好位置再換
+  function go(to, fromMap) { leave(); s.world = null; game.go("map", { map: to, from: fromMap }); }
+  // 碰到墨水怪：直接開打（明雷遇敵）
+  function fight(m) {
+    busy = true; leave();
+    sfx("tick");
+    if (m.boss) game.go("battle", { grade: M.grade, mode: "boss" });
+    else game.go("battle", { grade: M.grade, mode: "stage", stage: m.stage });
+  }
   const pick = (a) => a[Math.floor(Math.random() * a.length)];
   // 自動觸發後不進去：往回退幾步，免得一直跳出來
   function backOff() { const sp = autoLock; if (sp) W.walkTo(W.hero.x + Math.sign(M.size[0] / 2 - sp.x) * 40, W.hero.y + Math.sign(M.size[1] / 2 - sp.y) * 40); }
@@ -153,6 +161,10 @@ export async function worldScene(game, { map = "island" } = {}) {
     }
     W.update(dt, moved);
     if (W.hero.moving) { stepT += dt; if (stepT > 0.3) { stepT = 0; sfx("step"); } } else stepT = 0.25;
+    // 碰到墨水怪就開打；從戰鬥回來時（輸了）還站在牠旁邊，要先走開才會再碰到
+    const touch = !busy && W.touching();
+    if (touchLock && touch !== touchLock) touchLock = null;
+    if (touch && !touchLock) { fight(touch); return; }
     // 點了 NPC／東西：走到了就觸發
     const near = W.nearby();
     if (!busy && pending && !W.path && near && near.id === pending.id) interact(near);
@@ -170,4 +182,21 @@ export async function worldScene(game, { map = "island" } = {}) {
   }
   requestAnimationFrame(frame);
   window.__world = W;       // 開發用
+  if (restoring) restoreEvent();
+
+  // 恢復色彩：灰色慢慢退掉、墨水水窪消失（企劃書 D4）
+  async function restoreEvent() {
+    busy = true;
+    s.flags = { ...s.flags, restore: null }; writeSave(s);
+    await new Promise((r) => setTimeout(r, 600));
+    sfx("restore"); W.restoreColor();
+    await new Promise((r) => setTimeout(r, 2600));
+    busy = false;
+    await interactLines([
+      { who: "page", name: "頁頁", text: "哇……花園的顏色回來了！花瓣又是五瓣、六瓣，數得清清楚楚！" },
+      { who: "page", name: "頁頁", text: "墨水大王縮回地下禁書庫去了。可是它說的那句「反正沒有人會算完我」……我有點在意。" },
+      { who: "page", name: "頁頁", text: "下一個是千頁圖書館的上層書庫（二年級）。我們一區一區，把學院的顏色找回來吧！" },
+    ]);
+  }
+  async function interactLines(lines) { busy = true; try { await say(lines); } finally { busy = false; } }
 }
