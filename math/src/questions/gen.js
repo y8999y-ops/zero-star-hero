@@ -17,30 +17,30 @@ export const TYPES = {
     const a = ri(rnd, 1, max - 1), b = ri(rnd, 1, max - a);
     const s = a + b;
     const explain = a < 10 && s > 10 ? `先湊 10：${a}＋${10 - a}＝10，再加 ${b - (10 - a)}＝${s}` : `${a}＋${b}＝${s}`;
-    return { branch: "addsub", text: `${a} ＋ ${b} ＝ ？`, answer: `${s}`, wrong: [`${s - 1}`, `${s + 1}`, `${Math.abs(a - b)}`], explain };
+    return { branch: "addsub", text: `${a} ＋ ${b} ＝ ？`, answer: `${s}`, wrong: [`${s - 1}`, `${s + 1}`, `${Math.abs(a - b)}`], explain, math: { op: "+", a, b } };
   },
   sub20(rnd, d) {
     const max = [10, 18, 20][d];
     const a = ri(rnd, 2, max), b = ri(rnd, 1, a - 1);
     const r = a - b;
     const explain = a > 10 && b > a - 10 ? `先減到 10：${a}－${a - 10}＝10，再減 ${b - (a - 10)}＝${r}` : `${a}－${b}＝${r}`;
-    return { branch: "addsub", text: `${a} － ${b} ＝ ？`, answer: `${r}`, wrong: [`${r + 1}`, `${r - 1}`, `${a + b}`], explain };
+    return { branch: "addsub", text: `${a} － ${b} ＝ ？`, answer: `${r}`, wrong: [`${r + 1}`, `${r - 1}`, `${a + b}`], explain, math: { op: "-", a, b } };
   },
   make10(rnd, d) {
     const total = d === 0 ? 10 : ri(rnd, 10, 20);
     const a = ri(rnd, 1, total - 1), b = total - a;
-    return { branch: "addsub", text: `□ ＋ ${a} ＝ ${total}，□ ＝ ？`, answer: `${b}`, wrong: [`${total + a}`, `${b + 1}`, `${b - 1}`], explain: `${total}－${a}＝${b}` };
+    return { branch: "addsub", text: `□ ＋ ${a} ＝ ${total}，□ ＝ ？`, answer: `${b}`, wrong: [`${total + a}`, `${b + 1}`, `${b - 1}`], explain: `${total}－${a}＝${b}`, math: { op: "-", a: total, b: a } };
   },
   // ── 二年級 ──
   add100(rnd, d) {
     const a = ri(rnd, 11, [49, 79, 89][d]), b = ri(rnd, d ? 11 : 1, 99 - a);
     const s = a + b, noCarry = (Math.floor(a / 10) + Math.floor(b / 10)) * 10 + ((a % 10) + (b % 10)) % 10;
-    return { branch: "addsub", text: `${a} ＋ ${b} ＝ ？`, answer: `${s}`, wrong: [`${noCarry}`, `${s + 10}`, `${s - 1}`], explain: `個位 ${a % 10}＋${b % 10}＝${(a % 10) + (b % 10)}${(a % 10) + (b % 10) >= 10 ? "，進 1" : ""}；${a}＋${b}＝${s}` };
+    return { branch: "addsub", text: `${a} ＋ ${b} ＝ ？`, answer: `${s}`, wrong: [`${noCarry}`, `${s + 10}`, `${s - 1}`], explain: `個位 ${a % 10}＋${b % 10}＝${(a % 10) + (b % 10)}${(a % 10) + (b % 10) >= 10 ? "，進 1" : ""}；${a}＋${b}＝${s}`, math: { op: "+", a, b } };
   },
   sub100(rnd, d) {
     const a = ri(rnd, [20, 40, 60][d], 99), b = ri(rnd, 2, a - 1);
     const r = a - b, borrowSlip = Math.abs((Math.floor(a / 10) - Math.floor(b / 10)) * 10 + Math.abs((a % 10) - (b % 10)));
-    return { branch: "addsub", text: `${a} － ${b} ＝ ？`, answer: `${r}`, wrong: [`${borrowSlip}`, `${r + 10}`, `${r + 1}`], explain: `${a}－${b}＝${r}${a % 10 < b % 10 ? "（個位不夠減，向十位借 1）" : ""}` };
+    return { branch: "addsub", text: `${a} － ${b} ＝ ？`, answer: `${r}`, wrong: [`${borrowSlip}`, `${r + 10}`, `${r + 1}`], explain: `${a}－${b}＝${r}${a % 10 < b % 10 ? "（個位不夠減，向十位借 1）" : ""}`, math: { op: "-", a, b } };
   },
   // ── 三～四年級 ──
   times(rnd, d) {

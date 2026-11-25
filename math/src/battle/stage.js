@@ -5,6 +5,7 @@ import { createFrame, clearFrame, createFx, composite, painterFor, hex as pfHex 
 import { SPELLS, FX, INK, INK_POOF, crystalLight } from "./spells.js";
 import { GRADES, ATTRS } from "../data.js";
 import { heroFrame } from "../../fx/hero.js";
+import { MathMagic, PopNumber } from "./mathmagic.js";
 
 export const W = 288, H = 240, GROUND = 206;
 const PX = 58;               // 玩家腳下 x
@@ -32,6 +33,8 @@ export class Stage {
     this.bossLayer.width = 112; this.bossLayer.height = 88;
     // 見習魔數師（fx/hero.js），每個姿勢的每一格畫好就快取起來
     this.heroCache = new Map();
+    this.magic = null;        // 數學變魔法（mathmagic.js）
+    this.pops = [];           // 打中時跳出的答案數字
     this.fx = [];            // { inst, x, y, from, to, delay, t, dur, speed, follow }
     this.monster = null;
     this.t = 0; this.shake = 0; this.hurtT = 0; this.castT = -1;
@@ -122,7 +125,7 @@ export class Stage {
 
   update(dt) {
     this.t += dt;
-    if (this.castT >= 0) { this.castT += dt; if (this.castT > 0.6) this.castT = -1; }
+    if (this.castT >= 0) { this.castT += dt; if (this.castT > 0.6 && !this.magic?.active) this.castT = -1; }
     this.hurtT = Math.max(0, this.hurtT - dt);
     this.dimHold = Math.max(0, (this.dimHold ?? 0) - dt);
     const goal = this.dimHold > 0 ? this.dimTo : 0;
@@ -154,6 +157,9 @@ export class Stage {
       if (f.t >= f.dur) f.inst.stop();
     }
     this.fx = this.fx.filter((f) => !f.inst || !f.inst.done());
+    this.magic?.update(dt);
+    for (const n of this.pops) n.update(dt);
+    this.pops = this.pops.filter((n) => !n.done);
   }
 
   draw() {
@@ -182,6 +188,8 @@ export class Stage {
     }
 
     for (const f of this.fx) if (f.inst) f.inst.draw(frame, "front");
+    this.magic?.draw(p);
+    for (const n of this.pops) n.draw(p);
 
     // 合成：背景 → 王（放大）→ 特效層
     const sx = this.shake ? Math.round((Math.random() - 0.5) * this.shake) : 0;
@@ -203,6 +211,21 @@ export class Stage {
     composite(frame, this.img.data, null);
     this.lctx.putImageData(this.img, 0, 0);
     ctx.drawImage(this.layer, sx, sy);
+  }
+
+  /** 數學變魔法：算式變成光球、光球飛向怪物。回傳 Promise（光球出手時 resolve） */
+  mathMagic(math) {
+    const m = this.monster;
+    this.magic = new MathMagic(ATTRS[this.attr]?.color ?? "#8a7cff", [m ? m.x : 200, GROUND - 10]);
+    this.castT = 0;
+    this.dimTo = 0.3; this.dimHold = 9;
+    return this.magic.start(math).then(() => { this.dimHold = 0; });
+  }
+
+  /** 打中時在怪物頭上跳出答案數字 */
+  popNumber(text, combo) {
+    const m = this.monster;
+    this.pops.push(new PopNumber(String(text).replace("−", "-"), m ? m.x : 200, m?.boss ? GROUND - 120 : GROUND - 48, ATTRS[this.attr]?.color ?? "#8a7cff", combo >= 10 ? 4 : combo >= 6 ? 3 : 2));
   }
 
   /** 主角某個姿勢、某一格的圖（12 格／秒，畫過就快取） */

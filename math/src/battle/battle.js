@@ -113,9 +113,17 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd) {
       const tier = spellTier(combo);
       sparks += Math.round((1 + tier) * (s.attr === "fire" ? 1.5 : 1));
       sfx("cast");
-      say(["", "咒語成立！", "魔法變強了！", "大魔法！", "終極魔法！！"][tier]);
       bubble.textContent = "";
+      if (q.math) {
+        // 數學變魔法：先把算式變成光球（點畫面可以加速）
+        say("把算式寫出來……");
+        canvas.onclick = () => stage.magic?.skip();
+        await stage.mathMagic(q.math);
+        canvas.onclick = null;
+      }
+      say(["", "咒語成立！", "魔法變強了！", "大魔法！", "終極魔法！！"][tier]);
       await stage.cast(tier, crystalLevel(s.crystals[s.attr]));
+      stage.popNumber(q.answer, combo);
       sfx("hit");
       if (boss) {
         shieldLeft--;

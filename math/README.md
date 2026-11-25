@@ -11,6 +11,7 @@
 
 - 網址加 `?mute` 不出聲（測試用）。
 - 開發用：http://localhost:5173/math/dev/spells.html 同時播放五個屬性 × 四級魔法；加 `?t=0.6` 停在施法後第 0.6 秒，方便截圖比較。
+- 開發用：http://localhost:5173/math/dev/mathmagic.html 加減法的「數學變魔法」六種情況（湊十進位、借位…）；一樣可以加 `?t=1.0`。
 - 主控台的 `__game` 可以看存檔、直接跳畫面，例如 `__game.go("battle", { grade: "jh", mode: "boss" })`。
 
 目前是 M1 原型＋M2 第一批：見習魔數師（fx/hero.js）已換成正式像素圖；怪物還是墨水色的 pixelfx 史萊姆、背景是暫用的色塊，之後一批一批換。美術預覽圖放在 docs/圖/。
@@ -49,7 +50,7 @@ math/
     audio.js         暫用音效（瀏覽器合成）
     ui.js            建立元素、對話框、飄字
     questions/       gen.js 計算題產生器、pool.js 出題與四個選項
-    battle/          battle.js 一關的流程、stage.js 戰鬥畫面、spells.js 五屬性四級魔法
+    battle/          battle.js 一關的流程、stage.js 戰鬥畫面、spells.js 五屬性四級魔法、mathmagic.js 數學變魔法與答案數字
     scenes/          標題與劇情、共鳴儀式、學院地圖、結算
   dev/               開發用頁面（魔法一覽）
   fx/                角色與怪物的像素圖（程式畫）：hero.js 見習魔數師
