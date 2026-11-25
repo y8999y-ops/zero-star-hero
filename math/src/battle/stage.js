@@ -170,7 +170,10 @@ export class Stage {
     this.castT = 0;
     this.dimTo = [0, 0.25, 0.35, 0.45, 0.6][tier];
     this.dimHold = 0.15 + spell.hit + 0.5;
-    this.addFx(FX.castCircle, { x: PX, y: GROUND + 2, speed: 1.6, dur: 0.8, opts: { palette: rampOf(ATTRS[this.attr].color) } });
+    const ramp = rampOf(ATTRS[this.attr].color);
+    this.addFx(FX.castCircle, { x: PX, y: GROUND + 2, speed: 1.6, dur: 0.8, opts: { palette: ramp } });
+    // 集氣：杖頭先聚一團光（越強的魔法聚越久、越大）
+    this.addFx(FX.spellCharge, { x: PX + 6, y: GROUND - 20, speed: 1.4 + tier * 0.2, dur: 0.15 + spell.hit * 0.5, opts: { palette: ramp } });
     for (const p of spell.parts) {
       const o = { ...(p.opts ?? {}), light: crystalLight(crystalLv) };
       let x = 0, y = GROUND, from = null, to = null;
@@ -179,7 +182,21 @@ export class Stage {
       else { const dy = p.drop ?? 0; from = [PX + 18, GROUND - 27 + dy]; to = [tx - 6, GROUND - 21 + dy]; x = from[0]; y = from[1]; }
       this.addFx(p.mod, { x, y, from, to, delay: 0.15 + p.delay, speed: p.speed, dur: p.dur, opts: o });
     }
-    return new Promise((res) => setTimeout(() => { this.shake = spell.shake ?? 2; res(); }, (0.15 + spell.hit) * 1000));
+    return new Promise((res) => setTimeout(() => { this.shake = (spell.shake ?? 2) + tier; this.impact(tier); res(); }, (0.15 + spell.hit) * 1000));
+  }
+
+  /** 打中的那一下（2026-11-25 使用者：攻擊動畫要更華麗）：
+   *  打擊火花（第 3、4 級是爆擊火花）、第 4 級多一圈魔力爆發、畫面閃一下屬性色、打擊停頓、怪物被擊退並閃白 */
+  impact(tier) {
+    const m = this.monster, x = m ? m.x : 270, ramp = rampOf(ATTRS[this.attr].color), soft = this.opt.softFlash;
+    this.addFx(tier >= 3 ? FX.critHit : FX.hitSpark, { x: x - 6, y: GROUND - 18, speed: 1.3, opts: { palette: [...ramp, "#ffffff"], height: 18 + tier * 4 } });
+    if (tier >= 2) this.addFx(FX.hitFlash, { x, y: GROUND - 20, speed: 1.2, opts: { palette: ramp } });
+    if (tier >= 4) {
+      this.addFx(FX.manaBurst, { x, y: GROUND + 4, speed: 1.6, opts: { palette: ramp } });
+    }
+    this.flashT = 0.16; this.flashA = (soft ? 0.12 : 0.22) + tier * (soft ? 0.03 : 0.06); this.flashC = ramp[5];
+    this.freezeT = 0.04 + tier * 0.03;                 // 打擊停頓：畫面頓一下，打下去比較有重量
+    if (m) { m.kb = 6 + tier * 4; m.whiteT = 0.14; }
   }
 
   addFx(mod, { x, y, from = null, to = null, delay = 0, speed = 1, dur = Infinity, opts = {} }) {
@@ -206,7 +223,10 @@ export class Stage {
   }
 
   update(dt) {
+    // 打擊停頓：怪物和特效停住一下（數字、晃動照走）
+    if (this.freezeT > 0) { this.freezeT -= dt; this.shake = Math.max(0, this.shake - dt * 6); return; }
     this.t += dt;
+    if (this.flashT > 0) this.flashT -= dt;
     if (this.castT >= 0) { this.castT += dt; if (this.castT > 0.6 && !this.magic?.active) this.castT = -1; }
     this.hurtT = Math.max(0, this.hurtT - dt);
     this.ambience?.update(dt);
@@ -220,6 +240,8 @@ export class Stage {
       m.t += dt;
       m.inst?.update(dt);
       if (m.flinch > 0) m.flinch = Math.max(0, m.flinch - dt);
+      if (m.kb > 0) m.kb = Math.max(0, m.kb - dt * 40);
+      if (m.whiteT > 0) m.whiteT -= dt;
       if (m.state === "walk" && m.target != null) m.x += (m.target - m.x) * Math.min(1, dt * 3);
       if (m.state === "bump") {
         const u = Math.min(1, m.t / 0.5);
@@ -325,12 +347,18 @@ export class Stage {
     if (m && SPRITES[m.kind] && m.alpha > 0) {
       const sp = this.sprite(m.kind, m.state === "die" || m.flinch > 0 ? "hurt" : "idle", m.t + m.phase);
       ctx.globalAlpha = m.alpha;
-      big(sp.canvas, Math.round(m.x), GROUND, sp.ox, sp.oy, scaleOf(m.kind));
+      const mx = Math.round(m.x + (m.kb ?? 0));
+      big(sp.canvas, mx, GROUND, sp.ox, sp.oy, scaleOf(m.kind));
+      if (m.whiteT > 0) {        // 被打中閃白
+        ctx.globalAlpha = Math.min(1, m.whiteT / 0.14) * 0.85 * m.alpha;
+        big(whiteOf(sp.canvas), mx, GROUND, sp.ox, sp.oy, scaleOf(m.kind));
+      }
       ctx.globalAlpha = 1;
     }
     composite(frame, this.img.data, null, this.opt.softFlash ? 0.55 : 1);
     this.lctx.putImageData(this.img, 0, 0);
     ctx.drawImage(this.layer, sx, sy);
+    if (this.flashT > 0) { ctx.globalAlpha = (this.flashT / 0.16) * this.flashA; ctx.fillStyle = this.flashC; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
   }
 
   /** 恢復色彩：灰色慢慢退掉（打倒王時） */
@@ -406,5 +434,12 @@ function hex(c) { const n = parseInt(c.slice(1), 16); return [(n >> 16) & 255, (
 export function mix(a, b, k) {
   const A = hex(a), B = hex(b);
   return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * k).toString(16).padStart(2, "0")).join("");
+}
+// 一張角色圖的白色剪影（被打中閃白用），畫過就記起來
+const whiteCache = new WeakMap();
+function whiteOf(c) {
+  let w = whiteCache.get(c);
+  if (!w) { w = document.createElement("canvas"); w.width = c.width; w.height = c.height; const x = w.getContext("2d"); x.drawImage(c, 0, 0); x.globalCompositeOperation = "source-in"; x.fillStyle = "#ffffff"; x.fillRect(0, 0, w.width, w.height); whiteCache.set(c, w); }
+  return w;
 }
 function rampOf(c) { return [mix(c, "#000000", 0.85), mix(c, "#000000", 0.6), mix(c, "#000000", 0.3), c, mix(c, "#ffffff", 0.4), mix(c, "#ffffff", 0.75), "#ffffff"]; }

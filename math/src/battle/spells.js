@@ -27,9 +27,13 @@ import * as poof from "../../../pixelfx/src/fx/spawn/poof.js";
 import * as xpOrb from "../../../pixelfx/src/fx/pickups/xp-orb.js";
 import * as hitFlash from "../../../pixelfx/src/fx/impacts/hit-flash.js";
 import * as slime from "../../../pixelfx/src/fx/critters/slime.js";
+import * as spellCharge from "../../../pixelfx/src/fx/arcane/spell-charge.js";
+import * as manaBurst from "../../../pixelfx/src/fx/arcane/mana-burst.js";
+import * as critHit from "../../../pixelfx/src/fx/impacts/crit-hit.js";
+import * as hitSpark from "../../../pixelfx/src/fx/impacts/hit-spark.js";
 import { PAL } from "../../../pixelfx/src/core/index.js";
 
-export const FX = { castCircle, poof, xpOrb, hitFlash, slime };
+export const FX = { castCircle, poof, xpOrb, hitFlash, slime, spellCharge, manaBurst, critHit, hitSpark };
 
 // 墨水色：深墨藍紫，亮部帶一點紫光（世界觀：被放棄的題目變成的墨水）
 export const INK = ["#05040a", "#0f0b1c", "#1c1533", "#2d2350", "#463a78", "#7a6cb0", "#d8d0ff"];

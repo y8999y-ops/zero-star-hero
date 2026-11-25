@@ -120,9 +120,9 @@ canvas.stage.small { width: min(100%, 480px); aspect-ratio: 16 / 9; height: auto
 .combo { color: var(--gold); font-size: 18px; }
 .prog { font-size: 14px; margin-right: 52px; }
 .leave { position: absolute; top: 4px; right: 6px; z-index: 3; opacity: .85; }
-.bubble { position: absolute; transform: translate(-50%, -100%); background: #fffaf0; color: #1c1533; font-weight: 800; font-size: 22px;
-  padding: 4px 10px; border-radius: 8px; border: 2px solid #1c1533; pointer-events: none; max-width: calc(100% - 8px); white-space: normal; text-align: center; }
-.bubble::after { content: ""; position: absolute; left: 50%; bottom: -8px; margin-left: -6px; border: 6px solid transparent; border-top-color: #1c1533; border-bottom: 0; }
+/* 題目：固定在上方中間、大字（不跟著怪物動、不擋住角色和魔法） */
+.bubble { position: absolute; left: 50%; top: max(30px, 8%); transform: translateX(-50%); z-index: 3; background: #fffaf0; color: #1c1533; font-weight: 800; font-size: 26px; letter-spacing: 1px;
+  padding: 4px 18px; border-radius: 8px; border: 2px solid #1c1533; box-shadow: 0 3px 0 rgba(20, 14, 40, .45); pointer-events: none; max-width: calc(100% - 140px); white-space: normal; text-align: center; }
 .word { position: absolute; left: 50%; top: 44px; transform: translateX(-50%); width: min(78%, 640px); z-index: 4; background: #fffaf0f2; color: #1c1533; border-radius: 8px; padding: 8px 12px; font-size: 17px; line-height: 1.55; border: 2px solid #1c1533; }
 .pagepage { position: absolute; left: 12px; right: 30%; bottom: calc(22% + 6px); z-index: 4; font-size: 13px; color: #f1ecff; padding: 4px 10px 4px 32px; background: #120d22b0; border-radius: 6px; text-shadow: 0 1px 0 #000; }
 .pagepage:empty { display: none; }
@@ -169,7 +169,7 @@ canvas.stage.small { width: min(100%, 480px); aspect-ratio: 16 / 9; height: auto
 .title .btn + .btn { margin-top: 4px; }
 
 /* 戰鬥文字放大、左手模式 */
-#app.bigtext .bubble { font-size: 28px; }
+#app.bigtext .bubble { font-size: 32px; }
 #app.bigtext .word { font-size: 21px; }
 #app.bigtext .btn.answer { font-size: 30px; }
 #app.bigtext .pagepage, #app.bigtext .ebody { font-size: 18px; }

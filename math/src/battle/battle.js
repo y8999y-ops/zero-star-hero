@@ -100,15 +100,8 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     if (!running) return;
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     stage.update(dt); stage.draw();
-    const head = stage.monsterHead();
-    if (head && bubble.textContent) {
-      // 題目泡泡跟著怪物頭頂，但不能超出畫面左右
-      bubble.hidden = false;
-      const vw = canvas.clientWidth, bw = bubble.offsetWidth;
-      const x = Math.max(bw / 2 + 4, Math.min(vw - bw / 2 - 4, head.x * vw));
-      bubble.style.left = `${x}px`; bubble.style.top = `${head.y * 100}%`;
-    }
-    else bubble.hidden = true;
+    // 題目固定在畫面上方中間（2026-11-25 使用者：跟著怪物晃不好讀、會擋住攻擊動畫）；施法的時候收起來
+    bubble.hidden = !bubble.textContent || !stage.monster;
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
