@@ -132,3 +132,9 @@ export function buildReview(save, count = PRACTICE_COUNT) {
   const units = reviewUnits(save);
   return build(save, units.length ? units : [["big", false]], count, ["g34"], "g1");
 }
+
+/** 挑戰模式（企劃書 8.3：Lv15 開放）：十個單元輪流出、先簡單後困難，一直答到答錯為止（先出 60 題夠用） */
+export function buildChallenge(save) {
+  const ids = Object.keys(MID), units = [...ids.map((b) => [b, false]), ...ids.map((b) => [b, true])];
+  return build(save, units, 60, ["g34"], "g34").then((qs) => qs.filter((q) => q.kind === "calc").concat(qs.filter((q) => q.kind !== "calc")));
+}

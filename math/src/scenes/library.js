@@ -5,7 +5,7 @@
 import { el, show } from "../ui.js";
 import { sfx } from "../audio.js";
 import { GRADES } from "../data.js";
-import { bookChapters, pagePageForm } from "../growth.js";
+import { bookChapters, pagePageForm, pagePageLevel } from "../growth.js";
 import { reviewPanel, growthPanel } from "./map.js";
 import { talk } from "../world/talk.js";
 import { pagepageFrame } from "../../fx/pagepage.js";
@@ -17,7 +17,7 @@ export function libraryScene(game) {
   let t = 0, alive = true;
   const tick = () => {
     if (!alive || !page.isConnected && t > 0.2) return;
-    const f = pagepageFrame("idle", t % 1);
+    const f = pagepageFrame("idle", t % 1, pagePageLevel(s));
     ctx.clearRect(0, 0, 32, 40);
     ctx.putImageData(new ImageData(new Uint8ClampedArray(f.px.buffer.slice(0)), f.w, f.h), 0, 0);
     t += 1 / 12; setTimeout(tick, 1000 / 12);

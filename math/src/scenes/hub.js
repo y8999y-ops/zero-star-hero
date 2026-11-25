@@ -195,7 +195,7 @@ export function hubScene(game, { from } = {}) {
     },
     well: async () => {
       const d = daily(s);
-      const opts = [d.wish ? "今天已經許過願了" : "投一枚晶幣許願（每天一次）", "重新做共鳴儀式", "看著井水發呆一下", "離開"];
+      const opts = [d.wish ? "今天已經許過願了" : "投一枚晶幣許願（每天一次）", "重新做共鳴儀式", "看著井水發呆一下", s.lv >= 20 ? `副屬性${s.subAttr ? `（現在：${ATTRS[s.subAttr].name}）` : ""}` : "副屬性（Lv20 開放）", "離開"];
       const r = await say([{ who: null, name: "共鳴之井", text: `井水輕輕發著光。你的數晶跟著閃了一下——${ATTRS[s.attr]?.school ?? ""}的顏色。` }], opts);
       if (r === 0 && !d.wish && s.coins >= 1) {
         s.coins -= 1; d.wish = true;
@@ -205,6 +205,15 @@ export function hubScene(game, { from } = {}) {
       } else if (r === 0 && !d.wish) await say([{ who: null, name: "", text: "身上沒有晶幣……" }]);
       if (r === 1) { if (confirm("重新做共鳴儀式？等級、星星、錯題本都會保留。")) { leave(); game.go("resonance", { retest: true }); } }
       else if (r === 2) await say([{ who: null, name: "", text: "水面映出一串一串的數字，轉呀轉的，又變回星星。" }]);
+      else if (r === 3) {
+        // 副屬性（企劃書 8.3：Lv20 開放）：再裝一個其他屬性的學系能力，效果、次數減半
+        if (s.lv < 20) { await say([{ who: null, name: "共鳴之井", text: `等你到 Lv20，井水就會讓你的數晶再多共鳴一種顏色。（現在 Lv${s.lv}）` }]); return; }
+        const others = Object.keys(ATTRS).filter((k) => k !== s.attr);
+        const c = await say([{ who: null, name: "共鳴之井", text: "選一種副屬性。你可以多用一個別的學系的能力（效果或次數減半），隨時可以回來換。" }], [...others.map((k) => `${ATTRS[k].name}・${ATTRS[k].ability}：${ATTRS[k].abilityDesc}`), "不要副屬性"]);
+        if (c == null) return;
+        s.subAttr = c < others.length ? others[c] : null; writeSave(s); sfx("restore");
+        await say([{ who: null, name: "共鳴之井", text: s.subAttr ? `你的數晶多了一道${ATTRS[s.subAttr].name}色的光。` : "數晶的光回到一種顏色了。" }]);
+      }
     },
     ship: async () => { await say([{ who: null, name: "浮空船", text: "載你來學院的浮空船。船長說，等你更厲害一點，可以載你去其他浮空島看看。" }]); },
     library: async () => { leave(); game.go("library"); },
@@ -227,10 +236,14 @@ export function hubScene(game, { from } = {}) {
       if (key === "greenhouse") { await planter(); return; }
       if (key === "clock") {
         const exam = rankExamReady(s);
-        const opts = ["進去鐘塔（三～四年級）", ...(exam ? ["參加升階考核"] : []), "先不要"];
-        const r = await say([{ who: null, name: "刻度鐘塔", text: BLURB.clock + (exam ? `鐘塔亮了！你可以參加升階考核（→ ${RANKS[s.rank + 1].name}）。` : "裡面的機芯大廳被墨水弄亂了，三～四年級的墨水怪在裡面。") }], opts);
+        const opts = ["進去鐘塔（四年級上）", ...(exam ? ["參加升階考核"] : []), s.lv >= 15 ? `挑戰模式（最高連對 ${s.challengeBest ?? 0} 題）` : "挑戰模式（Lv15 開放）", "先不要"];
+        const r = await say([{ who: null, name: "刻度鐘塔", text: BLURB.clock + (exam ? `鐘塔亮了！你可以參加升階考核（→ ${RANKS[s.rank + 1].name}）。` : "裡面的機芯大廳被墨水弄亂了，四年級上的墨水怪在裡面。") }], opts);
         if (r === 0) { leave(); game.go("area", { grade: "g34" }); }
         else if (exam && r === 1) { leave(); game.go("battle", { grade: s.lastGrade ?? "g1", mode: "exam" }); }
+        else if (r === (exam ? 2 : 1)) {
+          if (s.lv < 15) { await say([{ who: null, name: "刻度鐘塔", text: `挑戰模式：每題 10 秒、一直連答，答錯就結束。等你到 Lv15 再來挑戰！（現在 Lv${s.lv}）` }]); return; }
+          leave(); game.go("battle", { grade: "g34", mode: "challenge" });
+        }
         return;
       }
       // 學院：直接進去練習（每座學院兩種數學魔法）

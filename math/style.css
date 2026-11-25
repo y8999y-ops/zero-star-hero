@@ -466,3 +466,15 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 .dextext { font-size: 12px; color: var(--dim); line-height: 1.5; }
 .dexcount { font-size: 11px; color: #c8f4b0; }
 .dexcard.unknown .dexname { color: var(--dim); }
+
+/* 分支魔法、副屬性的按鈕 */
+.btn.ability.subab { bottom: calc(22% + 50px); }
+.btn.bmagic { position: absolute; right: max(150px, 24%); bottom: calc(22% + 6px); z-index: 4; }
+.bmenu { position: absolute; right: 12px; bottom: calc(22% + 50px); z-index: 20; display: flex; flex-direction: column; gap: 4px; padding: 10px; background: var(--panel); border-radius: 10px; max-height: 60%; overflow-y: auto; }
+.bmenu .bmt { font-size: 12px; color: var(--gold); }
+.bmenu .btn { display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
+.bmenu .bmd { font-size: 11px; color: var(--dim); }
+.dormroom { position: relative; flex: 1; min-height: 0; display: flex; justify-content: center; }
+.dormroom canvas.dormcv { height: 100%; width: auto; }
+.dormmarks { position: absolute; inset: 0; margin: 0 auto; aspect-ratio: 16 / 9; height: 100%; }
+.dormslot { position: absolute; transform: translate(-50%, -50%); min-width: 34px; opacity: .92; }

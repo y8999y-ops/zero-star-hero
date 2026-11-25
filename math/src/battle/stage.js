@@ -187,7 +187,8 @@ export class Stage {
       else { const dy = p.drop ?? 0; from = [PX + 18, GROUND - 27 + dy]; to = [tx - 6, GROUND - 21 + dy]; x = from[0]; y = from[1]; }
       this.addFx(p.mod, { x, y, from, to, delay: 0.15 + p.delay, speed: p.speed, dur: p.dur, opts: o });
     }
-    return new Promise((res) => setTimeout(() => { this.shake = (spell.shake ?? 2) + tier; this.impact(tier); res(); }, (0.15 + spell.hit) * 1000));
+    this.crystalLv = crystalLv;
+    return new Promise((res) => setTimeout(() => { this.shake = (spell.shake ?? 2) + tier + (crystalLv >= 5 ? 2 : 0); this.impact(tier); res(); }, (0.15 + spell.hit) * 1000));
   }
 
   /** 打中的那一下（2026-11-25 使用者：攻擊動畫要更華麗）：
@@ -199,6 +200,13 @@ export class Stage {
     if (tier >= 4) {
       this.addFx(FX.manaBurst, { x, y: GROUND + 4, speed: 1.6, opts: { palette: ramp } });
     }
+    // 數晶外觀進化（企劃書 8.7）：數晶等級越高，打中時多一層——Lv2 多一道閃光、Lv3 多一圈反方向的火花、
+    // Lv4 第 3 級魔法也有魔力爆發、Lv5 終極魔法換成第二型態（兩圈魔力爆發、畫面晃更大）
+    const lv = this.crystalLv ?? 1;
+    if (lv >= 2) this.addFx(FX.hitFlash, { x: x + 4, y: GROUND - 30, speed: 1.4, delay: 0.06, opts: { palette: ramp } });
+    if (lv >= 3) this.addFx(FX.hitSpark, { x: x + 6, y: GROUND - 10, speed: 1.2, delay: 0.08, opts: { palette: [...ramp, "#ffffff"], height: 16, seed: 9, flip: true } });
+    if (lv >= 4 && tier === 3) this.addFx(FX.manaBurst, { x, y: GROUND + 4, speed: 1.9, opts: { palette: ramp } });
+    if (lv >= 5 && tier >= 4) this.addFx(FX.manaBurst, { x, y: GROUND + 4, speed: 1.3, delay: 0.25, opts: { palette: [...ramp].reverse(), seed: 4 } });
     this.flashT = 0.16; this.flashA = (soft ? 0.12 : 0.22) + tier * (soft ? 0.03 : 0.06); this.flashC = ramp[5];
     this.freezeT = 0.04 + tier * 0.03;                 // 打擊停頓：畫面頓一下，打下去比較有重量
     if (m) { m.kb = 6 + tier * 4; m.whiteT = 0.14; }
@@ -289,7 +297,7 @@ export class Stage {
       // 杖頭數晶的光
       p.place(0, 0, false, 0);
       const [gx, gy] = this.hero.glow;
-      p.glow(PX + (gx - this.hero.ox) * CS, GROUND + (gy - this.hero.oy) * CS, this.castT >= 0 ? 7 : 4, pfHex(ATTRS[this.attr]?.color ?? "#8a7cff"), this.castT >= 0 ? 0.7 : 0.35);
+      p.glow(PX + (gx - this.hero.ox) * CS, GROUND + (gy - this.hero.oy) * CS, (this.castT >= 0 ? 7 : 4) + Math.max(0, (this.extra.crystalLv ?? 1) - 1), pfHex(ATTRS[this.attr]?.color ?? "#8a7cff"), this.castT >= 0 ? 0.7 : 0.35);
     }
 
     const m = this.monster;
@@ -397,10 +405,11 @@ export class Stage {
   /** 程式畫的角色、怪物某個姿勢、某一格的圖（快取） */
   sprite(name, pose, t) {
     const S = SPRITES[name], n = Math.floor((((t % S.loop) + S.loop) % S.loop) * 12);
-    const key = `${name}:${pose}:${n}`;
+    const form = name === "page" ? this.extra.pageForm ?? 0 : 0;      // 頁頁的樣子（萬題之書恢復幾章）
+    const key = `${name}:${pose}:${n}:${form}`;
     let c = this.heroCache.get(key);
     if (!c) {
-      const f = S.fn(pose, n / 12);
+      const f = S.fn(pose, n / 12, form);
       const canvas = document.createElement("canvas");
       canvas.width = f.w; canvas.height = f.h;
       canvas.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(f.px.buffer.slice(0)), f.w, f.h), 0, 0);

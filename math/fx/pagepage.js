@@ -1,10 +1,12 @@
-// 頁頁（《萬題之書》掉出來的一頁，變成會飛的小書精靈）——第一階段「一張紙」。
+// 頁頁（《萬題之書》掉出來的一頁，變成會飛的小書精靈）。企劃書 8.6：《萬題之書》恢復的章數越多，頁頁長得越大本：
+//   form 0 一張紙、1 小冊子（後面多疊幾張、左邊兩根金色釘書針）、2 精裝書（深藍書殼＋書背金線）、
+//   3 魔導書（精裝書再加金色護角、書背寶石，身邊繞著兩顆光點）。臉和翅膀（紙的左右兩邊）一樣。
 // 一張飄浮的紙：右上角往下折、下緣捲起來、上面有兩條淡藍色橫線（不寫字）；兩個大眼睛；頭頂一根金色小羽毛。
 // 動作：紙的左右兩邊像翅膀一樣上下拍、整張上下飄。
 //   idle 待機、talk 說話（嘴巴一開一合）、happy 開心（^^ 眼＋亮點）、worried 擔心（八字眉眼＋汗滴）
 // NPC 16 色以內。
 //
-// pagepageFrame(pose, t) → { w, h, ox, oy, px, colors }（原點＝紙的下緣中央）
+// pagepageFrame(pose, t, form) → { w, h, ox, oy, px, colors }（原點＝紙的下緣中央）
 
 import { Grid } from "./_grid.js";
 
@@ -13,6 +15,7 @@ const C = {
   paper: "#fffaf0", paperS: "#efe3cb", paperD: "#d6c3a0", fold: "#bfa77e",
   line: "#a9c9ec", eye: "#2a2248", white: "#ffffff", blush: "#ff9fae",
   gold: "#ffd35c", goldD: "#c08a2e", sweat: "#8fd0ff", spark: "#fff3a8",
+  navy: "#34407e", navyD: "#1f2856", gem: "#ff7aa8",
 };
 
 function poseOf(pose, t) {
@@ -26,7 +29,7 @@ function poseOf(pose, t) {
   };
 }
 
-export function pagepageFrame(pose = "idle", t = 0) {
+export function pagepageFrame(pose = "idle", t = 0, form = 0) {
   const q = poseOf(pose, t);
   const g = new Grid(W, H, OX, OY);
   const y0 = -q.bob;
@@ -34,6 +37,15 @@ export function pagepageFrame(pose = "idle", t = 0) {
   // 每一欄依離中間多遠往上或往下彎（越外面彎越多）＝像翅膀一樣拍
   const off = (x) => Math.round(q.flap * (Math.abs(x) / HW) ** 2);
 
+  // 書的身體（在紙面後面）：小冊子＝後面疊的紙；精裝書以上＝深藍書殼、左邊書背
+  if (form >= 1) for (let x = -HW - (form >= 2 ? 1 : 0); x <= HW + 1; x++) {
+    const o = off(Math.min(HW, Math.max(-HW, x))), yt = top + o + (form >= 2 ? -1 : 1), yb = bot + o + 2;
+    for (let y = yt; y <= yb; y++) g.set(x, y, form >= 2 ? (y >= yb - 1 ? C.navyD : C.navy) : y === yb ? C.paperD : C.paperS);
+  }
+  if (form >= 2) {
+    for (let y = top - 1; y <= bot + 2; y++) { g.set(-HW - 2, y + off(-HW), C.navyD); g.set(-HW - 1, y + off(-HW), C.navyD); }
+    for (const y of [top + 2, bot - 2]) { g.set(-HW - 2, y + off(-HW), C.gold); g.set(-HW - 1, y + off(-HW), C.gold); }
+  }
   for (let x = -HW; x <= HW; x++) {
     const o = off(x), yt = top + o, yb = bot + o;
     for (let y = yt; y <= yb; y++) {
@@ -54,6 +66,11 @@ export function pagepageFrame(pose = "idle", t = 0) {
       else if (v === u) g.set(x, y, C.fold);
       else if (u + v <= FS + 1) g.set(x, y, C.paperD);
     }
+  }
+  if (form === 1) for (const y of [top + 5, bot - 5]) { g.set(-HW + 1, y + off(-HW + 1), C.goldD); g.set(-HW + 1, y + 1 + off(-HW + 1), C.gold); }   // 釘書針
+  if (form >= 3) {
+    for (const [x, y] of [[-HW - 2, top - 1], [HW + 1, top - 1], [-HW - 2, bot + 2], [HW + 1, bot + 2]]) { g.set(x, y + off(Math.max(-HW, Math.min(HW, x))), C.gold); }   // 金色護角
+    g.set(-HW - 2, Math.round((top + bot) / 2) + off(-HW), C.gem); g.set(-HW - 1, Math.round((top + bot) / 2) + off(-HW), C.gem);   // 書背寶石
   }
   // 眼睛（圓圓的，反光在右上）
   const ey = top + 9, L = -4, R = 1;
@@ -86,6 +103,9 @@ export function pagepageFrame(pose = "idle", t = 0) {
 
   g.outline();
 
+  if (form >= 3) {        // 魔導書：身邊繞著兩顆光點
+    for (let i = 0; i < 2; i++) { const a = q.ph * Math.PI * 2 + i * Math.PI, x = Math.round(Math.cos(a) * 13), y = Math.round(top + 10 + Math.sin(a) * 5); g.set(x, y, C.spark); g.set(x + 1, y, C.gold); g.set(x - 1, y, C.gold); g.set(x, y - 1, C.gold); g.set(x, y + 1, C.gold); }
+  }
   if (q.eyes === "worried") { const sx = HW + 2, sy = top + 7; g.set(sx, sy, C.sweat); g.set(sx, sy + 1, C.sweat); g.set(sx - 1, sy + 1, C.white); }
   if (q.pose === "happy") {
     const k = Math.floor(q.ph * 4) % 2;

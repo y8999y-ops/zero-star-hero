@@ -83,6 +83,11 @@ export function recordAnswer(s, q, ok, sec) {
 export function bookChapters(s) {
   return Object.values(s.branches).filter((b) => b.best >= 5).length;
 }
+/** 頁頁的樣子是第幾種（0 一張紙、1 小冊子、2 精裝書、3 魔導書），給畫圖用 */
+export function pagePageLevel(s) {
+  const n = bookChapters(s);
+  return n >= 6 ? 3 : n >= 3 ? 2 : n >= 1 ? 1 : 0;
+}
 export function pagePageForm(s) {
   const n = bookChapters(s);
   return n >= 6 ? "魔導書" : n >= 3 ? "精裝書" : n >= 1 ? "小冊子" : "一張紙";
