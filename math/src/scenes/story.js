@@ -24,7 +24,7 @@ const N_ = (text) => ({ who: null, name: "", text });
 const SILHOUETTE = "brightness(0) invert(0.86) sepia(0.25) hue-rotate(200deg)";   // 還沒選的新生：淡紫的剪影
 
 // 廣場（共鳴之井前）：花園的天空原圖、遠一點的圖書館、井、地板
-async function plaza(D, { gray = 0 } = {}) {
+export async function plaza(D, { gray = 0 } = {}) {
   const f = gray ? `grayscale(${gray}) brightness(${1 - gray * 0.25})` : "saturate(.75)";
   await D.bg("battle-hd/garden/back.jpg", { fade: 0.8, filter: f });
   D.ground("hub/floor.jpg", GY - 8, 26);
@@ -34,7 +34,7 @@ async function plaza(D, { gray = 0 } = {}) {
   if (gray) D.filter(f, 0.01);
   return D.img("hub/well.png", { x: 192, y: GY + 8, h: 84, z: 3, tint: true });
 }
-const GY = 150;          // 廣場的地面線（對話框在下面，人要站在它上面）
+export const GY = 150;   // 廣場的地面線（對話框在下面，人要站在它上面）
 
 // ───────── 開場 ─────────
 export async function openingStory(game, { replay = false, back = "title" } = {}) {

@@ -5,7 +5,7 @@
 
 import { el, show } from "../ui.js";
 import { sfx } from "../audio.js";
-import { ATTRS, RANKS } from "../data.js";
+import { ATTRS, RANKS, GRADES } from "../data.js";
 import { rankExamReady, addExp } from "../growth.js";
 import { deanFrame } from "../../fx/dean.js";
 import { pageFrame } from "../../fx/pickups.js";
@@ -22,41 +22,43 @@ const BHD = (n) => new URL(`../../assets/battle-hd/garden/${n}`, import.meta.url
 // 2026-11-25 使用者：太擠 → 建築之間留 60～110 格的空地，小物件減少，只放有理由的
 // x：建築中心；h：高幾格；dy：往下沉幾格（圖的底部有地基、草地）
 const BUILDINGS = [
-  { id: "ship", art: "dock.png", name: "浮空船碼頭", x: 180, h: 112, dy: 14 },
-  { id: "b_dorm", art: "dorm.png", name: "宿舍", x: 480, h: 106, dy: 8 },
-  { id: "b_shop", art: "shop.png", name: "學院商店", x: 730, h: 92, dy: 8 },
-  { id: "well", art: "well.png", name: "共鳴之井", x: 1000, h: 96, dy: 16 },
-  { id: "library", art: "library.png", name: "千頁圖書館", x: 1360, h: 178, dy: 10 },
-  { id: "b_fire", art: "fire.png", name: "赤焰塔", x: 1700, h: 130, dy: 8 },
-  { id: "b_water", art: "water.png", name: "蒼流館", x: 1950, h: 104, dy: 10 },
-  { id: "b_ice", art: "ice.png", name: "白霜堂", x: 2210, h: 104, dy: 10 },
-  { id: "b_forest", art: "forest.png", name: "翠森苑", x: 2470, h: 112, dy: 10 },
-  { id: "b_thunder", art: "thunder.png", name: "紫雷閣", x: 2730, h: 130, dy: 8 },
-  { id: "b_greenhouse", art: "greenhouse.png", name: "分晶溫室", x: 3000, h: 102, dy: 10 },
-  { id: "b_clock", art: "clock.png", name: "刻度鐘塔", x: 3270, h: 188, dy: 8 },
-  { id: "toGarden", art: "p/rosearch.png", name: "星芽花園", x: 3520, h: 80, dy: 4 },
+  { id: "ship", art: "dock.png", name: "浮空船碼頭", x: 100, h: 112, dy: 14 },
+  { id: "b_dorm", art: "dorm.png", name: "宿舍", x: 257, h: 106, dy: 8 },
+  { id: "b_shop", art: "shop.png", name: "學院商店", x: 385, h: 92, dy: 8 },
+  { id: "well", art: "well.png", name: "共鳴之井", x: 520, h: 96, dy: 16 },
+  { id: "library", art: "library.png", name: "千頁圖書館", x: 750, h: 178, dy: 10 },
+  { id: "b_fire", art: "fire.png", name: "赤焰塔", x: 935, h: 130, dy: 8 },
+  { id: "b_water", art: "water.png", name: "蒼流館", x: 1070, h: 104, dy: 10 },
+  { id: "b_ice", art: "ice.png", name: "白霜堂", x: 1222, h: 104, dy: 10 },
+  { id: "b_forest", art: "forest.png", name: "翠森苑", x: 1380, h: 112, dy: 10 },
+  { id: "b_thunder", art: "thunder.png", name: "紫雷閣", x: 1530, h: 130, dy: 8 },
+  { id: "b_greenhouse", art: "greenhouse.png", name: "分晶溫室", x: 1670, h: 102, dy: 10 },
+  { id: "b_clock", art: "clock.png", name: "刻度鐘塔", x: 1810, h: 188, dy: 8 },
+  { id: "toGarden", art: "p/rosearch.png", name: "星芽花園", x: 1930, h: 80, dy: 4 },
 ];
-const PW = 3660;               // 橫幅全長（格）
-// 小物件（只放有理由的）：碼頭邊的貨、商店前的攤車、井旁的長椅、圖書館前的望遠鏡、赤焰塔的箭靶、
-// 蒼流館和白霜堂之間的噴泉、紫雷閣的黑板、溫室的盆栽、花園門口的花台。front＝擺在建築前面一點
-const DECOR = [
-  ["p/crate.png", 310, 24, 1], ["p/barrel.png", 336, 22, 1],
-  ["p/lamp.png", 610, 50], ["p/cart.png", 830, 42, 1],
-  ["p/bench.png", 1085, 28, 1], ["p/tree.png", 1200, 66],
-  ["p/scope.png", 1520, 38, 1],
-  ["p/target.png", 1820, 36, 1],
-  ["p/fountain.png", 2080, 40, 1], ["p/pine.png", 2340, 70],
-  ["p/chalkboard.png", 2850, 40, 1],
-  ["p/planter.png", 3130, 26, 1], ["p/lamp2.png", 3400, 46], ["p/bed_yellow.png", 3600, 24, 1],
-];
+const PW = 2010;               // 橫幅全長（格）。2026-11-25 使用者：房子靠近一點、無關的小裝飾拿掉
+const DECOR = [];
 // 人：只有院長在井旁（2026-11-25 使用者：導師、同學的對話全部取消；學院點了直接進去練習）
 const NPCS = [
-  { id: "dean", name: "圓周院長", x: 900, fn: (t) => deanFrame("idle", t) },
+  { id: "dean", name: "圓周院長", x: 452, fn: (t) => deanFrame("idle", t) },
 ];
 // 書頁、寶箱、墨水小點藏的地方（有理由：書頁卡在樹下、長椅底下、攤車旁……）
-const PAGE_AT = [610, 1170, 1520, 1820, 2080, 2340, 2600, 2850, 3130, 3400, 336, 830];
-const CHEST_AT = [270, 2590, 3620];
-const INK_AT = [[1480, "p/ink-3.png"], [2330, "p/ink-1.png"], [3080, "p/ink-0.png"]];
+const PAGE_AT = [182, 322, 600, 868, 1002, 1146, 1300, 1458, 1600, 1742, 1872, 1990];
+const CHEST_AT = [20, 1455, 1985];
+const INK_AT = [[985, "p/ink-3.png"], [1300, "p/ink-1.png"], [1745, "p/ink-0.png"]];
+
+// 主線任務（2026-11-25 使用者：主線任務太不明顯）：照順序淨化五區；還沒入學時是「到共鳴之井」
+const MAIN = [["g1", "toGarden"], ["g2", "library"], ["g34", "b_clock"], ["g56", "b_greenhouse"], ["jh", "library"]];
+export function mainQuest(s) {
+  if (!s.attr) return { text: "到共鳴之井參加入學典禮", target: "well" };
+  for (const [g, target] of MAIN) {
+    if ((s.stars[`${g}-boss`] ?? 0) > 0) continue;
+    const n = [1, 2, 3].filter((k) => (s.stars[`${g}-${k}`] ?? 0) > 0).length;
+    const where = g === "g2" ? "（從圖書館上樓）" : g === "jh" ? "（從圖書館下樓）" : "";
+    return { text: `淨化${GRADES[g].area}（${GRADES[g].name}）${n < 3 ? `：墨水怪 ${n}/3` : "：打倒墨水大王"}${where}`, target };
+  }
+  return { text: "主線完成！到學院練習、挑戰更難的題目吧", target: null };
+}
 
 let current = null;
 
@@ -114,7 +116,7 @@ export function hubScene(game, { from } = {}) {
   PAGES.forEach((_, i) => { if (!s.pages.includes(i)) sprite((t) => pageFrame(t + i * 0.13), PAGE_AT[i % PAGE_AT.length] + (i >= PAGE_AT.length ? 30 : 0) + 22, 1, GY + 34, 35, { id: `page_${i}`, name: "發光的書頁" }, "發光的書頁"); });
   CHESTS.forEach((_, i) => { if (!s.chests.includes(i)) { const n = img("p/chest.png", ".hubd.hubtap"); n.addEventListener("click", (e) => tap(e, { id: `chest_${i}`, name: "數字鎖寶箱" })); put(n, CHEST_AT[i], 26, GY + 30, 35); } });
   INK_AT.forEach(([x, src], i) => { if (!daily(s).ink.includes(i)) { const n = img(src, ".hubd.hubtap"); n.addEventListener("click", (e) => tap(e, { id: `ink_${i}`, name: "墨水小點" })); put(n, x, 16, GY + 40, 34); } });
-  { const n = img("p/board.png", ".hubd.hubtap"); n.addEventListener("click", (e) => tap(e, { id: "board", name: "布告欄・今日委託" })); put(n, 1130, 44, GY + 4, 12); }
+  { const n = img("p/board.png", ".hubd.hubtap"); n.addEventListener("click", (e) => tap(e, { id: "board", name: "布告欄・今日委託" })); put(n, 596, 44, GY + 4, 12); }
 
   // ── 版面：依畫面高算 1 格多大 ──
   let u = 1;
@@ -140,9 +142,30 @@ export function hubScene(game, { from } = {}) {
   root.querySelectorAll("img").forEach((im) => { if (!im.complete) im.addEventListener("load", layout, { once: true }); });
   layout();
   // 一開始看哪裡：從哪裡回來就看哪裡；沒有的話是上次的位置；新生是碼頭
-  const focus = { library: 1360, garden: 3520, clock: 3270, shop: 730, dorm: 480, well: 1000 }[from] ?? BUILDINGS.find((b) => b.id === `b_${from}`)?.x;
-  const startX = focus ?? s.hub?.x ?? (s.attr ? 1000 : 180);
+  const focus = { library: 750, garden: 1930, clock: 1810, shop: 385, dorm: 257, well: 520 }[from] ?? BUILDINGS.find((b) => b.id === `b_${from}`)?.x;
+  const startX = !s.attr ? 100 : focus ?? s.hub?.x ?? 520;
   pan.scrollLeft = startX * u - app.clientWidth / 2;
+
+  // ── 主線任務：上方的任務列＋目標建築頭上的箭頭、建築發光 ──
+  const Q = mainQuest(s);
+  const goTarget = (smooth = true) => { const b = BUILDINGS.find((x) => x.id === Q.target); if (b) smoothScroll(b.x * u - app.clientWidth / 2, smooth ? 900 : 0); };
+  hud.append(el("div.questbar", {}, el("span.qlabel", {}, "主線"), el("span.qtext", {}, Q.text), Q.target ? el("button.btn.small.gold.qgo", { onclick: () => { sfx("click"); goTarget(); } }, "前往") : null));
+  const tb = BUILDINGS.find((x) => x.id === Q.target);
+  if (tb) {
+    const arrow = el("div.qarrow", {}, "▼");
+    put(arrow, tb.x, 16, GY + tb.dy - tb.h - 2, 45);
+    arrow.dataset.w = 16;
+    world.querySelector(`.hubb[aria-label="${tb.name}"]`)?.classList.add("qtarget");
+    layout();
+  }
+  function smoothScroll(to, ms) {
+    const from = pan.scrollLeft, t0 = performance.now();
+    if (!ms) { pan.scrollLeft = to; return; }
+    const step = (now) => { const k = Math.min(1, (now - t0) / ms), e = k * k * (3 - 2 * k); pan.scrollLeft = from + (to - from) * e; if (k < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  }
+  // 還沒入學：強制引導——不能左右滑，鏡頭從碼頭自動移到共鳴之井
+  if (!s.attr) { pan.classList.add("locked"); setTimeout(() => goTarget(true), 900); }
 
   // 滑鼠拖曳也能捲（手機是原生捲動）；拖過就不算點
   let drag = null, dragged = false;
@@ -304,9 +327,13 @@ export function hubScene(game, { from } = {}) {
   }
 
   // 剛下浮空船的新生：提示怎麼操作
-  if (!s.attr && !s.flags?.hubHint) {
+  if (!s.attr) {
+    // 剛下船：先說明，再點發光的共鳴之井（其他地方點了院長會叫你先去井那邊）
+    busy = true;
+    setTimeout(() => say([{ who: "dean", name: "圓周院長", text: "新生到了！入學典禮在共鳴之井，就是那個發光的井。點它開始吧！" }]).finally(() => (busy = false)), 1900);
+  } else if (!s.flags?.hubHint) {
     s.flags = { ...(s.flags ?? {}), hubHint: true }; writeSave(s);
     busy = true;
-    say([{ who: null, name: "魔數學院", text: "浮空船靠岸了。左右滑動可以看整個學院，點建築、點人就能進去或說話。先去找共鳴之井吧！" }]).finally(() => (busy = false));
+    say([{ who: null, name: "魔數學院", text: "左右滑動可以看整個學院。上面的「主線」告訴你下一步去哪裡。" }]).finally(() => (busy = false));
   }
 }

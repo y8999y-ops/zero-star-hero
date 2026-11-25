@@ -22,9 +22,24 @@ import { runBattle } from "./battle/battle.js";
 import { battleIn, battleOut } from "./transition.js";
 import { playMusic } from "./music.js";
 
+// 統一轉場（2026-11-25 使用者：所有介面切換都要有統一轉場）：深紫色蓋上、中間轉一個金色魔法陣 → 換畫面 → 打開。
+// 進戰鬥、戰鬥結束各有自己的魔法轉場（transition.js），不再疊一層。
+const xfade = (() => { const d = document.createElement("div"); d.className = "xfade"; d.innerHTML = '<div class="xmark"></div>'; document.body.append(d); return d; })();
+let switching = Promise.resolve(), firstShow = true;
+const later = (ms) => new Promise((r) => setTimeout(r, ms));
+
 const game = {
   save: loadSave(),
   go(scene, arg = {}) {
+    if (firstShow || scene === "battle") { firstShow = false; return this.show(scene, arg); }
+    switching = switching.then(async () => {
+      xfade.classList.add("on"); await later(230);
+      try { this.show(scene, arg); } catch (e) { console.error(e); }
+      await later(90); xfade.classList.remove("on");
+    });
+    return switching;
+  },
+  show(scene, arg = {}) {
     const s = this.save;
     // 還沒選外觀或屬性就先補完入學流程
     // 入學流程：開場動畫（選外觀）→ 學院全景，點共鳴之井（還沒有屬性也能點）→ 共鳴儀式 → 第一場戰鬥

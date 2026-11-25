@@ -498,3 +498,23 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 .csscr .talk .facebox { width: 64px; height: 64px; }
 .csscr .talk .face { width: 58px; height: 58px; }
 .restorespark { position: absolute; z-index: 4; width: 6px; height: 6px; background: #ffe9a0; box-shadow: 0 0 6px #fff3b0; pointer-events: none; }
+/* 共鳴儀式的進度：五顆小光 */
+.resprog { position: absolute; top: max(14px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 60; display: flex; gap: 10px; }
+.resprog span { width: 14px; height: 14px; border-radius: 50%; background: rgba(255, 255, 255, .25); border: 2px solid rgba(255, 255, 255, .5); transition: background .4s, box-shadow .4s; }
+.resprog span.on { background: #fff3b0; box-shadow: 0 0 10px #fff3b0; }
+/* 統一轉場 */
+.xfade { position: fixed; inset: 0; z-index: 95; background: radial-gradient(circle, #2a1f4e, #120d22 70%); opacity: 0; pointer-events: none; transition: opacity .22s ease; display: grid; place-items: center; }
+.xfade.on { opacity: 1; pointer-events: auto; }
+.xfade .xmark { width: 64px; height: 64px; border-radius: 50%; border: 3px solid #f2c24a; box-shadow: 0 0 14px #f2c24a88, inset 0 0 10px #f2c24a66; position: relative; animation: xspin 1.2s linear infinite; }
+.xfade .xmark::before, .xfade .xmark::after { content: ""; position: absolute; inset: 10px; border: 2px solid #fff0b0; transform: rotate(45deg); }
+.xfade .xmark::after { inset: 18px; border-radius: 50%; border-color: #f2c24a; transform: none; }
+@keyframes xspin { to { transform: rotate(360deg); } }
+/* 主線任務 */
+.questbar { position: absolute; left: 50%; top: 40px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 4px 6px 4px 10px; background: rgba(23, 18, 42, .86); border: 2px solid #f2c24a; border-radius: 10px; pointer-events: auto; max-width: 56%; }
+.questbar .qlabel { color: #120d22; background: #f2c24a; font-weight: 800; font-size: 12px; padding: 1px 6px; border-radius: 6px; flex: none; }
+.questbar .qtext { font-size: 13px; color: #fff6dc; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qarrow { color: #f2c24a; font-size: 26px; line-height: 1; text-align: center; text-shadow: 0 2px 0 #120d22, 0 0 8px #fff3b0; pointer-events: none; animation: qbob 1s ease-in-out infinite; }
+@keyframes qbob { 50% { transform: translateY(8px); } }
+.hubb.qtarget img { animation: qglow 1.6s ease-in-out infinite; }
+@keyframes qglow { 50% { filter: drop-shadow(0 0 10px #fff3b0) drop-shadow(0 0 4px #f2c24a) brightness(1.08); } }
+.hubpan.locked { overflow-x: hidden; touch-action: none; }

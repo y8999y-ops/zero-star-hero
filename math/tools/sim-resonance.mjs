@@ -9,7 +9,7 @@ const N = +(process.argv[2] ?? 100000);
 
 function play(choose) {
   const score = Object.fromEntries(ATTRS.map((a) => [a, 0]));
-  for (const q of d.questions) {
+  for (const q of d.use ? d.use.map((i) => d.questions[i]) : d.questions) {   // 遊戲只出 use 裡的 5 題（2026-11-25）
     // 跟遊戲一樣：屬性題的選項順序打亂（resonance.js）
     const order = q.options.map((_, k) => k);
     if (q.kind === "style") for (let k = order.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [order[k], order[j]] = [order[j], order[k]]; }
