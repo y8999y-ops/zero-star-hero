@@ -9,6 +9,7 @@ import { writeSave } from "../save.js";
 import { sfx } from "../audio.js";
 import { TIMER_EASE } from "../settings.js";
 import { printable } from "./mathmagic-more.js";
+import { loadAreaArt } from "./areaart.js";
 
 const COUNT = 10;     // 一般小關的題數
 const EXAM = 10;      // 升階考核題數，答對 7 題通過
@@ -31,7 +32,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
 
   const shield = boss ? g.boss : 0;
   const total = exam ? EXAM : boss ? shield + 6 : COUNT;
-  const qs = await buildStage(s, gradeId, boss ? 2 : exam ? 1 : stageIdx, total, boss);
+  const [qs] = await Promise.all([buildStage(s, gradeId, boss ? 2 : exam ? 1 : stageIdx, total, boss), loadAreaArt(gradeId)]);
 
   // ── 畫面 ──
   const canvas = el("canvas.stage");
@@ -47,7 +48,9 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
   show(wrap);
   const stage = new Stage(canvas, gradeId, s.look, s.attr, s.settings);
   onReady?.();   // 戰鬥畫面準備好了（轉場可以打開）
-  stage.gray = 1;
+  window.__stage = stage;   // 開發用：在主控台操作戰鬥畫面
+  // 這一區的王已經打倒過＝已經恢復色彩；還沒的話是被墨水弄灰的樣子
+  stage.gray = s.stars[`${gradeId}-boss`] ? 0 : 1;
 
   let hp = maxHp(s.lv), combo = 0, best = 0, right = 0, wrong = 0, sparks = 0, shieldLeft = shield, gained = 0;
   let uses = (attr.uses ?? 0) + (attr.uses ? abilityBonus(s.lv) : 0);
@@ -135,7 +138,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
       if (boss) {
         shieldLeft--;
         stage.shake = 6;
-        if (shieldLeft <= 0) { stage.purify(); stage.gray = 0; }
+        if (shieldLeft <= 0) { stage.purify(); stage.restoreColor(); }
       } else stage.purify();
       await wait(650);
     } else {

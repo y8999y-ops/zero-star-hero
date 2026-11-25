@@ -1,0 +1,90 @@
+{
+  "schema": "generate2dsprite.palette.v1",
+  "name": "level",
+  "colors": [
+    {
+      "hex": "#fac85e",
+      "reserved": true
+    },
+    {
+      "hex": "#eb88a0",
+      "reserved": true
+    },
+    {
+      "hex": "#b4536d",
+      "reserved": true
+    },
+    {
+      "hex": "#c3a3db",
+      "reserved": true
+    },
+    {
+      "hex": "#a2ccee",
+      "reserved": true
+    },
+    {
+      "hex": "#a45f39",
+      "reserved": true
+    },
+    {
+      "hex": "#68bafc",
+      "reserved": true
+    },
+    {
+      "hex": "#a5cc57",
+      "reserved": true
+    },
+    {
+      "hex": "#9b7c6b",
+      "reserved": true
+    },
+    {
+      "hex": "#22344b"
+    },
+    {
+      "hex": "#314563"
+    },
+    {
+      "hex": "#2e4f3f"
+    },
+    {
+      "hex": "#77462d"
+    },
+    {
+      "hex": "#326045"
+    },
+    {
+      "hex": "#447843"
+    },
+    {
+      "hex": "#a86d23"
+    },
+    {
+      "hex": "#6aa044"
+    },
+    {
+      "hex": "#9498ad"
+    },
+    {
+      "hex": "#c89570"
+    },
+    {
+      "hex": "#86b84d"
+    },
+    {
+      "hex": "#e19f39"
+    },
+    {
+      "hex": "#d2bfad"
+    },
+    {
+      "hex": "#b5c1f8"
+    },
+    {
+      "hex": "#f5eddd"
+    }
+  ],
+  "transparent_index": 255,
+  "locked": false,
+  "source": "palette_tool build: OKLab k-means++ of 3 image(s), 24 colours, seed 0"
+}

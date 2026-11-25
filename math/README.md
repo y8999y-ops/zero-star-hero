@@ -62,7 +62,9 @@ math/
   art/
     1-參考原圖/      AI 參考圖（提示詞在 docs/美術提示詞.md），依 map、battle/<區域>、chars 分
     2-草稿/          pixel-redraw 重畫中的稿
-    3-已通過/        使用者確認過的成品，遊戲讀這裡
+    3-已通過/        使用者確認過的成品（存檔紀錄）
+  assets/            遊戲實際讀的圖（英文路徑）：使用者說「接進遊戲」時，從 art/3-已通過/ 複製過來
+    battle/<區域>/   戰鬥背景 back、mid、ground（garden 星芽花園…）
   audio/             音效與音樂
 ```
 

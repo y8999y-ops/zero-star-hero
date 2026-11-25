@@ -7,6 +7,7 @@ import { SPELLS, FX, INK, INK_POOF, crystalLight } from "./spells.js";
 import { GRADES, ATTRS } from "../data.js";
 import { heroFrame } from "../../fx/hero.js";
 import { MathMagic, PopNumber } from "./mathmagic.js";
+import { areaArtNow } from "./areaart.js";
 
 export const W = 384, H = 216, GROUND = 144;
 const PX = 76;               // 玩家腳下 x
@@ -44,7 +45,9 @@ export class Stage {
     this.t = 0; this.shake = 0; this.hurtT = 0; this.castT = -1;
     this.gray = 1;           // 1＝被墨水弄灰，0＝恢復色彩
     this.dim = 0;            // 施法時畫面暗下來，讓魔法的光更明顯
-    this.bg = this.paintBackground();
+    this.art = areaArtNow(gradeId);          // 有正式背景圖就用（要先 await loadAreaArt）
+    this.bg = this.art ? null : this.paintBackground();
+    this.grayTo = null;
   }
 
   // ── 背景：天空漸層（硬色階）＋遠方剪影＋地面。之後換成 pixel-redraw 的正式場景圖 ──
@@ -131,6 +134,7 @@ export class Stage {
     this.t += dt;
     if (this.castT >= 0) { this.castT += dt; if (this.castT > 0.6 && !this.magic?.active) this.castT = -1; }
     this.hurtT = Math.max(0, this.hurtT - dt);
+    if (this.grayTo != null) { this.gray += (this.grayTo - this.gray) * Math.min(1, dt * 1.6); if (Math.abs(this.gray - this.grayTo) < 0.002) { this.gray = this.grayTo; this.grayTo = null; } }
     this.dimHold = Math.max(0, (this.dimHold ?? 0) - dt);
     const goal = this.dimHold > 0 ? this.dimTo : 0;
     this.dim += (goal - this.dim) * Math.min(1, dt * (goal > this.dim ? 10 : 3));
@@ -199,8 +203,14 @@ export class Stage {
     const sk = this.opt.shake ? this.shake : 0;
     const sx = sk ? Math.round((Math.random() - 0.5) * sk) : 0;
     const sy = sk ? Math.round((Math.random() - 0.5) * sk) : 0;
-    ctx.drawImage(this.bg, sx, sy);
-    if (this.gray > 0) { ctx.fillStyle = `rgba(40,34,60,${0.35 * this.gray})`; ctx.fillRect(0, 0, W, H); }
+    if (this.art) {
+      // 正式背景：彩色版上疊灰色版，gray 從 1 漸變到 0 就是「恢復色彩」
+      ctx.drawImage(this.art.color, sx, sy);
+      if (this.gray > 0.001) { ctx.globalAlpha = this.gray; ctx.drawImage(this.art.gray, sx, sy); ctx.globalAlpha = 1; }
+    } else {
+      ctx.drawImage(this.bg, sx, sy);
+      if (this.gray > 0) { ctx.fillStyle = `rgba(40,34,60,${0.35 * this.gray})`; ctx.fillRect(0, 0, W, H); }
+    }
     if (this.dim > 0.01) { ctx.fillStyle = `rgba(8,6,20,${this.dim})`; ctx.fillRect(0, 0, W, H); }
     if (m && m.boss && m.alpha > 0) {
       clearFrame(this.bossFrame);
@@ -217,6 +227,9 @@ export class Stage {
     this.lctx.putImageData(this.img, 0, 0);
     ctx.drawImage(this.layer, sx, sy);
   }
+
+  /** 恢復色彩：灰色慢慢退掉（打倒王時） */
+  restoreColor() { this.grayTo = 0; }
 
   /** 數學變魔法：算式變成光球、光球飛向怪物。回傳 Promise（光球出手時 resolve） */
   mathMagic(math) {
