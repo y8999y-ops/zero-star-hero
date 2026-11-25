@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>魔法一覽</title>
+<style>
+  body { margin: 0; background: #111; color: #ddd; font: 12px system-ui, sans-serif; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 4px; }
+  .cell { position: relative; }
+  .cell span { position: absolute; left: 4px; top: 2px; text-shadow: 0 1px 0 #000; }
+  canvas { width: 100%; display: block; image-rendering: pixelated; }
+</style>
+</head>
+<body>
+<!-- 開發用：五個屬性 × 四級魔法同時播放。網址加 ?t=0.6 會停在施法後第 0.6 秒，方便截圖比較。 -->
+<div class="grid" id="grid"></div>
+<script type="module">
+  import { Stage } from "../src/battle/stage.js";
+  const names = { fire: "火", water: "水", ice: "冰", forest: "森", thunder: "雷" };
+  const freeze = new URLSearchParams(location.search).get("t");
+  const cells = [];
+  for (const a of Object.keys(names)) for (let t = 1; t <= 4; t++) {
+    const c = document.createElement("canvas");
+    const d = document.createElement("div"); d.className = "cell";
+    d.append(c, Object.assign(document.createElement("span"), { textContent: `${names[a]} ${t}` }));
+    grid.append(d);
+    const s = new Stage(c, "g34", t % 2 ? "boy" : "girl", a);
+    s.gray = 0;
+    cells.push({ s, t, next: 0 });
+  }
+  const fire = (cell) => { cell.s.monster ?? cell.s.spawn(); cell.s.monster.x = 190; cell.s.cast(cell.t).then(() => cell.s.purify()); };
+  if (freeze) {
+    for (const cell of cells) { cell.s.spawn(); cell.s.monster.x = 190; cell.s.cast(cell.t); }
+    for (let i = 0; i < Math.round(Number(freeze) * 60); i++) for (const { s } of cells) s.update(1 / 60);
+    for (const { s } of cells) s.draw();
+  } else {
+    let last = performance.now();
+    const loop = (now) => {
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      for (const cell of cells) { cell.next -= dt; if (cell.next <= 0) { cell.next = 3; fire(cell); } cell.s.update(dt); cell.s.draw(); }
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  }
+</script>
+</body>
+</html>

@@ -7,7 +7,13 @@
 
 ## 怎麼開
 
-在專案根目錄執行 `node server.mjs`，然後開 http://localhost:5173/math/ 。目前還沒有遊戲程式，做到 M1 才會有。
+在專案根目錄執行 `node server.mjs`，然後開 http://localhost:5173/math/ 。
+
+- 網址加 `?mute` 不出聲（測試用）。
+- 開發用：http://localhost:5173/math/dev/spells.html 同時播放五個屬性 × 四級魔法；加 `?t=0.6` 停在施法後第 0.6 秒，方便截圖比較。
+- 主控台的 `__game` 可以看存檔、直接跳畫面，例如 `__game.go("battle", { grade: "jh", mode: "boss" })`。
+
+目前是 M1 原型：角色用 pixelfx 的標準小角色加帽子、怪物是墨水色的 pixelfx 史萊姆、背景是暫用的色塊，之後換成正式美術。
 
 ## 題庫工具
 
@@ -17,6 +23,8 @@
 |---|---|
 | `npm run extract` | 讀出原始題庫 → `data/questions/work/` |
 | `npm run check` | 檢查改寫表：答案不變、數字不漏、沒有簡體字和中國用語、用詞符合世界觀 |
+| `npm run build` | 先跑 check，再把改寫表合併成 `data/questions/built/<學年>.json`（遊戲讀這個） |
+| `node tools/test-generators.mjs` | 檢查計算題產生器：每個題型產生 2000 題，選項不重複、答案正確 |
 
 ## 資料夾
 
@@ -32,7 +40,17 @@ math/
       built/         合併後給遊戲讀的 json（由 tools/ 產生，不手改）
     quiz/            共鳴儀式（心理測驗）的題目與計分表
   tools/             題庫轉換、測驗模擬等 node 腳本
-  src/               遊戲程式（M1 開始）
+  src/
+    main.js          入口、切換畫面
+    data.js          屬性、學年、魔法分支、成長數值（數字都在這裡調）
+    save.js          存檔（localStorage）
+    growth.js        經驗、等級、熟練度、數晶、錯題本、成長日記
+    audio.js         暫用音效（瀏覽器合成）
+    ui.js            建立元素、對話框、飄字
+    questions/       gen.js 計算題產生器、pool.js 出題與四個選項
+    battle/          battle.js 一關的流程、stage.js 戰鬥畫面、spells.js 五屬性四級魔法
+    scenes/          標題與劇情、共鳴儀式、學院地圖、結算
+  dev/               開發用頁面（魔法一覽）
   fx/                pixelfx 格式的角色、怪物、魔法
   art/               場景與介面成品
   audio/             音效與音樂

@@ -1,0 +1,63 @@
+{
+  "_說明": "共鳴儀式（入學心理測驗）題目。kind=style 每個選項替 attrs 裡的屬性各加 2 分；kind=mood 選項的 level 是緊張程度 0～3。企劃書第 4 節。",
+  "questions": [
+    { "kind": "style", "q": "老師說「8＋7 等於多少？」你腦中第一個出現的是？", "options": [
+      { "t": "直接冒出 15", "attrs": ["fire"] },
+      { "t": "先想 8＋2＝10，再加 5", "attrs": ["water"] },
+      { "t": "一個一個往上數", "attrs": ["ice"] },
+      { "t": "想像 8 顆糖和 7 顆糖", "attrs": ["forest"] },
+      { "t": "想到「跟 7＋8 一樣」", "attrs": ["thunder"] } ] },
+    { "kind": "style", "q": "遇到一題完全看不懂的題目，你會？", "options": [
+      { "t": "先猜一個答案再說", "attrs": ["fire"] },
+      { "t": "換個角度再讀一次", "attrs": ["water"] },
+      { "t": "把題目一句一句拆開", "attrs": ["ice"] },
+      { "t": "在紙上畫圖", "attrs": ["forest"] },
+      { "t": "找以前看過的類似題", "attrs": ["thunder"] } ] },
+    { "kind": "style", "q": "你最喜歡哪一種謎題？", "options": [
+      { "t": "搶快的速算比賽", "attrs": ["fire"] },
+      { "t": "有很多種解法的謎題", "attrs": ["water"] },
+      { "t": "數獨", "attrs": ["ice"] },
+      { "t": "拼圖、七巧板", "attrs": ["forest"] },
+      { "t": "找規律的數字接龍", "attrs": ["thunder"] } ] },
+    { "kind": "style", "q": "寫完一張學習單，你通常會？", "options": [
+      { "t": "馬上交出去", "attrs": ["fire"] },
+      { "t": "換另一種方法驗算", "attrs": ["water"] },
+      { "t": "從頭到尾再檢查一次", "attrs": ["ice"] },
+      { "t": "看看圖和單位對不對", "attrs": ["forest"] },
+      { "t": "想想答案合不合理", "attrs": ["thunder"] } ] },
+    { "kind": "style", "q": "朋友算錯了來問你，你會怎麼教？", "options": [
+      { "t": "直接說最快的方法", "attrs": ["fire"] },
+      { "t": "告訴他另一種想法", "attrs": ["water"] },
+      { "t": "帶他一步一步重算", "attrs": ["ice"] },
+      { "t": "畫給他看", "attrs": ["forest"] },
+      { "t": "問他「你覺得哪裡怪怪的？」", "attrs": ["thunder"] } ] },
+    { "kind": "style", "q": "你覺得數學最好玩的是？", "options": [
+      { "t": "答對的那一瞬間", "attrs": ["fire"] },
+      { "t": "發現新方法", "attrs": ["water"] },
+      { "t": "全部算對、很整齊", "attrs": ["ice"] },
+      { "t": "圖形和形狀", "attrs": ["forest"] },
+      { "t": "想通「原來是這樣」", "attrs": ["thunder"] } ] },
+    { "kind": "style", "q": "要把 12 塊餅乾分給 3 個人，你會？", "options": [
+      { "t": "一下就知道每人 4 塊", "attrs": ["fire"] },
+      { "t": "先每人 2 塊，剩下的再分", "attrs": ["water"] },
+      { "t": "用除法算 12÷3", "attrs": ["ice"] },
+      { "t": "把餅乾排成 3 排", "attrs": ["forest"] },
+      { "t": "想到 12 是 3 的 4 倍", "attrs": ["thunder"] } ] },
+    { "kind": "style", "q": "看到 2、4、8、16……你會想？", "options": [
+      { "t": "下一個是 32！", "attrs": ["fire"] },
+      { "t": "會不會也有別的規律？", "attrs": ["water"] },
+      { "t": "檢查是不是每一個都乘 2", "attrs": ["ice"] },
+      { "t": "想像越疊越高的積木", "attrs": ["forest"] },
+      { "t": "好奇它會不會一直下去", "attrs": ["thunder"] } ] },
+    { "kind": "mood", "q": "聽到「現在要來算數學了」，你的心情是？", "options": [
+      { "t": "好耶！", "level": 0 }, { "t": "還好", "level": 1 }, { "t": "有點緊張", "level": 2 }, { "t": "很緊張", "level": 3 } ] },
+    { "kind": "mood", "q": "算錯一題的時候，你通常會？", "options": [
+      { "t": "沒差，再來", "level": 0 }, { "t": "有點不甘心", "level": 1 }, { "t": "有點難過", "level": 2 }, { "t": "很想放棄", "level": 3 } ] }
+  ],
+  "tiebreak": { "q": "最後一題：哪一句話最像你？", "options": {
+    "fire": "「越快越過癮！」",
+    "water": "「條條大路通羅馬。」",
+    "ice": "「慢慢來，比較快。」",
+    "forest": "「畫出來就懂了。」",
+    "thunder": "「一定有規律可以找。」" } }
+}
