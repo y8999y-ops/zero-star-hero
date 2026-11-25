@@ -4,17 +4,22 @@
 輸出 assets/map/garden/：ground.png、物件 png、layout.json
 用法：python build_garden.py
 """
-import json, random
+import json, os, random
 from pathlib import Path
 from PIL import Image
 
 HERE = Path(__file__).parent
 DRAFT = HERE.parent
-G = Image.open(DRAFT / "island-look" / "read" / "ground.png").convert("RGBA")
-OUT = DRAFT.parent.parent / "assets" / "map" / "garden"; OUT.mkdir(parents=True, exist_ok=True)
+ART = os.environ.get("ART", "read")          # raw：不重繪的原圖版，輸出到 assets/map/garden-raw/
+SPLIT = "split" if ART == "read" else "split-raw"
+G = Image.open(DRAFT / "island-look" / ART / "ground.png").convert("RGBA")
+OUT = DRAFT.parent.parent / "assets" / "map" / ("garden" if ART == "read" else "garden-raw"); OUT.mkdir(parents=True, exist_ok=True)
 rnd = random.Random(11)
 MW, MH = 1024, 640
 GRASS = (152, 224, 52, 255)
+if ART == "raw":
+    import numpy as np
+    v, c = np.unique(np.array(G.convert("RGB"))[:50].reshape(-1, 3), axis=0, return_counts=True); GRASS = tuple(int(x) for x in v[c.argmax()]) + (255,)
 
 def mirror(piece, length, axis):
     out = Image.new("RGBA", (length, piece.height) if axis == "h" else (piece.width, length))
@@ -29,13 +34,14 @@ def stamps(box, max_size):
     c = G.crop(box); w, h = c.size; px = c.load(); seen = set(); out = []
     for y in range(h):
         for x in range(w):
-            if (x, y) in seen or px[x, y][:3] == GRASS[:3]: continue
+            isg = lambda p: sum(abs(a - b) for a, b in zip(p[:3], GRASS[:3])) < 30
+            if (x, y) in seen or isg(px[x, y]): continue
             st, comp = [(x, y)], []; seen.add((x, y))
             while st:
                 a, b = st.pop(); comp.append((a, b))
                 for da, db in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                     q = (a + da, b + db)
-                    if 0 <= q[0] < w and 0 <= q[1] < h and q not in seen and px[q][:3] != GRASS[:3]: seen.add(q); st.append(q)
+                    if 0 <= q[0] < w and 0 <= q[1] < h and q not in seen and not isg(px[q]): seen.add(q); st.append(q)
             if 3 <= len(comp) <= max_size:
                 xs = [q[0] for q in comp]; ys = [q[1] for q in comp]
                 s = Image.new("RGBA", (max(xs) - min(xs) + 1, max(ys) - min(ys) + 1))
@@ -75,8 +81,8 @@ for k, a, b, c in ROADS:
 img.alpha_composite(mirror(widen_h(130), 150, "h"), (40, 272))
 blocked.append((36, 266, 194, 404))
 
-P = DRAFT / "props-look" / "split"
-I = DRAFT / "ink-look" / "split"
+P = DRAFT / "props-look" / SPLIT
+I = DRAFT / "ink-look" / SPLIT
 NAMES = {"tree": 0, "pine": 1, "tree_s": 2, "bush": 3, "lamp": 4, "sign": 5, "fountain": 6, "bench": 7, "urn": 8, "planter": 9}
 props = []
 def prop(name, fx, fy):
@@ -111,7 +117,8 @@ for i in range(2600):
     x, y = rnd.randrange(4, MW - 4 - s.width), rnd.randrange(4, MH - 4 - s.height)
     if free(x, y, s.width, s.height): img.alpha_composite(s, (x, y)); blocked.append((x - 1, y - 1, x + s.width + 1, y + s.height + 1))
 
-img.convert("RGB").save(HERE / "ground-raw.png")
+img.convert("RGB").save(HERE / ("ground-raw.png" if ART == "read" else "ground-orig.png"))
+if ART == "raw": img.convert("RGB").save(OUT / "ground.png")      # 原圖版不壓色數，直接用
 for name, i in NAMES.items(): Image.open(P / f"props-{i}.png").save(OUT / f"{name}.png")
 json.dump({
     "size": [MW, MH], "roads": ROADS, "props": props, "inks": inks, "gate": GATE,

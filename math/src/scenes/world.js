@@ -5,6 +5,7 @@
 import { el, show } from "../ui.js";
 import { sfx } from "../audio.js";
 import { ATTRS, GRADES, RANKS } from "../data.js";
+import { rankExamReady } from "../growth.js";
 import { writeSave } from "../save.js";
 import { loadMap } from "../world/maps.js";
 import { World, VW, VH } from "../world/world.js";
@@ -20,6 +21,8 @@ export async function worldScene(game, { map, from } = {}) {
   // 站的位置：從別張地圖走過來＝那個入口；不然用存檔的位置
   const pos = from ? M.arrive[from] : s.world?.map === map ? s.world : null;
   const W = new World(M, { look: s.look ?? "girl", attrHex: ATTRS[s.attr]?.color ?? "#8a7cff", pos });
+  // 存檔裡的位置在新版地圖上站不住（例如地圖改版了）：回到起點
+  if (!W.canStand(W.hero.x, W.hero.y)) Object.assign(W.hero, { x: M.start.x, y: M.start.y, dir: M.start.dir });
   const restoring = M.grade && s.flags?.restore === M.grade;   // 剛打倒這一區的王：回到地圖時演「恢復色彩」
   if (restoring) W.gray = 1;
 
@@ -85,7 +88,7 @@ export async function worldScene(game, { map, from } = {}) {
     busy = true; act.hidden = true; W.path = null; pending = null;
     sfx("click");
     // 剛下船的新生（還沒做共鳴儀式）：只能去共鳴之井、跟院長說話
-    const fn = !s.attr ? (t.id === "well" || t.id === "dean" ? ceremony : remind) : EVENTS[t.id];
+    const fn = !s.attr ? (t.id === "well" || t.id === "dean" ? ceremony : remind) : EVENTS[t.id] ?? (t.id.startsWith("b_") ? building : null);
     try { await (fn ?? (() => {}))(t); } finally { busy = false; }
   }
   const say = (lines, choices) => talk(root, lines, choices, { onLine: (L) => { const n = W.npcs.find((x) => x.id === L.who); if (n) n.talking = 9; } }).then((r) => { W.npcs.forEach((n) => (n.talking = 0)); return r; });
@@ -125,6 +128,28 @@ export async function worldScene(game, { map, from } = {}) {
     if (m.boss) game.go("battle", { grade: M.grade, mode: "boss" });
     else game.go("battle", { grade: M.grade, mode: "stage", stage: m.stage });
   }
+  // 建築門口：先放各棟的介紹（導師、學系小遊戲、商店……是第 6 批）
+  const BLURB = {
+    fire: "赤焰塔：紅磚高塔，屋頂的火盆從來沒熄過。火系導師最喜歡速算比賽。",
+    water: "蒼流館：水道繞著館流。水系導師常說：「一條路不通，就換一條。」",
+    ice: "白霜堂：屋簷掛著冰晶。冰系導師講話一個字、一個字，慢、慢、地、講。",
+    forest: "翠森苑：蓋在一棵大樹裡的學院，旁邊連著小溫室。森系導師什麼都要畫出來看。",
+    thunder: "紫雷閣：避雷針上常常劈啪閃著電光。雷系導師總是在問「為什麼」。",
+    dorm: "宿舍：新生住的地方。之後可以在這裡休息、佈置自己的房間。",
+    shop: "學院商店：櫥窗裡擺著帽子、斗篷和小家具。店長說貨還在路上。",
+    greenhouse: "分晶溫室：玻璃裡長著會發光的數晶果實。深處通往五～六年級的區域。",
+    clock: "刻度鐘塔：鐘面只有刻度沒有數字。準備好的魔數師可以在這裡參加升階考核。",
+  };
+  async function building(t) {
+    const key = t.id.slice(2);
+    if (key === "clock" && rankExamReady(s)) {
+      const r = await say([{ who: null, name: "刻度鐘塔", text: `鐘塔亮了！你可以參加升階考核（→ ${RANKS[s.rank + 1].name}）。` }], ["參加考核", "先不要"]);
+      if (r === 0) { leave(); game.go("battle", { grade: s.lastGrade ?? "g1", mode: "exam" }); }
+      return;
+    }
+    await say([{ who: null, name: t.label, text: BLURB[key] ?? "" }]);
+  }
+
   // 入學典禮（待辦 D2）：在共鳴之井旁，院長講話 → 共鳴儀式
   async function ceremony() {
     const n = W.npcs.find((x) => x.id === "dean");
