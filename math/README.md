@@ -9,6 +9,15 @@
 
 在專案根目錄執行 `node server.mjs`，然後開 http://localhost:5173/math/ 。目前還沒有遊戲程式，做到 M1 才會有。
 
+## 題庫工具
+
+遊戲本身不用裝任何東西；只有整理題庫的工具要先在 `math/` 底下跑一次 `npm install`。
+
+| 指令（在 math/ 底下） | 做什麼 |
+|---|---|
+| `npm run extract` | 讀出原始題庫 → `data/questions/work/` |
+| `npm run check` | 檢查改寫表：答案不變、數字不漏、沒有簡體字和中國用語、用詞符合世界觀 |
+
 ## 資料夾
 
 ```
@@ -18,7 +27,9 @@ math/
   data/
     questions/
       raw/<來源>/    下載的原始題庫，原樣不改，旁邊放 SOURCE.md（網址、授權、下載日期）
-      built/         轉換後給遊戲讀的 json（由 tools/ 產生，不手改）
+      work/          npm run extract 讀出的原題（統一格式、初步分學年），不進 git，隨時可重產
+      rewrite/       題目情境改寫表（一批一個 json，欄位說明見裡面的 README）
+      built/         合併後給遊戲讀的 json（由 tools/ 產生，不手改）
     quiz/            共鳴儀式（心理測驗）的題目與計分表
   tools/             題庫轉換、測驗模擬等 node 腳本
   src/               遊戲程式（M1 開始）
