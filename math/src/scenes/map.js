@@ -3,6 +3,7 @@
 import { el, show, mathText } from "../ui.js";
 import { ATTRS, GRADES, GRADE_IDS, RANKS, BRANCHES, UNIT_NAME, expToNext, MAX_LV, LEVEL_REWARDS, crystalLevel, maxHp } from "../data.js";
 import { rankExamReady, bookChapters, pagePageForm } from "../growth.js";
+import { reviewUnits, ACADEMY_OF } from "../practice.js";
 
 export function mapScene(game) {
   const s = game.save;
@@ -65,19 +66,26 @@ export function reviewPanel(game) {
   panel("錯題本：還沒算完的題目",
     r.length ? el("ul.list", {}, ...r.map(([k, v]) => el("li", {}, mathText(`${GRADES[v.grade]?.area ?? ""}｜${v.sample}`), el("span.left", {}, `再連對 ${v.left} 次就畢業`),
       v.branch && v.branch in UNIT_NAME ? el("button.btn.small", { onclick: () => { document.querySelector(".panel")?.remove(); game.go("lesson", { branch: v.branch }); } }, "學一學") : null))) : el("p", {}, "目前沒有。太厲害了！"),
-    el("p.note", {}, "錯題本裡的題型，之後的關卡會比較常出現，答對還有額外經驗。"));
+    el("p.note", {}, "錯題本裡的題型，之後的關卡會比較常出現，答對還有額外經驗。"),
+    reviewUnits(game.save).length ? el("button.btn.gold", { onclick: () => { document.querySelector(".panel")?.remove(); const [b] = reviewUnits(game.save)[0]; game.go("battle", { grade: "g1", mode: "practice", practice: { academy: ACADEMY_OF[b] ?? "ice", branch: b, level: 0, review: true } }); } }, "錯題本特訓（8 題）") : null);
 }
 
 export function growthPanel(game) {
   const s = game.save;
-  const days = Object.entries(s.diary).sort().slice(-7);
+  // 最近 30 天（企劃書 E7）：沒玩的日子也排出來（空的一格），一眼看出有沒有每天練
+  const days = Array.from({ length: 30 }, (_, i) => { const d = new Date(Date.now() - (29 - i) * 864e5).toISOString().slice(0, 10); return [d, s.diary[d] ?? { n: 0, ok: 0 }]; });
+  const played = days.filter(([, v]) => v.n).length, total = days.reduce((a, [, v]) => a + v.ok, 0);
+  const most = Math.max(1, ...days.map(([, v]) => v.n));
   panel("成長日記",
     el("div.sub", {}, "魔法分支熟練度（看最近 20 題）"),
     el("ul.list", {}, ...Object.entries(BRANCHES).map(([k, name]) => {
       const b = s.branches[k];
       return el("li", {}, name, el("span.left", {}, b.recent.length ? `${"★".repeat(b.best)}${"☆".repeat(5 - b.best)}（${b.recent.length} 題）` : "還沒練過"));
     })),
-    el("div.sub", {}, "最近 7 天"),
-    days.length ? el("div.bars", {}, ...days.map(([d, v]) => el("div.bar", { title: `${d}：${v.ok}/${v.n}` }, el("div.b", { style: { height: `${Math.min(100, v.n * 4)}%` } }), el("span", {}, d.slice(5))))) : el("p", {}, "今天開始寫第一頁吧！"),
+    el("div.sub", {}, `最近 30 天：練了 ${played} 天、答對 ${total} 題`),
+    el("div.bars.b30", {}, ...days.map(([d, v], i) => el("div.bar", { title: `${d}：答對 ${v.ok}／${v.n} 題` },
+      el("div.b", { style: { height: `${v.n ? Math.max(8, (100 * v.n) / most) : 0}%` } }, el("div.bok", { style: { height: v.n ? `${(100 * v.ok) / v.n}%` : "0" } })),
+      el("span", {}, i % 5 === 4 || i === 29 ? d.slice(8) : "")))),
+    el("p.note", {}, "柱子的高度＝那天答了幾題；亮的部分＝答對的。"),
     el("p.note", {}, "這些紀錄只存在這台裝置的瀏覽器裡。"));
 }

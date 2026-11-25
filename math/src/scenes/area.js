@@ -41,7 +41,9 @@ export function areaScene(game, { grade = "g1" } = {}) {
   const s = game.save, G = GRADES[grade];
   const star = (k) => s.stars[`${grade}-${k}`] ?? 0;
   const cleared = [1, 2, 3].map(star);
-  const gateOpen = cleared.every((v) => v > 0), bossDone = star("boss") > 0;
+  // 地下禁書庫（最後一區）：其他四區的墨水大王都淨化了，真身才會出來（世界觀：清完五區才看得到結局）
+  const othersLeft = grade === "jh" ? ["g1", "g2", "g34", "g56"].filter((g) => !(s.stars[`${g}-boss`] > 0)) : [];
+  const gateOpen = cleared.every((v) => v > 0) && othersLeft.length === 0, bossDone = star("boss") > 0;
   const restoring = s.flags?.restore === grade;
   const area = HD[grade];
 
@@ -82,7 +84,9 @@ export function areaScene(game, { grade = "g1" } = {}) {
   });
   if (!gateOpen) {
     const gate = el("button.areaunit.gate", {}, el("img", { src: A("hub/p/ink-18.png"), alt: "墨水封印門" }));
-    gate.addEventListener("click", () => say([{ who: "page", name: "頁頁", text: `墨水把門封住了……裡面有好濃的墨水味，是墨水大王！還有 ${cleared.filter((v) => !v).length} 群墨水怪，先把它們淨化，封印就會變弱。` }]));
+    gate.addEventListener("click", () => say([{ who: "page", name: "頁頁", text: cleared.some((v) => !v)
+      ? `墨水把門封住了……裡面有好濃的墨水味，是墨水大王！還有 ${cleared.filter((v) => !v).length} 群墨水怪，先把它們淨化，封印就會變弱。`
+      : `封印裡面是墨水大王的真身……可是封印還連著其他區域的墨水。先去淨化${othersLeft.map((g) => GRADES[g].area).join("、")}的墨水大王！` }]));
     gate.dataset.x = BX; stage.append(gate);
   } else if (!bossDone) {
     sprite((t) => (FRAMES[BOSS[grade]] ?? inkKingBabyFrame)("idle", t), BX, { tag: "墨水大王", onTap: () => fight("boss") });

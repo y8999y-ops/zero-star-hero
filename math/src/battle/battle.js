@@ -4,7 +4,8 @@ import { daily } from "../world/island-life.js";
 import { el, show, floatText, wait, mathText } from "../ui.js";
 import { Stage, fitWidth } from "./stage.js";
 import { withChoices } from "../questions/pool.js";
-import { ACADEMIES, MODES, buildPractice, buildArea } from "../practice.js";
+import { ACADEMIES, MODES, buildPractice, buildArea, buildReview } from "../practice.js";
+import { talk } from "../world/talk.js";
 import { UNIT_NAME } from "../data.js";
 import { ATTRS, GRADES, spellTier, maxHp, abilityBonus, crystalLevel, EXP, RANKS } from "../data.js";
 import { recordAnswer, addExp } from "../growth.js";
@@ -65,15 +66,16 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   if (tut) limit = 0;                       // 教學不限時
 
   const shield = boss ? g.boss : 0;
+  const prevBossStars = s.stars[`${gradeId}-boss`] ?? 0;          // 第一次打倒這一區的王（最終戰打完要接結局）
   const total = tut ? TUT_Q.length : exam ? EXAM : boss ? shield + 6 : prac ? 8 : COUNT;
-  const [qs] = await Promise.all([tut ? tutorialQuestions(s.attr) : prac ? buildPractice(s, practice.branch, practice.level, total) : buildArea(s, gradeId, stageIdx, total, boss, exam),
+  const [qs] = await Promise.all([tut ? tutorialQuestions(s.attr) : prac ? (practice.review ? buildReview(s, total) : buildPractice(s, practice.branch, practice.level, total)) : buildArea(s, gradeId, stageIdx, total, boss, exam),
     loadBattleHD(gradeId, AC?.area).then((hd) => hd ?? loadAreaArt(gradeId))]);
 
   // ── 畫面 ──
   const canvas = el("canvas.stage");
   const hud = el("div.hud");
   const bubble = el("div.bubble");
-  const wordPanel = el("div.word");
+  const wordPanel = el("div.word", { hidden: true });
   const line = el("div.pagepage");
   const answers = el("div.answers");
   const abilityBtn = el("button.btn.ability");
@@ -120,7 +122,16 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   drawAbility();
 
   if (boss) sfx("boss");
-  say(tut ? "" : prac ? `${AC.name}・${UNIT_NAME[practice.branch]}（${MODES[practice.level].name}）練習開始！` : exam ? "升階考核開始！答對 7 題就通過，不限時也沒關係，慢慢來。" : boss ? "墨水大王來了！每答對一題，就能打掉一格護盾。" : "墨水怪出現了！把它身上的題目算完，就能淨化它。");
+  say(tut ? "" : prac && practice.review ? "錯題本特訓開始！這些都是之前算錯的單元，這次一定可以。" : prac ? `${AC.name}・${UNIT_NAME[practice.branch]}（${MODES[practice.level].name}）練習開始！` : exam ? "升階考核開始！答對 7 題就通過，不限時也沒關係，慢慢來。" : boss ? "墨水大王來了！每答對一題，就能打掉一格護盾。" : "墨水怪出現了！把它身上的題目算完，就能淨化它。");
+
+  // 最終戰（地下禁書庫的墨水大王・真身，世界觀第 7 節第 4 點）：開打前、打到一半、最後一題都有對話
+  const final = boss && gradeId === "jh";
+  const K = (text) => ({ who: null, name: "墨水大王", text }), PG = (text) => ({ who: "page", name: "頁頁", text });
+  const scene = async (lines) => { if (!final || aborted) return; await talk(wrap, lines); };
+  wordPanel.hidden = true;
+  if (final) { stage.spawn(true); stage.monster.x = 262; stage.monster.target = 262; }      // 真身先站出來再說話
+  await scene([K("又來了……反正沒有人會算完我。每個人算到一半，就說「算了」。"), PG("才不是！見習魔數師一路把花園、書庫、鐘塔、溫室都算完了！"), K("那就算算看吧——把我身上所有的題目都算完！")]);
+  let saidHalf = false, saidLast = false;
 
   let qi = 0;
   for (; qi < qs.length && hp > 0; qi++) {
@@ -130,6 +141,12 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     // 上一隻還在散開（die）時也要叫新的一隻出來，不然這題會沒有怪物、沒有題目泡泡
     if (!stage.monster || stage.monster.state === "die") stage.spawn(boss, tut ? "ink" : null);
     drawHud();
+    if (final && !saidHalf && shieldLeft <= Math.ceil(shield / 2)) { saidHalf = true; await scene([K("……你真的一直算下去？明明那麼多題。"), PG("不會的就去圖書館學，學會了再回來算！我們不會說「算了」。")]); }
+    if (final && !saidLast && shieldLeft === 1) { saidLast = true; await scene([K("最後一題……是最早被丟進來的那一題。幾百年來，從來沒有人算完它。"), PG("見習魔數師，就是這一題！")]); }
+    // 王的招式（企劃書 E8）：每三題一次，讓題目變難讀一下——晃動、或被墨水噴到（過一下就散開）
+    const move = boss && qi > 0 && qi % 3 === 2 ? (qi % 2 ? "shake" : "ink") : null;
+    bubble.classList.remove("mv-shake", "mv-ink");
+    if (move) { sfx("boss"); stage.flinch(); say(move === "shake" ? "墨水大王使出「搖搖晃晃」！題目在晃……穩住！" : "墨水大王噴出「墨水霧」！等它散開再看清楚。"); }
 
     // 題目：計算題掛在怪物頭上；應用題放在下方面板
     const isWord = q.kind !== "calc";
@@ -137,7 +154,9 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     bubble.classList.toggle("one", isWord || q.text.length <= 26);     // 短的算式不換行（不會在「＝ ？」前面斷開）
     wordPanel.hidden = !isWord;
     wordPanel.replaceChildren(...(isWord ? [el("div.wtext", {}, mathText(q.text))] : []));
+    if (move) { bubble.classList.add(`mv-${move}`); if (move === "ink") setTimeout(() => bubble.classList.remove("mv-ink"), 1600); }
     if (q.tut) { say(q.tut.text); glow(q.tut.glow); }
+    else if (move) {}
     else if (qi > 0 || !isWord) say(isWord ? "仔細讀題目，一句一句來。" : q.prefix ?? "");
 
     const t0 = performance.now();
@@ -177,6 +196,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
         if (shieldLeft > 0) stage.flinch();
         if (shieldLeft <= 0) { stage.purify(); if (!s.stars[`${gradeId}-boss`]) { stage.restoreColor(); setTimeout(() => sfx("restore"), 400); s.flags = { ...(s.flags ?? {}), restore: gradeId }; } }
       } else stage.purify();
+      if (stage.monster && (!boss || shieldLeft <= 0)) { const k = stage.monster.kind; s.dex = { ...(s.dex ?? {}), [k]: (s.dex?.[k] ?? 0) + 1 }; }   // 墨水圖鑑
       await wait(650);
     } else {
       wrong++; combo = 0; q.missed = true;
@@ -212,7 +232,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   if (prac) {
     // 學院練習：星星記在練習紀錄（不影響主線區域的進度）；每日委託「練習一次」
     const pk = `${practice.branch}-${practice.level}`;
-    s.practice = { ...(s.practice ?? {}), [pk]: Math.max(s.practice?.[pk] ?? 0, stars) };
+    if (!practice.review) s.practice = { ...(s.practice ?? {}), [pk]: Math.max(s.practice?.[pk] ?? 0, stars) };
     const d = daily(s); d.practice = (d.practice ?? 0) + 1;
   } else if (!exam) s.stars[key] = Math.max(s.stars[key] ?? 0, stars);
   let bonus = stars * EXP.star;
@@ -224,8 +244,9 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   if (!prac) s.lastGrade = gradeId;
   writeSave(s);
 
+  const firstClear = boss && stars > 0 && !(prevBossStars > 0);
   const missed = [...new Set(qs.slice(0, right + wrong).filter((q) => q.missed).map((q) => q.branch))];
-  onEnd({ gradeId, mode, stageIdx, practice, missed, stars, passed, right, wrong, best, hp, sparks, gained, coins, ups, events, gentle: hp <= 0 && (s.mood >= 3 || gradeId === "g1" || gradeId === "g2") });
+  onEnd({ gradeId, mode, stageIdx, practice, missed, firstClear, stars, passed, right, wrong, best, hp, sparks, gained, coins, ups, events, gentle: hp <= 0 && (s.mood >= 3 || gradeId === "g1" || gradeId === "g2") });
 
   // ── 一題：等玩家點答案或時間到 ──
   function askOne(q) {

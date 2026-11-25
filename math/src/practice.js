@@ -113,3 +113,22 @@ export async function lessonExamples(branch) {
   const [h1, h2] = await buildPractice(save, branch, 1, 2);
   return [e1, e2, h1, h2].filter(Boolean);
 }
+
+// 舊存檔錯題本裡的題型（舊的出題器）→ 中年級單元
+const OLD_TYPE = { add20: "big", sub20: "big", make10: "big", add100: "big", sub100: "big", add10: "big", sub10: "big", addsub: "big",
+  times: "mul", mul2x1: "mul", missingFactor: "mul", muldiv: "mul", divide: "div", mixedOps: "mix", eq: "mix", linearEq: "mix",
+  fracAdd: "frac", decAdd: "dec", seqNext: "seq", time: "measure" };
+/** 錯題本特訓（企劃書 E4）：錯題本裡的單元和模式，各出幾題（題庫的應用題換成同單元的計算題）。舊分類的錯題跳過 */
+export function reviewUnits(save) {
+  const out = [];
+  for (const k of Object.keys(save.review ?? {})) {
+    const m = k.match(/^(\w+)-(e|h)$/), b = k.startsWith("bank:") ? k.slice(5) : m?.[1] ?? OLD_TYPE[k];
+    const unit = MID[b] ? b : OLD_TYPE[b];
+    if (unit && !out.some(([u]) => u === unit)) out.push([unit, m ? m[2] === "h" : false]);
+  }
+  return out;
+}
+export function buildReview(save, count = PRACTICE_COUNT) {
+  const units = reviewUnits(save);
+  return build(save, units.length ? units : [["big", false]], count, ["g34"], "g1");
+}

@@ -14,6 +14,8 @@ import { libraryScene } from "./scenes/library.js";
 import { openingScene } from "./scenes/opening.js";
 import { academyScene } from "./scenes/academy.js";
 import { lessonScene, lessonList } from "./scenes/lesson.js";
+import { endingScene } from "./scenes/ending.js";
+import { dexScene } from "./scenes/dex.js";
 import { shopScene, applyOutfit } from "./scenes/shop.js";
 import { dormScene } from "./scenes/dorm.js";
 import { resultScene } from "./scenes/result.js";
@@ -46,6 +48,8 @@ const game = {
       case "academy": return academyScene(this, arg);     // 學院裡面：兩種數學魔法的練習
       case "lesson": return lessonScene(this, arg);       // 圖書館・魔法教室（一種魔法）
       case "lessons": return lessonList(this);            // 圖書館・魔法教室（清單）
+      case "ending": return endingScene(this);            // 結局（最終戰打完）
+      case "dex": return dexScene(this);                  // 墨水圖鑑
       case "shop": return shopScene(this, arg);           // 學院商店
       case "dorm": return dormScene(this);                // 宿舍・你的房間
       case "library": return libraryScene(this);         // 千頁圖書館・大廳

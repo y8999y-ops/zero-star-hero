@@ -151,7 +151,7 @@ export class Stage {
     const kind = force ?? (boss ? BOSS[id] ?? "slime" : pool[Math.floor(Math.random() * pool.length)]);
     this.monster = kind === "slime"
       ? { boss, kind, x: START, hp: 1, state: "walk", t: 0, alpha: 1, inst: createFx(FX.slime, { palette: INK, seed: 1 + Math.floor(Math.random() * 50), hop: 14 }) }
-      : { boss, kind, x: START, hp: 1, state: "walk", t: 0, alpha: 1, phase: Math.random() * 2, flinch: 0 };
+      : { boss, kind, x: boss ? W - 70 : START, hp: 1, state: "walk", t: 0, alpha: 1, phase: Math.random() * 2, flinch: 0 };
   }
 
   /** 王被打掉一格護盾：縮一下（hurt 姿勢） */
@@ -164,6 +164,7 @@ export class Stage {
     const m = this.monster;
     if (!m || m.state !== "walk") return;
     m.target = timeFrac == null ? WAIT : START - (START - REACH) * timeFrac;
+    if (m.boss) m.target = Math.min(m.target, W - 70);         // 王比較大：站太右邊身體會被切掉
   }
 
   /** 施法。回傳 Promise：打中時 resolve。 */
