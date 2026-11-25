@@ -1,5 +1,5 @@
 // 千頁圖書館・大廳（企劃書 C3、C6）：《萬題之書》和頁頁的家，沒有被墨水污染。
-// 這裡放錯題本、成長日記、萬題之書（看頁頁的樣子和找回的章數）、往上層書庫（二年級的區域）。
+// 這裡放魔法教室（不會的題目來學，scenes/lesson.js）、錯題本、成長日記、萬題之書（看頁頁的樣子和找回的章數）、往上層書庫（二年級的區域）。
 // 室內地磚還沒有參考圖（待辦 A9），先用暫用的畫面：暖色木頭背景＋書架色塊。
 
 import { el, show } from "../ui.js";
@@ -31,6 +31,7 @@ export function libraryScene(game) {
     el("div.libtitle", {}, "千頁圖書館・大廳"),
     el("div.shelves"),
     el("div.librow", {},
+      spot("scroll", "魔法教室", "不會的題目來這裡學", () => { alive = false; game.go("lessons"); }),
       spot("books", "錯題本", review ? `還有 ${review} 種題目沒算完` : "目前沒有", () => reviewPanel(game)),
       spot("board", "成長日記", "熟練度星星、最近 7 天", () => growthPanel(game)),
       spot("crystal", "萬題之書", `找回 ${bookChapters(s)} 章`, () => bookTalk()),

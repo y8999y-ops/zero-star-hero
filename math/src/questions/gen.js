@@ -97,6 +97,15 @@ export const TYPES = {
     const a = ri(rnd, 2, 9), b = ri(rnd, 2, 9), k = ri(rnd, 2, 6);
     return { branch: "ratio", text: `${a}：${b} ＝ ${a * k}：x，x ＝ ？`, answer: `${b * k}`, wrong: [`${b + k}`, `${a * k + b - a}`, `${b * k + b}`], explain: `前項放大 ${k} 倍（${a}×${k}＝${a * k}），後項也要放大：${b}×${k}＝${b * k}`, math: { op: "ratio", a, b, k } };
   },
+  // ── 數列（紫雷閣）：d0 每次加一樣多、d1 每次減一樣多或加比較大的數、d2 每次乘一樣多 ──
+  seqNext(rnd, d) {
+    let list, ans, rule;
+    if (d === 2) { const a = ri(rnd, 1, 4), r = pick(rnd, [2, 3]); list = [a, a * r, a * r * r, a * r ** 3]; ans = a * r ** 4; rule = `每次都乘 ${r}`; }
+    else if (d === 1 && rnd() < 0.5) { const k = ri(rnd, 2, 9), a = ri(rnd, 5 * k, 9 * k); list = [a, a - k, a - 2 * k, a - 3 * k]; ans = a - 4 * k; rule = `每次都少 ${k}`; }
+    else { const k = d ? ri(rnd, 6, 15) : ri(rnd, 2, 5), a = ri(rnd, 1, 10); list = [a, a + k, a + 2 * k, a + 3 * k]; ans = a + 4 * k; rule = `每次都多 ${k}`; }
+    const last = list[3];
+    return { branch: "seq", text: `${list.join("，")}，下一個是？`, answer: `${ans}`, wrong: [`${ans + 1}`, `${last + (list[1] - list[0]) + 2}`, `${ans - 1}`], explain: `${rule}：${last} 的下一個是 ${ans}` };
+  },
 };
 
 // 每個學年、每個難度出哪些題型

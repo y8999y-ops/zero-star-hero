@@ -163,8 +163,8 @@ export const areaArtNow = (gradeId) => cache[AREA_OF[gradeId]] ?? null;
 // 版面數字跟像素版一樣（ground 上緣 132、mid 底部壓進 ground 6 格，都水平置中）。用 DOM 圖片疊在戰鬥畫布後面，畫布只畫角色和特效。
 const HD_AREA = { g1: "garden", g2: "library", g34: "clock" };
 const hdCache = {};
-export async function loadBattleHD(gradeId) {
-  const area = HD_AREA[gradeId];
+export async function loadBattleHD(gradeId, areaOverride = null) {
+  const area = areaOverride ?? HD_AREA[gradeId];
   if (!area) return null;
   if (hdCache[area] !== undefined) return hdCache[area];
   try {
@@ -174,4 +174,4 @@ export async function loadBattleHD(gradeId) {
   } catch (e) { console.warn("戰鬥背景（原圖）載入失敗", e); hdCache[area] = null; }
   return hdCache[area];
 }
-export const battleHDNow = (gradeId) => hdCache[HD_AREA[gradeId]] ?? null;
+export const battleHDNow = (gradeId, areaOverride = null) => hdCache[areaOverride ?? HD_AREA[gradeId]] ?? null;

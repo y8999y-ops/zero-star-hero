@@ -12,7 +12,8 @@ import { hubScene } from "./scenes/hub.js";
 import { areaScene } from "./scenes/area.js";
 import { libraryScene } from "./scenes/library.js";
 import { openingScene } from "./scenes/opening.js";
-import { minigameScene } from "./scenes/minigame.js";
+import { academyScene } from "./scenes/academy.js";
+import { lessonScene, lessonList } from "./scenes/lesson.js";
 import { shopScene, applyOutfit } from "./scenes/shop.js";
 import { dormScene } from "./scenes/dorm.js";
 import { resultScene } from "./scenes/result.js";
@@ -37,11 +38,14 @@ const game = {
       case "map": {                                       // 學院全景（2026-11-25 起沒有大地圖，改成點選）；從區域進去打的戰鬥打完回到區域
         const back = s.returnTo; s.returnTo = null;
         if (back?.scene === "area" && !arg.from) return areaScene(this, { grade: back.grade });
+        if (back?.scene === "academy" && !arg.from) return academyScene(this, { academy: back.academy });
         return hubScene(this, arg);
       }
       case "area": return areaScene(this, arg);           // 受污染的區域（三群墨水怪＋王）
       case "opening": return openingScene(this, arg);     // 開場動畫＋選外觀
-      case "minigame": return minigameScene(this, arg);   // 學系小遊戲
+      case "academy": return academyScene(this, arg);     // 學院裡面：兩種數學魔法的練習
+      case "lesson": return lessonScene(this, arg);       // 圖書館・魔法教室（一種魔法）
+      case "lessons": return lessonList(this);            // 圖書館・魔法教室（清單）
       case "shop": return shopScene(this, arg);           // 學院商店
       case "dorm": return dormScene(this);                // 宿舍・你的房間
       case "library": return libraryScene(this);         // 千頁圖書館・大廳
@@ -49,7 +53,7 @@ const game = {
       case "battle": {
         // 魔法轉場（對應玩家屬性）：全蓋住時建立戰鬥畫面；打完再轉場到結算
         const end = (r) => battleOut(s.attr, () => (r.mode === "tutorial" ? afterTutorial(this, r) : resultScene(this, r)));
-        return battleIn(s.attr, () => new Promise((ready) => runBattle(this, arg.grade, arg.mode, arg.stage ?? 0, end, ready)), { boss: arg.mode === "boss" });
+        return battleIn(s.attr, () => new Promise((ready) => runBattle(this, arg.grade ?? "g1", arg.mode, arg.stage ?? 0, end, ready, arg.practice ?? null)), { boss: arg.mode === "boss" });
       }
     }
   },

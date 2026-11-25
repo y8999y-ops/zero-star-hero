@@ -74,7 +74,7 @@ export function recordAnswer(s, q, ok, sec) {
     if (after > before) events.push({ kind: "crystal", lv: after });
   } else {
     // 錯題本：同題型連續答對 3 次才移出（企劃書 7.6）
-    s.review[q.typeKey] = { left: 3, sample: q.text, grade: q.grade };
+    s.review[q.typeKey] = { left: 3, sample: q.text, grade: q.grade, branch: q.branch };
   }
   return { exp, events };
 }

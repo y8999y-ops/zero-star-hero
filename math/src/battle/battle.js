@@ -1,8 +1,11 @@
 // 一關的流程（企劃書 7.2～7.5）：出題 → 答題 → 施法或受傷 → 下一隻；王有護盾；結束時結算星星與成長。
 
+import { daily } from "../world/island-life.js";
 import { el, show, floatText, wait } from "../ui.js";
 import { Stage, fitWidth } from "./stage.js";
 import { buildStage, withChoices } from "../questions/pool.js";
+import { ACADEMIES, buildPractice } from "../practice.js";
+import { BRANCHES } from "../data.js";
 import { ATTRS, GRADES, spellTier, maxHp, abilityBonus, crystalLevel, EXP, RANKS } from "../data.js";
 import { recordAnswer, addExp } from "../growth.js";
 import { writeSave } from "../save.js";
@@ -44,13 +47,14 @@ function tutorialQuestions(attr) {
 const EXAM = 10;      // 升階考核題數，答對 7 題通過
 
 /**
- * mode："stage"（stage 0～2）、"boss"、"exam"。onEnd(result) 回到地圖或重玩。
+ * mode："stage"（stage 0～2）、"boss"、"exam"、"practice"（學院練習：practice＝{ academy, branch, level }）。onEnd(result) 回到地圖或重玩。
  */
-export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
+export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, practice = null) {
   const s = game.save;
   const g = GRADES[gradeId];
   const attr = ATTRS[s.attr];
-  const boss = mode === "boss", exam = mode === "exam", tut = mode === "tutorial";
+  const boss = mode === "boss", exam = mode === "exam", tut = mode === "tutorial", prac = mode === "practice";
+  const AC = prac ? ACADEMIES[practice.academy] : null;
 
   // 限時：學年規則 × 心情題 × 冰系能力（企劃書 4.3、5）
   let limit = s.settings.timer ? g.time : 0;
@@ -61,8 +65,9 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
   if (tut) limit = 0;                       // 教學不限時
 
   const shield = boss ? g.boss : 0;
-  const total = tut ? TUT_Q.length : exam ? EXAM : boss ? shield + 6 : COUNT;
-  const [qs] = await Promise.all([tut ? tutorialQuestions(s.attr) : buildStage(s, gradeId, boss ? 2 : exam ? 1 : stageIdx, total, boss), loadBattleHD(gradeId).then((hd) => hd ?? loadAreaArt(gradeId))]);
+  const total = tut ? TUT_Q.length : exam ? EXAM : boss ? shield + 6 : prac ? 8 : COUNT;
+  const [qs] = await Promise.all([tut ? tutorialQuestions(s.attr) : prac ? buildPractice(s, practice.branch, practice.level, total) : buildStage(s, gradeId, boss ? 2 : exam ? 1 : stageIdx, total, boss),
+    loadBattleHD(gradeId, AC?.area).then((hd) => hd ?? loadAreaArt(gradeId))]);
 
   // ── 畫面 ──
   const canvas = el("canvas.stage");
@@ -78,11 +83,11 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
   show(wrap);
   const app = document.querySelector("#app");
   fitWidth(app.clientWidth / app.clientHeight);          // 戰鬥畫面的寬度跟著螢幕比例
-  const stage = new Stage(canvas, gradeId, s.look, s.attr, s.settings);
+  const stage = new Stage(canvas, gradeId, s.look, s.attr, s.settings, AC ? { area: AC.area, kinds: [AC.monster] } : {});
   onReady?.();   // 戰鬥畫面準備好了（轉場可以打開）
   window.__stage = stage;   // 開發用：在主控台操作戰鬥畫面
   // 這一區的王已經打倒過＝已經恢復色彩；還沒的話是被墨水弄灰的樣子
-  stage.gray = s.stars[`${gradeId}-boss`] ? 0 : 1;
+  stage.gray = prac || s.stars[`${gradeId}-boss`] ? 0 : 1;          // 學院沒有被污染
 
   let hp = maxHp(s.lv), combo = 0, best = 0, right = 0, wrong = 0, sparks = 0, shieldLeft = shield, gained = 0;
   let uses = (attr.uses ?? 0) + (attr.uses ? abilityBonus(s.lv) : 0);
@@ -122,7 +127,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
   drawAbility();
 
   if (boss) sfx("boss");
-  say(tut ? "" : exam ? "升階考核開始！答對 7 題就通過，不限時也沒關係，慢慢來。" : boss ? "墨水大王來了！每答對一題，就能打掉一格護盾。" : "墨水怪出現了！把它身上的題目算完，就能淨化它。");
+  say(tut ? "" : prac ? `${AC.name}・${BRANCHES[practice.branch]}練習開始！把墨水怪身上的題目算完。` : exam ? "升階考核開始！答對 7 題就通過，不限時也沒關係，慢慢來。" : boss ? "墨水大王來了！每答對一題，就能打掉一格護盾。" : "墨水怪出現了！把它身上的題目算完，就能淨化它。");
 
   let qi = 0;
   for (; qi < qs.length && hp > 0; qi++) {
@@ -180,7 +185,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
       } else stage.purify();
       await wait(650);
     } else {
-      wrong++; combo = 0;
+      wrong++; combo = 0; q.missed = true;
       if (!exam && !tut) { hp--; stage.hurt(); sfx("hurt"); }
       else if (tut) sfx("hurt");
       stage.setPage("worried", 3);
@@ -210,17 +215,23 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
   else if (hp > 0 && (!boss || shieldLeft <= 0)) stars = acc >= 1 ? 3 : acc >= 0.9 ? 2 : acc >= 0.7 ? 1 : 0;
   if (stars === 0 && !exam && hp > 0 && (!boss || shieldLeft <= 0)) stars = 1;   // 有打完就至少一顆星
   const key = `${gradeId}-${boss ? "boss" : stageIdx + 1}`;
-  if (!exam) s.stars[key] = Math.max(s.stars[key] ?? 0, stars);
+  if (prac) {
+    // 學院練習：星星記在練習紀錄（不影響主線區域的進度）；每日委託「練習一次」
+    const pk = `${practice.branch}-${practice.level}`;
+    s.practice = { ...(s.practice ?? {}), [pk]: Math.max(s.practice?.[pk] ?? 0, stars) };
+    const d = daily(s); d.practice = (d.practice ?? 0) + 1;
+  } else if (!exam) s.stars[key] = Math.max(s.stars[key] ?? 0, stars);
   let bonus = stars * EXP.star;
   if (exam && passed) { s.rank++; bonus += EXP.rankUp; }
   gained += bonus;
   const ups = addExp(s, gained);
-  const coins = exam ? 0 : 10 + stars * 7;
+  const coins = exam ? 0 : prac ? 5 + stars * 4 : 10 + stars * 7;
   s.coins += coins;
-  s.lastGrade = gradeId;
+  if (!prac) s.lastGrade = gradeId;
   writeSave(s);
 
-  onEnd({ gradeId, mode, stageIdx, stars, passed, right, wrong, best, hp, sparks, gained, coins, ups, events, gentle: hp <= 0 && (s.mood >= 3 || gradeId === "g1" || gradeId === "g2") });
+  const missed = [...new Set(qs.slice(0, right + wrong).filter((q) => q.missed).map((q) => q.branch))];
+  onEnd({ gradeId, mode, stageIdx, practice, missed, stars, passed, right, wrong, best, hp, sparks, gained, coins, ups, events, gentle: hp <= 0 && (s.mood >= 3 || gradeId === "g1" || gradeId === "g2") });
 
   // ── 一題：等玩家點答案或時間到 ──
   function askOne(q) {

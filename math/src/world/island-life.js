@@ -1,5 +1,5 @@
-// 學院島上的日常（企劃書 3.7）：導師、同學、布告欄委託、散落的書頁、數字鎖寶箱、墨水小點。
-// 這裡只放資料和出題；地圖上的位置在 maps.js，對話和事件在 scenes/world.js。
+// 學院的日常：布告欄委託、散落的書頁、數字鎖寶箱、墨水小點（同學的資料留給對話頭像用；2026-11-25 起同學不再出小問題）。
+// 這裡只放資料和出題；位置和事件在 scenes/hub.js。
 
 export const today = () => new Date().toISOString().slice(0, 10);
 export function seeded(seed) {
@@ -43,8 +43,8 @@ export function riddleFor(s, st) {
 // ── 布告欄：每日委託 ──
 export const QUESTS = [
   { id: "q1", text: "今天答對 10 題", done: (s) => (s.diary?.[today()]?.ok ?? 0) >= 10, coins: 15 },
-  { id: "q2", text: "玩一次學系小遊戲", done: (s) => (s.daily?.mini ?? 0) >= 1, coins: 10 },
-  { id: "q3", text: "解開 2 位同學的小問題", done: (s) => (s.daily?.riddles?.length ?? 0) >= 2, coins: 10 },
+  { id: "q2", text: "在任一座學院練習一次", done: (s) => (s.daily?.practice ?? 0) >= 1, coins: 10 },
+  { id: "q3", text: "在圖書館的魔法教室學一課", done: (s) => (s.daily?.lesson ?? 0) >= 1, coins: 10 },
 ];
 
 // ── 散落的書頁：每一張是一則數學小知識 ──

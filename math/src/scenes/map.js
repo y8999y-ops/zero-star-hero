@@ -63,7 +63,8 @@ function panel(title, ...body) {
 export function reviewPanel(game) {
   const r = Object.entries(game.save.review);
   panel("錯題本：還沒算完的題目",
-    r.length ? el("ul.list", {}, ...r.map(([k, v]) => el("li", {}, `${GRADES[v.grade]?.area ?? ""}｜${v.sample}`, el("span.left", {}, `再連對 ${v.left} 次就畢業`)))) : el("p", {}, "目前沒有。太厲害了！"),
+    r.length ? el("ul.list", {}, ...r.map(([k, v]) => el("li", {}, `${GRADES[v.grade]?.area ?? ""}｜${v.sample}`, el("span.left", {}, `再連對 ${v.left} 次就畢業`),
+      v.branch ? el("button.btn.small", { onclick: () => { document.querySelector(".panel")?.remove(); game.go("lesson", { branch: v.branch }); } }, "學一學") : null))) : el("p", {}, "目前沒有。太厲害了！"),
     el("p.note", {}, "錯題本裡的題型，之後的關卡會比較常出現，答對還有額外經驗。"));
 }
 

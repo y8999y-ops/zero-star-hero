@@ -1,18 +1,15 @@
 // 學院全景（使用者 2026-11-25：改成 2D 橫版、不要大地圖、點選就好；背景、建築、小物件用 AI 原圖）。
 // 一張可以左右滑的學院橫幅：天空（會比前景慢一點，有遠近感）→ 樹籬 → 建築一排 → 石板路。
-// 點建築、點人、點地上的東西就觸發；原本大地圖上的事情都搬到這裡（許願、院長、導師小遊戲、同學的小問題、書頁、寶箱、墨水小點、布告欄、溫室盆栽）。
+// 點建築、點人、點地上的東西就觸發：許願、院長、書頁、寶箱、墨水小點、布告欄、溫室盆栽；五座學院點了直接進去練數學（scenes/academy.js）。
 // 版面單位：畫面高 270 格（跟以前的地圖畫面一樣），1 格＝畫面高 / 270。建築和小物件是原圖平滑縮小；人物、怪物是程式畫的像素（放大、方方的）。
 
 import { el, show } from "../ui.js";
 import { sfx } from "../audio.js";
 import { ATTRS, RANKS } from "../data.js";
 import { rankExamReady, addExp } from "../growth.js";
-import { MENTORS, mentorFrame } from "../../fx/mentor.js";
 import { deanFrame } from "../../fx/dean.js";
-import { heroWalkFrame } from "../../fx/hero-walk.js";
 import { pageFrame } from "../../fx/pickups.js";
-import { GAMES } from "./minigame.js";
-import { STUDENTS, PAGES, CHESTS, QUESTS, riddleFor, daily } from "../world/island-life.js";
+import { PAGES, CHESTS, QUESTS, riddleFor, daily } from "../world/island-life.js";
 import { writeSave } from "../save.js";
 import { talk } from "../world/talk.js";
 
@@ -52,14 +49,9 @@ const DECOR = [
   ["p/chalkboard.png", 2850, 40, 1],
   ["p/planter.png", 3130, 26, 1], ["p/lamp2.png", 3400, 46], ["p/bed_yellow.png", 3600, 24, 1],
 ];
-// 人：院長在井旁；導師站在自己學院門口右邊；同學散在各處
+// 人：只有院長在井旁（2026-11-25 使用者：導師、同學的對話全部取消；學院點了直接進去練習）
 const NPCS = [
   { id: "dean", name: "圓周院長", x: 900, fn: (t) => deanFrame("idle", t) },
-  ...["fire", "water", "ice", "forest", "thunder"].map((k) => {
-    const b = BUILDINGS.find((x) => x.id === `b_${k}`);
-    return { id: `m_${k}`, mentor: k, name: MENTORS[k].name, x: b.x + 78, fn: (t) => mentorFrame(k, "idle", t) };
-  }),
-  ...STUDENTS.map((st, i) => ({ id: st.id, student: st, name: st.name, x: [1238, 640, 400, 2960, 3170, 1530][i], fn: (t) => heroWalkFrame(st.look, "down", "idle", t, st.attr, st.hair) })),
 ];
 // 書頁、寶箱、墨水小點藏的地方（有理由：書頁卡在樹下、長椅底下、攤車旁……）
 const PAGE_AT = [610, 1170, 1520, 1820, 2080, 2340, 2600, 2850, 3130, 3400, 336, 830];
@@ -130,9 +122,9 @@ export function hubScene(game, { from } = {}) {
     u = app.clientHeight / U;
     world.style.width = `${PW * u}px`;
     Object.assign(far.style, { top: `${(GY - 58) * u}px`, height: `${56 * u}px`, backgroundSize: `auto ${56 * u}px` });
-    // 地板有透視：用 CSS 3D 往後倒，越後面石板越小（遠近感）；草地也一樣
-    Object.assign(floor.style, { top: `${(GY - 6) * u}px`, height: `${76 * u}px`, backgroundSize: `auto ${40 * u}px`, transform: `perspective(${200 * u}px) rotateX(28deg)` });
-    Object.assign(lawn.style, { top: `${(GY + 50) * u}px`, height: `${60 * u}px`, backgroundSize: `auto ${40 * u}px`, transform: `perspective(${160 * u}px) rotateX(40deg)` });
+    // 地板是平的（2026-11-25 使用者：3D 透視會讓地板變形）；遠近感改用顏色：後面亮、前面暗一點（樣式在 .hubfloor::after）
+    Object.assign(floor.style, { top: `${(GY - 6) * u}px`, height: `${58 * u}px`, backgroundSize: `auto ${22 * u}px` });
+    Object.assign(lawn.style, { top: `${(GY + 52) * u}px`, bottom: "0", backgroundSize: `auto ${30 * u}px` });
     for (const it of items) {
       const n = it.node, im = n.tagName === "IMG" ? n : n.querySelector("img, canvas");
       if (!im) { const w = Number(n.dataset.w) * u, h = it.h * u; Object.assign(n.style, { left: `${it.x * u - w / 2}px`, top: `${it.y * u - h}px`, width: `${w}px`, height: `${h}px` }); continue; }
@@ -148,7 +140,7 @@ export function hubScene(game, { from } = {}) {
   root.querySelectorAll("img").forEach((im) => { if (!im.complete) im.addEventListener("load", layout, { once: true }); });
   layout();
   // 一開始看哪裡：從哪裡回來就看哪裡；沒有的話是上次的位置；新生是碼頭
-  const focus = { library: 1360, garden: 3520, clock: 3270, shop: 730, dorm: 480, minigame: null }[from];
+  const focus = { library: 1360, garden: 3520, clock: 3270, shop: 730, dorm: 480 }[from] ?? BUILDINGS.find((b) => b.id === `b_${from}`)?.x;
   const startX = focus ?? s.hub?.x ?? (s.attr ? 1000 : 180);
   pan.scrollLeft = startX * u - app.clientWidth / 2;
 
@@ -185,7 +177,7 @@ export function hubScene(game, { from } = {}) {
     t = { ...t, node: e.currentTarget };          // 撿到、打開的東西要從畫面上拿掉
     busy = true; sfx("click");
     label.hidden = false; label.textContent = t.name;
-    const fn = !s.attr ? (t.id === "well" || t.id === "dean" ? ceremony : remind) : EVENTS[t.id] ?? PREFIX[t.id.split("_")[0]] ?? (t.student ? student : null);
+    const fn = !s.attr ? (t.id === "well" || t.id === "dean" ? ceremony : remind) : EVENTS[t.id] ?? PREFIX[t.id.split("_")[0]];
     try { await (fn ?? (() => {}))(t); } finally { busy = false; label.hidden = true; refreshCoins(); }
   }
   function refreshCoins() { const c = hud.querySelector(".coins"); if (c) c.textContent = `${s.coins} 晶幣`; }
@@ -225,27 +217,8 @@ export function hubScene(game, { from } = {}) {
       if (ready.length && r === 0) { ready.forEach((q) => { d.claimed.push(q.id); s.coins += q.coins; }); writeSave(s); sfx("level"); }
     },
   };
-  const BLURB = {
-    fire: "赤焰塔：紅磚高塔，屋頂的火盆從來沒熄過。火系導師最喜歡速算比賽。",
-    water: "蒼流館：水道繞著館流。水系導師常說：「一條路不通，就換一條。」",
-    ice: "白霜堂：屋簷掛著冰晶。冰系導師講話一個字、一個字，慢、慢、地、講。",
-    forest: "翠森苑：蓋在一棵大樹裡的學院，旁邊連著小溫室。森系導師什麼都要畫出來看。",
-    thunder: "紫雷閣：避雷針上常常劈啪閃著電光。雷系導師總是在問「為什麼」。",
-    clock: "刻度鐘塔：鐘面只有刻度沒有數字。",
-  };
-  const MENTOR_TALK = {
-    fire: ["快快快！算數就是要快！", "腦袋轉得快，魔法就放得快。來比一場？"],
-    water: ["這條路不通的時候，就換一條路。", "同一個答案，可以有好多種算法喔。"],
-    ice: ["慢……慢……來。", "一……步……一……步……，最……後……再……檢……查。"],
-    forest: ["看不懂的時候，就把它畫出來！", "一排一排數，比一顆一顆數快多了。"],
-    thunder: ["為什麼？為什麼？為什麼？", "數字排在一起，一定藏著規律。找到它！"],
-  };
-  async function mentor(k) {
-    const M = MENTORS[k], mine = s.attr === k, who = `m_${k}`;
-    const r = await say([{ who, name: M.name, text: (mine ? "喔！是我們學系的新生。" : "") + pick(MENTOR_TALK[k]) },
-      { who, name: M.name, text: `要挑戰「${GAMES[k].title}」嗎？${s.mini?.[k] ? `你的最佳紀錄是 ${s.mini[k]}。` : ""}` }], [`挑戰「${GAMES[k].title}」`, "下次再說"]);
-    if (r === 0) { leave(); game.go("minigame", { id: k }); }
-  }
+  const BLURB = { clock: "刻度鐘塔：鐘面只有刻度沒有數字。" };
+
   const PREFIX = {
     b: async (t) => {
       const key = t.id.slice(2);
@@ -260,11 +233,9 @@ export function hubScene(game, { from } = {}) {
         else if (exam && r === 1) { leave(); game.go("battle", { grade: s.lastGrade ?? "g1", mode: "exam" }); }
         return;
       }
-      // 學院：先介紹，再找導師
-      const r = await say([{ who: null, name: t.name, text: BLURB[key] ?? "" }], ["找導師", "離開"]);
-      if (r === 0) await mentor(key);
+      // 學院：直接進去練習（每座學院兩種數學魔法）
+      leave(); game.go("academy", { academy: key });
     },
-    m: async (t) => mentor(t.mentor),
     page: async (t) => {
       const i = Number(t.id.split("_")[1]); s.pages = [...new Set([...(s.pages ?? []), i])]; s.coins += 5; writeSave(s); sfx("good");
       tapped(t.node);
@@ -287,14 +258,6 @@ export function hubScene(game, { from } = {}) {
     },
   };
   function tapped(node) { if (node) { node.style.transition = "opacity .4s"; node.style.opacity = 0; setTimeout(() => node.remove(), 400); } }
-  async function student(t) {
-    const st = t.student, d = daily(s);
-    if (d.riddles.includes(st.id)) { await say([{ who: st.id, name: st.name, text: st.line }]); return; }
-    const q = riddleFor(s, st);
-    const r = await say([{ who: st.id, name: st.name, text: st.line }, { who: st.id, name: st.name, text: `對了，可以幫我算一下嗎？${q.text}` }], q.options.map(String));
-    if (q.options[r] === q.answer) { d.riddles.push(st.id); s.coins += 5; writeSave(s); sfx("good"); await say([{ who: st.id, name: st.name, text: "對耶！謝謝你～這個給你。（＋5 晶幣）" }]); }
-    else { sfx("hurt"); await say([{ who: st.id, name: st.name, text: "嗯……好像不太對。我們再想想看？" }]); }
-  }
   // 分晶溫室：數晶盆栽（每答對 15 題長大一階，第 4 階收成）；深處通往五～六年級的區域
   async function planter() {
     const okTotal = Object.values(s.diary ?? {}).reduce((a, d) => a + (d.ok ?? 0), 0);
