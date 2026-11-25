@@ -12,6 +12,7 @@ export function titleScene(game) {
     el("div.logo", {}, el("span.l1", {}, "魔數"), el("span.l2", {}, "學院")),
     el("div.tag", {}, "數學是一種魔法"),
     el("button.btn.gold.big", { onclick: () => { sfx("click"); started ? game.go("map") : game.go("look"); } }, started ? "繼續冒險" : "開始入學"),
+    el("button.btn", { onclick: () => game.go("settings", { from: "title" }) }, "設定"),
     started ? el("button.btn.red.small", { onclick: () => { if (confirm("確定要重新入學嗎？所有進度都會清除。")) { game.save = resetSave(); game.go("look"); } } }, "重新入學") : null,
     el("div.foot", {}, "題庫：TMMLU+（MIT）、Calc-ape210k（MIT），已改寫成學院情境"),
   ));
@@ -28,7 +29,7 @@ export function lookScene(game) {
   ));
 }
 
-export async function introScene(game) {
+export async function introScene(game, { replay = false, back = "title" } = {}) {
   const root = el("div.screen.story", {}, el("div.storybg"));
   show(root);
   await dialog(root, [
@@ -37,7 +38,9 @@ export async function introScene(game) {
     { who: "", text: "（院長講了很久很久。）" },
     { who: "圓周院長", text: "咳。總之，新生要先到「共鳴之井」，讓井水看看你喜歡怎麼想。" },
   ]);
-  game.go("resonance");
+  // 從設定重看時，看完回設定，不重做入學流程
+  if (replay) game.go("settings", { from: back });
+  else game.go("resonance");
 }
 
 export async function afterResonance(game) {

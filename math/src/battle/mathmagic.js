@@ -1,12 +1,19 @@
 // 數學變魔法（企劃書 7.8）：答對後，把算式變成看得見的光球，再化成魔法。
 // 加法：兩堆光球合在一起，個位湊滿 10 顆就融成一顆「十」的大光球（進位）。
 // 減法：不夠減時先把一顆大光球拆成 10 顆小光球（借位），再讓要減掉的光球飄走熄滅。
+// 乘法：一列光球往下複製成 a 列，排成 a×b 的方陣；數字太大時改用面積模型（十位和個位分開算再相加）。
+// 除法：光球像發牌一樣一顆一顆平分成 b 束，每束框起來就是答案。
 // 光球排成「十格板」（上下兩排、一排 5 格），跟課本一樣，一眼看得出湊十。
 //
 // 用法：const m = new MathMagic(colorHex); m.start({ op: "+", a: 7, b: 5 }) → Promise（光球飛出去時 resolve）
 //      每格 m.update(dt)、m.draw(painter)；m.skip() 加速（點一下畫面）。
 
-import { hex as pfHex } from "../../../pixelfx/src/core/index.js";
+import { hex as pfHex, FONTS } from "../../../pixelfx/src/core/index.js";
+
+// pixelfx 的大字沒有 × 和 ÷，在這裡補上（不改函式庫本身）
+const glyph = (src) => { const rows = src.split("|"); return { w: rows[0].length, rows: rows.map((r) => [...r].map((c) => c === "#")) }; };
+FONTS.big.glyphs["×"] ??= glyph(".....|.....|#...#|.#.#.|..#..|.#.#.|#...#");
+FONTS.big.glyphs["÷"] ??= glyph(".....|..#..|.....|#####|.....|..#..|.....");
 
 const ONE_R = 4, TEN_R = 7;
 const SLOT = 11;                // 十格板一格的間距
@@ -45,8 +52,8 @@ export class MathMagic {
     return [gx + (k % 5) * SLOT, Y0 + Math.floor(k / 5) * SLOT + frame * (SLOT * 2 + 6)];
   }
 
-  orb(kind, x, y, color, born) {
-    const o = { kind, x, y, tx: x, ty: y, color, born, alpha: 0, gone: false, fade: false, launch: false, vy: 0 };
+  orb(kind, x, y, color, born, r) {
+    const o = { kind, x, y, tx: x, ty: y, color, born, alpha: 0, gone: false, fade: false, launch: false, vy: 0, r };
     this.orbs.push(o);
     return o;
   }
@@ -54,15 +61,17 @@ export class MathMagic {
   flash(x, y, r) { this.flashes.push({ x, y, r, t: 0 }); }
 
   start({ op, a, b }) {
-    this.active = true; this.t = 0; this.speed = 1; this.orbs = []; this.events = []; this.flashes = []; this.boards = [];
-    const result = op === "+" ? a + b : a - b;
+    this.active = true; this.t = 0; this.speed = 1; this.orbs = []; this.events = []; this.flashes = []; this.boards = []; this.groups = []; this.blocks = [];
+    const result = op === "+" ? a + b : op === "-" ? a - b : op === "×" ? a * b : a / b;
     this.text = `${a}${op}${b}`;
     this.full = `${a}${op}${b}=${result}`;
     this.textShown = 0;
     let done;
     const promise = new Promise((r) => (done = r));
     if (op === "+") this.planAdd(a, b, result, done);
-    else this.planSub(a, b, result, done);
+    else if (op === "-") this.planSub(a, b, result, done);
+    else if (op === "×") (a * b <= 60 ? this.planMul(a, b, result, done) : this.planArea(a, b, result, done));
+    else this.planDiv(a, b, result, done);
     return promise;
   }
 
@@ -142,6 +151,78 @@ export class MathMagic {
     this.finish(t + 0.5, result, done);
   }
 
+  // ── 乘法：方陣 ──
+  planMul(a, b, result, done) {
+    const S = a > 6 || b > 6 ? 8 : 10, r = S > 8 ? 3.5 : 3;
+    const x0 = 144 - ((b - 1) * S) / 2, y0 = 70;
+    // 第一列先出現
+    const first = [];
+    for (let j = 0; j < b; j++) first.push(this.orb("one", x0 + j * S, y0, this.c, 0.1 + j * 0.04, r));
+    // 一列一列往下複製（每複製一列閃一下）
+    const step = a > 1 ? Math.min(0.14, 0.6 / (a - 1)) : 0;
+    for (let i = 1; i < a; i++) {
+      this.at(0.4 + i * step, () => {
+        this.flash(x0 - 8, y0 + i * S, 4);
+        for (let j = 0; j < b; j++) {
+          const o = this.orb("one", x0 + j * S, y0 + (i - 1) * S, i % 2 ? this.cB : this.c, this.t, r);
+          o.alpha = 1; o.ty = y0 + i * S;
+        }
+      });
+    }
+    // 方陣外框
+    this.at(0.5 + a * step, () => this.groups.push({ x0: x0 - S / 2, y0: y0 - S / 2, x1: x0 + (b - 0.5) * S, y1: y0 + (a - 0.5) * S }));
+    this.finish(0.75 + a * step, result, done);
+  }
+
+  // ── 乘法（大數）：面積模型，十位那塊＋個位那塊 ──
+  planArea(a, b, result, done) {
+    const tens = Math.floor(a / 10) * 10, ones = a % 10;
+    const u = Math.min(2.4, 190 / a), h = Math.max(18, b * 5), x0 = 144 - (a * u) / 2, y0 = 72;
+    const A = { x: x0, y: y0, w: tens * u, h, color: this.c, t0: 0.1, label: `${tens}×${b}=${tens * b}` };
+    const B = { x: x0 + tens * u + 2, y: y0, w: Math.max(2, ones * u), h, color: this.cB, t0: 0.45, label: ones ? `${ones}×${b}=${ones * b}` : "" };
+    this.blocks = ones ? [A, B] : [A];
+    this.at(0.95, () => { for (const k of this.blocks) k.sum = true; });
+    this.at(1.25, () => {
+      // 兩塊變成光球飛出去
+      for (const k of this.blocks) {
+        const n = Math.max(2, Math.round(k.w / 12));
+        for (let i = 0; i < n; i++) {
+          const o = this.orb(i % 3 ? "one" : "ten", k.x + ((i + 0.5) * k.w) / n, k.y + k.h / 2, k.color, this.t);
+          o.alpha = 1;
+        }
+        k.gone = true;
+      }
+    });
+    this.finish(1.3, result, done);
+  }
+
+  // ── 除法：平分成 b 束 ──
+  planDiv(a, b, result, done) {
+    const q = result, perRow = a > 60 ? 12 : 10, S = a > 60 ? 7 : 9, r = a > 60 ? 2.5 : 3;
+    const x0 = 144 - ((Math.min(a, perRow) - 1) * S) / 2, y0 = 70;
+    const orbs = [];
+    for (let i = 0; i < a; i++) orbs.push(this.orb("one", x0 + (i % perRow) * S, y0 + Math.floor(i / perRow) * S, this.c, 0.05 + i * 0.008, r));
+    // 發牌：第 i 顆分到第 (i % b) 束
+    const GW = Math.min(34, 256 / b), rowsIn = Math.min(q, 4), colsIn = Math.ceil(q / 4), gS = q > 8 ? 6 : 7;
+    const gx = (g) => 144 + (g - (b - 1) / 2) * GW;
+    this.at(0.55, () => orbs.forEach((o, i) => {
+      const g = i % b, k = Math.floor(i / b);
+      o.tx = gx(g) + ((k % colsIn) - (colsIn - 1) / 2) * gS;
+      o.ty = 72 + Math.floor(k / colsIn) * gS;
+      o.color = g % 2 ? this.cB : this.c;
+    }));
+    // 每束框起來，第一束特別亮（那就是答案）
+    this.at(1.0, () => {
+      for (let g = 0; g < b; g++) {
+        const w = colsIn * gS, hh = Math.ceil(q / colsIn) * gS;
+        this.groups.push({ x0: gx(g) - w / 2 - 1, y0: 72 - gS / 2 - 1, x1: gx(g) + w / 2 + 1, y1: 72 - gS / 2 + hh + 1, hi: g === 0 });
+      }
+      this.flash(gx(0), 80, 8);
+    });
+    void rowsIn;
+    this.finish(1.15, result, done);
+  }
+
   // 寫出「＝答案」，然後所有光球朝怪物飛出去
   finish(t, result, done) {
     this.at(t, () => { this.text = this.full; this.flash(144, 40, 16); });
@@ -194,12 +275,28 @@ export class MathMagic {
     }
     for (const o of this.orbs) {
       if (this.t < o.born || o.alpha <= 0) continue;
-      const r = o.kind === "ten" ? TEN_R : ONE_R;
+      const r = o.r ?? (o.kind === "ten" ? TEN_R : ONE_R);
       p.disc(o.x, o.y, r + 1, o.fade ? INK_D : this.cD, o.alpha);
       p.disc(o.x, o.y, r, o.color, o.alpha);
       p.disc(o.x - r * 0.35, o.y - r * 0.35, Math.max(1, r * 0.4), o.fade ? INK : WHITE, o.alpha);
       if (o.kind === "ten") p.ring(o.x, o.y, r + 2, 1, this.cL, o.alpha * 0.8);
       if (!o.fade) p.glow(o.x, o.y, r + 4, o.color, 0.35 * o.alpha);
+    }
+    // 方陣、平分的框
+    if (this.active) for (const g of this.groups) {
+      const c = g.hi ? WHITE : this.cL, a = g.hi ? 0.9 : 0.6;
+      p.rect(g.x0, g.y0, g.x1 - g.x0, 1, c, a); p.rect(g.x0, g.y1, g.x1 - g.x0 + 1, 1, c, a);
+      p.rect(g.x0, g.y0, 1, g.y1 - g.y0, c, a); p.rect(g.x1, g.y0, 1, g.y1 - g.y0, c, a);
+    }
+    // 面積模型的方塊：從左往右長出來，上面寫部分積
+    for (const k of this.blocks) {
+      if (k.gone || this.t < k.t0) continue;
+      const u = Math.min(1, (this.t - k.t0) / 0.3);
+      p.rect(k.x - 1, k.y - 1, k.w * u + 2, k.h + 2, this.cD);
+      p.rect(k.x, k.y, k.w * u, k.h, k.color);
+      p.rect(k.x, k.y, k.w * u, 2, this.cL);
+      p.glow(k.x + (k.w * u) / 2, k.y + k.h / 2, Math.max(8, k.w * u * 0.4), k.color, 0.25);
+      if (u >= 1 && k.label) p.text(k.sum ? k.label.split("=")[1] : k.label, k.x + k.w / 2, k.y + k.h + 4, this.cL, { align: "center", outline: INK_D, scale: k.sum ? 2 : 1 });
     }
     for (const f of this.flashes) {
       const k = 1 - f.t / 0.35;

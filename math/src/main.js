@@ -1,7 +1,8 @@
 // 《魔數學院》入口：讀存檔、切換畫面。
 
 import { loadSave } from "./save.js";
-import { setSound } from "./audio.js";
+import { applySettings } from "./settings.js";
+import { settingsScene } from "./scenes/settings.js";
 import { titleScene, lookScene, introScene, afterResonance } from "./scenes/intro.js";
 import { resonanceScene } from "./scenes/resonance.js";
 import { mapScene } from "./scenes/map.js";
@@ -19,7 +20,8 @@ const game = {
     switch (scene) {
       case "title": return titleScene(this);
       case "look": return lookScene(this);
-      case "intro": return introScene(this);
+      case "intro": return introScene(this, arg);
+      case "settings": return settingsScene(this, arg);
       case "resonance": return resonanceScene(this, arg);
       case "afterResonance": return afterResonance(this);
       case "map": return mapScene(this);
@@ -28,6 +30,6 @@ const game = {
   },
 };
 
-setSound(game.save.settings.sound);
+applySettings(game.save.settings);
 window.__game = game;   // 開發用：在主控台看存檔
 game.go("title");

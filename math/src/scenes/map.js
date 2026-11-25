@@ -3,8 +3,6 @@
 import { el, show } from "../ui.js";
 import { ATTRS, GRADES, GRADE_IDS, RANKS, BRANCHES, expToNext, MAX_LV, LEVEL_REWARDS, crystalLevel, maxHp } from "../data.js";
 import { rankExamReady, bookChapters, pagePageForm } from "../growth.js";
-import { writeSave } from "../save.js";
-import { setSound, sfx } from "../audio.js";
 
 export function mapScene(game) {
   const s = game.save;
@@ -51,7 +49,7 @@ export function mapScene(game) {
     el("button.btn", { onclick: () => reviewPanel(game) }, `錯題本（${Object.keys(s.review).length}）`),
     el("button.btn", { onclick: () => growthPanel(game) }, "成長日記"),
     el("button.btn", { onclick: () => { if (confirm("回共鳴之井重新測驗？等級、星星、錯題本都會保留。")) game.go("resonance", { retest: true }); } }, "共鳴之井"),
-    el("button.btn", { onclick: () => settingsPanel(game) }, "設定"),
+    el("button.btn", { onclick: () => game.go("settings", { from: "map" }) }, "設定"),
   );
 
   show(el("div.screen.map", {}, el("h2.maptitle", {}, "魔數學院"), profile, exam, areas, tools));
@@ -81,13 +79,4 @@ function growthPanel(game) {
     el("div.sub", {}, "最近 7 天"),
     days.length ? el("div.bars", {}, ...days.map(([d, v]) => el("div.bar", { title: `${d}：${v.ok}/${v.n}` }, el("div.b", { style: { height: `${Math.min(100, v.n * 4)}%` } }), el("span", {}, d.slice(5))))) : el("p", {}, "今天開始寫第一頁吧！"),
     el("p.note", {}, "這些紀錄只存在這台裝置的瀏覽器裡。"));
-}
-
-function settingsPanel(game) {
-  const s = game.save;
-  const toggle = (label, key, after) => el("label.toggle", {}, el("input", { type: "checkbox", checked: s.settings[key], onchange: (e) => { s.settings[key] = e.target.checked; writeSave(s); after?.(e.target.checked); } }), label);
-  panel("設定",
-    toggle("限時（三年級以上）", "timer"),
-    toggle("音效", "sound", (v) => { setSound(v); sfx("click"); }),
-  );
 }

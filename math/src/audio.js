@@ -3,6 +3,8 @@
 
 let ctx = null, on = !new URLSearchParams(location.search).has("mute");
 export const setSound = (v) => { on = v && !new URLSearchParams(location.search).has("mute"); };
+let vol = 0.8;
+export const setVolume = (v) => { vol = Math.max(0, Math.min(1, v)); };
 
 const NOTES = {
   cast: [[660, 0.06], [880, 0.08]],
@@ -15,14 +17,14 @@ const NOTES = {
 };
 
 export function sfx(name) {
-  if (!on) return;
+  if (!on || vol <= 0) return;
   try {
     ctx ??= new AudioContext();
     let t = ctx.currentTime;
     for (const [f, d, type = "triangle"] of NOTES[name] ?? []) {
       const o = ctx.createOscillator(), g = ctx.createGain();
       o.type = type; o.frequency.value = f;
-      g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
+      g.gain.setValueAtTime(0.15 * vol + 0.0001, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
       o.connect(g).connect(ctx.destination);
       o.start(t); o.stop(t + d);
       t += d * 0.9;

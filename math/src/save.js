@@ -1,6 +1,7 @@
 // 存檔（localStorage）。所有讀寫都包 try/catch：無痕模式或被封鎖時遊戲照樣能玩，只是不會記住。
 
 import { ATTR_IDS, BRANCHES } from "./data.js";
+import { DEFAULT_SETTINGS, withDefaults } from "./settings.js";
 
 const KEY = "mosu-academy-save-v1";
 
@@ -19,14 +20,14 @@ export function freshSave() {
     review: {},          // 錯題本：題型 key → { left: 還要連續答對幾次, sample }
     stars: {},           // "g1-1" → 0～3
     diary: {},           // "2026-11-25" → { n, ok }
-    settings: { timer: true, sound: true },
+    settings: { ...DEFAULT_SETTINGS },
   };
 }
 
 export function loadSave() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return { ...freshSave(), ...JSON.parse(raw) };
+    if (raw) { const d = JSON.parse(raw); return { ...freshSave(), ...d, settings: withDefaults(d.settings) }; }
   } catch {}
   return freshSave();
 }

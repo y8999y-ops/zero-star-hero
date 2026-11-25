@@ -14,7 +14,8 @@ const START = 270;           // 怪物出現的位置
 const WAIT = 170;            // 不限時：怪物停在這裡等
 
 export class Stage {
-  constructor(canvas, gradeId, look, attr) {
+  constructor(canvas, gradeId, look, attr, settings = {}) {
+    this.opt = { shake: settings.shake !== false, softFlash: settings.flash === "soft", shortMagic: settings.magic === "short" };
     this.cv = canvas;
     canvas.width = W; canvas.height = H;
     this.ctx = canvas.getContext("2d");
@@ -192,8 +193,9 @@ export class Stage {
     for (const n of this.pops) n.draw(p);
 
     // 合成：背景 → 王（放大）→ 特效層
-    const sx = this.shake ? Math.round((Math.random() - 0.5) * this.shake) : 0;
-    const sy = this.shake ? Math.round((Math.random() - 0.5) * this.shake) : 0;
+    const sk = this.opt.shake ? this.shake : 0;
+    const sx = sk ? Math.round((Math.random() - 0.5) * sk) : 0;
+    const sy = sk ? Math.round((Math.random() - 0.5) * sk) : 0;
     ctx.drawImage(this.bg, sx, sy);
     if (this.gray > 0) { ctx.fillStyle = `rgba(40,34,60,${0.35 * this.gray})`; ctx.fillRect(0, 0, W, H); }
     if (this.dim > 0.01) { ctx.fillStyle = `rgba(8,6,20,${this.dim})`; ctx.fillRect(0, 0, W, H); }
@@ -208,7 +210,7 @@ export class Stage {
       ctx.globalAlpha = 1;
     }
     if (this.hero) ctx.drawImage(this.hero.canvas, PX - this.hero.ox + sx, GROUND - this.hero.oy + sy);
-    composite(frame, this.img.data, null);
+    composite(frame, this.img.data, null, this.opt.softFlash ? 0.55 : 1);
     this.lctx.putImageData(this.img, 0, 0);
     ctx.drawImage(this.layer, sx, sy);
   }
@@ -219,7 +221,9 @@ export class Stage {
     this.magic = new MathMagic(ATTRS[this.attr]?.color ?? "#8a7cff", [m ? m.x : 200, GROUND - 10]);
     this.castT = 0;
     this.dimTo = 0.3; this.dimHold = 9;
-    return this.magic.start(math).then(() => { this.dimHold = 0; });
+    const run = this.magic.start(math);
+    if (this.opt.shortMagic) this.magic.speed = 2.5;   // 設定：簡短演出
+    return run.then(() => { this.dimHold = 0; });
   }
 
   /** 打中時在怪物頭上跳出答案數字 */

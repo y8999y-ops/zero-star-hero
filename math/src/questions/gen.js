@@ -45,19 +45,19 @@ export const TYPES = {
   // ── 三～四年級 ──
   times(rnd, d) {
     const a = ri(rnd, 2, 9), b = ri(rnd, d ? 2 : 1, 9);
-    return { branch: "muldiv", text: `${a} × ${b} ＝ ？`, answer: `${a * b}`, wrong: [`${a * b + a}`, `${a * b - b}`, `${a + b}`], explain: `${a} 個 ${b} 相加，九九乘法 ${a}×${b}＝${a * b}` };
+    return { branch: "muldiv", text: `${a} × ${b} ＝ ？`, answer: `${a * b}`, wrong: [`${a * b + a}`, `${a * b - b}`, `${a + b}`], explain: `${a} 個 ${b} 相加，九九乘法 ${a}×${b}＝${a * b}`, math: { op: "×", a, b } };
   },
   divide(rnd, d) {
     const b = ri(rnd, 2, 9), q = ri(rnd, 2, [9, 9, 12][d]), a = b * q;
-    return { branch: "muldiv", text: `${a} ÷ ${b} ＝ ？`, answer: `${q}`, wrong: [`${q + 1}`, `${q - 1}`, `${a - b}`], explain: `想乘法：${b}×${q}＝${a}，所以 ${a}÷${b}＝${q}` };
+    return { branch: "muldiv", text: `${a} ÷ ${b} ＝ ？`, answer: `${q}`, wrong: [`${q + 1}`, `${q - 1}`, `${a - b}`], explain: `想乘法：${b}×${q}＝${a}，所以 ${a}÷${b}＝${q}`, math: { op: "÷", a, b } };
   },
   missingFactor(rnd) {
     const a = ri(rnd, 2, 9), b = ri(rnd, 2, 9);
-    return { branch: "muldiv", text: `□ × ${a} ＝ ${a * b}，□ ＝ ？`, answer: `${b}`, wrong: [`${b + 1}`, `${a * b - a}`, `${b - 1}`], explain: `${a * b}÷${a}＝${b}` };
+    return { branch: "muldiv", text: `□ × ${a} ＝ ${a * b}，□ ＝ ？`, answer: `${b}`, wrong: [`${b + 1}`, `${a * b - a}`, `${b - 1}`], explain: `${a * b}÷${a}＝${b}`, math: { op: "÷", a: a * b, b: a } };
   },
   mul2x1(rnd, d) {
     const a = ri(rnd, 12, [39, 69, 99][d]), b = ri(rnd, 2, 9);
-    return { branch: "muldiv", text: `${a} × ${b} ＝ ？`, answer: `${a * b}`, wrong: [`${(a % 10) * b + Math.floor(a / 10) * 10}`, `${a * b + 10}`, `${a * b - b}`], explain: `${Math.floor(a / 10) * 10}×${b}＝${Math.floor(a / 10) * 10 * b}，${a % 10}×${b}＝${(a % 10) * b}，合起來 ${a * b}` };
+    return { branch: "muldiv", text: `${a} × ${b} ＝ ？`, answer: `${a * b}`, wrong: [`${(a % 10) * b + Math.floor(a / 10) * 10}`, `${a * b + 10}`, `${a * b - b}`], explain: `${Math.floor(a / 10) * 10}×${b}＝${Math.floor(a / 10) * 10 * b}，${a % 10}×${b}＝${(a % 10) * b}，合起來 ${a * b}`, math: { op: "×", a, b } };
   },
   // ── 五～六年級 ──
   fracAdd(rnd, d) {

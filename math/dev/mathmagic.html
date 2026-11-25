@@ -13,13 +13,15 @@
 </style>
 </head>
 <body>
-<!-- 開發用：加減法的「數學變魔法」演出。網址加 ?t=0.8 停在第 0.8 秒；不加就一直重播。 -->
+<!-- 開發用：加減乘除的「數學變魔法」演出。網址加 ?t=0.8 停在第 0.8 秒；不加就一直重播。 -->
 <div class="grid" id="grid"></div>
 <script type="module">
   import { Stage } from "../src/battle/stage.js";
   const cases = [
     ["湊十進位", { op: "+", a: 7, b: 5 }], ["不進位", { op: "+", a: 3, b: 4 }], ["兩位數進位", { op: "+", a: 47, b: 36 }],
     ["借位", { op: "-", a: 12, b: 5 }], ["不借位", { op: "-", a: 9, b: 4 }], ["兩位數借位", { op: "-", a: 52, b: 27 }],
+    ["乘法方陣", { op: "×", a: 3, b: 4 }], ["九九大方陣", { op: "×", a: 7, b: 8 }], ["面積模型", { op: "×", a: 37, b: 6 }],
+    ["平分", { op: "÷", a: 12, b: 3 }], ["平分成 8 束", { op: "÷", a: 56, b: 8 }], ["大數平分", { op: "÷", a: 108, b: 9 }],
   ];
   const freeze = new URLSearchParams(location.search).get("t");
   const cells = cases.map(([name, m], i) => {
@@ -27,11 +29,12 @@
     const d = document.createElement("div"); d.className = "cell";
     d.append(c, Object.assign(document.createElement("span"), { textContent: name }));
     grid.append(d);
-    const s = new Stage(c, "g1", i % 2 ? "boy" : "girl", ["fire", "water", "ice", "forest", "thunder", "fire"][i]);
+    const s = new Stage(c, "g1", i % 2 ? "boy" : "girl", ["fire", "water", "ice", "forest", "thunder"][i % 5]);
     s.gray = 0;
     return { s, m, next: 0 };
   });
-  const go = (cell) => { cell.s.spawn(); cell.s.monster.x = 200; cell.s.mathMagic(cell.m).then(() => cell.s.cast(1)).then(() => { cell.s.popNumber(cell.m.op === "+" ? cell.m.a + cell.m.b : cell.m.a - cell.m.b, 3); cell.s.purify(); }); };
+  const ans = ({ op, a, b }) => (op === "+" ? a + b : op === "-" ? a - b : op === "×" ? a * b : a / b);
+  const go = (cell) => { cell.s.spawn(); cell.s.monster.x = 200; cell.s.mathMagic(cell.m).then(() => cell.s.cast(1)).then(() => { cell.s.popNumber(ans(cell.m), 3); cell.s.purify(); }); };
   if (freeze) {
     for (const cell of cells) go(cell);
     for (let i = 0; i < Math.round(Number(freeze) * 60); i++) for (const { s } of cells) s.update(1 / 60);

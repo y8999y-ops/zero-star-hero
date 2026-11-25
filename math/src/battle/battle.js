@@ -7,6 +7,7 @@ import { ATTRS, GRADES, spellTier, maxHp, abilityBonus, crystalLevel, EXP, RANKS
 import { recordAnswer, addExp } from "../growth.js";
 import { writeSave } from "../save.js";
 import { sfx } from "../audio.js";
+import { TIMER_EASE } from "../settings.js";
 
 const COUNT = 10;     // 一般小關的題數
 const EXAM = 10;      // 升階考核題數，答對 7 題通過
@@ -25,6 +26,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd) {
   if (s.mood >= 3) limit = 0;
   else if (s.mood >= 2) limit *= 1.3;
   if (s.attr === "ice") limit *= 1.5;
+  limit *= TIMER_EASE[s.settings.timerEase] ?? 1;
 
   const shield = boss ? g.boss : 0;
   const total = exam ? EXAM : boss ? shield + 6 : COUNT;
@@ -42,7 +44,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd) {
   const leave = el("button.btn.small.leave", { onclick: () => { if (confirm("離開這一關？這關的進度不會保存。")) { aborted = true; running = false; game.go("map"); } } }, "離開");
   const wrap = el("div.battle", {}, el("div.view", {}, canvas, hud, bubble, leave), wordPanel, line, answers, abilityBtn);
   show(wrap);
-  const stage = new Stage(canvas, gradeId, s.look, s.attr);
+  const stage = new Stage(canvas, gradeId, s.look, s.attr, s.settings);
   stage.gray = 1;
 
   let hp = maxHp(s.lv), combo = 0, best = 0, right = 0, wrong = 0, sparks = 0, shieldLeft = shield, gained = 0;
