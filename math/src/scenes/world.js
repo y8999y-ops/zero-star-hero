@@ -108,9 +108,18 @@ export async function worldScene(game, { map, from } = {}) {
       if (r === 1) await say([D("五〇二八八四一九七一六九三九九三七五一〇五八二〇九七四九四四五九二三〇七八一六四〇六二八六二〇八九九八六二八〇三四八二五三四二一一七〇六七……"), { who: null, name: "", text: "（你決定先去別的地方逛逛。）" }]);
     },
     well: async () => {
-      const r = await say([{ who: null, name: "共鳴之井", text: `井水輕輕發著光。你的數晶跟著閃了一下——${ATTRS[s.attr]?.school ?? ""}的顏色。` }], ["重新做共鳴儀式", "看著井水發呆一下", "離開"]);
-      if (r === 0) { if (confirm("重新做共鳴儀式？等級、星星、錯題本都會保留。")) { leave(); game.go("resonance", { retest: true }); } }
-      else if (r === 1) await say([{ who: null, name: "", text: "水面映出一串一串的數字，轉呀轉的，又變回星星。" }]);
+      const d = daily(s);
+      const opts = [d.wish ? "今天已經許過願了" : "投一枚晶幣許願（每天一次）", "重新做共鳴儀式", "看著井水發呆一下", "離開"];
+      const r = await say([{ who: null, name: "共鳴之井", text: `井水輕輕發著光。你的數晶跟著閃了一下——${ATTRS[s.attr]?.school ?? ""}的顏色。` }], opts);
+      if (r === 0 && !d.wish && s.coins >= 1) {
+        s.coins -= 1; d.wish = true;
+        const luck = [["井水亮了起來，湧出 15 枚晶幣！", () => (s.coins += 15)], ["一道光鑽進你的數晶：經驗＋20！", () => addExp(s, 20)], ["水面浮出一顆小數晶：數晶點數＋1！", () => (s.crystals[s.attr] = (s.crystals[s.attr] ?? 0) + 1)], ["井水映出你算題目的樣子。頁頁說：「你今天也很棒喔！」", () => (s.coins += 3)]];
+        const [text, fn] = luck[Math.floor(Math.random() * luck.length)]; fn(); writeSave(s); sfx("restore");
+        await say([{ who: null, name: "共鳴之井", text: `叮咚——${text}` }]);
+      }
+      else if (r === 0 && !d.wish) await say([{ who: null, name: "", text: "身上沒有晶幣……" }]);
+      if (r === 1) { if (confirm("重新做共鳴儀式？等級、星星、錯題本都會保留。")) { leave(); game.go("resonance", { retest: true }); } }
+      else if (r === 2) await say([{ who: null, name: "", text: "水面映出一串一串的數字，轉呀轉的，又變回星星。" }]);
     },
     ship: async () => {
       await say([{ who: null, name: "浮空船", text: "載你來學院的浮空船。船長說，等你更厲害一點，可以載你去其他浮空島看看。" }]);
@@ -147,6 +156,9 @@ export async function worldScene(game, { map, from } = {}) {
   };
   async function building(t) {
     const key = t.id.slice(2);
+    if (key === "shop") { leave(); game.go("shop"); return; }
+    if (key === "dorm") { leave(); game.go("dorm"); return; }
+    if (key === "greenhouse") { await planter(); return; }
     if (key === "clock" && rankExamReady(s)) {
       const r = await say([{ who: null, name: "刻度鐘塔", text: `鐘塔亮了！你可以參加升階考核（→ ${RANKS[s.rank + 1].name}）。` }], ["參加考核", "先不要"]);
       if (r === 0) { leave(); game.go("battle", { grade: s.lastGrade ?? "g1", mode: "exam" }); }
@@ -206,6 +218,24 @@ export async function worldScene(game, { map, from } = {}) {
     const r = await say([{ who: null, name: "布告欄・今日委託", text: lines.join("　") }], ready.length ? [`領取獎勵（${ready.reduce((a, q) => a + q.coins, 0)} 晶幣）`, "離開"] : ["離開"]);
     if (ready.length && r === 0) { ready.forEach((q) => { d.claimed.push(q.id); s.coins += q.coins; }); writeSave(s); sfx("level"); }
   };
+
+  // ── 分晶溫室：數晶盆栽。每答對 15 題長大一階，長到第 4 階可以收成數晶點數 ──
+  async function planter() {
+    const okTotal = Object.values(s.diary ?? {}).reduce((a, d) => a + (d.ok ?? 0), 0);
+    if (!s.plant) {
+      const r = await say([{ who: null, name: "分晶溫室", text: "溫室裡有一個空的盆栽。管理員說：「種下數晶種子，你每答對題目，它就會長大喔。」" }], ["種下種子", "先不要"]);
+      if (r === 0) { s.plant = { base: okTotal }; writeSave(s); sfx("good"); await say([{ who: null, name: "", text: "你種下了一顆亮晶晶的種子。" }]); }
+      return;
+    }
+    const grown = okTotal - s.plant.base, stage = Math.min(4, Math.floor(grown / 15));
+    const LOOK = ["一顆發光的種子埋在土裡。", "冒出一根小小的嫩芽！", "長出兩片葉子，葉子上有細細的光點。", "長成一棵小苗，頂端有一顆小花苞在發光。", "開花了！花心結出一顆閃亮的數晶果實！"];
+    if (stage < 4) { await say([{ who: null, name: "數晶盆栽", text: `${LOOK[stage]}（再答對 ${15 * (stage + 1) - grown} 題會再長大）` }]); return; }
+    const r = await say([{ who: null, name: "數晶盆栽", text: LOOK[4] }], ["收成", "先放著"]);
+    if (r === 0) {
+      s.crystals[s.attr] = (s.crystals[s.attr] ?? 0) + 3; s.plant = { base: okTotal }; writeSave(s); sfx("level");
+      await say([{ who: "page", name: "頁頁", text: `你的數晶多了 3 點！魔法會更亮喔。盆栽裡又冒出新的種子了。` }]);
+    }
+  }
 
   // 入學典禮（待辦 D2）：在共鳴之井旁，院長講話 → 共鳴儀式
   async function ceremony() {

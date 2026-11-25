@@ -21,11 +21,17 @@ import { Grid, mixHex } from "./_grid.js";
 // 衣服用的屬性色：森的亮綠跟花園的草、樹叢太像，角色會融進背景，所以衣服改用偏藍的翠玉綠（施法、介面還是用原本的屬性色）
 const COSTUME = { "#6fd46a": "#1f9e78" };
 
+// 玩家在商店買的外觀（帽子顏色、斗篷顏色）。main.js 依存檔設定；同學（有 hairPair）不套用
+export const OUTFIT = { hat: null, robe: null };
+
 export function palette(look, attrHex, hairPair = null) {   // hairPair：別的同學換髮色用 [亮, 暗]
   const [hair, hairS] = hairPair ?? HAIR[look];
   attrHex = COSTUME[attrHex.toLowerCase()] ?? attrHex;
+  const mine = !hairPair;
+  if (mine && OUTFIT.hat) attrHex = OUTFIT.hat;
+  const robe = mine && OUTFIT.robe ? { robe: OUTFIT.robe, robeS: mixHex(OUTFIT.robe, "#0a0818", 0.4) } : {};
   return {
-    ...FIXED, hair, hairS,
+    ...FIXED, ...robe, hair, hairS,
     hat: attrHex, hatS: mixHex(attrHex, "#1a1030", 0.45), hatL: mixHex(attrHex, "#ffffff", 0.4),
   };
 }

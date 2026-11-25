@@ -19,10 +19,10 @@ import * as leaves from "../../../pixelfx/src/fx/weather/falling-leaves.js";
 // 地圖上一直在動的特效（pixelfx）：學院周圍的特色
 const FX_MOD = { brazier, iceCrystal, plasmaBall, sparkArc, fountain: fountainFx, leaves };
 
-// 地圖畫面：高 324（比原本 432 近一點，使用者 2026-11-25「鏡頭要近一點」），寬度跟著螢幕比例
+// 地圖畫面：高 270（使用者 2026-11-25 說了兩次「鏡頭要近一點」：432 → 324 → 270），寬度跟著螢幕比例
 export let VW = 576;
-export const VH = 324;
-export function fitView(aspect) { VW = Math.max(400, Math.min(720, Math.round((VH * aspect) / 2) * 2)); return VW; }
+export const VH = 270;
+export function fitView(aspect) { VW = Math.max(340, Math.min(600, Math.round((VH * aspect) / 2) * 2)); return VW; }
 const SPEED = 110;           // 每秒走幾格（像素）
 const CELL = 8;              // 找路用的格子
 const FOOT = 5;              // 腳底左右各算幾格寬（碰撞）
@@ -102,9 +102,15 @@ export class World {
   face(vx, vy) { this.hero.dir = Math.abs(vx) > Math.abs(vy) * 0.9 ? (vx > 0 ? "right" : "left") : vy > 0 ? "down" : "up"; }
   moveBy(dx, dy) {
     const h = this.hero;
+    // 已經卡在東西裡面（例如貼著樹走進了樹的腳底）：先讓它走出來
+    if (!this.canStand(h.x, h.y)) { h.x += dx; h.y += dy; return; }
     // 先走 x 再走 y：撞牆時可以沿著牆滑
+    const ox = h.x, oy = h.y;
     if (this.canStand(h.x + dx, h.y)) h.x += dx;
     if (this.canStand(h.x, h.y + dy)) h.y += dy;
+    // 卡在轉角（分開走 x、y 都不行）：試試看斜著直接走過去
+    if (h.x === ox && h.y === oy && this.canStand(ox + dx, oy + dy)) { h.x += dx; h.y += dy; }
+    this.stuck = h.x === ox && h.y === oy ? (this.stuck ?? 0) + 1 : 0;
   }
 
   // ── 點地移動：A* 在 8 格的格子上找路 ──
@@ -122,11 +128,16 @@ export class World {
     }
     const si = Math.floor(this.hero.x / CELL), sj = Math.floor(this.hero.y / CELL);
     const key = (i, j) => j * W + i, goal = key(gi, gj);
-    const open = [[0, si, sj]], g = new Map([[key(si, sj), 0]]), from = new Map();
+    // 最小堆積（地圖變大之後，用陣列一個一個找最小的會太慢、找不到遠的地方）
+    const heap = [], push = (n) => { heap.push(n); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+    const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = i * 2 + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+    const open = { get length() { return heap.length; }, push };
+    push([0, si, sj]);
+    const g = new Map([[key(si, sj), 0]]), from = new Map(), closed = new Set();
     let found = false, steps = 0;
-    while (open.length && steps++ < 6000) {
-      let bi = 0; for (let k = 1; k < open.length; k++) if (open[k][0] < open[bi][0]) bi = k;
-      const [, i, j] = open.splice(bi, 1)[0], kk = key(i, j);
+    while (open.length && steps++ < 40000) {
+      const [, i, j] = pop(), kk = key(i, j);
+      if (closed.has(kk)) continue; closed.add(kk);
       if (kk === goal) { found = true; break; }
       for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
         const ni = i + di, nj = j + dj;
@@ -159,7 +170,10 @@ export class World {
     if (!moved && this.path?.length) {
       const [px, py] = this.path[0], dx = px - h.x, dy = py - h.y, d = Math.hypot(dx, dy), sp = SPEED * dt;
       if (d <= sp) { h.x = px; h.y = py; this.path.shift(); if (!this.path.length) { this.path = null; this.marker = null; } }
-      else { this.moveBy((dx / d) * sp, (dy / d) * sp); this.face(dx, dy); }
+      else {
+        this.moveBy((dx / d) * sp, (dy / d) * sp); this.face(dx, dy);
+        if (this.stuck > 20) { const goal = this.path.at(-1); this.path = null; this.stuck = 0; if (goal) this.walkTo(goal[0], goal[1]); }   // 一直走不動：重新找路
+      }
       walking = true;
     }
     h.moving = walking;

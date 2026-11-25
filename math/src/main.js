@@ -11,6 +11,8 @@ import { worldScene } from "./scenes/world.js";
 import { libraryScene } from "./scenes/library.js";
 import { openingScene } from "./scenes/opening.js";
 import { minigameScene } from "./scenes/minigame.js";
+import { shopScene, applyOutfit } from "./scenes/shop.js";
+import { dormScene } from "./scenes/dorm.js";
 import { resultScene } from "./scenes/result.js";
 import { runBattle } from "./battle/battle.js";
 import { battleIn, battleOut } from "./transition.js";
@@ -33,6 +35,8 @@ const game = {
       case "map": return worldScene(this, arg);          // 大地圖（學院島）
       case "opening": return openingScene(this, arg);     // 開場動畫＋選外觀
       case "minigame": return minigameScene(this, arg);   // 學系小遊戲
+      case "shop": return shopScene(this, arg);           // 學院商店
+      case "dorm": return dormScene(this);                // 宿舍・你的房間
       case "library": return libraryScene(this);         // 千頁圖書館・大廳
       case "menu": return mapScene(this);                // 學院選單（所有區域、錯題本、成長日記）
       case "battle": {
@@ -45,6 +49,7 @@ const game = {
 };
 
 applySettings(game.save.settings);
+applyOutfit(game.save);           // 商店買的帽子、斗篷
 autoFullscreen();
 window.__game = game;   // 開發用：在主控台看存檔
 game.go("title");
