@@ -8,6 +8,7 @@ import { resonanceScene } from "./scenes/resonance.js";
 import { mapScene } from "./scenes/map.js";
 import { worldScene } from "./scenes/world.js";
 import { libraryScene } from "./scenes/library.js";
+import { openingScene } from "./scenes/opening.js";
 import { resultScene } from "./scenes/result.js";
 import { runBattle } from "./battle/battle.js";
 import { battleIn, battleOut } from "./transition.js";
@@ -17,9 +18,9 @@ const game = {
   go(scene, arg = {}) {
     const s = this.save;
     // 還沒選外觀或屬性就先補完入學流程
-    if (scene === "map" && !s.look) scene = "look";
-    if (scene === "map" && !s.attr) scene = "resonance";
-    if (scene === "map" && !s.seenIntro) scene = "afterResonance";
+    // 入學流程：開場動畫（選外觀）→ 在大地圖上走到共鳴之井（還沒有屬性也能走）→ 共鳴儀式 → 第一場戰鬥
+    if (scene === "map" && !s.look) scene = "opening";
+    if (scene === "map" && s.attr && !s.seenIntro) scene = "afterResonance";
     switch (scene) {
       case "title": return titleScene(this);
       case "look": return lookScene(this);
@@ -28,6 +29,7 @@ const game = {
       case "resonance": return resonanceScene(this, arg);
       case "afterResonance": return afterResonance(this);
       case "map": return worldScene(this, arg);          // 大地圖（學院島）
+      case "opening": return openingScene(this, arg);     // 開場動畫＋選外觀
       case "library": return libraryScene(this);         // 千頁圖書館・大廳
       case "menu": return mapScene(this);                // 學院選單（所有區域、錯題本、成長日記）
       case "battle": {

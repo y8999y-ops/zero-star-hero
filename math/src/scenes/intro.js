@@ -12,9 +12,9 @@ export function titleScene(game) {
   show(el("div.screen.title", {},
     el("div.logo", {}, el("span.l1", {}, "魔數"), el("span.l2", {}, "學院")),
     el("div.tag", {}, "數學是一種魔法"),
-    el("button.btn.gold.big", { onclick: () => { sfx("click"); started ? game.go("map") : game.go("look"); } }, started ? "繼續冒險" : "開始入學"),
+    el("button.btn.gold.big", { onclick: () => { sfx("click"); game.go("map"); } }, started ? "繼續冒險" : "開始入學"),
     el("button.btn", { onclick: () => game.go("settings", { from: "title" }) }, "設定"),
-    started ? el("button.btn.red.small", { onclick: () => { if (confirm("確定要重新入學嗎？所有進度都會清除。")) { game.save = resetSave(); game.go("look"); } } }, "重新入學") : null,
+    started ? el("button.btn.red.small", { onclick: () => { if (confirm("確定要重新入學嗎？所有進度都會清除。")) { game.save = resetSave(); game.go("opening"); } } }, "重新入學") : null,
     el("div.foot", {}, "題庫：TMMLU+（MIT）、Calc-ape210k（MIT），已改寫成學院情境"),
   ));
 }

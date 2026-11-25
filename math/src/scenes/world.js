@@ -84,7 +84,9 @@ export async function worldScene(game, { map, from } = {}) {
     if (!t || busy) return;
     busy = true; act.hidden = true; W.path = null; pending = null;
     sfx("click");
-    try { await (EVENTS[t.id] ?? (() => {}))(t); } finally { busy = false; }
+    // 剛下船的新生（還沒做共鳴儀式）：只能去共鳴之井、跟院長說話
+    const fn = !s.attr ? (t.id === "well" || t.id === "dean" ? ceremony : remind) : EVENTS[t.id];
+    try { await (fn ?? (() => {}))(t); } finally { busy = false; }
   }
   const say = (lines, choices) => talk(root, lines, choices, { onLine: (L) => { const n = W.npcs.find((x) => x.id === L.who); if (n) n.talking = 9; } }).then((r) => { W.npcs.forEach((n) => (n.talking = 0)); return r; });
   const D = (text) => ({ who: "dean", name: "圓周院長", text });
@@ -122,6 +124,23 @@ export async function worldScene(game, { map, from } = {}) {
     sfx("tick");
     if (m.boss) game.go("battle", { grade: M.grade, mode: "boss" });
     else game.go("battle", { grade: M.grade, mode: "stage", stage: m.stage });
+  }
+  // 入學典禮（待辦 D2）：在共鳴之井旁，院長講話 → 共鳴儀式
+  async function ceremony() {
+    const n = W.npcs.find((x) => x.id === "dean");
+    await say([
+      D("喔喔，新生到了！歡迎來到魔數學院，我是院長，大家叫我圓周院長。"),
+      D("入學典禮開始！首先，院長致詞：圓周率是三點一四一五九二六五三五八九七九三二三八四六二六四三……"),
+      { who: null, name: "", text: "（院長講了很久很久。旁邊的老師輕輕咳了一聲。）" },
+      D("……咳，總之！每位新生都要站上「共鳴之井」。井水會問你幾個問題——不是問你會不會算，是問你「喜歡怎麼想」。"),
+      D("沒有對錯，照你真的會做的選就好。來，站上去吧！"),
+    ]);
+    if (n) n.talking = 0;
+    leave(); game.go("resonance");
+  }
+  async function remind() {
+    await say([D("新生！新生！先到島中間的共鳴之井來，入學典禮要開始囉！")]);
+    backOff();
   }
   const pick = (a) => a[Math.floor(Math.random() * a.length)];
   // 自動觸發後不進去：往回退幾步，免得一直跳出來
@@ -171,7 +190,9 @@ export async function worldScene(game, { map, from } = {}) {
     else if (!busy && pending && !W.path) pending = null;
     // 走到路口：自動觸發（離開範圍才會再觸發）
     if (autoLock && Math.hypot(W.hero.x - autoLock.x, W.hero.y - autoLock.y) > autoLock.r + 6) autoLock = null;
-    if (!busy && near?.auto && !autoLock) { autoLock = near; interact(near); }
+    // 還沒入學（沒有屬性）時，走到共鳴之井或院長旁邊就自動開始入學典禮
+    const autoNow = near && (near.auto || (!s.attr && (near.id === "well" || near.id === "dean")));
+    if (!busy && autoNow && !autoLock) { autoLock = near; interact(near); }
     act.hidden = busy || !near || near.auto;
     if (near && !near.auto) act.textContent = near.kind === "npc" ? "說話" : "調查";
     label.hidden = busy || !near;
@@ -183,6 +204,11 @@ export async function worldScene(game, { map, from } = {}) {
   requestAnimationFrame(frame);
   window.__world = W;       // 開發用
   if (restoring) restoreEvent();
+  // 剛下浮空船：教走路
+  if (!s.attr && !s.flags?.walkHint) {
+    s.flags = { ...(s.flags ?? {}), walkHint: true }; writeSave(s);
+    interactLines([{ who: null, name: "學院島", text: "浮空船靠岸了。按住畫面左下角拖動（搖桿），或直接點地面，就能走過去。先走到島中間的共鳴之井吧！" }]);
+  }
 
   // 恢復色彩：灰色慢慢退掉、墨水水窪消失（企劃書 D4）
   async function restoreEvent() {

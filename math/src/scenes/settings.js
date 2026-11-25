@@ -57,7 +57,7 @@ export function settingsScene(game, { from = "title" } = {}) {
       toggle("畫面晃動", "shake"),
       choice("閃光效果", "flash", [["full", "開"], ["soft", "減弱"]])),
     group("其他",
-      el("button.btn", { onclick: () => game.go("intro", { replay: true, back: from }) }, "重看開場動畫"),
+      el("button.btn", { onclick: () => game.go("opening", { replay: true, back: from }) }, "重看開場動畫"),
       s.attr ? el("button.btn", { onclick: () => game.go("resonance", { retest: true }) }, "重新做共鳴儀式") : null,
       clearBtn),
     el("p.note", {}, "搖桿位置和點地移動會在大地圖完成後生效。"),

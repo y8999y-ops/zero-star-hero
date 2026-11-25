@@ -59,7 +59,7 @@ math/
     questions/       gen.js 計算題產生器、pool.js 出題與四個選項
     battle/          battle.js 一關的流程、stage.js 戰鬥畫面、areaart.js 區域背景（拆層、墨水灰）、ambience.js 場景動態（雲、浮空島、花瓣、蝴蝶…）、spells.js 五屬性四級魔法、mathmagic.js 數學變魔法（加減乘除）與答案數字、mathmagic-more.js 其他題型的演出
     world/           大地圖：maps.js 每張地圖的資料（能走的地方、物件、NPC、觸發點）、world.js 走路／碰撞／鏡頭／找路、talk.js NPC 對話框
-    scenes/          標題與劇情、共鳴儀式、大地圖（world.js）、學院選單（map.js）、結算、設定
+    scenes/          標題與劇情（intro.js）、開場動畫（opening.js）、共鳴儀式、大地圖（world.js）、圖書館大廳（library.js）、學院選單（map.js）、結算、設定
   dev/               開發用頁面（魔法一覽）
   fx/                角色與怪物的像素圖（程式畫）：_grid.js 共用畫筆、hero.js 見習魔數師、ink-drop.js 墨水滴、crooked-flower.js 歪瓣花、ink-king-baby.js 墨水大王・幼體、pagepage.js 頁頁、hero-walk.js 地圖用四方向走路圖、dean.js 圓周院長
   art/
@@ -68,7 +68,8 @@ math/
     3-已通過/        使用者確認過的成品（存檔紀錄）
   assets/            遊戲實際讀的圖（英文路徑）：使用者說「接進遊戲」時，從 art/3-已通過/ 複製過來
     battle/<區域>/   戰鬥背景 back、mid、ground（garden 星芽花園…）
-    map/island/      學院島地面、共鳴之井、碼頭（由 art/2-草稿/island-look/build_island.py 拼出來）
+    map/island/      學院島地面、共鳴之井、碼頭、圖書館、小物件、layout.json（由 art/2-草稿/island-look/build_island.py 拼出來）
+    map/garden/      星芽花園區域地圖（由 art/2-草稿/garden-map/build_garden.py 拼出來）
   audio/             音效與音樂
 ```
 

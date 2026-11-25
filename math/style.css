@@ -216,3 +216,12 @@ canvas.world { position: absolute; inset: 0; width: 100%; height: 100%; display:
 .libspot .icon { font-size: 26px; } .libspot .lname { font-weight: 700; } .libspot .ldesc { font-size: 12px; color: var(--dim); }
 .libfoot { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: auto; }
 canvas.libpage { width: 64px; height: 80px; image-rendering: pixelated; }
+
+/* ── 開場動畫（scenes/opening.js） ── */
+.screen.openingscr { padding: 0; position: relative; height: 100%; overflow: hidden; background: #0b0a22; }
+canvas.opening { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+.ocap { position: absolute; left: 8%; right: 8%; bottom: 7%; text-align: center; font-size: 17px; font-weight: 700; color: #fff; text-shadow: 0 2px 0 #000, 0 0 8px #000; min-height: 1.4em; }
+.opicks { position: absolute; left: 50%; top: 70%; transform: translateX(-50%); display: flex; gap: 120px; }
+.opicks[hidden] { display: none; }
+.btn.oskip { position: absolute; right: 10px; top: 10px; }
+#app.bigtext .ocap { font-size: 21px; }
