@@ -23,6 +23,7 @@ const FX_MOD = { brazier, iceCrystal, plasmaBall, sparkArc, fountain: fountainFx
 export let VW = 576;
 export const VH = 270;
 export function fitView(aspect) { VW = Math.max(340, Math.min(600, Math.round((VH * aspect) / 2) * 2)); return VW; }
+const CS = 1.5;              // 人物（主角、NPC、墨水怪）放大 1.5 倍畫（使用者 2026-11-25「所有人物放大 50%」）
 const SPEED = 110;           // 每秒走幾格（像素）
 const CELL = 8;              // 找路用的格子
 const FOOT = 5;              // 腳底左右各算幾格寬（碰撞）
@@ -251,15 +252,20 @@ export class World {
         ctx.drawImage(o.shipImg, o.x + o.ship.x - cx, o.y - cy + Math.round(Math.sin(t * 1.4) * 1.5));
       } else this.layer(ctx, o.art, o.x - cx, o.y - cy, o.ink ? this.gray : 1);
     } });
-    const shadow = (x, y, w) => { ctx.fillStyle = "rgba(20,40,20,0.28)"; ctx.fillRect(Math.round(x - w) - cx, Math.round(y) - 1 - cy, w * 2, 2); ctx.fillRect(Math.round(x - w + 2) - cx, Math.round(y) + 1 - cy, w * 2 - 4, 1); };
-    for (const n of this.npcs) list.push({ y: n.y, draw: () => { const s = this.npcSprite(n); shadow(n.x, n.y, 10); ctx.drawImage(s.canvas, Math.round(n.x) - s.ox - cx, Math.round(n.y) - s.oy - cy); } });
+    const shadow = (x, y, w) => { w = Math.round(w * CS); ctx.fillStyle = "rgba(20,40,20,0.28)"; ctx.fillRect(Math.round(x - w) - cx, Math.round(y) - 1 - cy, w * 2, 3); ctx.fillRect(Math.round(x - w + 3) - cx, Math.round(y) + 2 - cy, w * 2 - 6, 1); };
+    // 人物放大畫：以腳底為準
+    const person = (sp, x, y, flip = false) => {
+      const w = Math.round(sp.canvas.width * CS), hgt = Math.round(sp.canvas.height * CS), dx = Math.round(x - sp.ox * CS) - cx, dy = Math.round(y - sp.oy * CS) - cy;
+      if (!flip) { ctx.drawImage(sp.canvas, dx, dy, w, hgt); return; }
+      ctx.save(); ctx.translate(Math.round(x) - cx, 0); ctx.scale(-1, 1); ctx.drawImage(sp.canvas, Math.round(-sp.ox * CS), dy, w, hgt); ctx.restore();
+    };
+    for (const n of this.npcs) list.push({ y: n.y, draw: () => { const s = this.npcSprite(n); shadow(n.x, n.y, 10); person(s, n.x, n.y); } });
     for (const m of this.monsters) list.push({ y: m.y, draw: () => {
       const [fn, loop] = MON_ART[m.kind], n = Math.floor((((this.t + m.ph) % loop) / loop) * loop * 12);
       const sp = this.sprite(`mon:${m.kind}:${n}`, () => fn("idle", n / 12));
       if (m.kind !== "king") shadow(m.x, m.y, 8);
       // 遊蕩的時候面向走的方向（圖本來面向左）
-      if (m.face > 0) { ctx.save(); ctx.translate(Math.round(m.x) - cx, 0); ctx.scale(-1, 1); ctx.drawImage(sp.canvas, -sp.ox, Math.round(m.y) - sp.oy - cy); ctx.restore(); }
-      else ctx.drawImage(sp.canvas, Math.round(m.x) - sp.ox - cx, Math.round(m.y) - sp.oy - cy);
+      person(sp, m.x, m.y, m.face > 0);
     } });
     // 特效：只畫在畫面裡的
     for (const f of this.fx) {
@@ -271,7 +277,7 @@ export class World {
       } });
     }
     const h = this.hero;
-    list.push({ y: h.y, draw: () => { const s = this.heroSprite(); shadow(h.x, h.y, 7); ctx.drawImage(s.canvas, Math.round(h.x) - s.ox - cx, Math.round(h.y) - s.oy - cy); } });
+    list.push({ y: h.y, draw: () => { const s = this.heroSprite(); shadow(h.x, h.y, 7); person(s, h.x, h.y); } });
     list.sort((a, b) => a.y - b.y).forEach((d) => d.draw());
     if (this.img.overlay) ctx.drawImage(this.img.overlay, -cx, -cy);   // 最上層的雲
     this.drawAmbient(ctx, cx, cy);
@@ -324,7 +330,7 @@ export class World {
   nearby() {
     const h = this.hero;
     let best = null, bd = Infinity;
-    for (const n of this.npcs) { const d = Math.hypot(n.x - h.x, (n.y - h.y) * 1.3); if (d < 34 && d < bd) { best = { kind: "npc", ...n, ref: n }; bd = d; } }
+    for (const n of this.npcs) { const d = Math.hypot(n.x - h.x, (n.y - h.y) * 1.3); if (d < 34 * CS && d < bd) { best = { kind: "npc", ...n, ref: n }; bd = d; } }
     for (const s of this.map.spots) { if (s.hidden?.()) continue; const d = Math.hypot(s.x - h.x, s.y - h.y); if (d < s.r && d < bd) { best = { kind: "spot", ...s }; bd = d; } }
     return best;
   }
@@ -332,13 +338,13 @@ export class World {
   /** 碰到的墨水怪（明雷：碰到就開打） */
   touching() {
     const h = this.hero;
-    return this.monsters.find((m) => Math.hypot(m.x - h.x, (m.y - h.y) * 1.4) < (m.boss ? 44 : 18)) ?? null;
+    return this.monsters.find((m) => Math.hypot(m.x - h.x, (m.y - h.y) * 1.4) < (m.boss ? 44 : 18) * CS) ?? null;
   }
 
   /** 點到的東西（NPC：點身上；觸發點：點附近） */
   hit(wx, wy) {
-    for (const n of this.npcs) if (Math.abs(wx - n.x) < 14 && wy < n.y + 4 && wy > n.y - 46) return { kind: "npc", ...n, ref: n };
-    for (const m of this.monsters) if (Math.abs(wx - m.x) < (m.boss ? 40 : 16) && wy < m.y + 4 && wy > m.y - (m.boss ? 80 : 44)) return { kind: "monster", ...m, ref: m };
+    for (const n of this.npcs) if (Math.abs(wx - n.x) < 14 * CS && wy < n.y + 4 && wy > n.y - 46 * CS) return { kind: "npc", ...n, ref: n };
+    for (const m of this.monsters) if (Math.abs(wx - m.x) < (m.boss ? 40 : 16) * CS && wy < m.y + 4 && wy > m.y - (m.boss ? 80 : 44) * CS) return { kind: "monster", ...m, ref: m };
     for (const s of this.map.spots) if (!s.auto && !s.hidden?.() && Math.hypot(wx - s.x, wy - s.y) < s.r * 0.8) return { kind: "spot", ...s };
     return null;
   }

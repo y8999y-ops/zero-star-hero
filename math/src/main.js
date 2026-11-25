@@ -2,6 +2,7 @@
 
 import { loadSave } from "./save.js";
 import { autoFullscreen } from "./fullscreen.js";
+import { installUiArt } from "./ui-art.js";
 import { applySettings } from "./settings.js";
 import { settingsScene } from "./scenes/settings.js";
 import { titleScene, lookScene, introScene, afterResonance, afterTutorial } from "./scenes/intro.js";
@@ -48,6 +49,7 @@ const game = {
   },
 };
 
+installUiArt();                   // 像素外框、按鈕（變成 CSS 變數）
 applySettings(game.save.settings);
 applyOutfit(game.save);           // 商店買的帽子、斗篷
 autoFullscreen();

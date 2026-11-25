@@ -29,13 +29,13 @@ for (const [id, def] of Object.entries(DEF)) {
     if (!near(M.start.x, M.start.y, 10)) problems.push(`起點 (${M.start.x}, ${M.start.y}) 站不住`);
     for (const [k, a] of Object.entries(M.arrive ?? {})) if (!near(a.x, a.y, 12)) problems.push(`從起點走不到入口「${k}」(${a.x}, ${a.y})`);
     for (const s of M.spots) if (!near(s.x, s.y, s.r)) problems.push(`走不到「${s.label ?? s.id}」(${Math.round(s.x)}, ${Math.round(s.y)})`);
-    for (const n of M.npcs) if (!near(n.x, n.y, 34)) problems.push(`走不到 NPC「${n.name}」(${n.x}, ${n.y})`);
-    for (const m of M.monsters ?? []) if (!m.boss && !near(m.x, m.y, 18)) problems.push(`碰不到墨水怪 ${m.id}`);
+    for (const n of M.npcs) if (!near(n.x, n.y, 50)) problems.push(`走不到 NPC「${n.name}」(${n.x}, ${n.y})`);
+    for (const m of M.monsters ?? []) if (!m.boss && !near(m.x, m.y, 27)) problems.push(`碰不到墨水怪 ${m.id}`);
     if (M2.monsters?.some((m) => m.boss)) {
       const stand2 = (x, y) => M2.walkable(x - FOOT, y) && M2.walkable(x + FOOT, y) && M2.walkable(x, y - 3);
       for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) ok[j * W + i] = stand2(i * CELL + 4, j * CELL + 4) ? 1 : 0;
       seen.fill(0); flood(M2.start.x, M2.start.y);
-      for (const m of M2.monsters.filter((m) => m.boss)) if (!near(m.x, m.y, 44)) problems.push(`封印門打開後還是碰不到王 ${m.id}`);
+      for (const m of M2.monsters.filter((m) => m.boss)) if (!near(m.x, m.y, 66)) problems.push(`封印門打開後還是碰不到王 ${m.id}`);
     }
     console.log(`${dir}：${problems.length ? `${problems.length} 個問題` : "通過"}（能走的格子 ${seen.reduce((a, b) => a + b, 0)}）`);
     for (const p of problems) console.log("  ・" + p);

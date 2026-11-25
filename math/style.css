@@ -277,3 +277,38 @@ canvas.shoppv { width: 96px; height: 150px; image-rendering: pixelated; }
 canvas.dormcv { flex: 1; min-height: 0; max-width: 100%; aspect-ratio: 16 / 9; image-rendering: pixelated; border-radius: 8px; }
 .dormbtns { display: flex; gap: 10px; }
 .screen.shop > .btn.gold { align-self: center; min-width: 200px; }
+
+/* ══ 像素介面（2026-11-25 使用者：介面很醜 → 像素字型＋像素外框，「書頁＋金邊」主題；外框圖在 src/ui-art.js 畫） ══ */
+/* 俐方體 11 號（Cubic 11，SIL OFL 1.1，免費可商用）：https://github.com/ACh-K/Cubic-11 */
+@font-face { font-family: "Cubic11"; src: url("https://cdn.jsdelivr.net/gh/ACh-K/Cubic-11@v1.500/fonts/web/Cubic_11.woff2") format("woff2"); font-display: swap; }
+:root { font-family: "Cubic11", "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif; -webkit-font-smoothing: none; font-smooth: never; }
+.logo, h2, .ptitle, .stitle, .mgname, .libtitle, .dormtitle { font-weight: 400; }
+
+/* 按鈕：九宮格像素按鈕 */
+.btn { border: 9px solid transparent; border-image: var(--b-norm) 9 fill stretch; background: none !important; border-radius: 0 !important; padding: 2px 8px 4px; font-weight: 400 !important; color: var(--text); image-rendering: pixelated; }
+.btn:active:not(:disabled) { border-image: var(--b-norm-on) 9 fill stretch; transform: none; border-bottom-width: 9px; padding: 4px 8px 2px; }
+.btn.gold { border-image: var(--b-gold) 9 fill stretch; color: #2a1b05; }
+.btn.gold:active:not(:disabled) { border-image: var(--b-gold-on) 9 fill stretch; }
+.btn.red { border-image: var(--b-red) 9 fill stretch; }
+.btn.red:active:not(:disabled) { border-image: var(--b-red-on) 9 fill stretch; }
+.btn.big { padding: 6px 28px 8px; }
+.btn.small { padding: 0 4px 2px; }
+.btn.answer.right, .btn.mgcard.right { border-image: var(--b-ok) 9 fill stretch; color: #0c2a0c; }
+.btn.answer.wrong, .btn.mgcard.wrong { border-image: var(--b-bad) 9 fill stretch; }
+.btn.mgcard.on { border-image: var(--b-gold) 9 fill stretch; color: #2a1b05; }
+.btn.act { border-radius: 0 !important; width: 84px; height: 64px; }
+
+/* 面板：深藍書封＋金邊 */
+.panel, .set-group, .profile, .area, .shopleft, .shopitem, .wprof, .explain, .btn.libspot {
+  border: 12px solid transparent !important; border-image: var(--f-panel) 12 fill stretch !important; background: none !important; border-radius: 0 !important; box-shadow: none !important;
+}
+.shopitem, .wprof { border-width: 9px !important; border-image-slice: 12 !important; }
+.wprof { padding: 0 6px; }
+/* 對話框、說明：米色書頁，深色字 */
+.talk, .dialog {
+  border: 12px solid transparent !important; border-image: var(--f-paper) 12 fill stretch !important; background: none !important; border-radius: 0 !important; color: #2a1b10;
+}
+.talk .who, .dialog .who { color: #8a4a1a; }
+.talk .next, .dialog .next { color: #8a6a4a; }
+.talk .facebox { background: #e8d8b8; border: 3px solid #c9a46a; border-radius: 0; }
+.seg .btn.on { border-image: var(--b-gold) 9 fill stretch; color: #2a1b05; }
