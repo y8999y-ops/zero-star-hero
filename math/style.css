@@ -522,3 +522,13 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 .answers.shuffling .btn.answer { transform: scale(.85) rotate(-4deg); opacity: .4; transition: transform .18s, opacity .18s; }
 .btn.answer.blot { color: transparent !important; background: radial-gradient(circle at 40% 45%, #1c1533 0 38%, transparent 40%), radial-gradient(circle at 65% 60%, #2d2350 0 30%, transparent 32%) !important; }
 .btn.answer.blot .fr .fn { border-color: transparent; }
+/* 完美詠唱的時間條、數晶、大招按鈕 */
+.pbar { position: absolute; left: 50%; top: calc(max(30px, 8%) + 46px); transform: translateX(-50%); width: min(40%, 300px); height: 6px; background: rgba(23, 18, 42, .6); border-radius: 3px; overflow: hidden; z-index: 3; pointer-events: none; }
+.pbar .pfill { height: 100%; width: 100%; background: linear-gradient(90deg, #fff3b0, #f2c24a); animation: pdrain linear forwards; transform-origin: left; }
+@keyframes pdrain { to { transform: scaleX(0); } }
+.energy { display: flex; gap: 3px; align-items: center; }
+.energy span { width: 10px; height: 10px; transform: rotate(45deg); background: rgba(255, 255, 255, .2); border: 1px solid rgba(255, 255, 255, .5); }
+.energy span.on { background: #9fe6f2; box-shadow: 0 0 6px #9fe6f2; }
+.btn.ultbtn { position: absolute; left: 12px; bottom: calc(22% + 40px); z-index: 4; animation: ultpulse 1s ease-in-out infinite; }
+.btn.ultbtn.armed { animation: none; filter: drop-shadow(0 0 8px #fff3b0); }
+@keyframes ultpulse { 50% { transform: scale(1.08); } }

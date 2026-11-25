@@ -168,12 +168,18 @@ export class Stage {
   }
 
   /** 施法。回傳 Promise：打中時 resolve。 */
-  cast(tier, crystalLv = 1, branch = null) {
+  cast(tier, crystalLv = 1, branch = null, extraAttr = null) {
     // 題目決定招式：有單元的題目打那個單元的招式（屬性色）；連擊第 3、4 級再疊上屬性大招
     const base = SPELLS[this.attr][tier - 1], us = branch && UNIT_SPELL[branch];
     const spell = !us ? base : tier >= 3
       ? { hit: Math.max(us.hit, base.hit + 0.25), shake: base.shake, parts: [...us.parts, ...base.parts.map((p) => ({ ...p, delay: p.delay + 0.25 }))] }
       : { hit: us.hit, shake: tier, parts: us.parts };
+    // 屬性組合技：再疊上副屬性的大魔法（它自己的顏色）
+    if (extraAttr && SPELLS[extraAttr]) {
+      const ex = SPELLS[extraAttr][2];
+      spell.parts = [...spell.parts, ...ex.parts.map((p) => ({ ...p, delay: p.delay + 0.2 }))];
+      spell.hit = Math.max(spell.hit, ex.hit + 0.2); spell.shake = (spell.shake ?? 2) + 3;
+    }
     const m = this.monster;
     const tx = m ? m.x : 270;
     this.castT = 0;
@@ -365,10 +371,17 @@ export class Stage {
       const sp = this.sprite(m.kind, m.state === "die" || m.flinch > 0 ? "hurt" : "idle", m.t + m.phase);
       ctx.globalAlpha = m.alpha;
       const mx = Math.round(m.x + (m.kb ?? 0));
-      big(sp.canvas, mx, GROUND, sp.ox, sp.oy, scaleOf(m.kind));
+      // 王變身（第二階段）：身體變大一點，外面一圈一閃一閃的紫色光暈
+      const k = scaleOf(m.kind) * (m.phase2 ? 1.12 : 1);
+      if (m.phase2) {
+        ctx.globalAlpha = (0.35 + 0.25 * Math.sin(this.t * 6)) * m.alpha;
+        for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) big(tintOf(sp.canvas, "#b483ff"), mx + dx, GROUND + dy, sp.ox, sp.oy, k);
+        ctx.globalAlpha = m.alpha;
+      }
+      big(sp.canvas, mx, GROUND, sp.ox, sp.oy, k);
       if (m.whiteT > 0) {        // 被打中閃白
         ctx.globalAlpha = Math.min(1, m.whiteT / 0.14) * 0.85 * m.alpha;
-        big(whiteOf(sp.canvas), mx, GROUND, sp.ox, sp.oy, scaleOf(m.kind));
+        big(whiteOf(sp.canvas), mx, GROUND, sp.ox, sp.oy, k);
       }
       ctx.globalAlpha = 1;
     }
@@ -459,5 +472,11 @@ function whiteOf(c) {
   let w = whiteCache.get(c);
   if (!w) { w = document.createElement("canvas"); w.width = c.width; w.height = c.height; const x = w.getContext("2d"); x.drawImage(c, 0, 0); x.globalCompositeOperation = "source-in"; x.fillStyle = "#ffffff"; x.fillRect(0, 0, w.width, w.height); whiteCache.set(c, w); }
   return w;
+}
+const tintCache = new Map();
+function tintOf(c, col) {
+  let byCol = tintCache.get(c); if (!byCol) { byCol = {}; tintCache.set(c, byCol); }
+  if (!byCol[col]) { const w = document.createElement("canvas"); w.width = c.width; w.height = c.height; const x = w.getContext("2d"); x.drawImage(c, 0, 0); x.globalCompositeOperation = "source-in"; x.fillStyle = col; x.fillRect(0, 0, w.width, w.height); byCol[col] = w; }
+  return byCol[col];
 }
 function rampOf(c) { return [mix(c, "#000000", 0.85), mix(c, "#000000", 0.6), mix(c, "#000000", 0.3), c, mix(c, "#ffffff", 0.4), mix(c, "#ffffff", 0.75), "#ffffff"]; }

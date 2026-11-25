@@ -56,6 +56,10 @@ const TRAITS = {
   tick: { shuffle: true, line: "亂針鐘會把選項換位置，看清楚再按！" },
   bat: { blot: true, line: "塗鴉蝙蝠會把一個選項塗黑，等墨水散開再看！" },
 };
+// 屬性組合技（有副屬性時，連擊每 3 下）：兩個屬性合成一招
+const COMBO_NAME = { "fire+water": "沸騰蒸氣", "fire+ice": "冰火交響", "fire+forest": "燎原花火", "fire+thunder": "爆炎雷", "water+ice": "冰晶浪潮",
+  "water+forest": "春雨新芽", "water+thunder": "雷雨漩渦", "ice+forest": "霜花森林", "ice+thunder": "冰雷閃光", "forest+thunder": "雷鳴森羅" };
+const comboName = (a, b) => COMBO_NAME[`${a}+${b}`] ?? COMBO_NAME[`${b}+${a}`] ?? "雙屬性魔法";
 const EXAM = 10;      // 升階考核題數，答對 7 題通過
 
 /**
@@ -95,12 +99,17 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   const abilityBtn = el("button.btn.ability");
   const subBtn = el("button.btn.ability.subab", { hidden: true });
   const magicBtn = el("button.btn.bmagic", { hidden: true }, "分支魔法");
+  const ultBtn = el("button.btn.gold.ultbtn", { hidden: true, onclick: () => {
+    if (armed || energy < 3) return;
+    armed = true; energy = 0; drawHud(); sfx("combo"); ultBtn.classList.add("armed"); ultBtn.textContent = "大招準備！";
+    say("數晶亮起來了！答對這一題就放出大招！");
+  } }, "大招");
   // 朗讀題目：喇叭按鈕（題目左邊）；設定「自動朗讀」時每題出來就念
   let speakText = "";
   const speakBtn = el("button.btn.small.speak", { hidden: !canSpeak(), "aria-label": "念題目", onclick: () => speak(speakText, s.settings.mute) }, "🔊");
   let aborted = false;
   const leave = tut ? null : el("button.btn.small.leave", { onclick: () => { if (confirm("離開這一關？這關的進度不會保存。")) { aborted = true; running = false; game.go("map"); } } }, "離開");
-  const wrap = el("div.battle", {}, el("div.view", {}, canvas, hud, bubble, speakBtn, leave), wordPanel, line, answers, abilityBtn, subBtn, magicBtn);
+  const wrap = el("div.battle", {}, el("div.view", {}, canvas, hud, bubble, speakBtn, leave), wordPanel, line, answers, abilityBtn, subBtn, magicBtn, ultBtn);
   show(wrap);
   const app = document.querySelector("#app");
   fitWidth(app.clientWidth / app.clientHeight);          // 戰鬥畫面的寬度跟著螢幕比例
@@ -117,6 +126,10 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   // 分支魔法：學會的每一招這場可以用一次
   const magic = tut ? [] : learnedMagic(s), usedMagic = new Set(), flags = { shield: false, retry: false, double: false };
   let cur = null;          // 現在這一題（分支魔法、副屬性要用）
+  // 數晶大招：答對一題集一顆（最多 3 顆），集滿可以按「大招」，下一題答對放終極魔法
+  let energy = tut ? 0 : Math.min(3, s.energy ?? 0), armed = false;      // 數晶跨場保留（一般關卡只有 3 題）
+  // 王分階段：護盾剩一半時變身，招式變多（每 2 題一次、多一招「調換選項」）
+  let phase = 1, curMove = null;
   const events = [];
   let running = true;
 
@@ -137,6 +150,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     hud.replaceChildren(
       el("div.hearts", {}, ...Array.from({ length: maxHp(s.lv) }, (_, i) => el(`span.heart${i < hp ? "" : ".empty"}`))),
       el("div.combo", {}, combo >= 2 ? `連擊 ×${combo}` : ""),
+      tut ? null : el("div.energy", { title: "數晶：集滿 3 顆可以放大招" }, ...[0, 1, 2].map((k) => el(`span${k < energy ? ".on" : ""}`))),
       el("div.prog", {}, chal ? `連對 ${right}` : boss ? `護盾 ${"◆".repeat(shieldLeft)}${"◇".repeat(shield - shieldLeft)}` : exam ? `考核 ${right}/${EXAM}` : `${Math.min(qi + 1, total)}/${total}`),
     );
   };
@@ -208,12 +222,20 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     const mon = stage.monster, trait = !boss && mon ? TRAITS[mon.kind] : null;
     curTrait = trait;                    // 答題（askOne）要用：換選項、塗黑
     drawHud();
+    // 王變身（第二階段）：護盾剩一半
+    if (boss && phase === 1 && shieldLeft <= Math.ceil(shield / 2) && shieldLeft < shield && stage.monster) {
+      phase = 2; stage.monster.phase2 = true;
+      sfx("boss"); stage.shake = 10; stage.flinch(); stage.flashC = "#b483ff"; stage.flashA = 0.5; stage.flashT = 0.4;
+      say("墨水大王變身了！招式變多了，小心！");
+      await wait(900);
+    }
     if (final && !saidHalf && shieldLeft <= Math.ceil(shield / 2)) { saidHalf = true; await scene([K("……你真的一直算下去？明明那麼多題。"), PG("不會的就去圖書館學，學會了再回來算！我們不會說「算了」。")]); }
     if (final && !saidLast && shieldLeft === 1) { saidLast = true; await scene([K("最後一題……是最早被丟進來的那一題。幾百年來，從來沒有人算完它。"), PG("見習魔數師，就是這一題！")]); }
-    // 王的招式（企劃書 E8）：每三題一次，讓題目變難讀一下——晃動、或被墨水噴到（過一下就散開）
-    const move = boss && qi > 0 && qi % 3 === 2 ? (qi % 2 ? "shake" : "ink") : null;
+    // 王的招式（企劃書 E8）：第一階段每三題一次（晃動、墨水霧）；變身後每兩題一次，多一招「調換選項」
+    const move = !boss || qi === 0 ? null : phase === 1 ? (qi % 3 === 2 ? (qi % 2 ? "shake" : "ink") : null) : (qi % 2 === 1 ? ["swap", "ink", "shake"][Math.floor(qi / 2) % 3] : null);
+    curMove = move;
     bubble.classList.remove("mv-shake", "mv-ink");
-    if (move) { sfx("boss"); stage.flinch(); say(move === "shake" ? "墨水大王使出「搖搖晃晃」！題目在晃……穩住！" : "墨水大王噴出「墨水霧」！等它散開再看清楚。"); }
+    if (move) { sfx("boss"); stage.flinch(); say(move === "shake" ? "墨水大王使出「搖搖晃晃」！題目在晃……穩住！" : move === "swap" ? "墨水大王使出「調換」！選項要換位置了！" : "墨水大王噴出「墨水霧」！等它散開再看清楚。"); }
 
     // 題目：計算題掛在怪物頭上；應用題放在下方面板
     const isWord = q.kind !== "calc";
@@ -223,14 +245,20 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     wordPanel.replaceChildren(...(isWord ? [el("div.wtext", {}, mathText(q.text))] : []));
     speakText = q.text;
     if (s.settings.voice) setTimeout(() => speak(q.text, s.settings.mute), move ? 1700 : 250);
-    if (move) { bubble.classList.add(`mv-${move}`); if (move === "ink") setTimeout(() => bubble.classList.remove("mv-ink"), 1600); }
+    if (move && move !== "swap") { bubble.classList.add(`mv-${move}`); if (move === "ink") setTimeout(() => bubble.classList.remove("mv-ink"), 1600); }
     if (q.tut) { say(q.tut.text); glow(q.tut.glow); }
     else if (move) {}
     else if (qi === 0 && !isWord && !q.prefix) {}             // 第一題：留著開場說明（練習、挑戰、特訓的說明）
     else if (qi > 0) say("");
 
+    // 完美詠唱：計算題 4 秒、應用題 9 秒內答對（時間條在題目下面）
+    const perfectSec = isWord ? 9 : 4;
+    const pbar = tut ? null : el("div.pbar", {}, el("div.pfill", { style: { animationDuration: `${perfectSec}s` } }));
+    if (pbar) wrap.querySelector(".view").append(pbar);
+    ultBtn.hidden = tut || (energy < 3 && !armed);
     const t0 = performance.now();
     const result = await askOne(q);
+    pbar?.remove();
     glow(null);
     if (aborted) return;
     const sec = (performance.now() - t0) / 1000;
@@ -241,7 +269,12 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
 
     if (result.ok) {
       right++; combo++; best = Math.max(best, combo);
-      const tier = spellTier(combo);
+      const perfect = !tut && sec <= perfectSec;
+      const ult = armed; armed = false; ultBtn.classList.remove("armed"); ultBtn.textContent = "大招";
+      const comboTech = !tut && sub && combo % 3 === 0;          // 一般關卡只有 3 題：每連擊 3 下一次
+      let tier = ult || comboTech ? 4 : Math.min(4, spellTier(combo) + (perfect ? 1 : 0));
+      if (!ult) energy = Math.min(3, energy + 1);
+      if (perfect) { floatText(wrap, "完美詠唱！", "exp"); gained += 5; }
       if (tier > spellTier(combo - 1)) setTimeout(() => sfx("combo"), 120);   // 連擊升級（魔法變強）
       sparks += Math.round((1 + tier) * (s.attr === "fire" ? 1.5 : sub === "fire" ? 1.25 : 1));
       if (flags.double && !boss) { combo++; flags.double = false; say("分身！連擊多加一！"); }
@@ -253,8 +286,9 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
         await stage.mathMagic(q.math);
         canvas.onclick = null;
       }
-      say(["", "咒語成立！", "魔法變強了！", "大魔法！", "終極魔法！！"][tier]);
-      await stage.cast(tier, crystalLevel(s.crystals[s.attr]), q.branch);
+      say(ult ? "大招！數晶全部放出去！" : comboTech ? `組合技「${comboName(s.attr, sub)}」！` : perfect ? "完美詠唱！魔法升一級！" : ["", "咒語成立！", "魔法變強了！", "大魔法！", "終極魔法！！"][tier]);
+      if (ult || comboTech) { stage.flashC = ATTRS[comboTech ? sub : s.attr].color; stage.flashA = 0.45; stage.flashT = 0.35; }
+      await stage.cast(tier, crystalLevel(s.crystals[s.attr]), q.branch, comboTech ? sub : null);
       stage.setPage("happy", 1.6);
       // 答案數字跳出來；選擇題的答案可能是中文（像素字寫不出來），就跳一顆星
       const shown = String(q.answer).replace(/−|－/g, "-");
@@ -262,10 +296,12 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
       sfx("hit");
       if (boss) {
         shieldLeft--;
+        if ((ult || comboTech) && shieldLeft > 1) { shieldLeft--; floatText(wrap, ult ? "大招！多打掉一格護盾" : "組合技！多打掉一格護盾", "exp"); }
         if (flags.double && shieldLeft > 1) { shieldLeft--; flags.double = false; floatText(wrap, "分身！多打掉一格護盾", "exp"); }
         stage.shake = 6;
         if (shieldLeft > 0) stage.flinch();
         if (shieldLeft <= 0) { stage.purify(); if (!s.stars[`${gradeId}-boss`]) { stage.restoreColor(); setTimeout(() => sfx("restore"), 400); s.flags = { ...(s.flags ?? {}), restore: gradeId }; } }
+      } else if (mon && mon.hp > 1 && (ult || comboTech)) { mon.hp = 1; stage.purify();        // 大招、組合技：有兩格的怪也一次散開
       } else if (mon && mon.hp > 1) {
         // 還沒散開：答對打掉一格（碎晶蟲＝打破盾）
         mon.hp--; stage.flinch();
@@ -292,6 +328,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   if (aborted) return;
   running = false; stopSpeak();
   s.flags = { ...(s.flags ?? {}), seenTrait: [...seenTrait] };
+  if (!tut) s.energy = armed ? 3 : energy;          // 按了大招但沒用到：數晶還給你
   if (tut) {
     // 教學：經驗照算、錯題本照記；不給星星和晶幣，直接接劇情
     const ups = addExp(s, gained);
@@ -337,7 +374,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
       answers.replaceChildren(...q.options.map((o, i) => el("button.btn.answer", { "data-k": i + 1, "data-v": o, onclick: (e) => pickOpt(o, e.currentTarget) }, mathText(q.unit && q.kind === "word" ? `${o} ${q.unit}` : o))));
       let btns = [...answers.children];
       // 怪物個性：亂針鐘把選項換位置、塗鴉蝙蝠把一個選項塗黑一下
-      if (curTrait?.shuffle) setTimeout(() => {
+      if (curTrait?.shuffle || curMove === "swap") setTimeout(() => {
         if (done) return;
         const order = btns.map((b) => [Math.random(), b]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
         if (order.every((b, k) => b === btns[k])) order.push(order.shift());
