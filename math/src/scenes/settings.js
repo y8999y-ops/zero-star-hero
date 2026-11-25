@@ -57,7 +57,7 @@ export function settingsScene(game, { from = "title" } = {}) {
     group("畫面",
       toggle("畫面晃動", "shake"),
       choice("閃光效果", "flash", [["full", "開"], ["soft", "減弱"]]),
-      choice("地圖美術", "art", [["raw", "原圖"], ["pixel", "像素重繪"]]),
+      choice("地圖美術", "mapArt", [["pixel", "像素"], ["raw", "原圖（比較用）"]]),
       el("button.btn", { onclick: () => enterFullscreen() }, "進入全螢幕")),
     group("其他",
       el("button.btn", { onclick: () => game.go("opening", { replay: true, back: from }) }, "重看開場動畫"),

@@ -233,6 +233,16 @@ export class World {
       ctx.fillStyle = "rgba(255,240,180,0.85)";
       for (const [dx, dy] of [[-r, 0], [r, 0], [0, -1], [0, 1]]) ctx.fillRect(Math.round(this.marker.x) - cx + dx, Math.round(this.marker.y) - cy + dy, 1, 1);
     }
+    // 影子：建築、樹、小物件底下一片斜斜的淡影子（光從左上來，影子落在右下），先畫在地上
+    ctx.fillStyle = "rgba(24,34,28,0.22)";
+    for (const o of this.map.objects) {
+      if (o.base < 0 || o.hidden?.() || o.noShadow) continue;
+      const im = this.img[o.art]; if (!im) continue;
+      const w = Math.min(im.width * 0.86, 220), h = Math.max(4, Math.min(16, w * 0.16));
+      const sx = Math.round(o.x + im.width / 2 - cx + w * 0.08), sy = Math.round(o.base + 4 - cy);
+      if (sx + w < 0 || sx - w > VW || sy - h > VH || sy + h < 0) continue;
+      for (let j = -h; j <= h; j += 2) { const k = Math.sqrt(1 - (j / h) ** 2) * w / 2; ctx.fillRect(Math.round(sx - k), sy + j, Math.round(k * 2), 2); }
+    }
     // 照 y 排：物件、NPC、主角
     const list = [];
     for (const o of this.map.objects) if (!o.hidden?.() && !(o.ink && this.gray <= 0.001)) list.push({ y: o.base, draw: () => {

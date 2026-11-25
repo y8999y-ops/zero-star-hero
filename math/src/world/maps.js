@@ -25,7 +25,7 @@ export const BUILDING_NAME = { forest: "翠森苑", thunder: "紫雷閣", water:
 const inBox = (x, y, b) => x > b[0] && x < b[2] && y > b[1] && y < b[3];
 const propObjects = (dir, props) => props.map((p) => ({ art: p.art, file: `${dir}/${p.art}.png`, x: p.x, y: p.y, base: p.y + p.h - 4 }));
 
-const DEF = {
+export const DEF = {
   // 學院島 v3：同心圓（世界觀 3.0、企劃書 3.7）
   island(L, s, dir) {
     const [icx, icy, irx, iry] = L.island;
@@ -50,7 +50,7 @@ const DEF = {
       overlay: `${dir}/clouds-front.png`,          // 島南邊蓋在斷崖前面的雲（最上層）
       start: { x: DOCK.x + 70, y: DOCK.y + 90, dir: "left" },      // 剛下浮空船
       walkable(x, y) {
-        const k = ((x - icx) / (irx - 10)) ** 2 + ((y - icy) / (iry - 16)) ** 2;
+        const k = ((x - icx) / (irx - 6)) ** 2 + ((y - icy) / (iry - 10)) ** 2;   // 島邊留一點點（斷崖、雲）
         const onDeck = x >= DOCK.x + 30 && x <= DOCK.x + 99 && y >= DOCK.y + 76 && y <= DOCK.y + 102;
         const westRoad = x > westX - 2 && x < westX + 110 && Math.abs(y - L.ewY) < 10;   // 往花園的路接到島的邊緣
         const eastRoad = x > icx + irx - 80 && x < DOCK.x + 40 && Math.abs(y - L.ewY) < 10;   // 碼頭的棧橋接到島上
@@ -96,7 +96,7 @@ const DEF = {
         { fx: "iceCrystal", x: B.ice.x - 14, y: B.ice.y + B.ice.h - 30 }, { fx: "iceCrystal", x: B.ice.x + B.ice.w + 14, y: B.ice.y + B.ice.h - 30 },
         { fx: "plasmaBall", x: B.thunder.x - 18, y: B.thunder.y + B.thunder.h - 4 }, { fx: "sparkArc", x: B.thunder.x + B.thunder.w + 26, y: B.thunder.y + B.thunder.h - 4 },
         { fx: "fountain", x: B.water.x + B.water.w + 40, y: B.water.y + B.water.h - 6 },
-        { fx: "leaves", x: B.forest.x + B.forest.w / 2, y: B.forest.y + B.forest.h + 40, flat: false, light: 0 },
+        // 落葉特效拿掉了（會在地上留一堆橘紅色的落葉，看起來很亂）
       ],
     };
     // ── 撿得到、打得開的東西：放在島上能走、離建築遠一點的地方（位置固定，不會每次換） ──
@@ -178,7 +178,7 @@ const DEF = {
 
 /** 讀一張地圖（layout.json＋規則）。s：存檔（規則會看進度；設定的「地圖美術」決定用原圖版還是像素重繪版） */
 export async function loadMap(id, s) {
-  const dir = s.settings?.art === "pixel" ? id : `${id}-raw`;
+  const dir = s.settings?.mapArt === "raw" ? `${id}-raw` : id;      // 預設像素（使用者 2026-11-25 決定全部像素）
   if (!cache[dir]) cache[dir] = await (await fetch(new URL(`${dir}/layout.json`, base))).json();
   return DEF[id](cache[dir], s, dir);
 }

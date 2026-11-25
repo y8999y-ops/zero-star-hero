@@ -31,6 +31,7 @@
 | `node tools/preview-hero.mjs out.png` | 見習魔數師預覽：女生／男生 × 各姿勢 × 五個屬性色，並檢查色數（上限 16） |
 | `node tools/preview-sprites.mjs fx/ink-drop.js inkDropFrame 12 out.png` | 角色／怪物預覽（姿勢 × 時間），並檢查色數；`POSES=idle,talk` 換姿勢 |
 | `node tools/test-generators.mjs` | 檢查計算題產生器：每個題型產生 2000 題，選項不重複、答案正確 |
+| `npm run check:maps` | 地圖自動檢查：每個門口、事件、NPC、墨水怪都走得到（推上去之前跑） |
 | `npm run sim` | 共鳴儀式模擬：三種作答習慣下五種屬性各出現幾成（目標 15～25%） |
 
 ## 資料夾

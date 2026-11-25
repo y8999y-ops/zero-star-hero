@@ -23,36 +23,36 @@
     {
       "id": "max_delta_e",
       "status": "skipped",
-      "value": 0.100107,
+      "value": 0.109871,
       "threshold": null
     }
   ],
   "inputs": [
     {
       "path": "../_in/ground.png",
-      "sha256": "e5240ce92a23061339f8ebded1442bde27058476fac65d2bda8db7aa9e32fab0",
-      "bytes": 180227
+      "sha256": "dceb81f5b4bdfc668e1c7d403994259d0ce3f79f24e680e3b18baa40bc475148",
+      "bytes": 184842
     }
   ],
   "outputs": [
     {
       "path": "palette.json",
-      "sha256": "ac1f07d20da221d00aef87f8f9754fb8b40b9a2c3357b6876bc21ef59c49fe29",
+      "sha256": "fa9f5d8aef20f1304d169a1c4fee19f70ddc1d1670f7365e293cad13c43eb830",
       "bytes": 1079
     },
     {
       "path": "palette.gpl",
-      "sha256": "5e932091bfbf3a579f53e5a59076a4bb5543f013e41044d0e36375dd4d9ccd4b",
+      "sha256": "bf33251ec8c0fc011a55a9b32b81b6c4654852aee0263112c8efb2972efe9a3a",
       "bytes": 519
     },
     {
       "path": "palette.hex",
-      "sha256": "87b92a1a86237ec253381720ffcecfee8793f3922cd28b628711000f09aa010c",
+      "sha256": "e7bd33abb79de03d4c0bdb3b79b14534c482ce273d6d74ee64ee14d9472ad003",
       "bytes": 168
     },
     {
       "path": "swatches.png",
-      "sha256": "d45033c6d0786389704cef277390f3323d95dbbcee442fafaa4f6fbb5d8b537f",
+      "sha256": "b7435b4e10180d231ddbc6d23b24f180015b0bc513fe0ef9f7b28ead1b8abfb4",
       "bytes": 435
     }
   ],
@@ -70,18 +70,18 @@
     "../_in/ground.png": {
       "measured_px": 1661600,
       "alpha_threshold": 128,
-      "off_palette_px": 164237,
+      "off_palette_px": 278431,
       "partial_alpha_px": 0,
-      "colors": 62,
+      "colors": 74,
       "palette_colors_used": 24,
-      "mean_delta_e": 0.001009,
-      "p95_delta_e": 0.00368,
-      "max_delta_e": 0.100107
+      "mean_delta_e": 0.001228,
+      "p95_delta_e": 0.007593,
+      "max_delta_e": 0.109871
     }
   },
   "totals": {
-    "max_delta_e": 0.100107,
-    "worst_p95_delta_e": 0.00368,
-    "off_palette_px": 164237
+    "max_delta_e": 0.109871,
+    "worst_p95_delta_e": 0.007593,
+    "off_palette_px": 278431
   }
 }

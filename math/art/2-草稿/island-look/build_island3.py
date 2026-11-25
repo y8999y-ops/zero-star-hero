@@ -231,7 +231,7 @@ for j, (dx, dy) in enumerate([(-60, -30), (-20, -50), (20, -44), (60, -34), (-80
 g = BBx["greenhouse"]                                               # 溫室旁一排果樹
 for j in range(4): PROPS.append(("tree_s", g["x"] + g["w"] + 22, g["y"] + 50 + j * 34))
 d = BBx["dorm"]                                                      # 宿舍後院
-PROPS += [("tree", d["x"] - 26, d["y"] + 60), ("tree_s", d["x"] - 30, d["y"] + 110), ("bench", d["x"] - 40, d["door"][1] + 4)]
+PROPS += [("tree", d["x"] - 26, d["y"] + 60), ("bench", d["x"] - 40, d["door"][1] + 4)]   # 後院一棵樹＋長椅（另一棵會擋住門口的路，拿掉）
 # 林蔭大道：往南（赤焰塔）的放射路兩旁一排小樹；北邊放射路兩旁一排樹叢（像樹籬）
 for j in range(5):
     y = WELL_C[1] + 90 + j * 34
@@ -327,8 +327,15 @@ for z in zones:
     ramp = np.array(THEME[z["kind"]], float)
     idx = np.clip(((lum - 0.25) / 0.55 * 4).astype(int), 0, 3)
     A[m, :3] = ramp[idx[m]]
+A = A  # 學院周圍換色完
+tmp = Image.fromarray(A.astype(np.uint8)); tmp.alpha_composite(pond, POND_AT); A = np.array(tmp).astype(float)   # 水池（它自己的草也一起調柔和）
+# 草地顏色調柔和（使用者 2026-11-25 覺得地圖很醜：原本的萊姆綠太亮太飽和）：彩度降到 6 成、亮度降一點，學院周圍換過色的不動
+gm = (A[..., 1] > A[..., 0] + 12) & (A[..., 1] > A[..., 2] + 12)
+for z in zones:
+    gm &= np.sqrt(((xx - z["x"]) / z["rx"]) ** 2 + ((yy - z["y"]) / z["ry"]) ** 2) >= 1
+lm = (0.3 * A[..., 0] + 0.59 * A[..., 1] + 0.11 * A[..., 2])[..., None]
+A[gm, :3] = ((lm + (A[..., :3] - lm) * 0.6) * np.array([0.94, 0.95, 0.9]))[gm]
 out = Image.fromarray(A.astype(np.uint8))
-out.alpha_composite(pond, POND_AT)
 out.convert("RGB").save(OUT / "ground.png")
 # 南邊蓋在斷崖前面的雲：另外一張圖（遊戲裡畫在最上層，看起來島浮在雲上）
 fc = Image.new("RGBA", (MW, MH))
