@@ -59,7 +59,7 @@ math/
     battle/          battle.js 一關的流程、stage.js 戰鬥畫面、areaart.js 區域背景（拆層、墨水灰）、ambience.js 場景動態（雲、浮空島、花瓣、蝴蝶…）、spells.js 五屬性四級魔法、mathmagic.js 數學變魔法（加減乘除）與答案數字、mathmagic-more.js 其他題型的演出
     scenes/          標題與劇情、共鳴儀式、學院地圖、結算、設定
   dev/               開發用頁面（魔法一覽）
-  fx/                角色與怪物的像素圖（程式畫）：_grid.js 共用畫筆、hero.js 見習魔數師、ink-drop.js 墨水滴、pagepage.js 頁頁
+  fx/                角色與怪物的像素圖（程式畫）：_grid.js 共用畫筆、hero.js 見習魔數師、ink-drop.js 墨水滴、crooked-flower.js 歪瓣花、ink-king-baby.js 墨水大王・幼體、pagepage.js 頁頁
   art/
     1-參考原圖/      AI 參考圖（提示詞在 docs/美術提示詞.md），依 map、battle/<區域>、chars 分
     2-草稿/          pixel-redraw 重畫中的稿

@@ -21,6 +21,15 @@ export class Grid {
         if (nx * nx + ny * ny <= 1) this.set(x, y, typeof fn === "function" ? fn(nx, ny) : fn);
       }
   }
+  // 轉了角度的橢圓（花瓣、葉子）：ang 是長軸方向（弧度），fn(u, v) 的 u 是沿長軸 -1～1、v 是橫向 -1～1
+  oval(cx, cy, rx, ry, ang, fn) {
+    const c = Math.cos(ang), s = Math.sin(ang), R = Math.max(rx, ry) + 1;
+    for (let y = Math.floor(cy - R); y <= Math.ceil(cy + R); y++)
+      for (let x = Math.floor(cx - R); x <= Math.ceil(cx + R); x++) {
+        const dx = x - cx, dy = y - cy, u = (dx * c + dy * s) / (rx + 0.4), v = (-dx * s + dy * c) / (ry + 0.4);
+        if (u * u + v * v <= 1) this.set(x, y, typeof fn === "function" ? fn(u, v, dx, dy) : fn);
+      }
+  }
   // 多邊形（掃描線），fn(x, y) 回傳顏色
   poly(pts, fn) {
     const ys = pts.map((p) => p[1]), y0 = Math.floor(Math.min(...ys)), y1 = Math.ceil(Math.max(...ys));
