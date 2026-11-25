@@ -56,7 +56,7 @@ math/
     ui.js            建立元素、對話框、飄字
     transition.js    戰鬥轉場（墨水→魔法陣→屬性魔法蓋滿→打開）
     questions/       gen.js 計算題產生器、pool.js 出題與四個選項
-    battle/          battle.js 一關的流程、stage.js 戰鬥畫面、spells.js 五屬性四級魔法、mathmagic.js 數學變魔法（加減乘除）與答案數字、mathmagic-more.js 其他題型的演出
+    battle/          battle.js 一關的流程、stage.js 戰鬥畫面、areaart.js 區域背景（拆層、墨水灰）、ambience.js 場景動態（雲、浮空島、花瓣、蝴蝶…）、spells.js 五屬性四級魔法、mathmagic.js 數學變魔法（加減乘除）與答案數字、mathmagic-more.js 其他題型的演出
     scenes/          標題與劇情、共鳴儀式、學院地圖、結算、設定
   dev/               開發用頁面（魔法一覽）
   fx/                角色與怪物的像素圖（程式畫）：_grid.js 共用畫筆、hero.js 見習魔數師、ink-drop.js 墨水滴、pagepage.js 頁頁

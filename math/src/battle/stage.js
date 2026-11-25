@@ -8,6 +8,7 @@ import { GRADES, ATTRS } from "../data.js";
 import { heroFrame } from "../../fx/hero.js";
 import { MathMagic, PopNumber } from "./mathmagic.js";
 import { areaArtNow } from "./areaart.js";
+import { Ambience } from "./ambience.js";
 
 export const W = 384, H = 216, GROUND = 144;
 const PX = 76;               // 玩家腳下 x
@@ -47,6 +48,7 @@ export class Stage {
     this.dim = 0;            // 施法時畫面暗下來，讓魔法的光更明顯
     this.art = areaArtNow(gradeId);          // 有正式背景圖就用（要先 await loadAreaArt）
     this.bg = this.art ? null : this.paintBackground();
+    this.ambience = this.art ? new Ambience(this.art) : null;   // 場景的動態（雲、浮空島、花瓣、蝴蝶…）
     this.grayTo = null;
   }
 
@@ -134,6 +136,7 @@ export class Stage {
     this.t += dt;
     if (this.castT >= 0) { this.castT += dt; if (this.castT > 0.6 && !this.magic?.active) this.castT = -1; }
     this.hurtT = Math.max(0, this.hurtT - dt);
+    this.ambience?.update(dt);
     if (this.grayTo != null) { this.gray += (this.grayTo - this.gray) * Math.min(1, dt * 1.6); if (Math.abs(this.gray - this.grayTo) < 0.002) { this.gray = this.grayTo; this.grayTo = null; } }
     this.dimHold = Math.max(0, (this.dimHold ?? 0) - dt);
     const goal = this.dimHold > 0 ? this.dimTo : 0;
@@ -203,10 +206,9 @@ export class Stage {
     const sk = this.opt.shake ? this.shake : 0;
     const sx = sk ? Math.round((Math.random() - 0.5) * sk) : 0;
     const sy = sk ? Math.round((Math.random() - 0.5) * sk) : 0;
-    if (this.art) {
-      // 正式背景：彩色版上疊灰色版，gray 從 1 漸變到 0 就是「恢復色彩」
-      ctx.drawImage(this.art.color, sx, sy);
-      if (this.gray > 0.001) { ctx.globalAlpha = this.gray; ctx.drawImage(this.art.gray, sx, sy); ctx.globalAlpha = 1; }
+    if (this.ambience) {
+      // 正式背景＋動態；每一層都是彩色版上疊灰色版，gray 從 1 漸變到 0 就是「恢復色彩」
+      this.ambience.draw(ctx, sx, sy, this.gray);
     } else {
       ctx.drawImage(this.bg, sx, sy);
       if (this.gray > 0) { ctx.fillStyle = `rgba(40,34,60,${0.35 * this.gray})`; ctx.fillRect(0, 0, W, H); }
