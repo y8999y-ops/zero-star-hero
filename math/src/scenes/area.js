@@ -103,7 +103,7 @@ export function areaScene(game, { grade = "g1" } = {}) {
       Object.assign(gf.style, { top: `${132 * u + gh}px`, backgroundSize: `${gw}px ${gh}px`, backgroundPosition: `${(w - gw) / 2}px ${-gh * 0.6}px` });
     }
     for (const sp of sprites) {
-      const sc = u * (sp.f0.w > 80 ? 1 : 1.25);
+      const sc = u * (sp.f0.w > 80 ? 1.25 : 1.5);   // 跟戰鬥一樣：人物 1.5 倍、王 1.25 倍
       Object.assign(sp.cv.style, { width: `${sp.f0.w * sc}px`, height: `${sp.f0.h * sc}px` });
       Object.assign(sp.n.style, { left: `${ox + sp.x * u - sp.f0.ox * sc}px`, top: `${GROUND * u - sp.f0.oy * sc}px` });
     }

@@ -35,7 +35,12 @@ export let W = 384;
 export const H = 216, GROUND = 144;
 const ART_W = 384;
 const PX = 76;               // 玩家腳下 x
-const REACH = 132;           // 怪物走到這裡＝撞到玩家
+const REACH = 146;           // 怪物走到這裡＝撞到玩家
+// 人物放大 1.5 倍（使用者 2026-11-25）：畫布內部解析度是 2 倍（R），人物畫成 3 倍＝看起來 1.5 倍，像素還是整整齊齊的方塊。
+// 其他東西（特效、背景、數字）照原本 384×216 的格子畫，只是整個放大 2 倍。
+const R = 2, CS = 1.5;
+// 王本來就快 100 格高，放大 1.5 倍頭會超出畫面上緣：王只放大 1.25 倍
+const scaleOf = (kind) => (kind?.startsWith("king") ? 1.25 : CS);
 let START = 356;             // 怪物出現的位置（離右邊 28）
 let WAIT = 262;              // 不限時：怪物停在這裡等（離右邊 122）
 // 數學變魔法的版面原本以 288 寬設計，整塊往右、往上移到畫面中央偏上
@@ -51,8 +56,9 @@ export class Stage {
   constructor(canvas, gradeId, look, attr, settings = {}) {
     this.opt = { shake: settings.shake !== false, softFlash: settings.flash === "soft", shortMagic: settings.magic === "short" };
     this.cv = canvas;
-    canvas.width = W; canvas.height = H;
+    canvas.width = W * R; canvas.height = H * R;
     this.ctx = canvas.getContext("2d");
+    this.ctx.setTransform(R, 0, 0, R, 0, 0);
     this.ctx.imageSmoothingEnabled = false;
     this.g = GRADES[gradeId]; this.gradeId = gradeId;
     this.look = look; this.attr = attr;
@@ -167,9 +173,9 @@ export class Stage {
     for (const p of spell.parts) {
       const o = { ...(p.opts ?? {}), light: crystalLight(crystalLv) };
       let x = 0, y = GROUND, from = null, to = null;
-      if (p.at === "caster") { x = PX + 10; y = GROUND - (p.mod.meta.origin[1] < 40 ? 16 : 0); if ("length" in (p.mod.meta.options ?? {})) o.length = Math.max(40, tx - PX - 10); }
+      if (p.at === "caster") { x = PX + 15; y = GROUND - (p.mod.meta.origin[1] < 40 ? 24 : 0); if ("length" in (p.mod.meta.options ?? {})) o.length = Math.max(40, tx - PX - 15); }
       else if (p.at === "target") { x = tx + (p.x ?? 0); }
-      else { const dy = p.drop ?? 0; from = [PX + 12, GROUND - 18 + dy]; to = [tx - 4, GROUND - 14 + dy]; x = from[0]; y = from[1]; }
+      else { const dy = p.drop ?? 0; from = [PX + 18, GROUND - 27 + dy]; to = [tx - 6, GROUND - 21 + dy]; x = from[0]; y = from[1]; }
       this.addFx(p.mod, { x, y, from, to, delay: 0.15 + p.delay, speed: p.speed, dur: p.dur, opts: o });
     }
     return new Promise((res) => setTimeout(() => { this.shake = spell.shake ?? 2; res(); }, (0.15 + spell.hit) * 1000));
@@ -194,7 +200,7 @@ export class Stage {
     if (m) { m.state = "bump"; m.t = 0; }
     setTimeout(() => {
       this.hurtT = 0.6; this.shake = 4;
-      this.addFx(FX.hitFlash, { x: PX + 4, y: GROUND - 6, flip: true, opts: { palette: INK_POOF } });
+      this.addFx(FX.hitFlash, { x: PX + 6, y: GROUND - 9, flip: true, opts: { palette: INK_POOF } });
     }, 220);
   }
 
@@ -217,7 +223,7 @@ export class Stage {
       if (m.state === "bump") {
         const u = Math.min(1, m.t / 0.5);
         m.x = m.home ??= m.x;
-        m.x = m.home - (m.home - (PX + 26 + (m.kind.startsWith("king") ? 34 : 0))) * Math.sin(u * Math.PI);
+        m.x = m.home - (m.home - (PX + 38 + (m.kind.startsWith("king") ? 50 : 0))) * Math.sin(u * Math.PI);
         if (u >= 1) { m.state = "walk"; m.home = undefined; }
       }
       if (m.state === "die") { m.alpha = Math.max(0, 1 - m.t / 0.25); if (m.t > 0.3) this.monster = null; }
@@ -255,7 +261,7 @@ export class Stage {
       // 杖頭數晶的光
       p.place(0, 0, false, 0);
       const [gx, gy] = this.hero.glow;
-      p.glow(PX - this.hero.ox + gx, GROUND - this.hero.oy + gy, this.castT >= 0 ? 7 : 4, pfHex(ATTRS[this.attr]?.color ?? "#8a7cff"), this.castT >= 0 ? 0.7 : 0.35);
+      p.glow(PX + (gx - this.hero.ox) * CS, GROUND + (gy - this.hero.oy) * CS, this.castT >= 0 ? 7 : 4, pfHex(ATTRS[this.attr]?.color ?? "#8a7cff"), this.castT >= 0 ? 0.7 : 0.35);
     }
 
     const m = this.monster;
@@ -286,8 +292,8 @@ export class Stage {
       // 畫面比背景寬：兩邊用鏡射補滿
       if (bx > 0) {
         ctx.save(); ctx.scale(-1, 1);
-        ctx.drawImage(this.cv, bx, 0, bx, H, -bx, 0, bx, H);
-        ctx.drawImage(this.cv, W - bx * 2, 0, bx, H, -W, 0, bx, H);
+        ctx.drawImage(this.cv, bx * R, 0, bx * R, H * R, -bx, 0, bx, H);
+        ctx.drawImage(this.cv, (W - bx * 2) * R, 0, bx * R, H * R, -W, 0, bx, H);
         ctx.restore();
       }
     } else {
@@ -297,8 +303,8 @@ export class Stage {
     if (this.dim > 0.01) { ctx.fillStyle = `rgba(8,6,20,${this.dim})`; ctx.fillRect(0, 0, W, H); }
     // 角色腳下的影子：讓角色從背景裡浮出來（尤其是跟草地同色系的）
     const shadow = (x, rx) => { ctx.fillStyle = "rgba(20,14,40,0.32)"; ctx.fillRect(Math.round(x - rx) + sx, GROUND - 1 + sy, rx * 2, 2); ctx.fillRect(Math.round(x - rx + 2) + sx, GROUND + 1 + sy, rx * 2 - 4, 1); };
-    if (this.hero) shadow(PX, 8);
-    if (m && m.alpha > 0 && !m.kind.startsWith("king")) shadow(m.x, m.kind === "slime" ? 20 : 9);
+    if (this.hero) shadow(PX, 12);
+    if (m && m.alpha > 0 && !m.kind.startsWith("king")) shadow(m.x, m.kind === "slime" ? 20 : 13);
     if (m && m.kind === "slime" && m.alpha > 0) {
       clearFrame(this.bossFrame);
       m.inst.options.x = 56; m.inst.options.y = 72; m.inst.options.flip = true;
@@ -309,15 +315,16 @@ export class Stage {
       ctx.drawImage(this.bossLayer, Math.round(m.x) - 112 + sx, GROUND - 144 + sy, 224, 176);
       ctx.globalAlpha = 1;
     }
-    if (this.hero) ctx.drawImage(this.hero.canvas, PX - this.hero.ox + sx, GROUND - this.hero.oy + sy);
+    const big = (c, x, y, ox, oy, k = CS) => ctx.drawImage(c, x - ox * k + sx, y - oy * k + sy, c.width * k, c.height * k);
+    if (this.hero) big(this.hero.canvas, PX, GROUND, this.hero.ox, this.hero.oy);
     // 頁頁：浮在主角左上方，表情跟著戰鬥變
     const pg = this.sprite("page", this.t > this.pageUntil ? "idle" : this.pagePose, this.t);
-    ctx.drawImage(pg.canvas, PX - 30 - pg.ox + sx, GROUND - 26 - pg.oy + sy);
+    big(pg.canvas, PX - 42, GROUND - 38, pg.ox, pg.oy);
     // 程式畫的怪物（墨水滴、歪瓣花、墨水大王）：被淨化、被打中時是 hurt 姿勢
     if (m && SPRITES[m.kind] && m.alpha > 0) {
       const sp = this.sprite(m.kind, m.state === "die" || m.flinch > 0 ? "hurt" : "idle", m.t + m.phase);
       ctx.globalAlpha = m.alpha;
-      ctx.drawImage(sp.canvas, Math.round(m.x) - sp.ox + sx, GROUND - sp.oy + sy);
+      big(sp.canvas, Math.round(m.x), GROUND, sp.ox, sp.oy, scaleOf(m.kind));
       ctx.globalAlpha = 1;
     }
     composite(frame, this.img.data, null, this.opt.softFlash ? 0.55 : 1);
@@ -332,7 +339,7 @@ export class Stage {
   mathMagic(math) {
     const m = this.monster;
     // 目標座標換成演出版面自己的座標（版面整塊位移了 MAGIC_OX、MAGIC_OY）
-    this.magic = new MathMagic(ATTRS[this.attr]?.color ?? "#8a7cff", [(m ? m.x : 270) - MAGIC_OX, GROUND - 10 - MAGIC_OY], [MAGIC_OX, MAGIC_OY]);
+    this.magic = new MathMagic(ATTRS[this.attr]?.color ?? "#8a7cff", [(m ? m.x : 270) - MAGIC_OX, GROUND - 15 - MAGIC_OY], [MAGIC_OX, MAGIC_OY]);
     this.castT = 0;
     this.dimTo = 0.3; this.dimHold = 9;
     const run = this.magic.start(math);
@@ -343,7 +350,7 @@ export class Stage {
   /** 打中時在怪物頭上跳出答案數字 */
   popNumber(text, combo) {
     const m = this.monster;
-    this.pops.push(new PopNumber(String(text).replace("−", "-"), m ? m.x : 270, GROUND - (HEAD[m?.kind] ?? 42) - 8, ATTRS[this.attr]?.color ?? "#8a7cff", combo >= 10 ? 4 : combo >= 6 ? 3 : 2));
+    this.pops.push(new PopNumber(String(text).replace("−", "-"), m ? m.x : 270, GROUND - (HEAD[m?.kind] ?? 42) * scaleOf(m?.kind) - 8, ATTRS[this.attr]?.color ?? "#8a7cff", combo >= 10 ? 4 : combo >= 6 ? 3 : 2));
   }
 
   /** 頁頁的表情：talk 說話、happy 開心、worried 擔心，維持 sec 秒後回到待機 */
@@ -390,7 +397,7 @@ export class Stage {
   monsterHead() {
     const m = this.monster;
     if (!m) return null;
-    return { x: m.x / W, y: (GROUND - (HEAD[m.kind] ?? 42)) / H };
+    return { x: m.x / W, y: Math.max(26, GROUND - (HEAD[m.kind] ?? 42) * scaleOf(m.kind)) / H };
   }
 }
 
