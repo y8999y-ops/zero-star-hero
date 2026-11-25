@@ -13,7 +13,7 @@
 - 開發用：http://localhost:5173/math/dev/spells.html 同時播放五個屬性 × 四級魔法；加 `?t=0.6` 停在施法後第 0.6 秒，方便截圖比較。
 - 主控台的 `__game` 可以看存檔、直接跳畫面，例如 `__game.go("battle", { grade: "jh", mode: "boss" })`。
 
-目前是 M1 原型：角色用 pixelfx 的標準小角色加帽子、怪物是墨水色的 pixelfx 史萊姆、背景是暫用的色塊，之後換成正式美術。
+目前是 M1 原型＋M2 第一批：見習魔數師（fx/hero.js）已換成正式像素圖；怪物還是墨水色的 pixelfx 史萊姆、背景是暫用的色塊，之後一批一批換。美術預覽圖放在 docs/圖/。
 
 ## 題庫工具
 
@@ -24,6 +24,7 @@
 | `npm run extract` | 讀出原始題庫 → `data/questions/work/` |
 | `npm run check` | 檢查改寫表：答案不變、數字不漏、沒有簡體字和中國用語、用詞符合世界觀 |
 | `npm run build` | 先跑 check，再把改寫表合併成 `data/questions/built/<學年>.json`（遊戲讀這個） |
+| `node tools/preview-hero.mjs out.png` | 見習魔數師預覽：女生／男生 × 各姿勢 × 五個屬性色，並檢查色數（上限 16） |
 | `node tools/test-generators.mjs` | 檢查計算題產生器：每個題型產生 2000 題，選項不重複、答案正確 |
 
 ## 資料夾
@@ -51,7 +52,7 @@ math/
     battle/          battle.js 一關的流程、stage.js 戰鬥畫面、spells.js 五屬性四級魔法
     scenes/          標題與劇情、共鳴儀式、學院地圖、結算
   dev/               開發用頁面（魔法一覽）
-  fx/                pixelfx 格式的角色、怪物、魔法
+  fx/                角色與怪物的像素圖（程式畫）：hero.js 見習魔數師
   art/               場景與介面成品
   audio/             音效與音樂
 ```

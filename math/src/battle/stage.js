@@ -1,9 +1,10 @@
 // 戰鬥畫面（canvas）：背景、見習魔數師、墨水怪、魔法特效。只管畫面與動畫，答題規則在 battle.js。
 // 解析度 288×240，用 CSS 放大（image-rendering: pixelated）。
 
-import { createFrame, clearFrame, createFx, composite, painterFor, drawActor, stockActor, hex as pfHex } from "../../../pixelfx/src/core/index.js";
+import { createFrame, clearFrame, createFx, composite, painterFor, hex as pfHex } from "../../../pixelfx/src/core/index.js";
 import { SPELLS, FX, INK, INK_POOF, crystalLight } from "./spells.js";
 import { GRADES, ATTRS } from "../data.js";
+import { heroFrame } from "../../fx/hero.js";
 
 export const W = 288, H = 240, GROUND = 206;
 const PX = 58;               // 玩家腳下 x
@@ -29,11 +30,8 @@ export class Stage {
     this.bossImg = new ImageData(112, 88);
     this.bossLayer = document.createElement("canvas");
     this.bossLayer.width = 112; this.bossLayer.height = 88;
-    // 見習魔數師：pixelfx 標準小角色（12×19）畫在小畫布上，放大兩倍
-    this.heroFrame = createFrame(32, 36);
-    this.heroImg = new ImageData(32, 36);
-    this.heroLayer = document.createElement("canvas");
-    this.heroLayer.width = 32; this.heroLayer.height = 36;
+    // 見習魔數師（fx/hero.js），每個姿勢的每一格畫好就快取起來
+    this.heroCache = new Map();
     this.fx = [];            // { inst, x, y, from, to, delay, t, dur, speed, follow }
     this.monster = null;
     this.t = 0; this.shake = 0; this.hurtT = 0; this.castT = -1;
@@ -167,17 +165,14 @@ export class Stage {
 
     // 見習魔數師（暫用 pixelfx 的標準角色＋帽子，M2 換正式圖）
     const blink = this.hurtT > 0 && Math.floor(this.hurtT * 20) % 2 === 0;
-    if (!blink) {
-      clearFrame(this.heroFrame);
-      const hp = painterFor(this.heroFrame);
-      const bob = this.castT >= 0 ? -1 : Math.round(Math.sin(this.t * 2.4) * 0.6);
-      hp.place(16, 35 + bob, false, 0);
-      drawActor(hp, stockActor(1));
-      drawHat(hp, this.look, ATTRS[this.attr]?.color ?? "#8a7cff", this.t);
-      composite(this.heroFrame, this.heroImg.data, null);
-      this.heroLayer.getContext("2d").putImageData(this.heroImg, 0, 0);
+    const pose = this.hurtT > 0 ? "hurt" : this.castT >= 0 ? "cast" : this.win ? "win" : "idle";
+    this.hero = blink ? null : this.heroSprite(pose, this.t);
+    if (this.hero) {
+      // 杖頭數晶的光
+      p.place(0, 0, false, 0);
+      const [gx, gy] = this.hero.glow;
+      p.glow(PX - this.hero.ox + gx, GROUND - this.hero.oy + gy, this.castT >= 0 ? 7 : 4, pfHex(ATTRS[this.attr]?.color ?? "#8a7cff"), this.castT >= 0 ? 0.7 : 0.35);
     }
-    this.heroVisible = !blink;
 
     const m = this.monster;
     if (m && !m.boss) {
@@ -204,10 +199,27 @@ export class Stage {
       ctx.drawImage(this.bossLayer, Math.round(m.x) - 112 + sx, GROUND - 144 + sy, 224, 176);
       ctx.globalAlpha = 1;
     }
-    if (this.heroVisible) ctx.drawImage(this.heroLayer, PX - 32 + sx, GROUND - 70 + sy, 64, 72);
+    if (this.hero) ctx.drawImage(this.hero.canvas, PX - this.hero.ox + sx, GROUND - this.hero.oy + sy);
     composite(frame, this.img.data, null);
     this.lctx.putImageData(this.img, 0, 0);
     ctx.drawImage(this.layer, sx, sy);
+  }
+
+  /** 主角某個姿勢、某一格的圖（12 格／秒，畫過就快取） */
+  heroSprite(pose, t) {
+    const n = pose === "idle" || pose === "win" ? Math.floor((t % 1.6) * 12) : 0;
+    const key = `${pose}:${n}`;
+    let c = this.heroCache.get(key);
+    if (!c) {
+      const f = heroFrame(this.look ?? "girl", pose, n / 12, ATTRS[this.attr]?.color ?? "#8a7cff");
+      const canvas = document.createElement("canvas");
+      canvas.width = f.w; canvas.height = f.h;
+      const img = new ImageData(new Uint8ClampedArray(f.px.buffer.slice(0)), f.w, f.h);
+      canvas.getContext("2d").putImageData(img, 0, 0);
+      c = { canvas, ox: f.ox, oy: f.oy, glow: f.glow };
+      this.heroCache.set(key, c);
+    }
+    return c;
   }
 
   /** 題目要掛在怪物頭上：回傳怪物頭頂在畫布上的位置（0～1） */
@@ -215,24 +227,6 @@ export class Stage {
     const m = this.monster;
     if (!m) return null;
     return { x: m.x / W, y: (m.boss ? GROUND - 110 : GROUND - 42) / H };
-  }
-}
-
-function drawHat(p, look, color, t) {
-  // 小角色的頭頂在 y = -19；帽子畫在 -17 以上
-  const dark = pfHex(mix(color, "#000000", 0.45)), light = pfHex(mix(color, "#ffffff", 0.35)), band = pfHex("#f6c84a");
-  color = pfHex(color);
-  const sway = Math.round(Math.sin(t * 2) * 0.8);
-  p.rect(-6, -17, 13, 1, dark);
-  if (look === "girl") {
-    p.rect(-4, -21, 9, 4, color);
-    p.rect(-3, -22, 7, 1, color);
-    p.rect(-3, -21, 1, 3, light);
-    p.rect(-4, -18, 9, 1, band);
-  } else {
-    p.tri(-4, -17, 5, -17, 2 + sway, -27, color);
-    p.tri(-4, -17, 0, -17, 1 + sway, -25, light);
-    p.rect(-4, -18, 9, 1, band);
   }
 }
 

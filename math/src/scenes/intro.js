@@ -3,6 +3,7 @@
 import { el, show, dialog } from "../ui.js";
 import { sfx } from "../audio.js";
 import { resetSave, writeSave } from "../save.js";
+import { heroFrame } from "../../fx/hero.js";
 
 export function titleScene(game) {
   const s = game.save;
@@ -22,8 +23,8 @@ export function lookScene(game) {
     el("h2", {}, "你是哪一位新生？"),
     el("p.sub", {}, "兩位的能力和故事都一樣，只有外觀不同。"),
     el("div.looks", {},
-      el("button.btn.card", { onclick: () => pickLook("girl") }, el("div.face.girl"), "女生"),
-      el("button.btn.card", { onclick: () => pickLook("boy") }, el("div.face.boy"), "男生")),
+      el("button.btn.card", { onclick: () => pickLook("girl") }, heroCanvas("girl"), "女生"),
+      el("button.btn.card", { onclick: () => pickLook("boy") }, heroCanvas("boy"), "男生")),
   ));
 }
 
@@ -52,4 +53,22 @@ export async function afterResonance(game) {
   game.save.seenIntro = true;
   writeSave(game.save);
   game.go("map");
+}
+
+// 選外觀用的小預覽：待機動畫，屬性還沒決定，先用學院紫
+function heroCanvas(look) {
+  const c = el("canvas.heroPreview");
+  c.width = 32; c.height = 50;
+  const ctx = c.getContext("2d");
+  let t = 0;
+  const tick = () => {
+    if (!c.isConnected && t > 0) return;
+    const f = heroFrame(look, "idle", t, "#8a7cff");
+    ctx.clearRect(0, 0, 32, 50);
+    ctx.putImageData(new ImageData(new Uint8ClampedArray(f.px.buffer.slice(0)), f.w, f.h), 0, 0);
+    t += 1 / 12;
+    setTimeout(tick, 1000 / 12);
+  };
+  tick();
+  return c;
 }
