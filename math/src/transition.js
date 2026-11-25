@@ -9,6 +9,7 @@
 
 import { FONTS } from "../../pixelfx/src/core/index.js";
 import { ATTRS } from "./data.js";
+import { sfx } from "./audio.js";
 
 const PX = 3;
 const INK = ["#05040a", "#0f0b1c", "#1c1533", "#2d2350", "#463a78"];
@@ -274,11 +275,13 @@ export async function battleIn(attr, swap, { boss = false } = {}) {
   const col = ATTRS[attr]?.color ?? "#8a7cff", colL = mix(col, "#ffffff", 0.5);
   const pal = PALETTES[attr] ?? PALETTES.thunder;
   const T_COVER = boss ? 0.95 : 0.78, T_END = T_COVER + 0.42;
-  let swapped = false, swapDone = null;
+  let swapped = false, swapDone = null, cracked = false;
+  sfx("whoosh");
   await run(T_END, ({ g, W, H }, t) => {
     if (t < T_COVER) {
       drawInk(g, W, H, seg(t, 0, 0.3));
       drawCircle(g, W, H, t * (0.78 / T_COVER), col, colL, boss);
+      if (boss && !cracked && t > T_COVER * 0.41) { cracked = true; sfx("shatter"); }   // 封印碎裂
       drawWipe(g, W, H, attr, seg(t, T_COVER - 0.3, T_COVER), t, pal);
       return false;
     }

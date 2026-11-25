@@ -89,6 +89,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
   const drawAbility = () => { abilityBtn.textContent = `${attr.ability}（${uses}）`; abilityBtn.disabled = uses <= 0; };
   drawAbility();
 
+  if (boss) sfx("boss");
   say(exam ? "升階考核開始！答對 7 題就通過，不限時也沒關係，慢慢來。" : boss ? "墨水大王來了！每答對一題，就能打掉一格護盾。" : "墨水怪出現了！把它身上的題目算完，就能淨化它。");
 
   let qi = 0;
@@ -119,8 +120,9 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
     if (result.ok) {
       right++; combo++; best = Math.max(best, combo);
       const tier = spellTier(combo);
+      if (tier > spellTier(combo - 1)) setTimeout(() => sfx("combo"), 120);   // 連擊升級（魔法變強）
       sparks += Math.round((1 + tier) * (s.attr === "fire" ? 1.5 : 1));
-      sfx("cast");
+      sfx(`cast_${s.attr}`);
       bubble.textContent = "";
       if (q.math) {
         // 數學變魔法：先把算式變成光球（點畫面可以加速）
@@ -140,7 +142,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
         shieldLeft--;
         stage.shake = 6;
         if (shieldLeft > 0) stage.flinch();
-        if (shieldLeft <= 0) { stage.purify(); stage.restoreColor(); }
+        if (shieldLeft <= 0) { stage.purify(); if (!s.stars[`${gradeId}-boss`]) { stage.restoreColor(); setTimeout(() => sfx("restore"), 400); } }
       } else stage.purify();
       await wait(650);
     } else {

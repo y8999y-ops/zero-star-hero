@@ -6,6 +6,7 @@ import { settingsScene } from "./scenes/settings.js";
 import { titleScene, lookScene, introScene, afterResonance } from "./scenes/intro.js";
 import { resonanceScene } from "./scenes/resonance.js";
 import { mapScene } from "./scenes/map.js";
+import { worldScene } from "./scenes/world.js";
 import { resultScene } from "./scenes/result.js";
 import { runBattle } from "./battle/battle.js";
 import { battleIn, battleOut } from "./transition.js";
@@ -25,7 +26,8 @@ const game = {
       case "settings": return settingsScene(this, arg);
       case "resonance": return resonanceScene(this, arg);
       case "afterResonance": return afterResonance(this);
-      case "map": return mapScene(this);
+      case "map": return worldScene(this, arg);          // 大地圖（學院島）
+      case "menu": return mapScene(this);                // 學院選單（所有區域、錯題本、成長日記）
       case "battle": {
         // 魔法轉場（對應玩家屬性）：全蓋住時建立戰鬥畫面；打完再轉場到結算
         const end = (r) => battleOut(s.attr, () => resultScene(this, r));

@@ -21,7 +21,9 @@ export async function resonanceScene(game, { retest = false } = {}) {
 
   for (let i = 0; i < d.questions.length; i++) {
     const q = d.questions[i];
-    const pick = await ask(root, `${i + 1} / ${d.questions.length}`, q.q, q.options.map((o) => o.t));
+    // 屬性題的選項每次打亂順序：不然固定第一個是火、最後一個是雷，習慣選第一個的小朋友幾乎都會變成火（tools/sim-resonance.mjs）
+    const order = q.kind === "style" ? shuffle(q.options.map((_, k) => k)) : q.options.map((_, k) => k);
+    const pick = order[await ask(root, `${i + 1} / ${d.questions.length}`, q.q, order.map((k) => q.options[k].t))];
     const o = q.options[pick];
     if (q.kind === "style") for (const a of o.attrs) score[a] += 2;
     else mood = Math.max(mood, o.level);
@@ -30,6 +32,7 @@ export async function resonanceScene(game, { retest = false } = {}) {
   const top = Math.max(...Object.values(score));
   let tied = ATTR_IDS.filter((a) => score[a] === top);
   if (tied.length > 1) {
+    shuffle(tied);
     const pick = await ask(root, "最後一題", d.tiebreak.q, tied.map((a) => d.tiebreak.options[a]));
     tied = [tied[pick]];
   }
@@ -40,6 +43,11 @@ export async function resonanceScene(game, { retest = false } = {}) {
   await reveal(root, attr, mood);
   if (retest || game.save.seenIntro) game.go("map");
   else game.go("afterResonance");
+}
+
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
 }
 
 function ask(root, step, question, options) {

@@ -31,6 +31,7 @@
 | `node tools/preview-hero.mjs out.png` | 見習魔數師預覽：女生／男生 × 各姿勢 × 五個屬性色，並檢查色數（上限 16） |
 | `node tools/preview-sprites.mjs fx/ink-drop.js inkDropFrame 12 out.png` | 角色／怪物預覽（姿勢 × 時間），並檢查色數；`POSES=idle,talk` 換姿勢 |
 | `node tools/test-generators.mjs` | 檢查計算題產生器：每個題型產生 2000 題，選項不重複、答案正確 |
+| `npm run sim` | 共鳴儀式模擬：三種作答習慣下五種屬性各出現幾成（目標 15～25%） |
 
 ## 資料夾
 
@@ -52,20 +53,22 @@ math/
     save.js          存檔（localStorage）
     settings.js      設定的預設值與套用（聲音、文字大小、左手模式…）
     growth.js        經驗、等級、熟練度、數晶、錯題本、成長日記
-    audio.js         暫用音效（瀏覽器合成）
+    audio.js         音效（瀏覽器合成器做的，不用下載檔案）
     ui.js            建立元素、對話框、飄字
     transition.js    戰鬥轉場（墨水→魔法陣→屬性魔法蓋滿→打開）
     questions/       gen.js 計算題產生器、pool.js 出題與四個選項
     battle/          battle.js 一關的流程、stage.js 戰鬥畫面、areaart.js 區域背景（拆層、墨水灰）、ambience.js 場景動態（雲、浮空島、花瓣、蝴蝶…）、spells.js 五屬性四級魔法、mathmagic.js 數學變魔法（加減乘除）與答案數字、mathmagic-more.js 其他題型的演出
-    scenes/          標題與劇情、共鳴儀式、學院地圖、結算、設定
+    world/           大地圖：maps.js 每張地圖的資料（能走的地方、物件、NPC、觸發點）、world.js 走路／碰撞／鏡頭／找路、talk.js NPC 對話框
+    scenes/          標題與劇情、共鳴儀式、大地圖（world.js）、學院選單（map.js）、結算、設定
   dev/               開發用頁面（魔法一覽）
-  fx/                角色與怪物的像素圖（程式畫）：_grid.js 共用畫筆、hero.js 見習魔數師、ink-drop.js 墨水滴、crooked-flower.js 歪瓣花、ink-king-baby.js 墨水大王・幼體、pagepage.js 頁頁
+  fx/                角色與怪物的像素圖（程式畫）：_grid.js 共用畫筆、hero.js 見習魔數師、ink-drop.js 墨水滴、crooked-flower.js 歪瓣花、ink-king-baby.js 墨水大王・幼體、pagepage.js 頁頁、hero-walk.js 地圖用四方向走路圖、dean.js 圓周院長
   art/
     1-參考原圖/      AI 參考圖（提示詞在 docs/美術提示詞.md），依 map、battle/<區域>、chars 分
     2-草稿/          pixel-redraw 重畫中的稿
     3-已通過/        使用者確認過的成品（存檔紀錄）
   assets/            遊戲實際讀的圖（英文路徑）：使用者說「接進遊戲」時，從 art/3-已通過/ 複製過來
     battle/<區域>/   戰鬥背景 back、mid、ground（garden 星芽花園…）
+    map/island/      學院島地面、共鳴之井、碼頭（由 art/2-草稿/island-look/build_island.py 拼出來）
   audio/             音效與音樂
 ```
 

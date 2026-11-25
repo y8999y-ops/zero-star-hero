@@ -176,3 +176,27 @@ canvas.stage.small { width: min(100%, 480px); aspect-ratio: 16 / 9; height: auto
 
 /* 戰鬥轉場 */
 .transition { position: fixed; z-index: 50; image-rendering: pixelated; }
+
+/* ── 大地圖（scenes/world.js） ── */
+.screen.worldscr { padding: 0; position: relative; height: 100%; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+canvas.world { position: absolute; inset: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+.whud { position: absolute; inset: 6px 8px auto; display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
+.wprof { display: flex; gap: 10px; font-weight: 700; font-size: 13px; background: rgba(23,18,42,.72); padding: 4px 10px; border-radius: 8px; }
+.whud .btn { pointer-events: auto; }
+.stick { position: absolute; width: 84px; height: 84px; margin: -42px 0 0 -42px; border-radius: 50%; border: 2px solid rgba(255,255,255,.45); background: rgba(23,18,42,.25); display: none; pointer-events: none; }
+.stick.on { display: block; }
+.stick .knob { position: absolute; left: 50%; top: 50%; width: 36px; height: 36px; margin: -18px 0 0 -18px; border-radius: 50%; background: rgba(255,255,255,.7); }
+.btn.act { position: absolute; right: 18px; bottom: 18px; width: 76px; height: 76px; border-radius: 50%; font-size: 17px; }
+#app.lefty .btn.act { right: auto; left: 18px; }
+.spotlabel { position: absolute; left: 50%; top: 40px; transform: translateX(-50%); background: rgba(23,18,42,.8); border: 1px solid var(--line); padding: 3px 12px; border-radius: 10px; font-size: 13px; color: var(--gold); pointer-events: none; }
+.talk { position: absolute; left: 10%; right: 10%; bottom: 10px; z-index: 15; display: flex; gap: 12px; background: var(--panel); border: 2px solid var(--line); border-radius: 10px; padding: 10px 14px 18px; min-height: 96px; cursor: pointer; }
+.talk .facebox { flex: none; width: 84px; height: 84px; background: var(--panel2); border: 2px solid var(--line); border-radius: 8px; display: grid; place-items: center; }
+.talk .facebox[hidden] { display: none; }
+.talk .face { width: 78px; height: 78px; image-rendering: pixelated; }
+.talk .tbody { flex: 1; min-width: 0; }
+.talk .who { color: var(--gold); font-weight: 700; min-height: 1.2em; }
+.talk .text { line-height: 1.7; margin-top: 2px; }
+.talk .choices { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.talk .next { position: absolute; right: 12px; bottom: 4px; font-size: 11px; color: var(--dim); animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+#app.bigtext .talk .text { font-size: 19px; }
