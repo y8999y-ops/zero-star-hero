@@ -9,49 +9,73 @@
       "hex": "#1d1f29"
     },
     {
-      "hex": "#48392d"
+      "hex": "#2e492e"
     },
     {
-      "hex": "#2d512d"
+      "hex": "#583f2f"
     },
     {
-      "hex": "#8d5135"
+      "hex": "#895443"
+    },
+    {
+      "hex": "#1e8035"
     },
     {
       "hex": "#916849"
     },
     {
-      "hex": "#ac6237"
+      "hex": "#3a9433"
     },
     {
-      "hex": "#389434"
+      "hex": "#c45c2c"
+    },
+    {
+      "hex": "#3aa343"
     },
     {
       "hex": "#b87b54"
     },
     {
+      "hex": "#089ae3"
+    },
+    {
       "hex": "#bc906a"
     },
     {
-      "hex": "#e1a769"
+      "hex": "#80c454"
+    },
+    {
+      "hex": "#e2a869"
     },
     {
       "hex": "#78c8f8"
     },
     {
+      "hex": "#c4b2ef"
+    },
+    {
       "hex": "#98e034"
     },
     {
-      "hex": "#fcd64f"
+      "hex": "#facc6e"
+    },
+    {
+      "hex": "#aae8be"
+    },
+    {
+      "hex": "#aee6f7"
     },
     {
       "hex": "#cbf23e"
     },
     {
-      "hex": "#fbddb8"
+      "hex": "#fbdcb7"
+    },
+    {
+      "hex": "#fcfefd"
     }
   ],
   "transparent_index": 255,
   "locked": false,
-  "source": "palette_tool build: OKLab k-means++ of 1 image(s), 16 colours, seed 0"
+  "source": "palette_tool build: OKLab k-means++ of 1 image(s), 24 colours, seed 0"
 }

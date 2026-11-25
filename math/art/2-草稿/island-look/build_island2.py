@@ -116,7 +116,8 @@ band = G.crop((0, 163, 214, 217)).convert("RGBA")
 PB = Image.new("RGBA", (band.width * 2, band.height)); PB.paste(band, (0, 0)); PB.paste(band.transpose(Image.FLIP_LEFT_RIGHT), (band.width, 0))
 PA = np.array(PB)
 plaza = (((xx - C[0]) / 190) ** 2 + ((yy - (WELL_C[1] - 10)) / 128) ** 2 < 1) & island
-img[plaza] = PA[(yy[plaza].astype(int) - 400) % PA.shape[0], (xx[plaza].astype(int) - C[0] + 214) % PA.shape[1]]
+# 使用者 2026-11-25：金色花紋的廣場地板「太雜亂」→ 改成跟路一樣的石板（素一點），只在井的正前方留一顆金星
+img[plaza] = TA[yy[plaza].astype(int) % TA.shape[0], xx[plaza].astype(int) % TA.shape[1]]
 road &= ~ndimage_erode_none(plaza) if False else ~plaza
 # 路：材質＋邊緣兩層綠
 ty, tx = (yy.astype(int) % TA.shape[0]), (xx.astype(int) % TA.shape[1])
@@ -180,6 +181,32 @@ for i in range(260):
     else: k = rnd.uniform(0.82, 0.92); rx, ry = R1[0] * k, R1[1] * k                                # 第一圈裡面
     x, y = on_ring(rx, ry, a)
     PROPS.append((rnd.choice(["tree", "pine", "tree_s", "tree_s", "bush", "bush", "urn", "planter"]), round(x), round(y)))
+# ── 每座學院周圍的特色（使用者：「火學院周圍要有跟火相關的東西」） ──
+#   地面換色：火＝秋天的紅橙草地、冰＝雪地、雷＝紫色的草、森＝深綠、水＝旁邊一個水池
+#   小物件：冰學院擺冰晶台、森學院種滿樹、水學院噴泉、雷學院望遠鏡和水晶台
+#   會動的（遊戲裡畫）：火星往上飄、雪花、閃電火花、落葉、水泡泡 → layout 的 zones
+BB = {b["art"]: b for b in buildings}
+def zone_of(name, rx=150, ry=95):
+    b = BB[name]; return {"kind": name, "x": b["x"] + b["w"] / 2, "y": b["y"] + b["h"] * 0.7, "rx": rx, "ry": ry}
+zones = [zone_of("fire", 120, 110), zone_of("ice", 160, 100), zone_of("thunder", 140, 110), zone_of("forest", 180, 110), zone_of("water", 170, 100)]
+# 位置：("L"/"R" 建築左右兩邊, 往外幾格, 腳底比建築底部高幾格)
+THEME_PROPS = {
+    "ice": [("crystal", "L", 22, 6), ("crystal", "R", 22, 6), ("crystal", "L", 50, 50), ("crystal", "R", 46, 56)],
+    "forest": [("tree", "L", 30, 20), ("pine", "L", 60, 70), ("tree_s", "R", 40, 10), ("bush", "L", 16, -2), ("bush", "R", 20, -4), ("pine", "R", 70, 60), ("tree", "L", 90, 0), ("tree_s", "R", 96, 30)],
+    "water": [("bush", "L", 16, -2), ("urn", "R", 100, 10)],          # 噴泉改成會動的特效（遊戲裡畫）
+    "thunder": [("crystal", "L", 24, 8), ("crystal", "R", 24, 8), ("scope", "L", 60, 50)],
+    "fire": [("urn", "L", 22, 6), ("urn", "R", 22, 6)],
+}
+for z in zones:
+    b = BB[z["kind"]]
+    for name, side, out_, up in THEME_PROPS[z["kind"]]:
+        x = b["x"] - out_ if side == "L" else b["x"] + b["w"] + out_
+        PROPS.insert(0, (name, round(x), round(b["y"] + b["h"] - up)))
+# 蒼流館旁邊一個水池（斷崖地磚表裡的水池）
+pond = E.crop((0, 113, 110, 222)).convert("RGBA")
+wb = BB["water"]; POND_AT = (wb["x"] - 40, wb["y"] - 84)
+blocked.append((POND_AT[0], POND_AT[1], POND_AT[0] + pond.width, POND_AT[1] + pond.height))
+
 props = []
 def overlaps(b): return any(not (b[2] < a[0] or b[0] > a[2] or b[3] < a[1] or b[1] > a[3]) for a in blocked)
 for name, fx, fy in PROPS:
@@ -195,16 +222,34 @@ for name, i in NAMES.items(): Image.open(P / f"props-{i}.png").save(OUT / f"{nam
 for i in range(5200):
     s = rnd.choice(flowers if rnd.random() < 0.3 else tufts)
     x, y = rnd.randrange(0, MW - s.width), rnd.randrange(0, MH - s.height)
-    if not island[y, x] or not island[y + s.height - 1, x + s.width - 1] or road[y:y + s.height, x:x + s.width].any(): continue
+    if not island[y, x] or not island[y + s.height - 1, x + s.width - 1] or road[y:y + s.height, x:x + s.width].any() or plaza[y:y + s.height, x:x + s.width].any(): continue
     if overlaps((x, y, x + s.width, y + s.height)): continue
     out.alpha_composite(s, (x, y))
 
+# 地面換色（在學院周圍，邊緣用亂數點點漸漸淡掉，不是一條硬線）
+A = np.array(out).astype(float)
+THEME = {"fire": [(122, 46, 34), (196, 92, 44), (236, 150, 62), (250, 204, 110)],
+         "ice": [(150, 176, 214), (198, 222, 240), (232, 244, 252), (252, 254, 255)],
+         "thunder": [(70, 56, 120), (112, 92, 176), (150, 128, 214), (196, 178, 240)],
+         "forest": [(28, 82, 40), (44, 120, 52), (78, 160, 60), (128, 196, 84)],
+         "water": [(40, 120, 110), (70, 168, 140), (110, 206, 160), (170, 232, 190)]}
+noise = np.random.RandomState(3).rand(MH, MW)
+greenish = (A[..., 1] > A[..., 0] + 12) & (A[..., 1] > A[..., 2] + 12) & ~road & ~plaza
+lum = (0.3 * A[..., 0] + 0.59 * A[..., 1] + 0.11 * A[..., 2]) / 255
+for z in zones:
+    d = np.sqrt(((xx - z["x"]) / z["rx"]) ** 2 + ((yy - z["y"]) / z["ry"]) ** 2)
+    m = greenish & (d < 1 - noise * 0.35)
+    ramp = np.array(THEME[z["kind"]], float)
+    idx = np.clip(((lum - 0.25) / 0.55 * 4).astype(int), 0, 3)
+    A[m, :3] = ramp[idx[m]]
+out = Image.fromarray(A.astype(np.uint8))
+out.alpha_composite(pond, POND_AT)
 out.convert("RGB").save(OUT / "ground.png")
 Image.open(HERE / ART / "well.png").save(OUT / "well.png")
 Image.open(HERE / ART / "dock.png").save(OUT / "dock.png")
 json.dump({
     "size": [MW, MH], "center": C, "island": ISL, "r1": R1, "r2": R2, "ewY": EW_Y,
     "objects": {"well": {"at": WELL_AT, "size": [157, 142]}, "dock": {"at": DOCK_AT, "size": [170, 139]}},
-    "buildings": buildings, "props": props,
+    "buildings": buildings, "props": props, "zones": zones, "pond": {"at": POND_AT, "size": list(pond.size)},
 }, open(OUT / "layout.json", "w"), indent=1)
 print(ART, "ok", len(buildings), "buildings", len(props), "props")

@@ -36,6 +36,10 @@ const DEF = {
       if (!(x > b.x + 6 && x < b.x + b.w - 6 && y > b.y + b.h * 0.3 && y < bottom - 4)) return false;
       return !(Math.abs(x - b.door[0]) < 16 && y > bottom - 22);          // 門口的樓梯可以走上去
     });
+    const FXB = [[B.fire.x - 16, B.fire.y + B.fire.h - 6, 12], [B.fire.x + B.fire.w + 16, B.fire.y + B.fire.h - 6, 12],
+      [B.ice.x - 14, B.ice.y + B.ice.h - 30, 10], [B.ice.x + B.ice.w + 14, B.ice.y + B.ice.h - 30, 10],
+      [B.thunder.x - 18, B.thunder.y + B.thunder.h - 4, 14], [B.thunder.x + B.thunder.w + 26, B.thunder.y + B.thunder.h - 4, 16],
+      [B.water.x + B.water.w + 40, B.water.y + B.water.h - 6, 22]];
     return {
       id: "island", name: "學院島", size: L.size,
       ground: `${dir}/ground.png`,
@@ -50,6 +54,7 @@ const DEF = {
         if (dx * dx + dy * dy < 1) return false;
         if (x >= DOCK.x && x < DOCK.x + 30 && y >= DOCK.y + 30 && y < DOCK.y + 112 && !(y > DOCK.y + 76 && y < DOCK.y + 103)) return false;
         if (inBuilding(x, y)) return false;
+        for (const f of FXB) if (Math.hypot(x - f[0], (y - f[1]) * 1.6) < f[2]) return false;   // 火盆、冰晶這些特效站的地方
         for (const b of boxes) if (inBox(x, y, b)) return false;
         return true;
       },
@@ -68,7 +73,15 @@ const DEF = {
         ...L.buildings.filter((b) => b.art !== "library").map((b) => ({ id: `b_${b.art}`, x: b.door[0], y: b.door[1] + 4, r: 26, label: BUILDING_NAME[b.art] })),
       ],
       arrive: { garden: { x: westX + 60, y: L.ewY, dir: "right" }, library: { x: lib.door[0], y: lib.door[1] + 22, dir: "down" } },
-      ambient: { sparkle: [WELL.cx, WELL.cy - 20], butterflies: [[640, 900], [300, 500], [980, 500]] },
+      ambient: { sparkle: [WELL.cx, WELL.cy - 20], butterflies: [[640, 900], [300, 500], [980, 500]], zones: L.zones },
+      // 學院周圍的特色特效（pixelfx）：火盆、冰晶、電漿球、電弧、噴泉、落葉
+      fx: [
+        { fx: "brazier", x: B.fire.x - 16, y: B.fire.y + B.fire.h - 6 }, { fx: "brazier", x: B.fire.x + B.fire.w + 16, y: B.fire.y + B.fire.h - 6 },
+        { fx: "iceCrystal", x: B.ice.x - 14, y: B.ice.y + B.ice.h - 30 }, { fx: "iceCrystal", x: B.ice.x + B.ice.w + 14, y: B.ice.y + B.ice.h - 30 },
+        { fx: "plasmaBall", x: B.thunder.x - 18, y: B.thunder.y + B.thunder.h - 4 }, { fx: "sparkArc", x: B.thunder.x + B.thunder.w + 26, y: B.thunder.y + B.thunder.h - 4 },
+        { fx: "fountain", x: B.water.x + B.water.w + 40, y: B.water.y + B.water.h - 6 },
+        { fx: "leaves", x: B.forest.x + B.forest.w / 2, y: B.forest.y + B.forest.h + 40, flat: false, light: 0 },
+      ],
     };
   },
 

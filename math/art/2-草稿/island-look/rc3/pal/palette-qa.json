@@ -10,8 +10,8 @@
     {
       "id": "palette_colors",
       "status": "pass",
-      "value": 16,
-      "threshold": 16
+      "value": 24,
+      "threshold": 24
     },
     {
       "id": "inputs_without_samples",
@@ -23,37 +23,37 @@
     {
       "id": "max_delta_e",
       "status": "skipped",
-      "value": 0.117698,
+      "value": 0.169574,
       "threshold": null
     }
   ],
   "inputs": [
     {
       "path": "../_in/ground.png",
-      "sha256": "f8dbe78f0ce056a4f126e8d3a2ac2d0ffa89bc2ac67babd4d3ef6baa0d8c9a59",
-      "bytes": 145810
+      "sha256": "9a2dbc23f45cc912e4cebc3135d8625f49fbc7fd45bb55c9c55da9c9ef609a69",
+      "bytes": 165804
     }
   ],
   "outputs": [
     {
       "path": "palette.json",
-      "sha256": "0c14a8cc15ba3434fac729cd765c0dbed62ef72281ccf421f955013e573a2eaf",
-      "bytes": 791
+      "sha256": "00971fe8955827ded4bfac01e23e8417db1f1f134f0f3cd1b59e3d1aa1de7e95",
+      "bytes": 1079
     },
     {
       "path": "palette.gpl",
-      "sha256": "61490d7ad57945a99e00cd4b37bf0732e23f2a7574a885b8f91fcf913bf90a68",
-      "bytes": 359
+      "sha256": "f1dfa1ef2b2b53cec95ea7311095b690c5c5dbd83c129de61497f825b63685e6",
+      "bytes": 519
     },
     {
       "path": "palette.hex",
-      "sha256": "531bc533007ff78813e14835aa6a6ed90fe9b11fdfbde67ae1933dccac2eccec",
-      "bytes": 112
+      "sha256": "a6aa7d6da9e0d8717c5ca2ec3ec4e185af0cace991a4cea397ad95af2aa5d3e9",
+      "bytes": 168
     },
     {
       "path": "swatches.png",
-      "sha256": "1b6fb97385d779da2e946053669836fb24951f89d39210895ecbeec41bc372d3",
-      "bytes": 307
+      "sha256": "0e9e4a1d9992dac649f7187a3f458baeb0de97110acf11a408cc19326b8af2b1",
+      "bytes": 434
     }
   ],
   "tool": {
@@ -61,7 +61,7 @@
     "version": "0.6.0"
   },
   "palette": {
-    "colors": 16,
+    "colors": 24,
     "reserved": 0,
     "transparent_index": 255,
     "seed": 0
@@ -70,18 +70,18 @@
     "../_in/ground.png": {
       "measured_px": 1534000,
       "alpha_threshold": 128,
-      "off_palette_px": 209570,
+      "off_palette_px": 98629,
       "partial_alpha_px": 0,
-      "colors": 40,
-      "palette_colors_used": 16,
-      "mean_delta_e": 0.000902,
-      "p95_delta_e": 0.002436,
-      "max_delta_e": 0.117698
+      "colors": 56,
+      "palette_colors_used": 24,
+      "mean_delta_e": 0.000705,
+      "p95_delta_e": 0.001457,
+      "max_delta_e": 0.169574
     }
   },
   "totals": {
-    "max_delta_e": 0.117698,
-    "worst_p95_delta_e": 0.002436,
-    "off_palette_px": 209570
+    "max_delta_e": 0.169574,
+    "worst_p95_delta_e": 0.001457,
+    "off_palette_px": 98629
   }
 }

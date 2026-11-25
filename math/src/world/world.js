@@ -8,6 +8,15 @@ import { inkDropFrame } from "../../fx/ink-drop.js";
 import { crookedFlowerFrame } from "../../fx/crooked-flower.js";
 import { inkKingBabyFrame } from "../../fx/ink-king-baby.js";
 import { grayOf } from "../battle/areaart.js";
+import { createFx, createFrame, clearFrame, composite } from "../../../pixelfx/src/core/index.js";
+import * as brazier from "../../../pixelfx/src/fx/fire/brazier.js";
+import * as iceCrystal from "../../../pixelfx/src/fx/ice/ice-crystal.js";
+import * as plasmaBall from "../../../pixelfx/src/fx/lightning/plasma-ball.js";
+import * as sparkArc from "../../../pixelfx/src/fx/lightning/spark-arc.js";
+import * as fountainFx from "../../../pixelfx/src/fx/water/fountain.js";
+import * as leaves from "../../../pixelfx/src/fx/weather/falling-leaves.js";
+// 地圖上一直在動的特效（pixelfx）：學院周圍的特色
+const FX_MOD = { brazier, iceCrystal, plasmaBall, sparkArc, fountain: fountainFx, leaves };
 
 export const VW = 768, VH = 432;
 const SPEED = 110;           // 每秒走幾格（像素）
@@ -42,6 +51,12 @@ export class World {
     this.gray = map.gray?.() ? 1 : 0;      // 1＝墨水灰；restoreColor() 慢慢變回彩色
     this.grayTo = null;
     this.marker = null;      // 點地時的小圈圈
+    // 特效：每個一張小畫布（照 y 跟角色、建築排前後）
+    this.fx = (map.fx ?? []).map((f) => {
+      const mod = FX_MOD[f.fx], [w, h] = mod.meta.size, [ox, oy] = mod.meta.origin;
+      const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+      return { ...f, ox, oy, w, h, cv, cx: cv.getContext("2d"), frame: createFrame(w, h), img: new ImageData(w, h), inst: createFx(mod, { x: ox, y: oy, light: f.light ?? 0.35, seed: Math.floor(f.x + f.y), ...(f.opts ?? {}) }) };
+    });
   }
 
   async load() {
@@ -146,6 +161,7 @@ export class World {
     h.t = walking ? h.t + dt : 0;
     if (this.marker) this.marker.t += dt;
     for (const n of this.npcs) n.talking = Math.max(0, n.talking - dt);
+    for (const f of this.fx) f.inst.update(dt);
     if (this.grayTo != null) { this.gray = Math.max(this.grayTo, this.gray - dt * 0.45); if (this.gray <= this.grayTo) this.grayTo = null; }
     // 墨水怪在自己的地盤附近慢慢晃
     for (const m of this.monsters) {
@@ -215,6 +231,15 @@ export class World {
       if (m.face > 0) { ctx.save(); ctx.translate(Math.round(m.x) - cx, 0); ctx.scale(-1, 1); ctx.drawImage(sp.canvas, -sp.ox, Math.round(m.y) - sp.oy - cy); ctx.restore(); }
       else ctx.drawImage(sp.canvas, Math.round(m.x) - sp.ox - cx, Math.round(m.y) - sp.oy - cy);
     } });
+    // 特效：只畫在畫面裡的
+    for (const f of this.fx) {
+      const sx = Math.round(f.x - f.ox - cx), sy = Math.round(f.y - f.oy - cy);
+      if (sx > VW || sy > VH || sx + f.w < 0 || sy + f.h < 0) continue;
+      list.push({ y: f.flat ? -1 : f.y, draw: () => {
+        clearFrame(f.frame); f.inst.draw(f.frame); composite(f.frame, f.img.data, null, f.light ?? 0.35);
+        f.cx.putImageData(f.img, 0, 0); ctx.drawImage(f.cv, sx, sy);
+      } });
+    }
     const h = this.hero;
     list.push({ y: h.y, draw: () => { const s = this.heroSprite(); shadow(h.x, h.y, 7); ctx.drawImage(s.canvas, Math.round(h.x) - s.ox - cx, Math.round(h.y) - s.oy - cy); } });
     list.sort((a, b) => a.y - b.y).forEach((d) => d.draw());
@@ -239,6 +264,21 @@ export class World {
       ctx.fillStyle = g ? (i % 2 ? "#463a78" : "#2d2350") : ["#eb88a0", "#f5eddd", "#f7b6c4"][i % 3];
       const flip = Math.floor(t * 4 + i) % 2;
       ctx.fillRect(Math.round(x), Math.round(y), g ? 1 : flip ? 2 : 1, g ? 1 : flip ? 1 : 2);
+    }
+    // 學院周圍的小動態：冰＝雪花飄、火＝火星往上飄、雷＝一閃一閃的電火花
+    for (const z of A.zones ?? []) {
+      if (Math.abs(z.x - (cx + VW / 2)) > VW / 2 + z.rx || Math.abs(z.y - (cy + VH / 2)) > VH / 2 + z.ry) continue;
+      const n = z.kind === "ice" ? 34 : z.kind === "fire" ? 22 : z.kind === "thunder" ? 8 : 0;
+      for (let i = 0; i < n; i++) {
+        const ax = z.x + (rand(i + 7) - 0.5) * z.rx * 1.8, H2 = z.ry * 2.6;
+        let x, y, col, big = false;
+        if (z.kind === "ice") { const u = (t * (10 + rand(i) * 8) + rand(i + 3) * H2) % H2; x = ax + Math.sin(t * 1.2 + i) * 5; y = z.y - z.ry * 1.9 + u; col = i % 4 ? "#ffffff" : "#cfe8ff"; big = i % 5 === 0; }
+        else if (z.kind === "fire") { const u = (t * (14 + rand(i) * 10) + rand(i + 3) * H2) % H2; x = ax * 0.6 + z.x * 0.4 + Math.sin(t * 3 + i) * 3; y = z.y + z.ry * 0.3 - u; col = u < H2 * 0.4 ? "#ffd35c" : "#ff7a2f"; if (u > H2 * 0.8) continue; }
+        else { if (Math.sin(t * 7 + i * 13) < 0.93) continue; x = ax; y = z.y - rand(i + 5) * z.ry * 2.2; col = i % 2 ? "#e8dcff" : "#fff3b0"; big = true; }
+        const px = Math.round(x) - cx, py = Math.round(y) - cy;
+        ctx.fillStyle = col; ctx.fillRect(px, py, 1, 1);
+        if (big) { ctx.fillRect(px - 1, py, 3, 1); ctx.fillRect(px, py - 1, 1, 3); }
+      }
     }
     if (this.gray > 0.5) return;            // 墨水灰的時候沒有蝴蝶
     (A.butterflies ?? []).forEach(([bx, by], i) => {
