@@ -142,9 +142,18 @@ canvas.stage.small { width: min(100%, 480px); aspect-ratio: 16 / 9; height: auto
 @keyframes floatUp { to { transform: translate(-50%, -60px); opacity: 0; } }
 
 /* ── 結算 ── */
-.result { align-items: center; text-align: center; justify-content: center; }
-.result .list, .result .row { width: min(100%, 560px); }
-.bigstars { font-size: 44px; color: var(--gold); letter-spacing: 6px; }
+.result { align-items: center; text-align: center; justify-content: center; height: 100%; min-height: 0; overflow: hidden; }
+.rescard { width: min(100%, 520px); display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 20px; background: var(--panel); border-radius: 14px; box-shadow: 0 0 0 2px rgba(255, 215, 106, .25); }
+.restitle { margin: 0; font-size: 22px; }
+.bigstars { font-size: 40px; line-height: 1; color: var(--gold); letter-spacing: 6px; }
+.resstats { display: flex; justify-content: center; gap: 8px; width: 100%; }
+.resstat { flex: 1; max-width: 110px; display: flex; flex-direction: column; gap: 2px; padding: 6px 4px; background: var(--panel2); border-radius: 8px; }
+.resstat b { font-size: 20px; }
+.resstat span { font-size: 12px; opacity: .7; }
+.restags { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.restags span { font-size: 13px; padding: 3px 10px; border-radius: 99px; background: rgba(255, 215, 106, .15); color: var(--gold); }
+.resbtns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.resbtns .btn { min-width: 96px; }
 .row { display: flex; gap: 10px; justify-content: center; }
 .row .btn { flex: 1; }
 
