@@ -9,6 +9,7 @@ import { mapScene } from "./scenes/map.js";
 import { worldScene } from "./scenes/world.js";
 import { libraryScene } from "./scenes/library.js";
 import { openingScene } from "./scenes/opening.js";
+import { minigameScene } from "./scenes/minigame.js";
 import { resultScene } from "./scenes/result.js";
 import { runBattle } from "./battle/battle.js";
 import { battleIn, battleOut } from "./transition.js";
@@ -30,6 +31,7 @@ const game = {
       case "afterResonance": return afterResonance(this);
       case "map": return worldScene(this, arg);          // 大地圖（學院島）
       case "opening": return openingScene(this, arg);     // 開場動畫＋選外觀
+      case "minigame": return minigameScene(this, arg);   // 學系小遊戲
       case "library": return libraryScene(this);         // 千頁圖書館・大廳
       case "menu": return mapScene(this);                // 學院選單（所有區域、錯題本、成長日記）
       case "battle": {

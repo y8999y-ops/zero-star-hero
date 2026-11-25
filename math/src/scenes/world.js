@@ -5,7 +5,10 @@
 import { el, show } from "../ui.js";
 import { sfx } from "../audio.js";
 import { ATTRS, GRADES, RANKS } from "../data.js";
-import { rankExamReady } from "../growth.js";
+import { rankExamReady, addExp } from "../growth.js";
+import { MENTORS } from "../../fx/mentor.js";
+import { GAMES } from "./minigame.js";
+import { STUDENTS, PAGES, CHESTS, QUESTS, riddleFor, daily } from "../world/island-life.js";
 import { writeSave } from "../save.js";
 import { loadMap } from "../world/maps.js";
 import { World, VW, VH } from "../world/world.js";
@@ -88,7 +91,7 @@ export async function worldScene(game, { map, from } = {}) {
     busy = true; act.hidden = true; W.path = null; pending = null;
     sfx("click");
     // 剛下船的新生（還沒做共鳴儀式）：只能去共鳴之井、跟院長說話
-    const fn = !s.attr ? (t.id === "well" || t.id === "dean" ? ceremony : remind) : EVENTS[t.id] ?? (t.id.startsWith("b_") ? building : null);
+    const fn = !s.attr ? (t.id === "well" || t.id === "dean" ? ceremony : remind) : EVENTS[t.id] ?? PREFIX[t.id.split("_")[0]] ?? (STUDENTS.some((x) => x.id === t.id) ? student : null);
     try { await (fn ?? (() => {}))(t); } finally { busy = false; }
   }
   const say = (lines, choices) => talk(root, lines, choices, { onLine: (L) => { const n = W.npcs.find((x) => x.id === L.who); if (n) n.talking = 9; } }).then((r) => { W.npcs.forEach((n) => (n.talking = 0)); return r; });
@@ -149,6 +152,58 @@ export async function worldScene(game, { map, from } = {}) {
     }
     await say([{ who: null, name: t.label, text: BLURB[key] ?? "" }]);
   }
+
+  // ── 學院島的日常（企劃書 3.7） ──
+  const MENTOR_TALK = {
+    fire: ["快快快！算數就是要快！", "腦袋轉得快，魔法就放得快。來比一場？"],
+    water: ["這條路不通的時候，就換一條路。", "同一個答案，可以有好多種算法喔。"],
+    ice: ["慢……慢……來。", "一……步……一……步……，最……後……再……檢……查。"],
+    forest: ["看不懂的時候，就把它畫出來！", "一排一排數，比一顆一顆數快多了。"],
+    thunder: ["為什麼？為什麼？為什麼？", "數字排在一起，一定藏著規律。找到它！"],
+  };
+  const PREFIX = {
+    b: building,
+    m: async (t) => {
+      const k = t.mentor ?? t.id.slice(2), M = MENTORS[k], mine = s.attr === k;
+      const who = `m_${k}`;
+      const r = await say([{ who, name: M.name, text: (mine ? "喔！是我們學系的新生。" : "") + MENTOR_TALK[k][Math.floor(Math.random() * 2)] },
+        { who, name: M.name, text: `要挑戰「${GAMES[k].title}」嗎？${s.mini?.[k] ? `你的最佳紀錄是 ${s.mini[k]}。` : ""}` }], [`挑戰「${GAMES[k].title}」`, "下次再說"]);
+      if (r === 0) { leave(); game.go("minigame", { id: k }); }
+    },
+    page: async (t) => {
+      const i = Number(t.id.split("_")[1]); s.pages = [...new Set([...(s.pages ?? []), i])]; s.coins += 5; writeSave(s); sfx("good");
+      await say([{ who: "page", name: "頁頁", text: `找到《萬題之書》的書頁了！（${s.pages.length} / ${PAGES.length}）上面寫著：` }, { who: null, name: "書頁", text: PAGES[i] }]);
+      if (s.pages.length === PAGES.length) await say([{ who: "page", name: "頁頁", text: "十張書頁全部找到了！你真是最會找東西的魔數師！" }]);
+    },
+    chest: async (t) => {
+      const i = Number(t.id.split("_")[1]), C = CHESTS[i];
+      const r = await say([{ who: null, name: "數字鎖寶箱", text: C.q }], [...C.o.map(String), "先不要"]);
+      if (r == null || r === C.o.length) return;
+      if (C.o[r] === C.a) { s.chests = [...(s.chests ?? []), i]; s.coins += 20; addExp(s, 20); writeSave(s); sfx("level"); await say([{ who: null, name: "", text: "喀啦——鎖打開了！裡面有 20 晶幣。" }]); }
+      else { sfx("hurt"); await say([{ who: null, name: "", text: "轉盤卡住了……再想想看？" }]); }
+    },
+    ink: async (t) => {
+      const i = Number(t.id.split("_")[1]), q = riddleFor(s, { id: `ink${i}` });
+      const r = await say([{ who: "page", name: "頁頁", text: "島上也冒出墨水了！這灘墨水上浮著一題，算完它就會散掉：" }, { who: null, name: "墨水小點", text: q.text }], q.options.map(String));
+      if (q.options[r] === q.answer) { daily(s).ink.push(i); s.coins += 3; addExp(s, 6); writeSave(s); sfx(`cast_${s.attr}`); await say([{ who: "page", name: "頁頁", text: "淨化！地面又乾淨了。（＋3 晶幣）" }]); }
+      else { sfx("hurt"); await say([{ who: "page", name: "頁頁", text: `答案是 ${q.answer}。沒關係，明天它還會再冒出來給你練習。` }]); daily(s).ink.push(i); writeSave(s); }
+    },
+  };
+  async function student(t) {
+    const st = t.student, d = daily(s);
+    if (d.riddles.includes(st.id)) { await say([{ who: st.id, name: st.name, text: st.line }]); return; }
+    const q = riddleFor(s, st);
+    const r = await say([{ who: st.id, name: st.name, text: st.line }, { who: st.id, name: st.name, text: `對了，可以幫我算一下嗎？${q.text}` }], q.options.map(String));
+    if (q.options[r] === q.answer) { d.riddles.push(st.id); s.coins += 5; writeSave(s); sfx("good"); await say([{ who: st.id, name: st.name, text: "對耶！謝謝你～這個給你。（＋5 晶幣）" }]); }
+    else { sfx("hurt"); await say([{ who: st.id, name: st.name, text: "嗯……好像不太對。我們再想想看？" }]); }
+  }
+  EVENTS.board = async () => {
+    const d = daily(s);
+    const lines = QUESTS.map((q) => `${d.claimed.includes(q.id) ? "✔" : q.done(s) ? "★" : "・"} ${q.text}（${q.coins} 晶幣）`);
+    const ready = QUESTS.filter((q) => q.done(s) && !d.claimed.includes(q.id));
+    const r = await say([{ who: null, name: "布告欄・今日委託", text: lines.join("　") }], ready.length ? [`領取獎勵（${ready.reduce((a, q) => a + q.coins, 0)} 晶幣）`, "離開"] : ["離開"]);
+    if (ready.length && r === 0) { ready.forEach((q) => { d.claimed.push(q.id); s.coins += q.coins; }); writeSave(s); sfx("level"); }
+  };
 
   // 入學典禮（待辦 D2）：在共鳴之井旁，院長講話 → 共鳴儀式
   async function ceremony() {

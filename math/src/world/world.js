@@ -4,6 +4,7 @@
 
 import { heroWalkFrame, WALK_LOOP } from "../../fx/hero-walk.js";
 import { deanFrame } from "../../fx/dean.js";
+import { mentorFrame } from "../../fx/mentor.js";
 import { inkDropFrame } from "../../fx/ink-drop.js";
 import { crookedFlowerFrame } from "../../fx/crooked-flower.js";
 import { inkKingBabyFrame } from "../../fx/ink-king-baby.js";
@@ -61,9 +62,10 @@ export class World {
 
   async load() {
     const base = new URL("../../assets/map/", import.meta.url);
-    const files = { ground: this.map.ground, ...Object.fromEntries(this.map.objects.map((o) => [o.art, o.file])) };
+    const files = { ground: this.map.ground, ...Object.fromEntries(this.map.objects.filter((o) => o.file).map((o) => [o.art, o.file])) };
     const entries = await Promise.all(Object.entries(files).map(async ([k, f]) => [k, await loadImg(new URL(f, base).href)]));
     this.img = Object.fromEntries(entries);
+    for (const o of this.map.objects) if (o.frame) this.img[o.art] = toCanvas(o.frame()).canvas;   // 程式畫的小東西（書頁、寶箱）
     // 被墨水弄灰的版本（花園打倒王之前）
     if (this.gray > 0) {
       this.grayImg = {};
@@ -200,7 +202,8 @@ export class World {
   }
   npcSprite(n) {
     const pose = n.talking > 0 ? "talk" : "idle", f = Math.floor((this.t % 2) * 12);
-    return this.sprite(`${n.id}:${pose}:${f}`, () => NPC_ART[n.id](pose, f / 12));
+    const fn = NPC_ART[n.id] ?? (n.mentor ? (p, t) => mentorFrame(n.mentor, p, t) : (p, t) => heroWalkFrame(n.student.look, "down", "idle", t, n.student.attr, n.student.hair));
+    return this.sprite(`${n.id}:${pose}:${f}`, () => fn(pose, f / 12));
   }
 
   draw(ctx) {

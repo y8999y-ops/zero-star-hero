@@ -6,11 +6,16 @@ import { el } from "../ui.js";
 import { sfx } from "../audio.js";
 import { deanFrame } from "../../fx/dean.js";
 import { pagepageFrame } from "../../fx/pagepage.js";
+import { mentorFrame } from "../../fx/mentor.js";
+import { heroWalkFrame } from "../../fx/hero-walk.js";
+import { STUDENTS } from "./island-life.js";
 
 // 頭像：角色圖上半身放大 3 倍
 const FACE = {
   dean: { fn: () => deanFrame("talk", 0), box: [4, 0, 32, 32] },
   page: { fn: () => pagepageFrame("talk", 0), box: [0, 0, 32, 32] },
+  ...Object.fromEntries(["fire", "water", "ice", "forest", "thunder"].map((k) => [`m_${k}`, { fn: () => mentorFrame(k, "talk", 0), box: [4, 0, 32, 34] }])),
+  ...Object.fromEntries(STUDENTS.map((st) => [st.id, { fn: () => heroWalkFrame(st.look, "down", "idle", 0, st.attr, st.hair), box: [0, 0, 32, 32] }])),
 };
 const faceCache = {};
 function portrait(id) {

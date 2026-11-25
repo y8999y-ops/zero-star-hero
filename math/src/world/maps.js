@@ -5,6 +5,10 @@
 //   星芽花園：art/2-草稿/garden-map/build_garden.py
 // 地圖的規則可以看存檔（s）：例如花園的封印門打完三群墨水怪才會打開。
 
+import { STUDENTS, PAGES, CHESTS, seeded, daily, today } from "./island-life.js";
+import { pageFrame, chestFrame } from "../../fx/pickups.js";
+import { MENTORS } from "../../fx/mentor.js";
+
 const base = new URL("../../assets/map/", import.meta.url);
 const cache = {};
 
@@ -40,7 +44,7 @@ const DEF = {
       [B.ice.x - 14, B.ice.y + B.ice.h - 30, 10], [B.ice.x + B.ice.w + 14, B.ice.y + B.ice.h - 30, 10],
       [B.thunder.x - 18, B.thunder.y + B.thunder.h - 4, 14], [B.thunder.x + B.thunder.w + 26, B.thunder.y + B.thunder.h - 4, 16],
       [B.water.x + B.water.w + 40, B.water.y + B.water.h - 6, 22]];
-    return {
+    const map = {
       id: "island", name: "學院島", size: L.size,
       ground: `${dir}/ground.png`,
       start: { x: DOCK.x + 70, y: DOCK.y + 90, dir: "left" },      // 剛下浮空船
@@ -64,7 +68,17 @@ const DEF = {
         ...L.buildings.map((b) => ({ art: b.art, file: `${dir}/${b.art}.png`, x: b.x, y: b.y, base: b.y + b.h - 24 })),
         ...propObjects(dir, L.props),
       ],
-      npcs: [{ id: "dean", x: WELL.cx - 120, y: WELL.cy + 52, name: "圓周院長" }],
+      npcs: [
+        { id: "dean", x: WELL.cx - 120, y: WELL.cy + 52, name: "圓周院長" },
+        // 五位導師：站在自己學院門口的右邊
+        ...["fire", "water", "ice", "forest", "thunder"].map((k) => ({ id: `m_${k}`, mentor: k, name: MENTORS[k].name, x: B[k].door[0] + 34, y: B[k].door[1] + 14 })),
+        // 同學：散在廣場、商店、宿舍、溫室、鐘塔、圖書館附近
+        ...STUDENTS.map((st, i) => {
+          const at = [[WELL.cx + 120, WELL.cy + 60], [B.shop.door[0] + 40, B.shop.door[1] + 16], [B.dorm.door[0] - 36, B.dorm.door[1] + 16],
+            [B.greenhouse.door[0] - 50, B.greenhouse.door[1] + 18], [B.clock.door[0] - 34, B.clock.door[1] + 16], [lib.door[0] + 70, lib.door[1] + 30]][i];
+          return { id: st.id, student: st, name: st.name, x: at[0], y: at[1] };
+        }),
+      ],
       spots: [
         { id: "well", x: WELL.cx, y: WELL.cy + 30, r: 52, label: "共鳴之井" },
         { id: "ship", x: DOCK.x + 92, y: DOCK.y + 88, r: 26, label: "浮空船" },
@@ -72,6 +86,7 @@ const DEF = {
         { id: "library", x: lib.door[0], y: lib.door[1] - 4, r: 20, label: "千頁圖書館", auto: true },
         ...L.buildings.filter((b) => b.art !== "library").map((b) => ({ id: `b_${b.art}`, x: b.door[0], y: b.door[1] + 4, r: 26, label: BUILDING_NAME[b.art] })),
       ],
+      board: L.props.find((p) => p.art === "board"),
       arrive: { garden: { x: westX + 60, y: L.ewY, dir: "right" }, library: { x: lib.door[0], y: lib.door[1] + 22, dir: "down" } },
       ambient: { sparkle: [WELL.cx, WELL.cy - 20], butterflies: [[640, 900], [300, 500], [980, 500]], zones: L.zones },
       // 學院周圍的特色特效（pixelfx）：火盆、冰晶、電漿球、電弧、噴泉、落葉
@@ -83,6 +98,39 @@ const DEF = {
         { fx: "leaves", x: B.forest.x + B.forest.w / 2, y: B.forest.y + B.forest.h + 40, flat: false, light: 0 },
       ],
     };
+    // ── 撿得到、打得開的東西：放在島上能走、離建築遠一點的地方（位置固定，不會每次換） ──
+    const spotsFree = (n, seed, used) => {
+      const r = seeded(seed), out = [];
+      for (let k = 0; k < 4000 && out.length < n; k++) {
+        const a = r() * Math.PI * 2, d = Math.sqrt(r()) * 0.92, x = icx + Math.cos(a) * irx * d, y = icy + Math.sin(a) * iry * d;
+        if (!map.walkable(x, y) || !map.walkable(x - 12, y) || !map.walkable(x + 12, y) || !map.walkable(x, y - 14)) continue;
+        if ([...used, ...out].some((p) => Math.hypot(p[0] - x, p[1] - y) < 90)) continue;
+        if (L.buildings.some((b) => Math.hypot(b.door[0] - x, b.door[1] - y) < 70)) continue;
+        out.push([Math.round(x), Math.round(y)]);
+      }
+      return out;
+    };
+    const used = [[WELL.cx, WELL.cy], ...map.npcs.map((n) => [n.x, n.y])];
+    const pagePos = spotsFree(PAGES.length, "pages", used); used.push(...pagePos);
+    const chestPos = spotsFree(CHESTS.length, "chests", used); used.push(...chestPos);
+    const inkPos = spotsFree(3, `ink-${today()}`, used);
+    const inkDir = dir.replace("island", "garden");
+    s.pages ??= []; s.chests ??= [];
+    pagePos.forEach(([x, y], i) => {
+      map.objects.push({ art: `page${i}`, frame: () => pageFrame(i * 0.13), x: x - 8, y: y - 16, base: y, hidden: () => s.pages.includes(i) });
+      map.spots.push({ id: `page_${i}`, x, y, r: 16, label: "發光的書頁", auto: true, hidden: () => s.pages.includes(i) });
+    });
+    chestPos.forEach(([x, y], i) => {
+      map.objects.push({ art: `chest${i}`, frame: () => chestFrame(false), x: x - 13, y: y - 20, base: y, hidden: () => s.chests.includes(i) });
+      map.objects.push({ art: `chestOpen${i}`, frame: () => chestFrame(true), x: x - 13, y: y - 20, base: y, hidden: () => !s.chests.includes(i) });
+      map.spots.push({ id: `chest_${i}`, x, y: y + 8, r: 24, label: "數字鎖寶箱", hidden: () => s.chests.includes(i) });
+    });
+    inkPos.forEach(([x, y], i) => {
+      map.objects.push({ art: `inkspot${i}`, file: `${inkDir}/ink${[4, 5, 9][i]}.png`, x: x - 10, y: y - 6, base: -1, hidden: () => daily(s).ink.includes(i) });
+      map.spots.push({ id: `ink_${i}`, x, y, r: 14, label: "墨水小點", auto: true, hidden: () => daily(s).ink.includes(i) });
+    });
+    if (map.board) map.spots.push({ id: "board", x: map.board.x + map.board.w / 2, y: map.board.y + map.board.h + 8, r: 26, label: "布告欄" });
+    return map;
   },
 
   garden(L, s, dir) {

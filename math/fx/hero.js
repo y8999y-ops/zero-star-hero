@@ -21,8 +21,8 @@ import { Grid, mixHex } from "./_grid.js";
 // 衣服用的屬性色：森的亮綠跟花園的草、樹叢太像，角色會融進背景，所以衣服改用偏藍的翠玉綠（施法、介面還是用原本的屬性色）
 const COSTUME = { "#6fd46a": "#1f9e78" };
 
-export function palette(look, attrHex) {
-  const [hair, hairS] = HAIR[look];
+export function palette(look, attrHex, hairPair = null) {   // hairPair：別的同學換髮色用 [亮, 暗]
+  const [hair, hairS] = hairPair ?? HAIR[look];
   attrHex = COSTUME[attrHex.toLowerCase()] ?? attrHex;
   return {
     ...FIXED, hair, hairS,

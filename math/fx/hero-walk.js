@@ -146,8 +146,8 @@ function sideView(g, P, q, girl) {
   hat(g, P, q, girl, cx, cy, false, true);
 }
 
-export function heroWalkFrame(look, dir = "down", pose = "idle", t = 0, attrHex = "#8a7cff") {
-  const P = palette(look, attrHex), q = poseOf(pose, t), girl = look === "girl";
+export function heroWalkFrame(look, dir = "down", pose = "idle", t = 0, attrHex = "#8a7cff", hairPair = null) {
+  const P = palette(look, attrHex, hairPair), q = poseOf(pose, t), girl = look === "girl";
   const g = new Grid(W, H, OX, OY);
   if (dir === "right" || dir === "left") sideView(g, P, q, girl);
   else frontBack(g, P, q, girl, dir === "up");
