@@ -155,8 +155,33 @@ export function areaScene(game, { grade = "g1" } = {}) {
   if (restoring) {
     s.flags = { ...s.flags, restore: null }; writeSave(s);
     setGray(1);
-    setTimeout(() => { bg.style.transition = "filter 2.4s ease"; tint.style.transition = "opacity 2.4s ease"; setGray(0); sfx("restore"); }, 500);
-    setTimeout(() => say((RESTORE[grade] ?? []).map((text) => ({ who: "page", name: "頁頁", text }))), 3100);
+    // 恢復色彩的演出：王（被打歪的樣子）在原地一抖一抖、縮小、往上飛走 → 到處冒出金色光點往上飄 → 顏色慢慢回來 → 頁頁說話
+    const kingSp = sprites.find((sp) => sp.x === BX);
+    if (kingSp) kingSp.n.style.display = "none";
+    const ghost = el("canvas.areasp.restoreking");
+    const kf = (FRAMES[BOSS[grade]] ?? inkKingBabyFrame)("hurt", 0.3);
+    ghost.width = kf.w; ghost.height = kf.h;
+    ghost.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(kf.px.buffer.slice(0)), kf.w, kf.h), 0, 0);
+    const h = root.clientHeight, u = h / 216, ox = (root.clientWidth - 384 * u) / 2, sc = u * 1.25;
+    Object.assign(ghost.style, { position: "absolute", left: `${ox + BX * u - kf.ox * sc}px`, top: `${144 * u - kf.oy * sc}px`, width: `${kf.w * sc}px`, height: `${kf.h * sc}px`, zIndex: 3, transformOrigin: "50% 100%" });
+    stage.append(ghost);
+    sfx("boss");
+    ghost.animate([{ transform: "translateX(0)" }, { transform: "translateX(-6px)" }, { transform: "translateX(6px)" }, { transform: "translateX(0)" }], { duration: 180, iterations: 4 });
+    setTimeout(() => {
+      sfx("whoosh");
+      ghost.animate([{ transform: "scale(1)", opacity: 1 }, { transform: `translateY(-${60 * u}px) scale(0.5)`, opacity: 0.9 }, { transform: `translate(${80 * u}px, -${200 * u}px) scale(0.1)`, opacity: 0 }], { duration: 1400, easing: "ease-in", fill: "forwards" });
+    }, 800);
+    // 金色光點從地上冒出來往上飄
+    setTimeout(() => {
+      for (let i = 0; i < 40; i++) {
+        const d = el("div.restorespark"), x = Math.random() * root.clientWidth, y = (110 + Math.random() * 40) * u;
+        Object.assign(d.style, { left: `${x}px`, top: `${y}px` });
+        root.append(d);
+        d.animate([{ transform: "translateY(0) scale(1)", opacity: 0 }, { opacity: 1, offset: 0.2 }, { transform: `translateY(-${(60 + Math.random() * 80) * u}px) scale(.6)`, opacity: 0 }], { duration: 1600 + Math.random() * 1400, delay: Math.random() * 1200, fill: "forwards" }).onfinish = () => d.remove();
+      }
+      bg.style.transition = "filter 2.6s ease"; tint.style.transition = "opacity 2.6s ease"; setGray(0); sfx("restore");
+    }, 1900);
+    setTimeout(() => { if (kingSp && bossDone) kingSp.n.style.display = ""; say((RESTORE[grade] ?? []).map((text) => ({ who: "page", name: "頁頁", text }))); }, 4800);
   } else if (!cleared[0] && !s.flags?.[`areaHint_${grade}`]) {
     s.flags = { ...(s.flags ?? {}), [`areaHint_${grade}`]: true }; writeSave(s);
     say([{ who: "page", name: "頁頁", text: `這裡就是${G.area}……顏色都被墨水吸走了。點墨水怪就可以開始淨化！一群一群來，最後是封印門後面的墨水大王。` }]);

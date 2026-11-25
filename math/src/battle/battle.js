@@ -165,9 +165,18 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   // 最終戰（地下禁書庫的墨水大王・真身，世界觀第 7 節第 4 點）：開打前、打到一半、最後一題都有對話
   const final = boss && gradeId === "jh";
   const K = (text) => ({ who: null, name: "墨水大王", text }), PG = (text) => ({ who: "page", name: "頁頁", text });
-  const scene = async (lines) => { if (!final || aborted) return; await talk(wrap, lines); };
+  // 對話時角色會動：墨水大王說話＝抖一下、畫面晃；頁頁說話＝張嘴
+  const scene = async (lines) => {
+    if (!final || aborted) return;
+    await talk(wrap, lines, null, { onLine: (L) => { if (L.name === "墨水大王") { stage.flinch(); stage.shake = 5; sfx("boss"); } else stage.setPage("talk", 2.5); } });
+  };
   wordPanel.hidden = true;
-  if (final) { stage.spawn(true); stage.monster.x = 262; stage.monster.target = 262; }      // 真身先站出來再說話
+  if (final) {
+    // 真身從墨水裡慢慢浮現（淡入），然後才說話
+    stage.spawn(true); stage.monster.x = 262; stage.monster.target = 262; stage.monster.alpha = 0;
+    sfx("boss"); stage.shake = 6;
+    for (let i = 1; i <= 20; i++) { stage.monster.alpha = i / 20; await wait(60); }
+  }
   await scene([K("又來了……反正沒有人會算完我。每個人算到一半，就說「算了」。"), PG("才不是！見習魔數師一路把花園、書庫、鐘塔、溫室都算完了！"), K("那就算算看吧——把我身上所有的題目都算完！")]);
   let saidHalf = false, saidLast = false;
 

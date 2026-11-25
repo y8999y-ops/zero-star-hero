@@ -140,7 +140,7 @@ export function hubScene(game, { from } = {}) {
   root.querySelectorAll("img").forEach((im) => { if (!im.complete) im.addEventListener("load", layout, { once: true }); });
   layout();
   // 一開始看哪裡：從哪裡回來就看哪裡；沒有的話是上次的位置；新生是碼頭
-  const focus = { library: 1360, garden: 3520, clock: 3270, shop: 730, dorm: 480 }[from] ?? BUILDINGS.find((b) => b.id === `b_${from}`)?.x;
+  const focus = { library: 1360, garden: 3520, clock: 3270, shop: 730, dorm: 480, well: 1000 }[from] ?? BUILDINGS.find((b) => b.id === `b_${from}`)?.x;
   const startX = focus ?? s.hub?.x ?? (s.attr ? 1000 : 180);
   pan.scrollLeft = startX * u - app.clientWidth / 2;
 
@@ -288,17 +288,8 @@ export function hubScene(game, { from } = {}) {
     const r = await say([{ who: null, name: "數晶盆栽", text: LOOK[4] }], ["收成", "先放著"]);
     if (r === 0) { s.crystals[s.attr] = (s.crystals[s.attr] ?? 0) + 3; s.plant = { base: okTotal }; writeSave(s); sfx("level"); await say([{ who: "page", name: "頁頁", text: "你的數晶多了 3 點！魔法會更亮喔。盆栽裡又冒出新的種子了。" }]); }
   }
-  // 入學典禮：院長講話 → 共鳴儀式
-  async function ceremony() {
-    await say([
-      D("喔喔，新生到了！歡迎來到魔數學院，我是院長，大家叫我圓周院長。"),
-      D("入學典禮開始！首先，院長致詞：圓周率是三點一四一五九二六五三五八九七九三二三八四六二六四三……"),
-      { who: null, name: "", text: "（院長講了很久很久。旁邊的老師輕輕咳了一聲。）" },
-      D("……咳，總之！每位新生都要站上「共鳴之井」。井水會問你幾個問題——不是問你會不會算，是問你「喜歡怎麼想」。"),
-      D("沒有對錯，照你真的會做的選就好。來，站上去吧！"),
-    ]);
-    leave(); game.go("resonance");
-  }
+  // 入學典禮：劇情動畫（scenes/story.js）→ 共鳴儀式
+  async function ceremony() { leave(); game.go("ceremony"); }
   async function remind() { await say([D("新生！新生！先到共鳴之井來（往右滑一點，那個發光的井），入學典禮要開始囉！")]); }
 
   function menu() {
