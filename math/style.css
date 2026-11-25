@@ -161,3 +161,6 @@ canvas.stage.small { width: 100%; aspect-ratio: 288 / 240; height: auto; border-
 #app.bigtext .pagepage, #app.bigtext .ebody { font-size: 18px; }
 #app.lefty .answers { direction: rtl; }
 #app.lefty .answers .btn { direction: ltr; }
+
+/* 戰鬥轉場 */
+.transition { position: fixed; z-index: 50; image-rendering: pixelated; }

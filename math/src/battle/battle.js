@@ -15,7 +15,7 @@ const EXAM = 10;      // 升階考核題數，答對 7 題通過
 /**
  * mode："stage"（stage 0～2）、"boss"、"exam"。onEnd(result) 回到地圖或重玩。
  */
-export async function runBattle(game, gradeId, mode, stageIdx, onEnd) {
+export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
   const s = game.save;
   const g = GRADES[gradeId];
   const attr = ATTRS[s.attr];
@@ -45,6 +45,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd) {
   const wrap = el("div.battle", {}, el("div.view", {}, canvas, hud, bubble, leave), wordPanel, line, answers, abilityBtn);
   show(wrap);
   const stage = new Stage(canvas, gradeId, s.look, s.attr, s.settings);
+  onReady?.();   // 戰鬥畫面準備好了（轉場可以打開）
   stage.gray = 1;
 
   let hp = maxHp(s.lv), combo = 0, best = 0, right = 0, wrong = 0, sparks = 0, shieldLeft = shield, gained = 0;

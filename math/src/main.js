@@ -8,6 +8,7 @@ import { resonanceScene } from "./scenes/resonance.js";
 import { mapScene } from "./scenes/map.js";
 import { resultScene } from "./scenes/result.js";
 import { runBattle } from "./battle/battle.js";
+import { battleIn, battleOut } from "./transition.js";
 
 const game = {
   save: loadSave(),
@@ -25,7 +26,11 @@ const game = {
       case "resonance": return resonanceScene(this, arg);
       case "afterResonance": return afterResonance(this);
       case "map": return mapScene(this);
-      case "battle": return runBattle(this, arg.grade, arg.mode, arg.stage ?? 0, (r) => resultScene(this, r));
+      case "battle": {
+        // 魔法轉場（對應玩家屬性）：全蓋住時建立戰鬥畫面；打完再轉場到結算
+        const end = (r) => battleOut(s.attr, () => resultScene(this, r));
+        return battleIn(s.attr, () => new Promise((ready) => runBattle(this, arg.grade, arg.mode, arg.stage ?? 0, end, ready)), { boss: arg.mode === "boss" });
+      }
     }
   },
 };
