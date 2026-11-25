@@ -312,3 +312,12 @@ canvas.dormcv { flex: 1; min-height: 0; max-width: 100%; aspect-ratio: 16 / 9; i
 .talk .next, .dialog .next { color: #8a6a4a; }
 .talk .facebox { background: #e8d8b8; border: 3px solid #c9a46a; border-radius: 0; }
 .seg .btn.on { border-image: var(--b-gold) 9 fill stretch; color: #2a1b05; }
+canvas.titlebg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; z-index: 0; }
+.title > :not(canvas) { position: relative; z-index: 1; }
+.title .foot { position: absolute !important; }
+img.libicon { height: 40px; image-rendering: pixelated; }
+.mgwrap { flex: 1; min-height: 0; display: flex; gap: 12px; }
+.mgside { width: 110px; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; padding-bottom: 8px; }
+canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
+.mgsay { font-size: 13px; color: var(--gold); text-align: center; }
+.title .tag, .title .foot { text-shadow: 0 2px 0 #000, 2px 0 0 #000, -2px 0 0 #000, 0 -2px 0 #000; color: #f1ecff; }

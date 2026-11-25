@@ -24,15 +24,18 @@ export function libraryScene(game) {
   };
   tick();
   const review = Object.keys(s.review).length;
-  const spot = (icon, name, desc, onclick) => el("button.btn.libspot", { onclick: () => { sfx("click"); onclick(); } }, el("span.icon", {}, icon), el("span.lname", {}, name), el("span.ldesc", {}, desc));
+  // 圖示用學院島的小物件圖（像素），不用表情符號
+  const dir = s.settings?.mapArt === "raw" ? "island-raw" : "island";
+  const icon = (art) => el("img.libicon", { src: new URL(`../../assets/map/${dir}/${art}.png`, import.meta.url).href, alt: "" });
+  const spot = (art, name, desc, onclick) => el("button.btn.libspot", { onclick: () => { sfx("click"); onclick(); } }, icon(art), el("span.lname", {}, name), el("span.ldesc", {}, desc));
   const root = el("div.screen.library", {},
     el("div.libtitle", {}, "千頁圖書館・大廳"),
     el("div.shelves"),
     el("div.librow", {},
-      spot("📕", "錯題本", review ? `還有 ${review} 種題目沒算完` : "目前沒有", () => reviewPanel(game)),
-      spot("📔", "成長日記", "熟練度星星、最近 7 天", () => growthPanel(game)),
-      spot("📖", "萬題之書", `找回 ${bookChapters(s)} 章`, () => bookTalk()),
-      spot("🪜", "上層書庫", `${GRADES.g2.name}的區域`, () => upstairs())),
+      spot("books", "錯題本", review ? `還有 ${review} 種題目沒算完` : "目前沒有", () => reviewPanel(game)),
+      spot("board", "成長日記", "熟練度星星、最近 7 天", () => growthPanel(game)),
+      spot("crystal", "萬題之書", `找回 ${bookChapters(s)} 章`, () => bookTalk()),
+      spot("sign", "上層書庫", `${GRADES.g2.name}的區域`, () => upstairs())),
     el("div.libfoot", {}, page, el("button.btn.gold", { onclick: () => { alive = false; game.go("map", { map: "island", from: "library" }); } }, "離開圖書館")),
   );
   show(root);

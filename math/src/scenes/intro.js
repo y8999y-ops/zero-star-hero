@@ -5,18 +5,46 @@ import { sfx } from "../audio.js";
 import { resetSave, writeSave } from "../save.js";
 import { heroFrame } from "../../fx/hero.js";
 import { ATTRS } from "../data.js";
+import { loadAreaArt } from "../battle/areaart.js";
 
 export function titleScene(game) {
   const s = game.save;
   const started = !!s.attr;
-  show(el("div.screen.title", {},
+  const bg = el("canvas.titlebg", { width: 384, height: 216 });
+  show(el("div.screen.title", {}, bg,
     el("div.logo", {}, el("span.l1", {}, "魔數"), el("span.l2", {}, "學院")),
     el("div.tag", {}, "數學是一種魔法"),
     el("button.btn.gold.big", { onclick: () => { sfx("click"); game.go("map"); } }, started ? "繼續冒險" : "開始入學"),
     el("button.btn", { onclick: () => game.go("settings", { from: "title" }) }, "設定"),
     started ? el("button.btn.red.small", { onclick: () => { if (confirm("確定要重新入學嗎？所有進度都會清除。")) { game.save = resetSave(); game.go("opening"); } } }, "重新入學") : null,
-    el("div.foot", {}, "題庫：TMMLU+（MIT）、Calc-ape210k（MIT），已改寫成學院情境"),
+    el("div.foot", {}, "題庫：TMMLU+（MIT）、Calc-ape210k（MIT），已改寫成學院情境　字型：俐方體 11 號（OFL）"),
   ));
+  titleBackground(bg);
+}
+
+// 標題背景：星芽花園背景圖的天空、雲（慢慢飄）、浮在空中的學院（輕輕浮），還有往上飄的光點
+async function titleBackground(cv) {
+  const art = await loadAreaArt("g1");
+  if (!art || !cv.isConnected) return;
+  const g = cv.getContext("2d"); g.imageSmoothingEnabled = false;
+  let t = 0, last = performance.now();
+  const rand = (i) => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+  const frame = (now) => {
+    if (!cv.isConnected) return;
+    t += Math.min(0.05, (now - last) / 1000); last = now;
+    g.drawImage(art.base.color, 0, 0);
+    for (const [l, sp] of [[art.cloudsLo.color, 3], [art.cloudsHi.color, 7]]) { const o = Math.round((t * sp) % 384); g.drawImage(l, -o, 0); g.drawImage(l, 384 - o, 0); }
+    g.drawImage(art.island.color, 0, Math.round(Math.sin((t / 4) * Math.PI * 2) * 1.5) + 10);
+    for (const [dy, sp] of [[80, 5], [110, 9]]) { const o = Math.round((t * sp) % 384); g.drawImage(art.cloudsLo.color, -o, dy); g.drawImage(art.cloudsLo.color, 384 - o, dy); }
+    g.fillStyle = "rgba(23,18,42,0.35)"; g.fillRect(0, 0, 384, 216);                         // 壓暗一點，字比較清楚
+    for (let i = 0; i < 30; i++) {
+      const u = (t * (0.05 + rand(i) * 0.08) + rand(i + 7)) % 1, x = Math.round(rand(i + 3) * 384 + Math.sin(t + i) * 4), y = Math.round(216 - u * 230);
+      if (Math.sin(t * 3 + i) < -0.4) continue;
+      g.fillStyle = i % 3 ? "#fff3b0" : "#c9b8ff"; g.fillRect(x, y, 1, 1);
+    }
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
 }
 
 export function lookScene(game) {

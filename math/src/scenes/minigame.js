@@ -10,7 +10,8 @@ import { el, show } from "../ui.js";
 import { sfx } from "../audio.js";
 import { writeSave } from "../save.js";
 import { addExp } from "../growth.js";
-import { MENTORS } from "../../fx/mentor.js";
+import { MENTORS, mentorFrame } from "../../fx/mentor.js";
+const MENTOR_LINE = { fire: "快快快！", water: "換個方法想想看～", ice: "慢……慢……來。", forest: "畫出來看看！", thunder: "找到規律了嗎？" };
 
 export const GAMES = {
   fire: { title: "60 秒速算", desc: "60 秒內答對越多越好！答錯不扣分，但會浪費時間。" },
@@ -71,7 +72,12 @@ export function minigameScene(game, { id }) {
 
   const head = el("div.mghead", {}, el("span.mgname", {}, `${M.name}的「${G.title}」`), el("span.mgscore"));
   const body = el("div.mgbody");
-  root.append(head, body);
+  // 導師站在左邊看你算（說話的時候嘴巴會動）
+  const mc = el("canvas.mgmentor", { width: 40, height: 60 }), mx = mc.getContext("2d");
+  let mt = 0;
+  const drawMentor = () => { if (!mc.isConnected && mt > 0.2) return; const f = mentorFrame(id, "idle", mt % 2); mx.clearRect(0, 0, 40, 60); mx.putImageData(new ImageData(new Uint8ClampedArray(f.px.buffer.slice(0)), f.w, f.h), 0, 0); mt += 1 / 12; setTimeout(drawMentor, 1000 / 12); };
+  drawMentor();
+  root.append(head, el("div.mgwrap", {}, el("div.mgside", {}, mc, el("div.mgsay", {}, MENTOR_LINE[id])), body));
   const setScore = () => (head.querySelector(".mgscore").textContent = id === "fire" ? `答對 ${score}　剩 ${Math.ceil(timeLeft)} 秒` : `第 ${Math.min(round + 1, ROUNDS)} / ${ROUNDS} 題　答對 ${score}`);
 
   // 開始前：說明
