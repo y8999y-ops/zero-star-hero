@@ -518,3 +518,7 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 .hubb.qtarget img { animation: qglow 1.6s ease-in-out infinite; }
 @keyframes qglow { 50% { filter: drop-shadow(0 0 10px #fff3b0) drop-shadow(0 0 4px #f2c24a) brightness(1.08); } }
 .hubpan.locked { overflow-x: hidden; touch-action: none; }
+/* 怪物個性：選項換位置、被塗黑 */
+.answers.shuffling .btn.answer { transform: scale(.85) rotate(-4deg); opacity: .4; transition: transform .18s, opacity .18s; }
+.btn.answer.blot { color: transparent !important; background: radial-gradient(circle at 40% 45%, #1c1533 0 38%, transparent 40%), radial-gradient(circle at 65% 60%, #2d2350 0 30%, transparent 32%) !important; }
+.btn.answer.blot .fr .fn { border-color: transparent; }

@@ -47,6 +47,15 @@ function tutorialQuestions(attr) {
     return q;
   });
 }
+// 怪物個性（2026-11-25 使用者：遊戲性不夠 → 照建議做「怪物有個性」）：每種墨水怪打法不一樣，第一次出現時頁頁提醒一句
+//   hp：要答對幾題才會散開；combo：要「連續」答對（答錯就黏回去）；shield：第一題只打破盾；shuffle：出題後選項換位置；blot：一個選項被塗黑一下
+const TRAITS = {
+  pages: { hp: 2, combo: true, line: "散頁怪要「連續」答對兩題才會散開，答錯它會黏回去！" },
+  shade: { hp: 2, line: "負號影有一個分身，要答對兩題！" },
+  bug: { hp: 2, shield: true, line: "碎晶蟲身上有水晶盾，第一題先打破盾！" },
+  tick: { shuffle: true, line: "亂針鐘會把選項換位置，看清楚再按！" },
+  bat: { blot: true, line: "塗鴉蝙蝠會把一個選項塗黑，等墨水散開再看！" },
+};
 const EXAM = 10;      // 升階考核題數，答對 7 題通過
 
 /**
@@ -180,13 +189,24 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   await scene([K("又來了……反正沒有人會算完我。每個人算到一半，就說「算了」。"), PG("才不是！見習魔數師一路把花園、書庫、鐘塔、溫室都算完了！"), K("那就算算看吧——把我身上所有的題目都算完！")]);
   let saidHalf = false, saidLast = false;
 
+  const seenTrait = new Set(s.flags?.seenTrait ?? []);
+  let curTrait = null;
   let qi = 0;
   for (; qi < qs.length && hp > 0; qi++) {
     if (boss && shieldLeft <= 0) break;
     if (exam && qi >= EXAM) break;
     const q = qs[qi];
     // 上一隻還在散開（die）時也要叫新的一隻出來，不然這題會沒有怪物、沒有題目泡泡
-    if (!stage.monster || stage.monster.state === "die") stage.spawn(boss, tut ? "ink" : null);
+    if (!stage.monster || stage.monster.state === "die") {
+      stage.spawn(boss, tut ? "ink" : null);
+      const T = !boss && TRAITS[stage.monster.kind];
+      if (T) {
+        stage.monster.hp = stage.monster.maxHp = T.hp ?? 1;
+        if (!seenTrait.has(stage.monster.kind)) { seenTrait.add(stage.monster.kind); await talk(wrap, [{ who: "page", name: "頁頁", text: T.line }]); }
+      }
+    }
+    const mon = stage.monster, trait = !boss && mon ? TRAITS[mon.kind] : null;
+    curTrait = trait;                    // 答題（askOne）要用：換選項、塗黑
     drawHud();
     if (final && !saidHalf && shieldLeft <= Math.ceil(shield / 2)) { saidHalf = true; await scene([K("……你真的一直算下去？明明那麼多題。"), PG("不會的就去圖書館學，學會了再回來算！我們不會說「算了」。")]); }
     if (final && !saidLast && shieldLeft === 1) { saidLast = true; await scene([K("最後一題……是最早被丟進來的那一題。幾百年來，從來沒有人算完它。"), PG("見習魔數師，就是這一題！")]); }
@@ -234,7 +254,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
         canvas.onclick = null;
       }
       say(["", "咒語成立！", "魔法變強了！", "大魔法！", "終極魔法！！"][tier]);
-      await stage.cast(tier, crystalLevel(s.crystals[s.attr]));
+      await stage.cast(tier, crystalLevel(s.crystals[s.attr]), q.branch);
       stage.setPage("happy", 1.6);
       // 答案數字跳出來；選擇題的答案可能是中文（像素字寫不出來），就跳一顆星
       const shown = String(q.answer).replace(/−|－/g, "-");
@@ -246,6 +266,10 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
         stage.shake = 6;
         if (shieldLeft > 0) stage.flinch();
         if (shieldLeft <= 0) { stage.purify(); if (!s.stars[`${gradeId}-boss`]) { stage.restoreColor(); setTimeout(() => sfx("restore"), 400); s.flags = { ...(s.flags ?? {}), restore: gradeId }; } }
+      } else if (mon && mon.hp > 1) {
+        // 還沒散開：答對打掉一格（碎晶蟲＝打破盾）
+        mon.hp--; stage.flinch();
+        if (trait?.shield && mon.hp === mon.maxHp - 1) { sfx("shatter"); say("水晶盾碎了！再一題！"); } else say(`還要 ${mon.hp} 題！`);
       } else stage.purify();
       if (stage.monster && (!boss || shieldLeft <= 0)) { const k = stage.monster.kind; s.dex = { ...(s.dex ?? {}), [k]: (s.dex?.[k] ?? 0) + 1 }; }   // 墨水圖鑑
       await wait(650);
@@ -257,7 +281,8 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
       stage.setPage("worried", 3);
       bubble.textContent = "";
       await showExplain(q, result.timeout);
-      if (!boss) stage.purify();
+      if (!boss && mon && mon.hp > 1) { if (trait?.combo && mon.hp < mon.maxHp) { mon.hp = mon.maxHp; say("散頁怪又黏回去了……再連對兩題！"); } }
+      else if (!boss) stage.purify();
       await wait(300);
       if (chal) break;                 // 挑戰模式：答錯就結束
     }
@@ -266,6 +291,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
 
   if (aborted) return;
   running = false; stopSpeak();
+  s.flags = { ...(s.flags ?? {}), seenTrait: [...seenTrait] };
   if (tut) {
     // 教學：經驗照算、錯題本照記；不給星星和晶幣，直接接劇情
     const ups = addExp(s, gained);
@@ -308,14 +334,28 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     return new Promise((resolve) => {
       let done = false, retry = s.attr === "water" && uses > 0, retry2 = sub === "water" && uses2 > 0;
       let start = performance.now();
-      answers.replaceChildren(...q.options.map((o, i) => el("button.btn.answer", { "data-k": i + 1, onclick: () => pickOpt(o, btns[i]) }, mathText(q.unit && q.kind === "word" ? `${o} ${q.unit}` : o))));
-      const btns = [...answers.children];
+      answers.replaceChildren(...q.options.map((o, i) => el("button.btn.answer", { "data-k": i + 1, "data-v": o, onclick: (e) => pickOpt(o, e.currentTarget) }, mathText(q.unit && q.kind === "word" ? `${o} ${q.unit}` : o))));
+      let btns = [...answers.children];
+      // 怪物個性：亂針鐘把選項換位置、塗鴉蝙蝠把一個選項塗黑一下
+      if (curTrait?.shuffle) setTimeout(() => {
+        if (done) return;
+        const order = btns.map((b) => [Math.random(), b]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
+        if (order.every((b, k) => b === btns[k])) order.push(order.shift());
+        answers.classList.add("shuffling"); sfx("tick");
+        setTimeout(() => { answers.replaceChildren(...order); btns = order; btns.forEach((b, k) => b.setAttribute("data-k", k + 1)); answers.classList.remove("shuffling"); }, 180);
+      }, 1600);
+      if (curTrait?.blot) setTimeout(() => {
+        if (done) return;
+        const b = btns[Math.floor(Math.random() * btns.length)];
+        b.classList.add("blot"); sfx("hurt");
+        setTimeout(() => b.classList.remove("blot"), 1800);
+      }, 900);
       const key = (e) => { const n = Number(e.key); if (n >= 1 && n <= btns.length) btns[n - 1].click(); };
       addEventListener("keydown", key);
       abilityBtn.onclick = () => {
         if (uses <= 0 || done) return;
         if (s.attr === "thunder") {
-          const wrongs = btns.filter((b, i) => q.options[i] !== q.answer && !b.disabled);
+          const wrongs = btns.filter((b) => b.dataset.v !== q.answer && !b.disabled);
           if (!wrongs.length) return;
           const b = wrongs[Math.floor(Math.random() * wrongs.length)];
           b.disabled = true; b.classList.add("zapped");
@@ -336,7 +376,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
         uses2--; subBtn.textContent = `副・${SA.ability}（${uses2}）`; subBtn.disabled = uses2 <= 0;
       };
       function zap() {
-        const wrongs = btns.filter((b, i) => q.options[i] !== q.answer && !b.disabled);
+        const wrongs = btns.filter((b) => b.dataset.v !== q.answer && !b.disabled);
         if (!wrongs.length) return false;
         const b = wrongs[Math.floor(Math.random() * wrongs.length)];
         b.disabled = true; b.classList.add("zapped");
@@ -365,7 +405,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
           sfx("tick");
           return;
         }
-        btns.forEach((x, i) => { if (q.options[i] === q.answer) x.classList.add("right"); });
+        btns.forEach((x) => { if (x.dataset.v === q.answer) x.classList.add("right"); });
         if (!ok) b.classList.add("wrong");
         finish(ok, false);
       }

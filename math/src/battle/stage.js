@@ -3,7 +3,7 @@
 // 下方 22% 會被答案按鈕蓋住，所以角色站在 y = 144（不是畫面最底）。
 
 import { createFrame, clearFrame, createFx, composite, painterFor, hex as pfHex } from "../../../pixelfx/src/core/index.js";
-import { SPELLS, FX, INK, INK_POOF, crystalLight } from "./spells.js";
+import { SPELLS, UNIT_SPELL, FX, INK, INK_POOF, crystalLight } from "./spells.js";
 import { GRADES, ATTRS } from "../data.js";
 import { heroFrame } from "../../fx/hero.js";
 import { inkDropFrame } from "../../fx/ink-drop.js";
@@ -168,8 +168,12 @@ export class Stage {
   }
 
   /** 施法。回傳 Promise：打中時 resolve。 */
-  cast(tier, crystalLv = 1) {
-    const spell = SPELLS[this.attr][tier - 1];
+  cast(tier, crystalLv = 1, branch = null) {
+    // 題目決定招式：有單元的題目打那個單元的招式（屬性色）；連擊第 3、4 級再疊上屬性大招
+    const base = SPELLS[this.attr][tier - 1], us = branch && UNIT_SPELL[branch];
+    const spell = !us ? base : tier >= 3
+      ? { hit: Math.max(us.hit, base.hit + 0.25), shake: base.shake, parts: [...us.parts, ...base.parts.map((p) => ({ ...p, delay: p.delay + 0.25 }))] }
+      : { hit: us.hit, shake: tier, parts: us.parts };
     const m = this.monster;
     const tx = m ? m.x : 270;
     this.castT = 0;
@@ -180,10 +184,10 @@ export class Stage {
     // 集氣：杖頭先聚一團光（越強的魔法聚越久、越大）
     this.addFx(FX.spellCharge, { x: PX + 6, y: GROUND - 20, speed: 1.4 + tier * 0.2, dur: 0.15 + spell.hit * 0.5, opts: { palette: ramp } });
     for (const p of spell.parts) {
-      const o = { ...(p.opts ?? {}), light: crystalLight(crystalLv) };
+      const o = { ...(p.opts ?? {}), light: crystalLight(crystalLv), ...(p.tint ? { palette: ramp } : {}) };
       let x = 0, y = GROUND, from = null, to = null;
       if (p.at === "caster") { x = PX + 15; y = GROUND - (p.mod.meta.origin[1] < 40 ? 24 : 0); if ("length" in (p.mod.meta.options ?? {})) o.length = Math.max(40, tx - PX - 15); }
-      else if (p.at === "target") { x = tx + (p.x ?? 0); }
+      else if (p.at === "target") { x = tx + (p.x ?? 0); y = GROUND + (p.y ?? 0); }
       else { const dy = p.drop ?? 0; from = [PX + 18, GROUND - 27 + dy]; to = [tx - 6, GROUND - 21 + dy]; x = from[0]; y = from[1]; }
       this.addFx(p.mod, { x, y, from, to, delay: 0.15 + p.delay, speed: p.speed, dur: p.dur, opts: o });
     }
