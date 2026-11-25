@@ -263,7 +263,7 @@ export function hubScene(game, { from } = {}) {
         if (r === 0) { leave(); game.go("area", { grade: "g34" }); }
         else if (exam && r === 1) { leave(); game.go("battle", { grade: s.lastGrade ?? "g1", mode: "exam" }); }
         else if (r === (exam ? 2 : 1)) {
-          if (s.lv < 15) { await say([{ who: null, name: "刻度鐘塔", text: `挑戰模式：每題 10 秒、一直連答，答錯就結束。等你到 Lv15 再來挑戰！（現在 Lv${s.lv}）` }]); return; }
+          if (s.lv < 15) { await say([{ who: null, name: "刻度鐘塔", text: `挑戰模式：每題 20 秒、一直連答，答錯就結束。等你到 Lv15 再來挑戰！（現在 Lv${s.lv}）` }]); return; }
           leave(); game.go("battle", { grade: "g34", mode: "challenge" });
         }
         return;

@@ -74,7 +74,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   const sub = s.subAttr && s.subAttr !== s.attr && s.lv >= 20 ? s.subAttr : null;   // 副屬性（Lv20）：只用在組合技的特效
   limit *= TIMER_EASE[s.settings.timerEase] ?? 1;
   if (tut) limit = 0;                       // 教學不限時
-  if (chal) limit = 10;                      // 挑戰模式：一定限時 10 秒
+  if (chal) limit = 20;                      // 挑戰模式：一定限時 20 秒（2026-11-25 使用者：限時給兩倍）
 
   const shield = boss ? g.boss : 0;
   const prevBossStars = s.stars[`${gradeId}-boss`] ?? 0;          // 第一次打倒這一區的王（最終戰打完要接結局）
@@ -248,7 +248,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     if (aborted) return;
     const sec = (performance.now() - t0) / 1000;
 
-    const rec = recordAnswer(s, { ...q, targetSec: limit || 8 }, result.ok, sec);
+    const rec = recordAnswer(s, { ...q, targetSec: limit ? limit / 2 : 8 }, result.ok, sec);
     events.push(...rec.events);
     if (rec.exp) { gained += rec.exp; floatText(wrap, `＋${rec.exp} 經驗`, "exp"); }
 
