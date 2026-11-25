@@ -324,9 +324,10 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 
 /* 戰鬥背景（AI 原圖版）：疊在戰鬥畫布後面，版面由 stage.js 依畫面高度算 */
 .bghd { position: absolute; inset: 0; overflow: hidden; background: #2a2340; }
-.bghd .b { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.bghd .b { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: saturate(.6) brightness(1.03) contrast(.9); }
+.bghd .art::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(225, 233, 245, .22), rgba(225, 233, 245, .08) 55%, transparent 62%); pointer-events: none; }
 .bghd .art { position: absolute; inset: 0; }
-.bghd .m { position: absolute; filter: brightness(0.9) saturate(0.85); }
+.bghd .m { position: absolute; filter: brightness(0.9) saturate(0.7); }
 .bghd .g { position: absolute; left: 0; right: 0; background-repeat: repeat-x; }
 .bghd .gf { position: absolute; left: 0; right: 0; bottom: 0; background-repeat: repeat; }
 .bghd .tint { position: absolute; inset: 0; background: rgba(70, 50, 130, 0.28); mix-blend-mode: multiply; opacity: 0; pointer-events: none; }
@@ -335,12 +336,17 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 /* 學院全景（2026-11-25 起取代大地圖）：左右滑的橫幅 */
 #app:has(.hubscr, .areascr) { padding: 0; }
 .screen.hubscr { padding: 0; position: relative; height: 100%; overflow: hidden; user-select: none; -webkit-user-select: none; background: #9fc4e8; }
-.hubsky { position: absolute; inset: 0; background-size: auto 100%; background-repeat: repeat-x; }
-.hubpan { position: absolute; inset: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -webkit-overflow-scrolling: touch; touch-action: pan-x; }
+/* 背景調低飽和度、加一層霧，越遠越淡（2026-11-25 使用者：背景要有深度、調低飽和度） */
+.hubsky { position: absolute; inset: 0; background-size: auto 100%; background-repeat: repeat-x; filter: saturate(.55) brightness(1.04) contrast(.88); }
+.hubfar { position: absolute; left: 0; right: 0; background-repeat: repeat-x; filter: saturate(.45) brightness(1.08) contrast(.8) blur(.6px); opacity: .9; }
+.hubhaze { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(225, 233, 245, .30) 0%, rgba(225, 233, 245, .12) 45%, rgba(230, 236, 248, .38) 68%, rgba(230, 236, 248, 0) 72%); }
+.hubfloor, .hublawn { position: absolute; left: 0; right: 0; background-repeat: repeat; pointer-events: none; transform-origin: 50% 0; }
+.hubfloor { filter: saturate(.75) brightness(.97); box-shadow: inset 0 6px 6px -3px rgba(40, 30, 60, .35); }
+.hublawn { filter: saturate(.6) brightness(.92); box-shadow: inset 0 4px 4px -2px rgba(30, 40, 20, .35); }
+.hubshadow { border-radius: 50%; background: rgba(30, 22, 50, .32); pointer-events: none; }
+.hubpan { position: absolute; inset: 0; z-index: 1; isolation: isolate; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -webkit-overflow-scrolling: touch; touch-action: pan-x; }
 .hubpan::-webkit-scrollbar { display: none; }
 .hubworld { position: relative; height: 100%; }
-.hubhedge, .hubroad { position: absolute; left: 0; right: 0; background-repeat: repeat-x; pointer-events: none; }
-.hubroad { bottom: 0; background-color: #8b7d6a; z-index: 2; }
 .hubworld > * { position: absolute; }
 .hubb, .hubp { background: none; border: 0; padding: 0; margin: 0; cursor: pointer; min-height: 0; border-image: none !important; box-shadow: none !important; }
 .hubb img { width: 100%; height: 100%; display: block; filter: drop-shadow(0 4px 3px rgba(20, 14, 40, .35)); transition: filter .15s, transform .15s; }
@@ -351,6 +357,8 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 .hubp canvas, canvas.hubs { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
 .hublabel { position: absolute; left: 50%; top: 44px; transform: translateX(-50%); background: rgba(23,18,42,.82); padding: 3px 12px; border-radius: 10px; font-size: 13px; color: var(--gold); pointer-events: none; z-index: 60; }
 .hubscr .whud { z-index: 50; }
+.hubscr > .talk, .hubscr > .panel { z-index: 70; }        /* 介面一律在最上層（不能被建築蓋住） */
+.areascr > .talk, .areascr > .panel { z-index: 70; }
 
 /* 區域畫面：那一區的戰鬥背景原圖＋排成一排的墨水怪 */
 .screen.areascr { padding: 0; position: relative; height: 100%; overflow: hidden; user-select: none; }

@@ -44,6 +44,7 @@ export function areaScene(game, { grade = "g1" } = {}) {
   const bg = el("div.bghd.areabg");
   if (area) {
     bg.append(el("img.b", { src: A(`battle-hd/${area}/back.jpg`), alt: "" }));
+    bg.append(el("div.art"));                      // 遠景上的一層霧（樣式在 .bghd .art::before）
     bg.append(el("img.m", { src: A(`battle-hd/${area}/mid.png`), alt: "" }));
     bg.append(el("div.g", { style: { backgroundImage: `url(${A(`battle-hd/${area}/ground.png`)})` } }));
     bg.append(el("div.gf", { style: { backgroundImage: `url(${A(`battle-hd/${area}/ground.png`)})` } }));

@@ -17,53 +17,54 @@ import { writeSave } from "../save.js";
 import { talk } from "../world/talk.js";
 
 const U = 270;                 // 畫面高幾格
-const GY = 214;                // 建築站的線（石板路上緣）
+const GY = 192;                // 建築站的線（石板廣場的後緣）；下面一直到畫面底都是地面（石板廣場→草地），不會空
 const A = (n) => new URL(`../../assets/hub/${n}`, import.meta.url).href;
 const BHD = (n) => new URL(`../../assets/battle-hd/garden/${n}`, import.meta.url).href;
 
 // 建築：由左到右（浮空船碼頭上岸 → 生活區 → 廣場 → 千頁圖書館 → 五座學院 → 溫室 → 鐘塔 → 花園入口）
+// 2026-11-25 使用者：太擠 → 建築之間留 60～110 格的空地，小物件減少，只放有理由的
 // x：建築中心；h：高幾格；dy：往下沉幾格（圖的底部有地基、草地）
 const BUILDINGS = [
-  { id: "ship", art: "dock.png", name: "浮空船碼頭", x: 150, h: 118, dy: 14 },
-  { id: "b_dorm", art: "dorm.png", name: "宿舍", x: 380, h: 112, dy: 8 },
-  { id: "b_shop", art: "shop.png", name: "學院商店", x: 560, h: 98, dy: 8 },
-  { id: "well", art: "well.png", name: "共鳴之井", x: 790, h: 100, dy: 16 },
-  { id: "library", art: "library.png", name: "千頁圖書館", x: 1080, h: 186, dy: 10 },
-  { id: "b_fire", art: "fire.png", name: "赤焰塔", x: 1340, h: 136, dy: 8 },
-  { id: "b_water", art: "water.png", name: "蒼流館", x: 1540, h: 110, dy: 10 },
-  { id: "b_ice", art: "ice.png", name: "白霜堂", x: 1740, h: 110, dy: 10 },
-  { id: "b_forest", art: "forest.png", name: "翠森苑", x: 1950, h: 118, dy: 10 },
-  { id: "b_thunder", art: "thunder.png", name: "紫雷閣", x: 2150, h: 136, dy: 8 },
-  { id: "b_greenhouse", art: "greenhouse.png", name: "分晶溫室", x: 2370, h: 108, dy: 10 },
-  { id: "b_clock", art: "clock.png", name: "刻度鐘塔", x: 2580, h: 196, dy: 8 },
-  { id: "toGarden", art: "p/rosearch.png", name: "星芽花園", x: 2780, h: 84, dy: 4 },
+  { id: "ship", art: "dock.png", name: "浮空船碼頭", x: 180, h: 112, dy: 14 },
+  { id: "b_dorm", art: "dorm.png", name: "宿舍", x: 480, h: 106, dy: 8 },
+  { id: "b_shop", art: "shop.png", name: "學院商店", x: 730, h: 92, dy: 8 },
+  { id: "well", art: "well.png", name: "共鳴之井", x: 1000, h: 96, dy: 16 },
+  { id: "library", art: "library.png", name: "千頁圖書館", x: 1360, h: 178, dy: 10 },
+  { id: "b_fire", art: "fire.png", name: "赤焰塔", x: 1700, h: 130, dy: 8 },
+  { id: "b_water", art: "water.png", name: "蒼流館", x: 1950, h: 104, dy: 10 },
+  { id: "b_ice", art: "ice.png", name: "白霜堂", x: 2210, h: 104, dy: 10 },
+  { id: "b_forest", art: "forest.png", name: "翠森苑", x: 2470, h: 112, dy: 10 },
+  { id: "b_thunder", art: "thunder.png", name: "紫雷閣", x: 2730, h: 130, dy: 8 },
+  { id: "b_greenhouse", art: "greenhouse.png", name: "分晶溫室", x: 3000, h: 102, dy: 10 },
+  { id: "b_clock", art: "clock.png", name: "刻度鐘塔", x: 3270, h: 188, dy: 8 },
+  { id: "toGarden", art: "p/rosearch.png", name: "星芽花園", x: 3520, h: 80, dy: 4 },
 ];
-const PW = 2900;               // 橫幅全長（格）
-// 小物件：每個都有理由（碼頭邊的貨、商店前的攤車、井旁的長椅、學院門口的特色……）。front＝擺在建築前面一點
+const PW = 3660;               // 橫幅全長（格）
+// 小物件（只放有理由的）：碼頭邊的貨、商店前的攤車、井旁的長椅、圖書館前的望遠鏡、赤焰塔的箭靶、
+// 蒼流館和白霜堂之間的噴泉、紫雷閣的黑板、溫室的盆栽、花園門口的花台。front＝擺在建築前面一點
 const DECOR = [
-  ["p/crate.png", 250, 26], ["p/barrel.png", 278, 24], ["p/lamp.png", 300, 52],
-  ["p/tree.png", 470, 70], ["p/cart.png", 650, 46, 1], ["p/lamp.png", 700, 52],
-  ["p/bench.png", 900, 30, 1], ["p/bed_pink.png", 690, 26, 1], ["p/tree2.png", 940, 64],
-  ["p/scope.png", 1210, 40, 1], ["p/statue.png", 950, 60],
-  ["p/target.png", 1440, 40, 1], ["p/flag.png", 1240, 50],
-  ["p/fountain.png", 1640, 42, 1], ["p/pine.png", 1845, 74], ["p/bed_white.png", 1820, 24, 1],
-  ["p/bush.png", 2050, 32, 1], ["p/chalkboard.png", 2250, 42, 1], ["p/tree.png", 2265, 70],
-  ["p/can.png", 2470, 18, 1], ["p/planter.png", 2440, 28, 1],
-  ["p/lamp2.png", 2690, 48], ["p/bed_yellow.png", 2840, 26, 1], ["p/hedge.png", 2860, 34],
+  ["p/crate.png", 310, 24, 1], ["p/barrel.png", 336, 22, 1],
+  ["p/lamp.png", 610, 50], ["p/cart.png", 830, 42, 1],
+  ["p/bench.png", 1085, 28, 1], ["p/tree.png", 1200, 66],
+  ["p/scope.png", 1520, 38, 1],
+  ["p/target.png", 1820, 36, 1],
+  ["p/fountain.png", 2080, 40, 1], ["p/pine.png", 2340, 70],
+  ["p/chalkboard.png", 2850, 40, 1],
+  ["p/planter.png", 3130, 26, 1], ["p/lamp2.png", 3400, 46], ["p/bed_yellow.png", 3600, 24, 1],
 ];
 // 人：院長在井旁；導師站在自己學院門口右邊；同學散在各處
 const NPCS = [
-  { id: "dean", name: "圓周院長", x: 700, fn: (t) => deanFrame("idle", t) },
+  { id: "dean", name: "圓周院長", x: 900, fn: (t) => deanFrame("idle", t) },
   ...["fire", "water", "ice", "forest", "thunder"].map((k) => {
     const b = BUILDINGS.find((x) => x.id === `b_${k}`);
-    return { id: `m_${k}`, mentor: k, name: MENTORS[k].name, x: b.x + 64, fn: (t) => mentorFrame(k, "idle", t) };
+    return { id: `m_${k}`, mentor: k, name: MENTORS[k].name, x: b.x + 78, fn: (t) => mentorFrame(k, "idle", t) };
   }),
-  ...STUDENTS.map((st, i) => ({ id: st.id, student: st, name: st.name, x: [860, 610, 300, 2300, 2500, 1180][i], fn: (t) => heroWalkFrame(st.look, "down", "idle", t, st.attr, st.hair) })),
+  ...STUDENTS.map((st, i) => ({ id: st.id, student: st, name: st.name, x: [1238, 640, 400, 2960, 3170, 1530][i], fn: (t) => heroWalkFrame(st.look, "down", "idle", t, st.attr, st.hair) })),
 ];
 // 書頁、寶箱、墨水小點藏的地方（有理由：書頁卡在樹下、長椅底下、攤車旁……）
-const PAGE_AT = [470, 935, 1215, 1640, 1845, 2050, 2265, 2690, 300, 1440, 2440, 650];
-const CHEST_AT = [235, 1990, 2830];
-const INK_AT = [[1000, "p/ink-3.png"], [1700, "p/ink-1.png"], [2400, "p/ink-0.png"]];
+const PAGE_AT = [610, 1170, 1520, 1820, 2080, 2340, 2600, 2850, 3130, 3400, 336, 830];
+const CHEST_AT = [270, 2590, 3620];
+const INK_AT = [[1480, "p/ink-3.png"], [2330, "p/ink-1.png"], [3080, "p/ink-0.png"]];
 
 let current = null;
 
@@ -75,15 +76,18 @@ export function hubScene(game, { from } = {}) {
   const pan = el("div.hubpan");
   const world = el("div.hubworld");
   const sky = el("div.hubsky", { style: { backgroundImage: `url(${BHD("back.jpg")})` } });
-  const hedge = el("div.hubhedge", { style: { backgroundImage: `url(${BHD("mid.png")})` } });
-  const road = el("div.hubroad", { style: { backgroundImage: `url(${BHD("ground.png")})` } });
+  // 遠近：天空（最慢、最淡）→ 遠處的花園樹籬（慢、淡、霧）→ 霧 → 建築和人（正常）→ 石板廣場 → 最前面的草地
+  const far = el("div.hubfar", { style: { backgroundImage: `url(${BHD("mid.png")})` } });
+  const haze = el("div.hubhaze");
+  const floor = el("div.hubfloor", { style: { backgroundImage: `url(${A("floor.jpg")})` } });
+  const lawn = el("div.hublawn", { style: { backgroundImage: `url(${A("lawn.jpg")})` } });
   const label = el("div.hublabel", { hidden: true });
   const hud = el("div.whud", {},
     el("div.wprof", {}, el("span", {}, rank.name), el("span", {}, `Lv ${s.lv}`), el("span", { style: { color: ATTRS[s.attr]?.color } }, ATTRS[s.attr]?.name ?? ""), el("span.coins", {}, `${s.coins} 晶幣`)),
     el("button.btn.small.menuBtn", { onclick: () => menu() }, "選單"));
-  world.append(hedge, road);
+  world.append(floor, lawn);
   pan.append(world);
-  const root = el("div.screen.hubscr", {}, sky, pan, hud, label);
+  const root = el("div.screen.hubscr", {}, sky, far, haze, pan, hud, label);
   show(root);
 
   // ── 擺東西（位置都用「格」，換成 CSS 像素在 layout()） ──
@@ -103,7 +107,8 @@ export function hubScene(game, { from } = {}) {
     const f0 = fn(0), cv = el("canvas.hubs", { width: f0.w, height: f0.h });
     const n = el("button.hubp", { "aria-label": name ?? "" }, cv);
     if (onTap) n.addEventListener("click", (e) => tap(e, onTap));
-    const it = put(n, x, f0.h * scale, yBottom + (f0.h - f0.oy), z);
+    const sh = el("div.hubshadow"); put(sh, x, 5, yBottom + 2, z - 1); sh.dataset.w = f0.w * scale * 0.55;   // 腳下的影子（不然像浮在空中）
+    const it = put(n, x, f0.h * scale, yBottom + (f0.h - f0.oy) * scale, z);
     sprites.push({ fn, cv, f0, it });
     return n;
   };
@@ -112,22 +117,25 @@ export function hubScene(game, { from } = {}) {
     c.clearRect(0, 0, sp.cv.width, sp.cv.height);
     c.putImageData(new ImageData(new Uint8ClampedArray(f.px.buffer.slice(0)), f.w, f.h), 0, 0);
   };
-  for (const n of NPCS) sprite(n.fn, n.x, 1.5, GY + 24, 40, { ...n, kind: "npc" }, n.name);
+  for (const n of NPCS) sprite(n.fn, n.x, 1, GY + 20, 40, { ...n, kind: "npc" }, n.name);
   s.pages ??= []; s.chests ??= [];
-  PAGES.forEach((_, i) => { if (!s.pages.includes(i)) sprite((t) => pageFrame(t + i * 0.13), PAGE_AT[i % PAGE_AT.length] + (i >= PAGE_AT.length ? 30 : 0) + 22, 1.5, GY + 30, 35, { id: `page_${i}`, name: "發光的書頁" }, "發光的書頁"); });
-  CHESTS.forEach((_, i) => { if (!s.chests.includes(i)) { const n = img("p/chest.png", ".hubd.hubtap"); n.addEventListener("click", (e) => tap(e, { id: `chest_${i}`, name: "數字鎖寶箱" })); put(n, CHEST_AT[i], 30, GY + 20, 35); } });
-  INK_AT.forEach(([x, src], i) => { if (!daily(s).ink.includes(i)) { const n = img(src, ".hubd.hubtap"); n.addEventListener("click", (e) => tap(e, { id: `ink_${i}`, name: "墨水小點" })); put(n, x, 16, GY + 26, 34); } });
-  { const n = img("p/board.png", ".hubd.hubtap"); n.addEventListener("click", (e) => tap(e, { id: "board", name: "布告欄・今日委託" })); put(n, 640, 46, GY + 4, 12); }
+  PAGES.forEach((_, i) => { if (!s.pages.includes(i)) sprite((t) => pageFrame(t + i * 0.13), PAGE_AT[i % PAGE_AT.length] + (i >= PAGE_AT.length ? 30 : 0) + 22, 1, GY + 34, 35, { id: `page_${i}`, name: "發光的書頁" }, "發光的書頁"); });
+  CHESTS.forEach((_, i) => { if (!s.chests.includes(i)) { const n = img("p/chest.png", ".hubd.hubtap"); n.addEventListener("click", (e) => tap(e, { id: `chest_${i}`, name: "數字鎖寶箱" })); put(n, CHEST_AT[i], 26, GY + 30, 35); } });
+  INK_AT.forEach(([x, src], i) => { if (!daily(s).ink.includes(i)) { const n = img(src, ".hubd.hubtap"); n.addEventListener("click", (e) => tap(e, { id: `ink_${i}`, name: "墨水小點" })); put(n, x, 16, GY + 40, 34); } });
+  { const n = img("p/board.png", ".hubd.hubtap"); n.addEventListener("click", (e) => tap(e, { id: "board", name: "布告欄・今日委託" })); put(n, 1130, 44, GY + 4, 12); }
 
   // ── 版面：依畫面高算 1 格多大 ──
   let u = 1;
   function layout() {
     u = app.clientHeight / U;
     world.style.width = `${PW * u}px`;
-    hedge.style.cssText += `;top:${(GY - 70) * u}px;height:${76 * u}px;background-size:auto ${76 * u}px`;
-    road.style.cssText += `;top:${(GY - 6) * u}px;background-size:auto ${44 * u}px`;
+    Object.assign(far.style, { top: `${(GY - 58) * u}px`, height: `${56 * u}px`, backgroundSize: `auto ${56 * u}px` });
+    // 地板有透視：用 CSS 3D 往後倒，越後面石板越小（遠近感）；草地也一樣
+    Object.assign(floor.style, { top: `${(GY - 6) * u}px`, height: `${76 * u}px`, backgroundSize: `auto ${40 * u}px`, transform: `perspective(${200 * u}px) rotateX(28deg)` });
+    Object.assign(lawn.style, { top: `${(GY + 50) * u}px`, height: `${60 * u}px`, backgroundSize: `auto ${40 * u}px`, transform: `perspective(${160 * u}px) rotateX(40deg)` });
     for (const it of items) {
       const n = it.node, im = n.tagName === "IMG" ? n : n.querySelector("img, canvas");
+      if (!im) { const w = Number(n.dataset.w) * u, h = it.h * u; Object.assign(n.style, { left: `${it.x * u - w / 2}px`, top: `${it.y * u - h}px`, width: `${w}px`, height: `${h}px` }); continue; }
       const ratio = im.tagName === "CANVAS" ? im.width / im.height : (im.naturalWidth || 1) / (im.naturalHeight || 1);
       const h = it.h * u, w = h * ratio;
       Object.assign(n.style, { left: `${it.x * u - w / 2}px`, top: `${it.y * u - h}px`, width: `${w}px`, height: `${h}px` });
@@ -135,13 +143,13 @@ export function hubScene(game, { from } = {}) {
     parallax();
   }
   // 天空比前景慢（遠近感）
-  function parallax() { sky.style.backgroundPosition = `${-pan.scrollLeft * 0.35}px 0`; }
+  function parallax() { sky.style.backgroundPosition = `${-pan.scrollLeft * 0.15}px 0`; far.style.backgroundPosition = `${-pan.scrollLeft * 0.45}px 0`; }
   pan.addEventListener("scroll", () => { parallax(); s.hub = { x: Math.round(pan.scrollLeft / u) }; }, { passive: true });
   root.querySelectorAll("img").forEach((im) => { if (!im.complete) im.addEventListener("load", layout, { once: true }); });
   layout();
   // 一開始看哪裡：從哪裡回來就看哪裡；沒有的話是上次的位置；新生是碼頭
-  const focus = { library: 1080, garden: 2780, clock: 2580, shop: 560, dorm: 380, minigame: null }[from];
-  const startX = focus ?? s.hub?.x ?? (s.attr ? 790 : 150);
+  const focus = { library: 1360, garden: 3520, clock: 3270, shop: 730, dorm: 480, minigame: null }[from];
+  const startX = focus ?? s.hub?.x ?? (s.attr ? 1000 : 180);
   pan.scrollLeft = startX * u - app.clientWidth / 2;
 
   // 滑鼠拖曳也能捲（手機是原生捲動）；拖過就不算點
