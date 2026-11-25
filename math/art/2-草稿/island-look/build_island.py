@@ -103,16 +103,15 @@ clouds = cloud_stamps()
 # ── 水池 ──
 pond = E.crop((0, 113, 110, 222))
 
-# ── 組地面 ──
-MW, MH = 1024, 850
+# ── 組地面（v2：2026-11-25 使用者說「太空了，沒有魔法學院的感覺」→ 改成建築擠在一起的學院，三條街） ──
+MW, MH = 1190, 880
 img = Image.new("RGBA", (MW, MH), SKY)
-ISL = (40, 40, 860, 770)                                # 島（右邊接碼頭，北邊是千頁圖書館）
+ISL = (24, 24, 1060, 840)
 x0, y0, x1, y1 = ISL
-for i in range(70):                                     # 天空裡的雲（島外面）
+for i in range(70):
     c = rnd.choice(clouds); x, y = rnd.randrange(-20, MW), rnd.randrange(-10, MH)
     img.alpha_composite(c, (x, y)) if 0 <= x <= MW - c.width and 0 <= y <= MH - c.height else None
-grass = Image.new("RGBA", (x1 - x0, y1 - y0), GRASS)
-img.alpha_composite(grass, (x0, y0))
+img.alpha_composite(Image.new("RGBA", (x1 - x0, y1 - y0), GRASS), (x0, y0))
 for x in range(x0, x1):
     img.putpixel((x, y0), (28, 129, 53, 255)); img.putpixel((x, y0 + 1), (57, 162, 56, 255))
 for y in range(y0, y1):
@@ -124,61 +123,72 @@ blocked = []
 def free(x, y, w, h):
     return all(x + w < a or x > c or y + h < b or y > d for a, b, c, d in blocked)
 
-WELL_AT = (372, 400)                                     # 井的左上角
-LIB = Image.open(HERE.parent / "library-look" / "read" / "library.png").convert("RGBA")
-LIB_AT = (453 - LIB.width // 2, 48)                      # 千頁圖書館（大門在下緣正中間）
-cx, cy = WELL_AT[0] + 81, WELL_AT[1] + 103               # 井外圈中心
-roads = []
-roads.append(("h", cx + 60, cy - 11, x1 - 5 - (cx + 60)))           # 東：往碼頭
-roads.append(("h", x0 + 4, cy - 11, (cx - 60) - (x0 + 4)))           # 西：往星芽花園（接到島的西邊）
-lib_bottom = LIB_AT[1] + LIB.height - 4
-roads.append(("v", cx - 12, lib_bottom, (cy - 30) - lib_bottom))      # 北：往圖書館
+B = HERE.parent / "buildings-look" / "read"
+# 建築：(名字, 檔名, 腳底中心 x, 腳底 y, 門在圖寬的幾成)
+BUILD = [
+    ("forest", "academy-forest", 168, 262, 0.46), ("library", None, 544, 262, 0.5), ("thunder", "academy-thunder", 900, 262, 0.5),
+    ("water", "academy-water", 150, 456, 0.5), ("ice", "academy-ice", 900, 456, 0.5),
+    ("fire", "academy-fire", 110, 800, 0.5), ("dorm", "dorm", 270, 800, 0.5), ("shop", "shop", 455, 800, 0.16),
+    ("greenhouse", "greenhouse", 680, 800, 0.5), ("clock", "clocktower", 880, 800, 0.5),
+]
+buildings = []
+for name, f, fx, fy, door in BUILD:
+    im = Image.open(HERE.parent / "library-look" / "read" / "library.png") if name == "library" else Image.open(B / f"{f}.png")
+    im = im.convert("RGBA"); x, y = fx - im.width // 2, fy - im.height
+    buildings.append({"art": name, "x": x, "y": y, "w": im.width, "h": im.height, "door": [x + round(im.width * door), fy]})
+    im.save(OUT / f"{name}.png"); blocked.append((x, y, x + im.width, fy))
+
+WELL_AT = (544 - 81, 367)                                # 井：廣場正中間
+cx, cy = WELL_AT[0] + 81, WELL_AT[1] + 103
+TOP, BOT = 286, 822                                      # 上街、下街的中心線
+roads = [
+    ("h", x0 + 30, TOP - 11, x1 - 30 - (x0 + 30)),                    # 上街：學系學院、圖書館門口
+    ("h", x0 + 4, cy - 11, (cx - 60) - (x0 + 4)),                     # 中街西段：往星芽花園
+    ("h", cx + 60, cy - 11, x1 - 5 - (cx + 60)),                      # 中街東段：往碼頭
+    ("h", x0 + 30, BOT - 11, x1 - 30 - (x0 + 30)),                    # 下街：宿舍、商店、溫室、鐘塔
+    ("v", cx - 12, TOP, (cy - 30) - TOP), ("v", cx - 12, cy + 30, BOT - (cy + 30)),
+    ("v", 300 - 12, TOP, BOT - TOP), ("v", 760 - 12, TOP, BOT - TOP),
+]
 for k, x, y, n in roads:
     piece = mirror_tile_h(road_h, n) if k == "h" else mirror_tile_v(road_v, n)
     img.alpha_composite(piece, (x, y)); blocked.append((x - 4, y - 4, x + piece.width + 4, y + piece.height + 4))
-POND_AT = (110, 590)
-img.alpha_composite(pond, POND_AT); blocked.append((POND_AT[0], POND_AT[1], POND_AT[0] + pond.width, POND_AT[1] + pond.height))
 blocked.append((WELL_AT[0], WELL_AT[1], WELL_AT[0] + 157, WELL_AT[1] + 142))
-blocked.append((LIB_AT[0], LIB_AT[1], LIB_AT[0] + LIB.width, LIB_AT[1] + LIB.height))
 DOCK_AT = (x1 - 48, cy - 90)
 blocked.append((DOCK_AT[0] - 10, DOCK_AT[1], MW, DOCK_AT[1] + 139))
 
-# ── 小物件（腳底中心的位置）：樹、樹叢、長椅、路燈、路牌、花台、木箱… ──
 P = HERE.parent / "props-look" / "split"
-NAMES = {"tree": 0, "pine": 1, "tree_s": 2, "bush": 3, "lamp": 4, "sign": 5, "bench": 7, "urn": 8, "planter": 9, "scope": 11, "crystal": 12, "board": 13, "barrel": 14, "crate": 15}
+NAMES = {"tree": 0, "pine": 1, "tree_s": 2, "bush": 3, "lamp": 4, "sign": 5, "fountain": 6, "bench": 7, "urn": 8, "planter": 9, "books": 10, "scope": 11, "crystal": 12, "board": 13, "barrel": 14, "crate": 15}
 PROPS = [
-    ("tree", 105, 170), ("pine", 175, 120), ("tree_s", 240, 215), ("tree", 790, 190), ("pine", 730, 120), ("tree_s", 650, 205),
-    ("bush", 270, 320), ("bush", 640, 320), ("bush", 150, 420), ("bush", 760, 380),
-    ("planter", 378, 268), ("planter", 528, 268),
-    ("lamp", 340, 488), ("lamp", 566, 488), ("lamp", 690, 488), ("lamp", 215, 488),
-    ("sign", 95, 486),
-    ("bench", 380, 600), ("bench", 528, 600), ("urn", 453, 640),
-    ("board", 780, 470), ("barrel", 790, 590), ("crate", 815, 600), ("crate", 805, 625),
-    ("scope", 815, 300), ("crystal", 255, 640),
-    ("tree", 330, 745), ("pine", 600, 740), ("tree_s", 700, 700), ("pine", 70, 740), ("bush", 520, 720), ("tree_s", 400, 740),
+    # 廣場：布告欄、長椅、花台、路燈、水晶台
+    ("board", 410, 420), ("bench", 640, 520), ("bench", 448, 520), ("urn", 640, 420), ("crystal", 700, 450),
+    ("lamp", 420, 310), ("lamp", 668, 310), ("lamp", 420, 600), ("lamp", 668, 600),
+    # 街上
+    ("lamp", 220, 310), ("lamp", 830, 310), ("lamp", 220, 846), ("lamp", 830, 846), ("lamp", 560, 846),
+    ("planter", 500, 300), ("planter", 590, 300), ("sign", 60, 458), ("books", 620, 296),
+    ("crate", 420, 846), ("barrel", 400, 850), ("scope", 1010, 170),
+    ("fountain", 400, 690), ("bench", 480, 700), ("urn", 690, 660), ("bush", 640, 690), ("bush", 200, 660), ("bush", 820, 660),
+    # 縫隙裡的樹
+    ("tree_s", 340, 120), ("pine", 730, 110), ("tree", 300, 200), ("tree_s", 770, 220), ("pine", 50, 120), ("tree_s", 1030, 600),
+    ("tree", 262, 560), ("tree_s", 830, 560), ("pine", 1040, 760), ("tree_s", 40, 640),
 ]
 props = []
 for name, fx, fy in PROPS:
     im = Image.open(P / f"props-{NAMES[name]}.png")
     x, y = fx - im.width // 2, fy - im.height
-    props.append({"art": name, "x": x, "y": y, "w": im.width, "h": im.height})
-    blocked.append((x, y, x + im.width, y + im.height))
-for name, i in NAMES.items():
-    Image.open(P / f"props-{i}.png").save(OUT / f"{name}.png")
+    props.append({"art": name, "x": x, "y": y, "w": im.width, "h": im.height}); blocked.append((x, y, x + im.width, y + im.height))
+for name, i in NAMES.items(): Image.open(P / f"props-{i}.png").save(OUT / f"{name}.png")
 
-for i in range(2000):
-    s = rnd.choice(flowers if rnd.random() < 0.25 else tufts)
+for i in range(2400):
+    s = rnd.choice(flowers if rnd.random() < 0.3 else tufts)
     x, y = rnd.randrange(x0 + 6, x1 - 6 - s.width), rnd.randrange(y0 + 6, y1 - 14 - s.height)
     if free(x, y, s.width, s.height): img.alpha_composite(s, (x, y)); blocked.append((x - 1, y - 1, x + s.width + 1, y + s.height + 1))
-LIB.save(OUT / "library.png")
+
 img.convert("RGB").save(OUT / "ground.png")
 Image.open(R / "well.png").save(OUT / "well.png")
 Image.open(R / "dock.png").save(OUT / "dock.png")
 json.dump({
     "size": [MW, MH], "tile": 16, "island": ISL,
-    "objects": {"well": {"at": WELL_AT, "size": [157, 142]}, "dock": {"at": DOCK_AT, "size": [170, 139]}, "library": {"at": LIB_AT, "size": list(LIB.size)}},
-    "props": props,
-    "pond": {"at": POND_AT, "size": list(pond.size)},
-    "roads": roads,
+    "objects": {"well": {"at": WELL_AT, "size": [157, 142]}, "dock": {"at": DOCK_AT, "size": [170, 139]}},
+    "buildings": buildings, "props": props, "roads": roads, "streets": [TOP, cy, BOT],
 }, open(OUT / "layout.json", "w"), indent=1)
-print("tufts", len(tufts), "flowers", len(flowers), "clouds", len(clouds), "colors", len(set(img.getdata())))
+print("ok", len(buildings), "buildings", len(props), "props")
