@@ -34,9 +34,9 @@ export function academyScene(game, { academy = "fire" } = {}) {
     el("div.acbg", { style: { backgroundImage: `url(${A(`battle-hd/${AC.area}/back.jpg`)})` } }),
     el("img.acbuild", { src: A(`hub/${AC.art}`), alt: AC.name }),
     el("div.acpanel", {},
-      el("h2.acname", {}, AC.name, el("span.acschool", {}, AC.school)),
+      el("h2.acname", {}, AC.name, el("span.acschool", {}, `${AC.place}・課程訓練`)),
       lenRow,
       ...AC.branches.map(card)),
-    el("button.btn.small.acback", { onclick: () => { sfx("click"); game.go("map", { from: academy }); } }, "回學院"));
+    el("button.btn.small.acback", { onclick: () => { sfx("click"); game.go("map", { from: academy }); } }, "回學院大廳"));
   show(root);
 }

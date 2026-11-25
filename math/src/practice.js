@@ -10,12 +10,13 @@ import { MID, bankBranch } from "./questions/mid.js";
 import { loadBank, seeded, withChoices } from "./questions/pool.js";
 import { numbersOf } from "./battle/mathmagic-more.js";
 
+// 2026-11-26 使用者：五座學院改成「課程訓練」，名字用課程（像大數運算）；place＝原本的建築名
 export const ACADEMIES = {
-  fire: { name: "赤焰塔", school: "赤焰系", branches: ["big", "mul"], monster: "ink", area: "clock", art: "fire.png", desc: "紅磚高塔，屋頂的火盆從來沒熄過。這裡練的是「算得又快又準」：大數的加減、乘法。" },
-  water: { name: "蒼流館", school: "蒼流系", branches: ["frac", "dec"], monster: "flower", area: "garden", art: "water.png", desc: "水道繞著館流。同一個數可以寫成分數、也可以寫成小數——換個樣子看看。" },
-  ice: { name: "白霜堂", school: "白霜系", branches: ["div", "mix"], monster: "tick", area: "library", art: "ice.png", desc: "屋簷掛著冰晶。除法和併式都要一步一步、穩穩地算，最後再檢查。" },
-  forest: { name: "翠森苑", school: "翠森系", branches: ["shape", "measure"], monster: "pages", area: "garden", art: "forest.png", desc: "蓋在大樹裡的學院。圖形、時間和單位，畫出來看就懂了。" },
-  thunder: { name: "紫雷閣", school: "紫雷系", branches: ["round", "seq"], monster: "bat", area: "clock", art: "thunder.png", desc: "避雷針上劈啪閃著電光。估算要抓住重點，數字排在一起一定藏著規律。" },
+  fire: { name: "大數運算", place: "赤焰塔", school: "赤焰系", branches: ["big", "mul"], monster: "ink", area: "clock", art: "fire.png", desc: "紅磚高塔，屋頂的火盆從來沒熄過。這裡練的是「算得又快又準」：大數的加減、乘法。" },
+  water: { name: "分數與小數", place: "蒼流館", school: "蒼流系", branches: ["frac", "dec"], monster: "flower", area: "garden", art: "water.png", desc: "水道繞著館流。同一個數可以寫成分數、也可以寫成小數——換個樣子看看。" },
+  ice: { name: "除法與四則", place: "白霜堂", school: "白霜系", branches: ["div", "mix"], monster: "tick", area: "library", art: "ice.png", desc: "屋簷掛著冰晶。除法和併式都要一步一步、穩穩地算，最後再檢查。" },
+  forest: { name: "圖形與測量", place: "翠森苑", school: "翠森系", branches: ["shape", "measure"], monster: "pages", area: "garden", art: "forest.png", desc: "蓋在大樹裡的學院。圖形、時間和單位，畫出來看就懂了。" },
+  thunder: { name: "估算與規律", place: "紫雷閣", school: "紫雷系", branches: ["round", "seq"], monster: "bat", area: "clock", art: "thunder.png", desc: "避雷針上劈啪閃著電光。估算要抓住重點，數字排在一起一定藏著規律。" },
 };
 export const ACADEMY_OF = Object.fromEntries(Object.entries(ACADEMIES).flatMap(([k, a]) => a.branches.map((b) => [b, k])));
 

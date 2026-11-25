@@ -3,9 +3,9 @@
 
 import { el, mathText } from "../ui.js";
 import { sfx } from "../audio.js";
-import { ATTRS, GRADES, RANKS, BRANCHES, UNIT_NAME, expToNext, MAX_LV, LEVEL_REWARDS, crystalLevel, maxHp } from "../data.js";
+import { ATTRS, GRADES, RANKS, UNIT_NAME, expToNext, MAX_LV, LEVEL_REWARDS, crystalLevel, maxHp } from "../data.js";
 import { bookChapters, pagePageForm } from "../growth.js";
-import { reviewUnits, ACADEMY_OF } from "../practice.js";
+import { reviewUnits, ACADEMY_OF, ACADEMIES } from "../practice.js";
 
 const TABS = [["me", "我的資料"], ["review", "錯題本"], ["diary", "成長日記"]];
 
@@ -25,6 +25,7 @@ export function profilePanel(game, tab = "me", onClose) {
     TABS.forEach(([t], i) => tabBtns[i].classList.toggle("on", t === id));
     body.replaceChildren(...(id === "review" ? reviewBody(s, leaveTo) : id === "diary" ? diaryBody(s) : meBody(s)));
     body.scrollTop = 0;
+    if (id === "diary") animateBars(body);
   }
   go(tab);
   document.querySelector("#app").append(p);
@@ -75,20 +76,52 @@ export function reviewBody(s, leaveTo) {
 }
 
 // ── 成長日記 ──
+// 2026-11-26 使用者：用動態進度條顯示，全部通過就是 100%。
+//   每個單元的進度＝學院練習簡單＋困難的星星（各 3 顆，共 6 顆）；兩種模式都 3 星＝通過。總進度＝全部單元加起來。
 export function diaryBody(s) {
-  // 最近 30 天（企劃書 E7）：沒玩的日子也排出來（空的一格），一眼看出有沒有每天練
+  const st = (b, l) => Math.min(3, s.practice?.[`${b}-${l}`] ?? 0);
+  const unitPct = (b) => (st(b, 0) + st(b, 1)) / 6;
+  const all = Object.values(ACADEMIES).flatMap((A) => A.branches);
+  const total = all.reduce((x, b) => x + unitPct(b), 0) / all.length;
+  const passed = all.filter((b) => unitPct(b) >= 1).length;
+  const bar = (pct, cls = "") => el(`div.gbar${cls}`, {}, el("i", { "data-w": String(Math.round(pct * 100)) }));
+  // 最近 30 天（企劃書 E7）：沒玩的日子也排出來（空的一格）
   const days = Array.from({ length: 30 }, (_, i) => { const d = new Date(Date.now() - (29 - i) * 864e5).toISOString().slice(0, 10); return [d, s.diary[d] ?? { n: 0, ok: 0 }]; });
-  const played = days.filter(([, v]) => v.n).length, total = days.reduce((a, [, v]) => a + v.ok, 0);
+  const played = days.filter(([, v]) => v.n).length, okAll = days.reduce((a, [, v]) => a + v.ok, 0);
   const most = Math.max(1, ...days.map(([, v]) => v.n));
   return [
-    el("div.sub", {}, `最近 30 天：練了 ${played} 天、答對 ${total} 題`),
+    el("div.gtotal", {},
+      el("div.gtl", {}, el("b", {}, "課程總進度"), el("span.gnum", { "data-to": String(Math.round(total * 100)) }, "0%"), el("span.gsub", {}, `通過 ${passed} / ${all.length} 個單元`)),
+      bar(total, ".big")),
+    ...Object.entries(ACADEMIES).map(([, A]) => el("div.gcourse", {},
+      el("div.gch", {}, A.name, el("span", {}, `${Math.round((A.branches.reduce((x, b) => x + unitPct(b), 0) / A.branches.length) * 100)}%`)),
+      ...A.branches.map((b) => {
+        const p = unitPct(b), m = s.branches[b];
+        return el("div.gunit" + (p >= 1 ? ".done" : ""), {},
+          el("span.gun", {}, UNIT_NAME[b]),
+          bar(p),
+          el("span.gup", {}, p >= 1 ? "通過 ✓" : `${Math.round(p * 100)}%`),
+          el("span.gum", { title: "熟練度（最近 20 題）" }, m?.recent?.length ? "★".repeat(m.best) + "☆".repeat(5 - m.best) : "還沒練"));
+      }))),
+    el("div.sub", {}, `最近 30 天：練了 ${played} 天、答對 ${okAll} 題`),
     el("div.bars.b30", {}, ...days.map(([d, v], i) => el("div.bar", { title: `${d}：答對 ${v.ok}／${v.n} 題` },
-      el("div.b", { style: { height: `${v.n ? Math.max(8, (100 * v.n) / most) : 0}%` } }, el("div.bok", { style: { height: v.n ? `${(100 * v.ok) / v.n}%` : "0" } })),
+      el("div.b", { "data-h": String(v.n ? Math.max(8, (100 * v.n) / most) : 0) }, el("div.bok", { style: { height: v.n ? `${(100 * v.ok) / v.n}%` : "0" } })),
       el("span", {}, i % 5 === 4 || i === 29 ? d.slice(8) : "")))),
-    el("div.sub", {}, "魔法分支熟練度（看最近 20 題）"),
-    el("ul.list", {}, ...Object.entries(BRANCHES).map(([k, name]) => {
-      const b = s.branches[k];
-      return el("li", {}, name, el("span.left", {}, b.recent.length ? `${"★".repeat(b.best)}${"☆".repeat(5 - b.best)}（${b.recent.length} 題）` : "還沒練過"));
-    })),
+    el("div.pnote", {}, "每個單元：學院練習「簡單」「困難」都拿到 3 星就通過。★ 是最近 20 題的熟練度。"),
   ];
+}
+
+// 進度條從 0 長到目標（一條一條錯開），總進度的數字跟著跳
+export function animateBars(root) {
+  const fills = [...root.querySelectorAll(".gbar i")], cols = [...root.querySelectorAll(".bars.b30 .b")];
+  fills.forEach((f) => (f.style.width = "0%")); cols.forEach((c) => (c.style.height = "0%"));
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    fills.forEach((f, i) => { f.style.transitionDelay = `${i * 60}ms`; f.style.width = `${f.dataset.w}%`; });
+    cols.forEach((c, i) => { c.style.transitionDelay = `${400 + i * 15}ms`; c.style.height = `${c.dataset.h}%`; });
+  }));
+  for (const n of root.querySelectorAll(".gnum")) {
+    const to = Number(n.dataset.to), t0 = performance.now(), ms = 1100;
+    const step = (now) => { const k = Math.min(1, (now - t0) / ms), e = 1 - (1 - k) ** 3; n.textContent = `${Math.round(to * e)}%`; if (k < 1 && n.isConnected) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  }
 }

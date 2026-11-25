@@ -602,3 +602,27 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 .pbody .list li { align-items: center; }
 .rq { flex: 1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .rarea { font-size: 11px; color: var(--dim); background: #120d22; border-radius: 4px; padding: 1px 6px; }
+/* 開場選男女生的按鈕：字被擠到按鈕外面（2026-11-26 使用者） → 按鈕放大、字置中 */
+.csscr .opicks .btn, .opicks .btn { height: auto; min-width: 120px; padding: 10px 24px; font-size: 18px; line-height: 1.2; display: flex; align-items: center; justify-content: center; }
+
+/* 成長日記：動態進度條（2026-11-26 使用者：全部通過就是 100%） */
+.gtotal { background: var(--panel2); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+.gtl { display: flex; align-items: baseline; gap: 10px; }
+.gtl b { color: var(--gold); font-size: 15px; }
+.gnum { font-size: 22px; font-weight: 700; color: #fff; }
+.gsub { margin-left: auto; font-size: 12px; color: var(--dim); }
+.gbar { position: relative; height: 10px; background: #120d22; border-radius: 5px; overflow: hidden; flex: 1; }
+.gbar.big { height: 16px; border-radius: 8px; flex: none; }
+.gbar i { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: inherit; background: linear-gradient(90deg, #7b5cff, #c4adff); transition: width .9s cubic-bezier(.2,.8,.2,1); }
+.gbar.big i { background: linear-gradient(90deg, #f2a43a, #ffe08a); box-shadow: 0 0 8px rgba(255,214,106,.5); }
+.gbar i::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent); background-size: 40px 100%; animation: gshine 1.6s linear infinite; }
+@keyframes gshine { from { background-position: -40px 0; } to { background-position: 200px 0; } }
+.gcourse { display: flex; flex-direction: column; gap: 4px; }
+.gch { font-weight: 700; font-size: 14px; color: #e6dcff; display: flex; justify-content: space-between; border-bottom: 1px solid #3a3058; padding-bottom: 2px; }
+.gch span { color: var(--gold); }
+.gunit { display: grid; grid-template-columns: 9em 1fr 4.2em 5.6em; align-items: center; gap: 8px; font-size: 13px; padding: 2px 4px; }
+.gunit .gup { text-align: right; color: #d8ccff; font-weight: 700; }
+.gunit .gum { font-size: 11px; color: var(--gold); text-align: right; white-space: nowrap; }
+.gunit.done .gbar i { background: linear-gradient(90deg, #3fbf6a, #9cf0a0); }
+.gunit.done .gup { color: #9cf0a0; }
+.bars.b30 .bar .b { transition: height .6s cubic-bezier(.2,.8,.2,1); }
