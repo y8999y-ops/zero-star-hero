@@ -3,7 +3,7 @@
 import { loadSave } from "./save.js";
 import { applySettings } from "./settings.js";
 import { settingsScene } from "./scenes/settings.js";
-import { titleScene, lookScene, introScene, afterResonance } from "./scenes/intro.js";
+import { titleScene, lookScene, introScene, afterResonance, afterTutorial } from "./scenes/intro.js";
 import { resonanceScene } from "./scenes/resonance.js";
 import { mapScene } from "./scenes/map.js";
 import { worldScene } from "./scenes/world.js";
@@ -30,7 +30,7 @@ const game = {
       case "menu": return mapScene(this);                // 學院選單（所有區域、錯題本、成長日記）
       case "battle": {
         // 魔法轉場（對應玩家屬性）：全蓋住時建立戰鬥畫面；打完再轉場到結算
-        const end = (r) => battleOut(s.attr, () => resultScene(this, r));
+        const end = (r) => battleOut(s.attr, () => (r.mode === "tutorial" ? afterTutorial(this, r) : resultScene(this, r)));
         return battleIn(s.attr, () => new Promise((ready) => runBattle(this, arg.grade, arg.mode, arg.stage ?? 0, end, ready)), { boss: arg.mode === "boss" });
       }
     }

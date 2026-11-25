@@ -2,7 +2,7 @@
 
 import { el, show, floatText, wait } from "../ui.js";
 import { Stage, W, H } from "./stage.js";
-import { buildStage } from "../questions/pool.js";
+import { buildStage, withChoices } from "../questions/pool.js";
 import { ATTRS, GRADES, spellTier, maxHp, abilityBonus, crystalLevel, EXP, RANKS } from "../data.js";
 import { recordAnswer, addExp } from "../growth.js";
 import { writeSave } from "../save.js";
@@ -12,6 +12,35 @@ import { printable } from "./mathmagic-more.js";
 import { loadAreaArt } from "./areaart.js";
 
 const COUNT = 10;     // 一般小關的題數
+
+// 第一場戰鬥（教學，企劃書 3.6）：5 題一年級加減法，頁頁一題教一件事。glow：要發光的地方
+const TUT_Q = [[2, 3, "+"], [4, 4, "+"], [6, 3, "+"], [5, 5, "+"], [7, 2, "-"]];
+const TUT_ABILITY = {
+  thunder: { text: "你是紫雷系！右下角的「消去」可以劈掉一個錯的答案。按按看！", glow: "ability" },
+  forest: { text: "你是翠森系！右下角的「萌芽提示」會幫你想一想。按按看！", glow: "ability" },
+  water: { text: "你是蒼流系！選錯的時候會自動「回流」，可以收回重選一次，不扣魔力。", glow: null },
+  fire: { text: "你是赤焰系！連擊的時候，分數會多加成 1.5 倍。越算越快、越算越強！", glow: "combo" },
+  ice: { text: "你是白霜系！題目的時間會變長 1.5 倍，可以一步一步穩穩地算。", glow: null },
+};
+function tutorialQuestions(attr) {
+  const rnd = Math.random;
+  return TUT_Q.map(([a, b, op], i) => {
+    const r = op === "+" ? a + b : a - b;
+    const q = withChoices({
+      kind: "calc", grade: "g1", branch: "addsub", type: op === "+" ? "add10" : "sub10", typeKey: op === "+" ? "add10" : "sub10",
+      text: `${a} ${op === "+" ? "＋" : "－"} ${b} ＝ ？`, answer: `${r}`, wrong: [`${r + 1}`, `${Math.max(0, r - 1)}`, `${r + 2}`],
+      explain: `${a}${op === "+" ? "＋" : "－"}${b}＝${r}`, math: { op: op === "+" ? "+" : "-", a, b },
+    }, rnd);
+    q.tut = [
+      { text: "看！墨水怪頭上的泡泡就是題目。從下面四個答案選一個！", glow: "answers" },
+      { text: "答對了，算式就會變成魔法打出去！演出的時候點畫面可以快一點。再一題！", glow: "answers" },
+      { text: "連續答對叫「連擊」，魔法會越來越強喔！看左上角的連擊數字。", glow: "combo" },
+      TUT_ABILITY[attr] ?? TUT_ABILITY.fire,
+      { text: "最後一題！就算算錯也沒關係，我會陪你一起算一次。", glow: "answers" },
+    ][i];
+    return q;
+  });
+}
 const EXAM = 10;      // 升階考核題數，答對 7 題通過
 
 /**
@@ -21,7 +50,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
   const s = game.save;
   const g = GRADES[gradeId];
   const attr = ATTRS[s.attr];
-  const boss = mode === "boss", exam = mode === "exam";
+  const boss = mode === "boss", exam = mode === "exam", tut = mode === "tutorial";
 
   // 限時：學年規則 × 心情題 × 冰系能力（企劃書 4.3、5）
   let limit = s.settings.timer ? g.time : 0;
@@ -29,10 +58,11 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
   else if (s.mood >= 2) limit *= 1.3;
   if (s.attr === "ice") limit *= 1.5;
   limit *= TIMER_EASE[s.settings.timerEase] ?? 1;
+  if (tut) limit = 0;                       // 教學不限時
 
   const shield = boss ? g.boss : 0;
-  const total = exam ? EXAM : boss ? shield + 6 : COUNT;
-  const [qs] = await Promise.all([buildStage(s, gradeId, boss ? 2 : exam ? 1 : stageIdx, total, boss), loadAreaArt(gradeId)]);
+  const total = tut ? TUT_Q.length : exam ? EXAM : boss ? shield + 6 : COUNT;
+  const [qs] = await Promise.all([tut ? tutorialQuestions(s.attr) : buildStage(s, gradeId, boss ? 2 : exam ? 1 : stageIdx, total, boss), loadAreaArt(gradeId)]);
 
   // ── 畫面 ──
   const canvas = el("canvas.stage");
@@ -43,7 +73,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
   const answers = el("div.answers");
   const abilityBtn = el("button.btn.ability");
   let aborted = false;
-  const leave = el("button.btn.small.leave", { onclick: () => { if (confirm("離開這一關？這關的進度不會保存。")) { aborted = true; running = false; game.go("map"); } } }, "離開");
+  const leave = tut ? null : el("button.btn.small.leave", { onclick: () => { if (confirm("離開這一關？這關的進度不會保存。")) { aborted = true; running = false; game.go("map"); } } }, "離開");
   const wrap = el("div.battle", {}, el("div.view", {}, canvas, hud, bubble, leave), wordPanel, line, answers, abilityBtn);
   show(wrap);
   const stage = new Stage(canvas, gradeId, s.look, s.attr, s.settings);
@@ -90,7 +120,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
   drawAbility();
 
   if (boss) sfx("boss");
-  say(exam ? "升階考核開始！答對 7 題就通過，不限時也沒關係，慢慢來。" : boss ? "墨水大王來了！每答對一題，就能打掉一格護盾。" : "墨水怪出現了！把它身上的題目算完，就能淨化它。");
+  say(tut ? "" : exam ? "升階考核開始！答對 7 題就通過，不限時也沒關係，慢慢來。" : boss ? "墨水大王來了！每答對一題，就能打掉一格護盾。" : "墨水怪出現了！把它身上的題目算完，就能淨化它。");
 
   let qi = 0;
   for (; qi < qs.length && hp > 0; qi++) {
@@ -98,7 +128,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
     if (exam && qi >= EXAM) break;
     const q = qs[qi];
     // 上一隻還在散開（die）時也要叫新的一隻出來，不然這題會沒有怪物、沒有題目泡泡
-    if (!stage.monster || stage.monster.state === "die") stage.spawn(boss);
+    if (!stage.monster || stage.monster.state === "die") stage.spawn(boss, tut ? "ink" : null);
     drawHud();
 
     // 題目：計算題掛在怪物頭上；應用題放在下方面板
@@ -106,10 +136,12 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
     bubble.textContent = isWord ? "？" : q.text.replace(" ＝ ？", " ＝ ？");
     wordPanel.hidden = !isWord;
     wordPanel.replaceChildren(...(isWord ? [el("div.wtext", {}, q.text)] : []));
-    if (qi > 0 || !isWord) say(isWord ? "仔細讀題目，一句一句來。" : q.prefix ?? "");
+    if (q.tut) { say(q.tut.text); glow(q.tut.glow); }
+    else if (qi > 0 || !isWord) say(isWord ? "仔細讀題目，一句一句來。" : q.prefix ?? "");
 
     const t0 = performance.now();
     const result = await askOne(q);
+    glow(null);
     if (aborted) return;
     const sec = (performance.now() - t0) / 1000;
 
@@ -147,7 +179,8 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
       await wait(650);
     } else {
       wrong++; combo = 0;
-      if (!exam) { hp--; stage.hurt(); sfx("hurt"); }
+      if (!exam && !tut) { hp--; stage.hurt(); sfx("hurt"); }
+      else if (tut) sfx("hurt");
       stage.setPage("worried", 3);
       bubble.textContent = "";
       await showExplain(q, result.timeout);
@@ -159,6 +192,14 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
 
   if (aborted) return;
   running = false;
+  if (tut) {
+    // 教學：經驗照算、錯題本照記；不給星星和晶幣，直接接劇情
+    const ups = addExp(s, gained);
+    s.flags = { ...(s.flags ?? {}), tutorial: true };
+    writeSave(s);
+    onEnd({ gradeId, mode, right, wrong, gained, ups, events });
+    return;
+  }
   // ── 結算 ──
   const asked = right + wrong;
   const acc = asked ? right / asked : 0;
@@ -234,6 +275,14 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
         resolve({ ok, timeout });
       }
     });
+  }
+
+  // 教學：讓要按的地方發光
+  function glow(what) {
+    for (const n of [answers, abilityBtn, hud]) n.classList.remove("tutglow");
+    if (what === "answers") answers.classList.add("tutglow");
+    else if (what === "ability") abilityBtn.classList.add("tutglow");
+    else if (what === "combo") hud.classList.add("tutglow");
   }
 
   function showExplain(q, timeout) {

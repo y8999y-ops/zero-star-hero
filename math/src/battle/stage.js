@@ -90,11 +90,11 @@ export class Stage {
     return c;
   }
 
-  spawn(boss = false) {
+  spawn(boss = false, force = null) {   // force：指定哪一種（教學固定是墨水滴）
     // 雜兵：這個區域的幾種輪流隨機出現；王：這個區域的王（還沒畫的區域先用放大的 pixelfx 史萊姆）
     const id = this.gradeId;
     const pool = MINIONS[id] ?? ["ink"];
-    const kind = boss ? BOSS[id] ?? "slime" : pool[Math.floor(Math.random() * pool.length)];
+    const kind = force ?? (boss ? BOSS[id] ?? "slime" : pool[Math.floor(Math.random() * pool.length)]);
     this.monster = kind === "slime"
       ? { boss, kind, x: START, hp: 1, state: "walk", t: 0, alpha: 1, inst: createFx(FX.slime, { palette: INK, seed: 1 + Math.floor(Math.random() * 50), hop: 14 }) }
       : { boss, kind, x: START, hp: 1, state: "walk", t: 0, alpha: 1, phase: Math.random() * 2, flinch: 0 };
