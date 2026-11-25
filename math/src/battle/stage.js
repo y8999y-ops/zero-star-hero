@@ -8,9 +8,18 @@ import { GRADES, ATTRS } from "../data.js";
 import { heroFrame } from "../../fx/hero.js";
 import { inkDropFrame } from "../../fx/ink-drop.js";
 import { pagepageFrame } from "../../fx/pagepage.js";
+import { crookedFlowerFrame } from "../../fx/crooked-flower.js";
+import { inkKingBabyFrame } from "../../fx/ink-king-baby.js";
 
 // 程式畫的角色、怪物：每個姿勢一個循環多長（秒），每秒畫 12 格，畫過就快取
-const SPRITES = { ink: { fn: inkDropFrame, loop: 1.2 }, page: { fn: pagepageFrame, loop: 1.0 } };
+const SPRITES = {
+  ink: { fn: inkDropFrame, loop: 1.2 }, page: { fn: pagepageFrame, loop: 1.0 },
+  flower: { fn: crookedFlowerFrame, loop: 1.2 }, king: { fn: inkKingBabyFrame, loop: 2.0 },
+};
+// 每個區域會出現的雜兵、王（還沒畫的區域先用墨水滴）
+const MINIONS = { g1: ["ink", "flower"] };
+const BOSS = { g1: "king" };
+const HEAD = { ink: 42, flower: 50, king: 96, slime: 110 };   // 頭頂離腳底幾格（題目、答案數字掛在這裡）
 import { MathMagic, PopNumber } from "./mathmagic.js";
 import { areaArtNow } from "./areaart.js";
 import { Ambience } from "./ambience.js";
@@ -30,7 +39,7 @@ export class Stage {
     canvas.width = W; canvas.height = H;
     this.ctx = canvas.getContext("2d");
     this.ctx.imageSmoothingEnabled = false;
-    this.g = GRADES[gradeId];
+    this.g = GRADES[gradeId]; this.gradeId = gradeId;
     this.look = look; this.attr = attr;
     this.frame = createFrame(W, H);
     this.img = new ImageData(W, H);
@@ -82,10 +91,18 @@ export class Stage {
   }
 
   spawn(boss = false) {
-    // 一般的墨水怪＝墨水滴（fx/ink-drop.js）；王先用放大的 pixelfx 史萊姆（第 3 批換成墨水大王）
-    this.monster = boss
-      ? { boss, kind: "slime", x: START, hp: 1, state: "walk", t: 0, alpha: 1, inst: createFx(FX.slime, { palette: INK, seed: 1 + Math.floor(Math.random() * 50), hop: 14 }) }
-      : { boss, kind: "ink", x: START, hp: 1, state: "walk", t: 0, alpha: 1, phase: Math.random() * 1.2 };
+    // 雜兵：這個區域的幾種輪流隨機出現；王：這個區域的王（還沒畫的區域先用放大的 pixelfx 史萊姆）
+    const id = this.gradeId;
+    const pool = MINIONS[id] ?? ["ink"];
+    const kind = boss ? BOSS[id] ?? "slime" : pool[Math.floor(Math.random() * pool.length)];
+    this.monster = kind === "slime"
+      ? { boss, kind, x: START, hp: 1, state: "walk", t: 0, alpha: 1, inst: createFx(FX.slime, { palette: INK, seed: 1 + Math.floor(Math.random() * 50), hop: 14 }) }
+      : { boss, kind, x: START, hp: 1, state: "walk", t: 0, alpha: 1, phase: Math.random() * 2, flinch: 0 };
+  }
+
+  /** 王被打掉一格護盾：縮一下（hurt 姿勢） */
+  flinch() {
+    if (this.monster) this.monster.flinch = 0.45;
   }
 
   /** 怪物往前走；timeFrac：0～1 已經過的時間比例（限時），null＝不限時 */
@@ -152,11 +169,12 @@ export class Stage {
     if (m) {
       m.t += dt;
       m.inst?.update(dt);
+      if (m.flinch > 0) m.flinch = Math.max(0, m.flinch - dt);
       if (m.state === "walk" && m.target != null) m.x += (m.target - m.x) * Math.min(1, dt * 3);
       if (m.state === "bump") {
         const u = Math.min(1, m.t / 0.5);
         m.x = m.home ??= m.x;
-        m.x = m.home - (m.home - (PX + 26)) * Math.sin(u * Math.PI);
+        m.x = m.home - (m.home - (PX + 26 + (m.kind === "king" ? 34 : 0))) * Math.sin(u * Math.PI);
         if (u >= 1) { m.state = "walk"; m.home = undefined; }
       }
       if (m.state === "die") { m.alpha = Math.max(0, 1 - m.t / 0.25); if (m.t > 0.3) this.monster = null; }
@@ -215,7 +233,11 @@ export class Stage {
       if (this.gray > 0) { ctx.fillStyle = `rgba(40,34,60,${0.35 * this.gray})`; ctx.fillRect(0, 0, W, H); }
     }
     if (this.dim > 0.01) { ctx.fillStyle = `rgba(8,6,20,${this.dim})`; ctx.fillRect(0, 0, W, H); }
-    if (m && m.boss && m.alpha > 0) {
+    // 角色腳下的影子：讓角色從背景裡浮出來（尤其是跟草地同色系的）
+    const shadow = (x, rx) => { ctx.fillStyle = "rgba(20,14,40,0.32)"; ctx.fillRect(Math.round(x - rx) + sx, GROUND - 1 + sy, rx * 2, 2); ctx.fillRect(Math.round(x - rx + 2) + sx, GROUND + 1 + sy, rx * 2 - 4, 1); };
+    if (this.hero) shadow(PX, 8);
+    if (m && m.alpha > 0 && m.kind !== "king") shadow(m.x, m.kind === "slime" ? 20 : 9);
+    if (m && m.kind === "slime" && m.alpha > 0) {
       clearFrame(this.bossFrame);
       m.inst.options.x = 56; m.inst.options.y = 72; m.inst.options.flip = true;
       m.inst.draw(this.bossFrame);
@@ -229,9 +251,9 @@ export class Stage {
     // 頁頁：浮在主角左上方，表情跟著戰鬥變
     const pg = this.sprite("page", this.t > this.pageUntil ? "idle" : this.pagePose, this.t);
     ctx.drawImage(pg.canvas, PX - 30 - pg.ox + sx, GROUND - 26 - pg.oy + sy);
-    // 墨水滴：被打中散開時是壓扁的＞＜
-    if (m && m.kind === "ink" && m.alpha > 0) {
-      const sp = this.sprite("ink", m.state === "die" ? "hurt" : "idle", m.t + m.phase);
+    // 程式畫的怪物（墨水滴、歪瓣花、墨水大王）：被淨化、被打中時是 hurt 姿勢
+    if (m && SPRITES[m.kind] && m.alpha > 0) {
+      const sp = this.sprite(m.kind, m.state === "die" || m.flinch > 0 ? "hurt" : "idle", m.t + m.phase);
       ctx.globalAlpha = m.alpha;
       ctx.drawImage(sp.canvas, Math.round(m.x) - sp.ox + sx, GROUND - sp.oy + sy);
       ctx.globalAlpha = 1;
@@ -259,7 +281,7 @@ export class Stage {
   /** 打中時在怪物頭上跳出答案數字 */
   popNumber(text, combo) {
     const m = this.monster;
-    this.pops.push(new PopNumber(String(text).replace("−", "-"), m ? m.x : 270, m?.boss ? GROUND - 120 : GROUND - 48, ATTRS[this.attr]?.color ?? "#8a7cff", combo >= 10 ? 4 : combo >= 6 ? 3 : 2));
+    this.pops.push(new PopNumber(String(text).replace("−", "-"), m ? m.x : 270, GROUND - (HEAD[m?.kind] ?? 42) - 8, ATTRS[this.attr]?.color ?? "#8a7cff", combo >= 10 ? 4 : combo >= 6 ? 3 : 2));
   }
 
   /** 頁頁的表情：talk 說話、happy 開心、worried 擔心，維持 sec 秒後回到待機 */
@@ -306,7 +328,7 @@ export class Stage {
   monsterHead() {
     const m = this.monster;
     if (!m) return null;
-    return { x: m.x / W, y: (m.boss ? GROUND - 110 : GROUND - 42) / H };
+    return { x: m.x / W, y: (GROUND - (HEAD[m.kind] ?? 42)) / H };
   }
 }
 

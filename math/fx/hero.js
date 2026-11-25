@@ -18,8 +18,12 @@ const HAIR = { girl: ["#a5563a", "#6e3326"], boy: ["#5a3f33", "#3a2822"] };   //
 
 import { Grid, mixHex } from "./_grid.js";
 
+// 衣服用的屬性色：森的亮綠跟花園的草、樹叢太像，角色會融進背景，所以衣服改用偏藍的翠玉綠（施法、介面還是用原本的屬性色）
+const COSTUME = { "#6fd46a": "#1f9e78" };
+
 export function palette(look, attrHex) {
   const [hair, hairS] = HAIR[look];
+  attrHex = COSTUME[attrHex.toLowerCase()] ?? attrHex;
   return {
     ...FIXED, hair, hairS,
     hat: attrHex, hatS: mixHex(attrHex, "#1a1030", 0.45), hatL: mixHex(attrHex, "#ffffff", 0.4),

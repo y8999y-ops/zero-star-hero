@@ -139,6 +139,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
       if (boss) {
         shieldLeft--;
         stage.shake = 6;
+        if (shieldLeft > 0) stage.flinch();
         if (shieldLeft <= 0) { stage.purify(); stage.restoreColor(); }
       } else stage.purify();
       await wait(650);
