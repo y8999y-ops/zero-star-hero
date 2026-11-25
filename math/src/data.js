@@ -1,11 +1,11 @@
 // 遊戲的固定資料：屬性、學年與區域、魔法分支、成長數值。數值來源：docs/企劃書.md 第 5、6、8 節。
 
 export const ATTRS = {
-  fire:    { name: "火", school: "赤焰系", type: "直覺速算型", color: "#ff7a2f", ability: "連擊加成", abilityDesc: "連擊分數加成 ×1.5（自動）", praise: "你的腦袋轉得飛快，答案常常一眼就看出來。速度是你的魔法。" },
-  water:   { name: "水", school: "蒼流系", type: "變通型", color: "#3fa7ff", ability: "回流", abilityDesc: "答錯可以收回重選，不扣魔力", uses: 2, praise: "一條路不通，你就換一條。會變通的人，什麼題目都難不倒。" },
-  ice:     { name: "冰", school: "白霜系", type: "精確步驟型", color: "#9be3ff", ability: "凍結時間", abilityDesc: "限時變長 ×1.5（自動）", praise: "你一步一步、穩穩地算，最後還會檢查。精確就是你的力量。" },
-  forest:  { name: "森", school: "翠森系", type: "圖像型", color: "#6fd46a", ability: "萌芽提示", abilityDesc: "叫出提示，幫你想一想", uses: 3, praise: "你喜歡畫出來、排排看。看得見的數學，就是你最強的咒語。" },
-  thunder: { name: "雷", school: "紫雷系", type: "推理找規律型", color: "#b483ff", ability: "消去", abilityDesc: "劈掉一個錯誤選項", uses: 3, praise: "你總想知道「為什麼」，也很會找規律。推理就是你的閃電。" },
+  fire:    { name: "火", school: "赤焰系", type: "直覺速算型", color: "#ff7a2f", spells: "火球、火焰柱、火環、流星", praise: "你的腦袋轉得飛快，答案常常一眼就看出來。速度是你的魔法。" },
+  water:   { name: "水", school: "蒼流系", type: "變通型", color: "#3fa7ff", spells: "水柱、水球、噴泉、大浪", praise: "一條路不通，你就換一條。會變通的人，什麼題目都難不倒。" },
+  ice:     { name: "冰", school: "白霜系", type: "精確步驟型", color: "#9be3ff", spells: "冰槍、冰刺、凍結、暴風雪", praise: "你一步一步、穩穩地算，最後還會檢查。精確就是你的力量。" },
+  forest:  { name: "森", school: "翠森系", type: "圖像型", color: "#6fd46a", spells: "藤蔓、荊棘、大石、地震", praise: "你喜歡畫出來、排排看。看得見的數學，就是你最強的咒語。" },
+  thunder: { name: "雷", school: "紫雷系", type: "推理找規律型", color: "#b483ff", spells: "雷球、閃電鏈、雷雲、落雷", praise: "你總想知道「為什麼」，也很會找規律。推理就是你的閃電。" },
 };
 export const ATTR_IDS = Object.keys(ATTRS);
 
@@ -43,11 +43,10 @@ export const EXP = { correct: 10, firstType: 20, review: 15, star: 20, rankUp: 1
 
 // 升級獎勵（企劃書 8.3）
 export const LEVEL_REWARDS = {
-  3: "魔力上限 3 → 4", 5: "學系能力次數＋1", 8: "開放練習場", 10: "魔力上限 4 → 5",
-  12: "學系能力次數＋1", 15: "開放挑戰模式", 20: "開放副屬性", 25: "學系能力次數＋1", 30: "大魔數師資格",
+  3: "魔力上限 3 → 4", 5: "數晶點數＋1", 8: "開放練習場", 10: "魔力上限 4 → 5",
+  12: "數晶點數＋1", 15: "開放挑戰模式", 20: "開放副屬性", 25: "數晶點數＋1", 30: "大魔數師資格",
 };
 export const maxHp = (lv) => (lv >= 10 ? 5 : lv >= 3 ? 4 : 3);
-export const abilityBonus = (lv) => (lv >= 25 ? 3 : lv >= 12 ? 2 : lv >= 5 ? 1 : 0);
 
 // 數晶等級門檻（企劃書 8.7）
 export const CRYSTAL_LV = [0, 50, 150, 300, 500];
@@ -55,3 +54,7 @@ export const crystalLevel = (pts) => CRYSTAL_LV.filter((n) => pts >= n).length;
 
 // 連擊 → 魔法等級（企劃書 7.3）
 export const spellTier = (combo) => (combo >= 10 ? 4 : combo >= 6 ? 3 : combo >= 3 ? 2 : 1);
+
+// 題數（2026-11-25 使用者：遊戲裡要有 3、5、10 題的關）：每一區第 1、2、3 關；學院練習可以選
+export const STAGE_LEN = [3, 5, 10];
+export const LENGTHS = [3, 5, 10];

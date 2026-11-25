@@ -41,6 +41,31 @@ import * as smite from "../../../pixelfx/src/fx/holy/smite.js";
 import * as holyPillar from "../../../pixelfx/src/fx/holy/holy-pillar.js";
 import * as fireworkBurst from "../../../pixelfx/src/fx/explosions/firework-burst.js";
 import * as groundSlam from "../../../pixelfx/src/fx/impacts/ground-slam.js";
+import * as fireRing from "../../../pixelfx/src/fx/fire/fire-ring.js";
+import * as fireBreath from "../../../pixelfx/src/fx/fire/fire-breath.js";
+import * as flamethrower from "../../../pixelfx/src/fx/fire/flamethrower.js";
+import * as spiritFlame from "../../../pixelfx/src/fx/fire/spirit-flame.js";
+import * as smallExplosion from "../../../pixelfx/src/fx/explosions/small-explosion.js";
+import * as waterOrb from "../../../pixelfx/src/fx/water/water-orb.js";
+import * as splash from "../../../pixelfx/src/fx/water/splash.js";
+import * as ripples from "../../../pixelfx/src/fx/water/ripples.js";
+import * as iceCrystal from "../../../pixelfx/src/fx/ice/ice-crystal.js";
+import * as iceShatter from "../../../pixelfx/src/fx/ice/ice-shatter.js";
+import * as frostBreath from "../../../pixelfx/src/fx/ice/frost-breath.js";
+import * as snowBurst from "../../../pixelfx/src/fx/ice/snowflake-burst.js";
+import * as freeze from "../../../pixelfx/src/fx/ice/freeze.js";
+import * as earthSpike from "../../../pixelfx/src/fx/nature/earth-spike.js";
+import * as rootSnare from "../../../pixelfx/src/fx/nature/root-snare.js";
+import * as sporeBurst from "../../../pixelfx/src/fx/nature/spore-burst.js";
+import * as boulder from "../../../pixelfx/src/fx/nature/boulder.js";
+import * as tornado from "../../../pixelfx/src/fx/nature/tornado.js";
+import * as quake from "../../../pixelfx/src/fx/nature/quake.js";
+import * as plasmaBall from "../../../pixelfx/src/fx/lightning/plasma-ball.js";
+import * as sparkArc from "../../../pixelfx/src/fx/lightning/spark-arc.js";
+import * as thunderclap from "../../../pixelfx/src/fx/lightning/thunderclap.js";
+import * as zapHit from "../../../pixelfx/src/fx/lightning/zap-hit.js";
+import * as stormCloud from "../../../pixelfx/src/fx/lightning/storm-cloud.js";
+import * as electrified from "../../../pixelfx/src/fx/lightning/electrified.js";
 import { PAL } from "../../../pixelfx/src/core/index.js";
 
 export const FX = { castCircle, poof, xpOrb, hitFlash, slime, spellCharge, manaBurst, critHit, hitSpark };
@@ -52,38 +77,95 @@ export const INK_POOF = ["#1c1533", "#463a78", "#7a6cb0", "#b6a8f0", "#e8e2ff", 
 
 const S = (mod, at, o = {}) => ({ mod, at, delay: 0, speed: 1, dur: Infinity, ...o });
 
+// 2026-11-25 使用者：學系能力取消，五種法師只差造型和攻擊特效 → 每一級有好幾種招式，每次隨機挑一種（不跟上一次一樣）
+// SPELLS[屬性][級數 0～3] ＝ 招式陣列
 export const SPELLS = {
   fire: [
-    { hit: 0.45, parts: [S(fireball, "proj", { dur: 0.5, opts: { radius: 7 } })] },
-    { hit: 0.55, parts: [S(flamePillar, "target", { speed: 2.6, opts: { height: 120 } })] },
-    { hit: 0.6, parts: [S(fireTornado, "target", { dur: 1.3, speed: 1.2 }), S(fireball, "proj", { dur: 0.45 })] },
-    { hit: 1.0, shake: 6, parts: [S(meteor, "target", { speed: 1.9 })] },
+    [{ hit: 0.45, parts: [S(fireball, "proj", { dur: 0.5, opts: { radius: 7 } })] },
+     { hit: 0.4, parts: [S(flamethrower, "caster", { dur: 0.75, speed: 1.4, y: -20 })] },
+     { hit: 0.45, parts: [S(spiritFlame, "target", { dur: 0.9, speed: 2, opts: { palette: PAL.fire } }), S(fireball, "proj", { dur: 0.4, opts: { radius: 5 } })] }],
+    [{ hit: 0.55, parts: [S(flamePillar, "target", { speed: 2.6, opts: { height: 120 } })] },
+     { hit: 0.45, parts: [S(fireBreath, "caster", { dur: 0.9, speed: 1.4, y: -14 })] },
+     { hit: 0.5, parts: [S(fireRing, "target", { speed: 2.6 })] }],
+    [{ hit: 0.6, parts: [S(fireTornado, "target", { dur: 1.3, speed: 1.2 }), S(fireball, "proj", { dur: 0.45 })] },
+     { hit: 0.6, parts: [S(fireRing, "target", { speed: 2.4 }), S(flamePillar, "target", { delay: 0.25, speed: 2.6, opts: { height: 120 } })] },
+     { hit: 0.55, parts: [S(flamethrower, "caster", { dur: 0.9, speed: 1.4, y: -20 }), S(spiritFlame, "target", { delay: 0.3, dur: 0.9, speed: 2, opts: { palette: PAL.fire } })] }],
+    [{ hit: 1.0, shake: 6, parts: [S(meteor, "target", { speed: 1.9 })] },
+     { hit: 1.0, shake: 7, parts: [S(meteor, "target", { speed: 1.9 }), S(fireRing, "target", { delay: 0.75, speed: 2.4 })] },
+     { hit: 0.7, shake: 6, parts: [S(fireTornado, "target", { dur: 1.4, speed: 1.3 }), S(flamePillar, "target", { delay: 0.2, x: -26, speed: 2.6, opts: { height: 110, seed: 3 } }), S(flamePillar, "target", { delay: 0.35, x: 26, speed: 2.6, opts: { height: 110, seed: 7 } })] }],
   ],
   water: [
-    { hit: 0.3, parts: [S(waterJet, "caster", { dur: 0.6, opts: { length: 0 } })] },
-    { hit: 0.45, parts: [S(geyser, "target", { speed: 1.8, dur: 1.4 })] },
-    { hit: 0.6, parts: [S(whirlpool, "target", { dur: 1.2, speed: 1.4 }), S(geyser, "target", { delay: 0.3, speed: 2, dur: 1.1 })] },
-    { hit: 0.9, shake: 5, parts: [S(waveCrash, "target", { speed: 1.7 })] },
+    [{ hit: 0.3, parts: [S(waterJet, "caster", { dur: 0.6, opts: { length: 0 } })] },
+     { hit: 0.45, parts: [S(waterOrb, "proj", { dur: 0.5, speed: 1.6, drop: 40, opts: { radius: 12 } }), S(splash, "target", { delay: 0.4, speed: 2.4 })] },
+     { hit: 0.35, parts: [S(splash, "target", { speed: 2.2 }), S(ripples, "target", { dur: 0.9, speed: 1.6, y: 2 })] }],
+    [{ hit: 0.45, parts: [S(geyser, "target", { speed: 1.8, dur: 1.4 })] },
+     { hit: 0.75, parts: [S(waterOrb, "proj", { dur: 0.45, speed: 1.6, drop: 40, opts: { radius: 13 } }), S(geyser, "target", { delay: 0.4, speed: 2, dur: 1.1 })] },
+     { hit: 0.5, parts: [S(waterOrb, "target", { dur: 0.9, speed: 1.8, opts: { radius: 14 } }), S(splash, "target", { delay: 0.35, speed: 2.4 })] }],
+    [{ hit: 0.6, parts: [S(whirlpool, "target", { dur: 1.2, speed: 1.4 }), S(geyser, "target", { delay: 0.3, speed: 2, dur: 1.1 })] },
+     { hit: 0.8, parts: [S(geyser, "target", { speed: 2, dur: 1.1, x: -24 }), S(geyser, "target", { delay: 0.15, speed: 2, dur: 1.1, x: 24, opts: { seed: 4 } }), S(splash, "target", { delay: 0.4, speed: 2.4 })] }],
+    [{ hit: 0.9, shake: 5, parts: [S(waveCrash, "target", { speed: 1.7 })] },
+     { hit: 0.85, shake: 6, parts: [S(whirlpool, "target", { dur: 1.3, speed: 1.4 }), S(waveCrash, "target", { delay: 0.2, speed: 1.8 }), S(splash, "target", { delay: 0.7, speed: 2.2 })] }],
   ],
   ice: [
-    { hit: 0.4, parts: [S(iceLance, "proj", { dur: 0.45 })] },
-    { hit: 0.5, parts: [S(iceSpikes, "caster", { speed: 2.4 })] },
-    { hit: 0.6, parts: [S(frostNova, "target", { speed: 2 })] },
-    { hit: 0.75, shake: 6, parts: [S(frostNova, "target", { speed: 1.7 }), S(icicleFall, "target", { speed: 1.5, delay: 0.1 }), S(blizzard, "target", { dur: 1.4, delay: 0.4, speed: 1.3 })] },
+    [{ hit: 0.4, parts: [S(iceLance, "proj", { dur: 0.45 })] },
+     { hit: 0.4, parts: [S(frostBreath, "caster", { dur: 0.75, speed: 1.4, y: -20 })] },
+     { hit: 0.45, parts: [S(iceCrystal, "target", { dur: 0.6, speed: 2 }), S(iceShatter, "target", { delay: 0.4, speed: 2.4, x: 20 })] }],
+    [{ hit: 0.5, parts: [S(iceSpikes, "caster", { speed: 2.4 })] },
+     { hit: 0.45, parts: [S(snowBurst, "target", { speed: 2.2 }), S(iceLance, "proj", { dur: 0.4 })] },
+     { hit: 0.45, parts: [S(iceLance, "proj", { dur: 0.4, drop: -12 }), S(iceLance, "proj", { dur: 0.4, delay: 0.1, drop: 12 }), S(iceShatter, "target", { delay: 0.45, speed: 2.4, x: 20 })] }],
+    [{ hit: 0.6, parts: [S(frostNova, "target", { speed: 2 })] },
+     { hit: 0.65, parts: [S(freeze, "target", { speed: 2.2 }), S(snowBurst, "target", { delay: 0.3, speed: 2.2 })] },
+     { hit: 0.55, parts: [S(icicleFall, "target", { speed: 1.7 }), S(frostBreath, "caster", { dur: 0.6, speed: 1.4, y: -20 })] }],
+    [{ hit: 0.75, shake: 6, parts: [S(frostNova, "target", { speed: 1.7 }), S(icicleFall, "target", { speed: 1.5, delay: 0.1 }), S(blizzard, "target", { dur: 1.4, delay: 0.4, speed: 1.3 })] },
+     { hit: 0.8, shake: 7, parts: [S(freeze, "target", { speed: 1.9 }), S(iceSpikes, "caster", { delay: 0.2, speed: 2.4 }), S(iceShatter, "target", { delay: 0.7, speed: 2, x: 20 })] }],
   ],
   forest: [
-    { hit: 0.45, parts: [S(vineWhip, "caster", { speed: 1.3 })] },
-    { hit: 0.55, parts: [S(thorns, "caster", { speed: 1.7 })] },
-    { hit: 0.6, parts: [S(leafStorm, "target", { dur: 1.3, speed: 1.3 }), S(thorns, "caster", { speed: 2 })] },
-    { hit: 0.7, shake: 5, parts: [S(thorns, "caster", { speed: 2.2 }), S(vineWhip, "caster", { speed: 1.5, delay: 0.1 }), S(leafStorm, "target", { dur: 1.6, delay: 0.25, speed: 1.4 })] },
+    [{ hit: 0.45, parts: [S(vineWhip, "caster", { speed: 1.3 })] },
+     { hit: 0.5, parts: [S(rootSnare, "target", { speed: 2.2 })] },
+     { hit: 0.45, parts: [S(sporeBurst, "target", { speed: 2.4, x: -10, opts: { palette: PAL.leaf } })] }],
+    [{ hit: 0.55, parts: [S(thorns, "caster", { speed: 1.7 })] },
+     { hit: 0.55, parts: [S(earthSpike, "target", { speed: 2.4, opts: { height: 60 } })] },
+     { hit: 0.85, parts: [S(boulder, "caster", { speed: 1.7, x: -10 })] }],
+    [{ hit: 0.6, parts: [S(leafStorm, "target", { dur: 1.3, speed: 1.3 }), S(thorns, "caster", { speed: 2 })] },
+     { hit: 0.6, parts: [S(tornado, "target", { dur: 1.3, speed: 1.4, opts: { height: 90 } }), S(rootSnare, "target", { delay: 0.2, speed: 2.2 })] },
+     { hit: 0.6, parts: [S(rootSnare, "target", { speed: 2.2 }), S(sporeBurst, "target", { delay: 0.3, speed: 2.4, opts: { palette: PAL.leaf } })] }],
+    [{ hit: 0.7, shake: 5, parts: [S(thorns, "caster", { speed: 2.2 }), S(vineWhip, "caster", { speed: 1.5, delay: 0.1 }), S(leafStorm, "target", { dur: 1.6, delay: 0.25, speed: 1.4 })] },
+     { hit: 0.75, shake: 8, parts: [S(quake, "target", { speed: 2.2, x: -40 }), S(earthSpike, "target", { delay: 0.3, speed: 2.4, opts: { height: 80 } })] }],
   ],
   thunder: [
-    { hit: 0.45, parts: [S(ballLightning, "proj", { dur: 0.45, speed: 2, drop: 30 })] },
-    { hit: 0.35, parts: [S(chainLightning, "caster", { speed: 1.8 })] },
-    { hit: 0.55, parts: [S(strike, "target", { speed: 2.2 })] },
-    { hit: 0.7, shake: 7, parts: [S(strike, "target", { speed: 2.2 }), S(strike, "target", { delay: 0.25, speed: 2.4, x: -30, opts: { seed: 3 } }), S(strike, "target", { delay: 0.45, speed: 2.4, x: 30, opts: { seed: 5 } }), S(ballLightning, "target", { dur: 1.2, delay: 0.3 })] },
+    [{ hit: 0.45, parts: [S(ballLightning, "proj", { dur: 0.45, speed: 2, drop: 30 })] },
+     { hit: 0.4, parts: [S(sparkArc, "target", { dur: 0.8, speed: 2 }), S(zapHit, "target", { delay: 0.3, speed: 1.6, y: -20 })] },
+     { hit: 0.4, parts: [S(electrified, "target", { dur: 0.8, speed: 2 }), S(ballLightning, "proj", { dur: 0.4, speed: 2, drop: 30 })] }],
+    [{ hit: 0.35, parts: [S(chainLightning, "caster", { speed: 1.8 })] },
+     { hit: 0.5, parts: [S(plasmaBall, "target", { dur: 0.9, speed: 1.8 }), S(zapHit, "target", { delay: 0.4, speed: 1.6, y: -20 })] },
+     { hit: 0.45, parts: [S(stormCloud, "target", { dur: 0.9, speed: 1.6, y: 24 }), S(zapHit, "target", { delay: 0.35, speed: 1.6, y: -20 })] }],
+    [{ hit: 0.55, parts: [S(strike, "target", { speed: 2.2 })] },
+     { hit: 0.6, parts: [S(stormCloud, "target", { dur: 1.1, speed: 1.6, y: 24 }), S(strike, "target", { delay: 0.35, speed: 2.2 })] },
+     { hit: 0.5, parts: [S(chainLightning, "caster", { speed: 1.8 }), S(electrified, "target", { delay: 0.25, dur: 0.8, speed: 2 })] }],
+    [{ hit: 0.7, shake: 7, parts: [S(strike, "target", { speed: 2.2 }), S(strike, "target", { delay: 0.25, speed: 2.4, x: -30, opts: { seed: 3 } }), S(strike, "target", { delay: 0.45, speed: 2.4, x: 30, opts: { seed: 5 } }), S(ballLightning, "target", { dur: 1.2, delay: 0.3 })] },
+     { hit: 0.65, shake: 8, parts: [S(stormCloud, "target", { dur: 1.2, speed: 1.6, y: 24 }), S(thunderclap, "target", { delay: 0.3, speed: 1.8 }), S(strike, "target", { delay: 0.35, speed: 2.2 })] }],
   ],
 };
+
+// 每種屬性打中時自己的火花（打擊感也跟著屬性變）
+export const ATTR_HIT = {
+  fire: S(smallExplosion, "target", { speed: 1.8, y: -8 }),
+  water: S(splash, "target", { speed: 2.6 }),
+  ice: S(iceShatter, "target", { speed: 2.4, x: 18 }),
+  forest: S(sporeBurst, "target", { speed: 2.8, dur: 0.8, opts: { palette: PAL.leaf } }),
+  thunder: S(zapHit, "target", { speed: 1.6, y: -20 }),
+};
+
+// 每一級隨機挑一招，不跟上一次一樣
+const lastPick = {};
+export function pickSpell(attr, tierIdx) {
+  const list = SPELLS[attr]?.[tierIdx] ?? SPELLS.fire[tierIdx];
+  const key = `${attr}${tierIdx}`;
+  let i = Math.floor(Math.random() * list.length);
+  if (list.length > 1 && i === lastPick[key]) i = (i + 1) % list.length;
+  lastPick[key] = i;
+  return list[i];
+}
 
 // 數晶等級讓魔法更亮（企劃書 8.7：外觀進化先用參數做）
 export const crystalLight = (lv) => 0.8 + 0.15 * (lv - 1);

@@ -228,10 +228,10 @@ export function hubScene(game, { from } = {}) {
       } else if (r === 0 && !d.wish) await say([{ who: null, name: "", text: "身上沒有晶幣……" }]);
       if (r === 1) { if (confirm("重新做共鳴儀式？等級、星星、錯題本都會保留。")) { leave(); game.go("resonance", { retest: true }); } }
       else if (r === 2) {
-        // 副屬性（企劃書 8.3：Lv20 開放）：再裝一個其他屬性的學系能力，效果、次數減半
+        // 副屬性（Lv20 開放）：2026-11-25 學系能力取消後，副屬性只用在組合技（連擊每 3 下合成一招）
         if (s.lv < 20) { await say([{ who: null, name: "共鳴之井", text: `等你到 Lv20，井水就會讓你的數晶再多共鳴一種顏色。（現在 Lv${s.lv}）` }]); return; }
         const others = Object.keys(ATTRS).filter((k) => k !== s.attr);
-        const c = await say([{ who: null, name: "共鳴之井", text: "選一種副屬性。你可以多用一個別的學系的能力（效果或次數減半），隨時可以回來換。" }], [...others.map((k) => `${ATTRS[k].name}・${ATTRS[k].ability}：${ATTRS[k].abilityDesc}`), "不要副屬性"]);
+        const c = await say([{ who: null, name: "共鳴之井", text: "選一種副屬性。連擊每 3 下，會跟它合成「組合技」，隨時可以回來換。" }], [...others.map((k) => `${ATTRS[k].name}・${ATTRS[k].school}（${ATTRS[k].spells}）`), "不要副屬性"]);
         if (c == null) return;
         s.subAttr = c < others.length ? others[c] : null; writeSave(s); sfx("restore");
         await say([{ who: null, name: "共鳴之井", text: s.subAttr ? `你的數晶多了一道${ATTRS[s.subAttr].name}色的光。` : "數晶的光回到一種顏色了。" }]);

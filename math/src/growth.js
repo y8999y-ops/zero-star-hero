@@ -14,6 +14,7 @@ export function addExp(s, n) {
     s.lv++;
     ups.push(s.lv);
     s.coins += 20;
+    if ([5, 12, 25].includes(s.lv) && s.crystals) s.crystals[s.attr] = (s.crystals[s.attr] ?? 0) + 1;   // 升級獎勵（原本的學系能力次數，2026-11-25 取消）
   }
   if (s.lv >= MAX_LV) s.exp = 0;
   return ups;

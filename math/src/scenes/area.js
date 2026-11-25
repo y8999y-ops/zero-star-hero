@@ -7,7 +7,7 @@
 
 import { el, show } from "../ui.js";
 import { sfx } from "../audio.js";
-import { GRADES, ATTRS } from "../data.js";
+import { GRADES, ATTRS, STAGE_LEN } from "../data.js";
 import { writeSave } from "../save.js";
 import { talk } from "../world/talk.js";
 import { heroFrame } from "../../fx/hero.js";
@@ -80,7 +80,7 @@ export function areaScene(game, { grade = "g1" } = {}) {
   [0, 1, 2].forEach((i) => {
     if (cleared[i]) { const d = el("div.areaunit.done", {}, el("span.areatag", {}, "★".repeat(cleared[i]) + "☆".repeat(3 - cleared[i]))); d.dataset.x = MX[i]; stage.append(d); return; }
     const open = i === 0 || cleared[i - 1] > 0;
-    sprite((t) => FRAMES[kinds[i]]("idle", t + i * 0.37), MX[i], { tag: open ? `第 ${i + 1} 關` : "🔒", locked: !open, onTap: open ? () => fight("stage", i) : () => say([{ who: "page", name: "頁頁", text: `先淨化前面那一群墨水怪（第 ${i} 關）吧！` }]) });
+    sprite((t) => FRAMES[kinds[i]]("idle", t + i * 0.37), MX[i], { tag: open ? `第 ${i + 1} 關・${STAGE_LEN[i]} 題` : "🔒", locked: !open, onTap: open ? () => fight("stage", i) : () => say([{ who: "page", name: "頁頁", text: `先淨化前面那一群墨水怪（第 ${i} 關）吧！` }]) });
   });
   if (!gateOpen) {
     const gate = el("button.areaunit.gate", {}, el("img", { src: A("hub/p/ink-18.png"), alt: "墨水封印門" }));

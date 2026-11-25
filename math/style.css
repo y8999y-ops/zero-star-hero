@@ -385,6 +385,9 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 .acname { margin: 0; display: flex; align-items: baseline; gap: 10px; }
 .acschool { font-size: 13px; color: var(--gold); }
 .acdesc { margin: 0; font-size: 13px; color: var(--dim); line-height: 1.6; }
+.aclen { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.aclen .btn { flex: 1; padding: 4px 0; opacity: .6; }
+.aclen .btn.on { opacity: 1; outline: 2px solid #ffd76a; }
 .accard { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; background: rgba(255, 255, 255, .05); border-radius: 8px; }
 .actitle { font-weight: 800; color: var(--gold); }
 .aclvs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }

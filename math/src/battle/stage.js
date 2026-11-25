@@ -3,7 +3,7 @@
 // 下方 22% 會被答案按鈕蓋住，所以角色站在 y = 144（不是畫面最底）。
 
 import { createFrame, clearFrame, createFx, composite, painterFor, hex as pfHex } from "../../../pixelfx/src/core/index.js";
-import { SPELLS, UNIT_SPELL, FX, INK, INK_POOF, crystalLight } from "./spells.js";
+import { pickSpell, ATTR_HIT, UNIT_SPELL, FX, INK, INK_POOF, crystalLight } from "./spells.js";
 import { GRADES, ATTRS } from "../data.js";
 import { heroFrame } from "../../fx/hero.js";
 import { inkDropFrame } from "../../fx/ink-drop.js";
@@ -170,13 +170,13 @@ export class Stage {
   /** 施法。回傳 Promise：打中時 resolve。 */
   cast(tier, crystalLv = 1, branch = null, extraAttr = null) {
     // 題目決定招式：有單元的題目打那個單元的招式（屬性色）；連擊第 3、4 級再疊上屬性大招
-    const base = SPELLS[this.attr][tier - 1], us = branch && UNIT_SPELL[branch];
-    const spell = !us ? base : tier >= 3
-      ? { hit: Math.max(us.hit, base.hit + 0.25), shake: base.shake, parts: [...us.parts, ...base.parts.map((p) => ({ ...p, delay: p.delay + 0.25 }))] }
-      : { hit: us.hit, shake: tier, parts: us.parts };
+    // 2026-11-25：五種法師只差造型和攻擊特效 → 每一級都打自己屬性的招式（好幾種隨機挑）；第 2 級起再疊上單元的招式（屬性色）
+    const base = pickSpell(this.attr, tier - 1), us = branch && UNIT_SPELL[branch];
+    const spell = !us || tier < 2 ? { ...base, parts: [...base.parts] }
+      : { hit: Math.max(us.hit + 0.1, base.hit + 0.2), shake: base.shake ?? tier, parts: [...us.parts, ...base.parts.map((p) => ({ ...p, delay: p.delay + 0.2 }))] };
     // 屬性組合技：再疊上副屬性的大魔法（它自己的顏色）
-    if (extraAttr && SPELLS[extraAttr]) {
-      const ex = SPELLS[extraAttr][2];
+    if (extraAttr) {
+      const ex = pickSpell(extraAttr, 2);
       spell.parts = [...spell.parts, ...ex.parts.map((p) => ({ ...p, delay: p.delay + 0.2 }))];
       spell.hit = Math.max(spell.hit, ex.hit + 0.2); spell.shake = (spell.shake ?? 2) + 3;
     }
@@ -192,7 +192,7 @@ export class Stage {
     for (const p of spell.parts) {
       const o = { ...(p.opts ?? {}), light: crystalLight(crystalLv), ...(p.tint ? { palette: ramp } : {}) };
       let x = 0, y = GROUND, from = null, to = null;
-      if (p.at === "caster") { x = PX + 15; y = GROUND - (p.mod.meta.origin[1] < 40 ? 24 : 0); if ("length" in (p.mod.meta.options ?? {})) o.length = Math.max(40, tx - PX - 15); }
+      if (p.at === "caster") { x = PX + 15 + (p.x ?? 0); y = GROUND + (p.y ?? -(p.mod.meta.origin[1] < 40 ? 24 : 0)); if ("length" in (p.mod.meta.options ?? {})) o.length = Math.max(40, tx - PX - 15); }
       else if (p.at === "target") { x = tx + (p.x ?? 0); y = GROUND + (p.y ?? 0); }
       else { const dy = p.drop ?? 0; from = [PX + 18, GROUND - 27 + dy]; to = [tx - 6, GROUND - 21 + dy]; x = from[0]; y = from[1]; }
       this.addFx(p.mod, { x, y, from, to, delay: 0.15 + p.delay, speed: p.speed, dur: p.dur, opts: o });
@@ -205,6 +205,9 @@ export class Stage {
    *  打擊火花（第 3、4 級是爆擊火花）、第 4 級多一圈魔力爆發、畫面閃一下屬性色、打擊停頓、怪物被擊退並閃白 */
   impact(tier) {
     const m = this.monster, x = m ? m.x : 270, ramp = rampOf(ATTRS[this.attr].color), soft = this.opt.softFlash;
+    // 屬性自己的打擊火花
+    const H = ATTR_HIT[this.attr];
+    if (H) this.addFx(H.mod, { x: x + (H.x ?? 0), y: GROUND + (H.y ?? 0), speed: H.speed, dur: H.dur, opts: { light: 0.8, ...(H.opts ?? {}) } });
     this.addFx(tier >= 3 ? FX.critHit : FX.hitSpark, { x: x - 6, y: GROUND - 18, speed: 1.3, opts: { palette: [...ramp, "#ffffff"], height: 18 + tier * 4 } });
     if (tier >= 2) this.addFx(FX.hitFlash, { x, y: GROUND - 20, speed: 1.2, opts: { palette: ramp } });
     if (tier >= 4) {

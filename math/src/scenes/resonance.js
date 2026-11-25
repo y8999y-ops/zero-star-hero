@@ -1,7 +1,7 @@
 // 共鳴儀式（企劃書第 4 節）。2026-11-25 使用者：改成五題、做動畫和介面融入（原本直接跳出一頁字太生硬）。
 // 在共鳴之井前演出（用劇情播放器 src/cutscene.js）：
 //   新生站上井邊、鏡頭推近 → 每一題：井水冒出光點、題目從井裡浮上來（對話框＋選項）→ 選了之後光點落進井裡、上面的五顆小光亮一顆
-//   → 五題答完：井水旋轉發光 → 數晶從井裡升起、閃出屬性色 → 告訴你是什麼屬性、學系能力
+//   → 五題答完：井水旋轉發光 → 數晶從井裡升起、閃出屬性色 → 告訴你是什麼屬性、會打出哪些魔法
 // 題目：data/quiz/resonance.json 的 use（4 題思考方式＋1 題心情）；同分補問一題。tools/sim-resonance.mjs 確認五種屬性各約 20%。
 
 import { el } from "../ui.js";
@@ -75,7 +75,7 @@ export async function resonanceScene(game, { retest = false } = {}) {
     me.node.style.filter = `drop-shadow(0 0 6px ${A.color})`;
     await D.wait(0.8);
     await D.say([{ who: null, name: `${A.name}屬性・${A.school}`, text: `你是「${A.type}」。${A.praise}` },
-      { who: null, name: "學系能力", text: `${A.ability}：${A.abilityDesc}` },
+      { who: null, name: `${A.school}的魔法`, text: `${A.spells}……每次答對都不太一樣，連擊越高越華麗！` },
       ...(mood >= 2 ? [{ who: "page", name: "頁頁", text: "放輕鬆，我們慢慢來。（限時已經幫你調寬鬆）" }] : [])]);
     void page;
   }, { skippable: false });
