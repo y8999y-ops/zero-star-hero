@@ -49,3 +49,22 @@ export function floatText(parent, text, cls = "") {
 }
 
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * 數學文字：分數改成課本的寫法（2026-11-25 使用者：帶分數的寫法改一下）。
+ *   「3/8」→ 分子在上、分母在下；「2又3/8」→ 整數 2 在左邊，旁邊一個上下疊的 3/8。
+ * 回傳 DocumentFragment，可以直接放進 el(...) 或 replaceChildren。
+ */
+export function mathText(str) {
+  const s = String(str ?? ""), f = document.createDocumentFragment();
+  const re = /(\d+)又(\d+)\/(\d+)|(\d+)\/(\d+)/g;
+  let last = 0, m;
+  const frac = (n, d) => el("span.fr", {}, el("span.fn", {}, n), el("span.fd", {}, d));
+  while ((m = re.exec(s))) {
+    if (m.index > last) f.append(s.slice(last, m.index));
+    f.append(m[1] ? el("span.mixed", {}, el("span.mw", {}, m[1]), frac(m[2], m[3])) : frac(m[4], m[5]));
+    last = re.lastIndex;
+  }
+  if (last < s.length) f.append(s.slice(last));
+  return f;
+}

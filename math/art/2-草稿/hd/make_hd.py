@@ -55,6 +55,8 @@ CELLS = {
     "garden": {"mid": 5.3, "ground": 5.54},
     "library": {"mid": 3.86, "ground": 4.05},
     "clock": {"mid": 5.3, "ground": 4.42},
+    "greenhouse": {"mid": 5.2, "ground": 4.8},
+    "vault": {"mid": 3.98, "ground": 4.44},
 }
 
 
@@ -72,5 +74,6 @@ def battle():
 
 
 if __name__ == "__main__":
-    hub()
+    import sys
+    if "battle" not in sys.argv[1:]: hub()
     battle()

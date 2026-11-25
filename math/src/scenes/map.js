@@ -1,6 +1,6 @@
 // 學院地圖：選區域（學年）和小關、看成長（企劃書 3、8）、錯題本、成長日記、設定。
 
-import { el, show } from "../ui.js";
+import { el, show, mathText } from "../ui.js";
 import { ATTRS, GRADES, GRADE_IDS, RANKS, BRANCHES, UNIT_NAME, expToNext, MAX_LV, LEVEL_REWARDS, crystalLevel, maxHp } from "../data.js";
 import { rankExamReady, bookChapters, pagePageForm } from "../growth.js";
 
@@ -63,7 +63,7 @@ function panel(title, ...body) {
 export function reviewPanel(game) {
   const r = Object.entries(game.save.review);
   panel("錯題本：還沒算完的題目",
-    r.length ? el("ul.list", {}, ...r.map(([k, v]) => el("li", {}, `${GRADES[v.grade]?.area ?? ""}｜${v.sample}`, el("span.left", {}, `再連對 ${v.left} 次就畢業`),
+    r.length ? el("ul.list", {}, ...r.map(([k, v]) => el("li", {}, mathText(`${GRADES[v.grade]?.area ?? ""}｜${v.sample}`), el("span.left", {}, `再連對 ${v.left} 次就畢業`),
       v.branch && v.branch in UNIT_NAME ? el("button.btn.small", { onclick: () => { document.querySelector(".panel")?.remove(); game.go("lesson", { branch: v.branch }); } }, "學一學") : null))) : el("p", {}, "目前沒有。太厲害了！"),
     el("p.note", {}, "錯題本裡的題型，之後的關卡會比較常出現，答對還有額外經驗。"));
 }

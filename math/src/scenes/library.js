@@ -35,7 +35,8 @@ export function libraryScene(game) {
       spot("books", "錯題本", review ? `還有 ${review} 種題目沒算完` : "目前沒有", () => reviewPanel(game)),
       spot("board", "成長日記", "熟練度星星、最近 7 天", () => growthPanel(game)),
       spot("crystal", "萬題之書", `找回 ${bookChapters(s)} 章`, () => bookTalk()),
-      spot("sign", "上層書庫", `${GRADES.g2.name}的區域`, () => upstairs())),
+      spot("sign", "上層書庫", `${GRADES.g2.name}的區域`, () => upstairs()),
+      spot("chest", "地下禁書庫", `${GRADES.jh.name}`, () => downstairs())),
     el("div.libfoot", {}, page, el("button.btn.gold", { onclick: () => { alive = false; game.go("map", { map: "island", from: "library" }); } }, "離開圖書館")),
   );
   show(root);
@@ -46,7 +47,11 @@ export function libraryScene(game) {
       { who: "page", name: "頁頁", text: "每當你把一門數學魔法練到精通（成長日記裡的 ★★★），那一章的書頁就會飛回來，我也會跟著長大喔！" },
     ]);
   }
-  async function upstairs() {
+  async function downstairs() {
+    const r = await talk(root, [{ who: "page", name: "頁頁", text: "地下禁書庫……墨水大王的老家。這裡的題目是整個中年級的總複習，每一種魔法都會用到。要下去嗎？" }], ["下樓", "先不要"]);
+    if (r === 0) { alive = false; game.go("area", { grade: "jh" }); }
+  }
+    async function upstairs() {
     const r = await talk(root, [{ who: "page", name: "頁頁", text: "上層書庫的書架高到看不見頂，書都被墨水弄亂了，還有書頁黏成的怪物在滾來滾去。二年級的題目在那裡，要上去嗎？" }], ["上樓", "先不要"]);
     if (r === 0) { alive = false; game.go("area", { grade: "g2" }); }
   }

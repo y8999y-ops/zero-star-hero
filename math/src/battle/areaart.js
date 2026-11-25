@@ -161,7 +161,7 @@ export const areaArtNow = (gradeId) => cache[AREA_OF[gradeId]] ?? null;
 // ── AI 原圖版的戰鬥背景（使用者 2026-11-25：背景改用 AI 原圖，不重畫成像素）──
 // 圖在 assets/battle-hd/<區域>/（art/2-草稿/hd/make_hd.py 做的）：back.jpg 1152×648、mid／ground 是同一個 3 倍比例，
 // 版面數字跟像素版一樣（ground 上緣 132、mid 底部壓進 ground 6 格，都水平置中）。用 DOM 圖片疊在戰鬥畫布後面，畫布只畫角色和特效。
-const HD_AREA = { g1: "garden", g2: "library", g34: "clock" };
+const HD_AREA = { g1: "garden", g2: "library", g34: "clock", g56: "greenhouse", jh: "vault" };
 const hdCache = {};
 export async function loadBattleHD(gradeId, areaOverride = null) {
   const area = areaOverride ?? HD_AREA[gradeId];

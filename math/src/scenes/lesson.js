@@ -4,7 +4,7 @@
 // 學完一課算每日委託「在圖書館學一課」。
 
 import { daily } from "../world/island-life.js";
-import { el, show } from "../ui.js";
+import { el, show, mathText } from "../ui.js";
 import { sfx } from "../audio.js";
 import { BRANCHES, UNIT_NAME } from "../data.js";
 import { LESSONS, lessonExamples, ACADEMIES, ACADEMY_OF } from "../practice.js";
@@ -32,7 +32,7 @@ export async function lessonScene(game, { branch = "big", back = null } = {}) {
   const body = el("div.lbody");
   const root = el("div.screen.lesson", {},
     el("h2", {}, `魔法教室・${UNIT_NAME[branch]}（${BRANCHES[branch]}）`),
-    el("ol.lpoints", {}, ...L.points.map((t) => el("li", {}, t))),
+    el("ol.lpoints", {}, ...L.points.map((t) => el("li", {}, mathText(t)))),
     body,
     el("div.row", {},
       el("button.btn", { onclick: () => game.go("lesson", { branch, back }) }, "換一組題目"),
@@ -41,8 +41,8 @@ export async function lessonScene(game, { branch = "big", back = null } = {}) {
 
   // 例題：先自己想，再看算法
   if (ex) {
-    const how = el("div.lhow", { hidden: true }, `答案：${ex.answer}${ex.unit ? " " + ex.unit : ""}`, el("br"), ex.explain ?? "");
-    body.append(el("div.lsec", {}, el("div.lsub", {}, "例題"), el("div.lq", {}, ex.text),
+    const how = el("div.lhow", { hidden: true }, mathText(`答案：${ex.answer}${ex.unit ? " " + ex.unit : ""}`), el("br"), mathText(ex.explain ?? ""));
+    body.append(el("div.lsec", {}, el("div.lsub", {}, "例題"), el("div.lq", {}, mathText(ex.text)),
       el("button.btn.small", { onclick: (e) => { how.hidden = false; e.target.remove(); sfx("good"); } }, "看算法"), how));
   }
   // 試三題
@@ -51,14 +51,14 @@ export async function lessonScene(game, { branch = "big", back = null } = {}) {
   body.append(tryBox);
   tries.forEach((q, i) => {
     const fb = el("div.lfb");
-    const opts = q.options.map((o) => el("button.btn.lopt", { "data-v": o, onclick: () => pick(o, i, q, fb, opts) }, q.unit && q.kind === "word" ? `${o} ${q.unit}` : o));
-    tryBox.append(el("div.ltry", {}, el("div.lq", {}, `${i + 1}．${q.text}`), el("div.lopts", {}, ...opts), fb));
+    const opts = q.options.map((o) => el("button.btn.lopt", { "data-v": o, onclick: () => pick(o, i, q, fb, opts) }, mathText(q.unit && q.kind === "word" ? `${o} ${q.unit}` : o)));
+    tryBox.append(el("div.ltry", {}, el("div.lq", {}, mathText(`${i + 1}．${q.text}`)), el("div.lopts", {}, ...opts), fb));
   });
   function pick(o, i, q, fb, opts) {
     opts.forEach((b) => (b.disabled = true));
     const right = o === q.answer;
     opts.forEach((b) => { if (b.dataset.v === q.answer) b.classList.add("ok"); else if (b.dataset.v === o) b.classList.add("bad"); });
-    fb.textContent = right ? "答對了！" : `再看一次算法：${q.explain ?? `答案是 ${q.answer}`}`;
+    fb.replaceChildren(right ? "答對了！" : mathText(`再看一次算法：${q.explain ?? `答案是 ${q.answer}`}`));
     sfx(right ? "good" : "hurt");
     done++; if (right) ok++;
     if (done === tries.length) {

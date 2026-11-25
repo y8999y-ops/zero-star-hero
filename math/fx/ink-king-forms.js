@@ -1,6 +1,9 @@
 // 墨水大王的兩個型態（企劃書：每區的王是墨水大王把那一區的東西黏在身上）。身體、臉跟幼體（ink-king-baby.js）同一套，
 // 讓玩家認得「又是牠」，但身上的裝備不一樣：
 //   書頁鎧甲（千頁圖書館）：頭上戴一本攤開的厚書當頭盔、肚子圍一圈書頁當胸甲（金鉚釘）、兩肩疊著書、手上拿一根大羽毛筆當劍。
+//   晶刺型（分晶溫室）：背上、頭上長出一叢一叢的水晶刺（會閃光），肩膀和手上黏著碎水晶，身上有發光的青色裂痕。
+//   真身（地下禁書庫，最後的王）：身體最大，戴著用前面四區的東西拼成的王冠（書頁、齒輪、水晶、歪花），披著墨水斗篷，
+//     眼角掛著一滴眼淚（世界觀：牠其實是怕沒有人會把題目算完、很寂寞）。
 //   齒輪型（刻度鐘塔）：背後一個大齒輪一直轉、身上黏著小齒輪（反著轉）、頭上插一根鐘的指針當角、右眼戴一個鐘面單片眼鏡。
 // 面向左（朝玩家）。動作：idle＝呼吸、手揮、裝備跟著晃或轉；hurt＝壓扁、＞＜眼、裝備被打歪。王 24 色以內。
 //
@@ -15,6 +18,8 @@ const C = {
   paperL: "#fffaf0", paper: "#efe0c2", paperD: "#c9a46a", line: "#8a6a48",
   navy: "#34407e", navyD: "#1f2856", goldL: "#ffe9a0", gold: "#e8b04a", goldD: "#a8761c", red: "#c0475a", green: "#4f9a62",
   steelL: "#c8cde0", steel: "#8a8fa8", steelD: "#545a75", blue: "#35c3da",
+  crysL: "#d4fff6", crys: "#5fe0d0", crysD: "#2f8f9a", crysDD: "#1f5e6e",
+  capeL: "#4a2f7a", cape: "#2e1b52", capeD: "#1a0f33", red2: "#e0565b",
 };
 
 function shadeAt(nx, ny) {
@@ -198,6 +203,81 @@ export function inkKingGearFrame(pose = "idle", t = 0) {
     for (let i = 0; i < 10; i++) g.set(mx + 7 + Math.round(i * 0.4), my + 2 + i, i % 2 ? C.gold : C.goldD);
   }
   drips(g, q, b, [[-0.97, 0.12], [-0.86, 0.42], [0.97, 0.02]]);
+  g.outline();
+  return g.pixels();
+}
+
+
+// ───────── 晶刺型 ─────────
+// 一根水晶刺：從 (x, y) 往 ang 方向長 len、底寬 w；左邊亮、右邊暗、中間一條亮線
+function spike(g, x, y, ang, len, w, glint) {
+  const c = Math.cos(ang), s = Math.sin(ang), px = -s, py = c;
+  const tip = [x + c * len, y + s * len], a = [x + px * w, y + py * w], b = [x - px * w, y - py * w];
+  g.poly([a, tip, b], (X, Y) => {
+    const side = (X - x) * px + (Y - y) * py;              // 左右
+    const along = ((X - x) * c + (Y - y) * s) / len;
+    if (Math.abs(side) < 0.8 && along < 0.85) return glint ? C.white : C.crysL;
+    return side > 0 ? (along > 0.6 ? C.crysL : C.crys) : along > 0.7 ? C.crys : C.crysD;
+  });
+}
+
+export function inkKingCrystalFrame(pose = "idle", t = 0) {
+  const q = poseOf(pose, t);
+  const g = new Grid(W, H, OX, OY);
+  const glintAt = Math.floor(((t % 2) / 2) * 6);            // 輪流閃光
+  // 背上的大水晶刺（在身體後面先畫）
+  const back = [[-0.55, 26, 6], [-0.95, 32, 7], [-1.35, 28, 6], [-1.75, 22, 5], [-2.3, 18, 4]];
+  back.forEach(([a, len, w], i) => spike(g, 8 + i * 2, -50 + i * 3, a + (q.hurt ? 0.35 : q.tilt * 0.15), len * (q.hurt ? 0.8 : 1), w, glintAt === i));
+  const b = body(g, q);
+  // 身上的青色裂痕（發光）
+  g.line(14, b.by + 4, 20, b.by + 12, C.crys); g.line(20, b.by + 12, 18, b.by + 20, C.crys); g.line(20, b.by + 12, 26, b.by + 14, C.crysL);
+  // 肩膀、手上黏著的碎水晶
+  spike(g, -b.rx + 4, b.by - 6, -2.4, 12, 4, glintAt === 5);
+  spike(g, b.rx - 6, b.by - 8, -0.7, 12, 4, false);
+  for (const [ax, ay] of b.arms) spike(g, ax, ay - 2, -1.57 + (ax < 0 ? -0.5 : 0.5), 8, 3, false);
+  face(g, q, b);
+  // 頭上一小叢水晶冠
+  const hx = b.lean - 4, hy = b.top - 6 + (q.hurt ? 3 : 0);
+  spike(g, hx - 6, hy + 4, -1.9, 12, 3, false); spike(g, hx, hy + 2, -1.57 + q.tilt * 0.2, 16, 4, glintAt === 2); spike(g, hx + 6, hy + 4, -1.2, 12, 3, false);
+  drips(g, q, b, [[-0.97, 0.12], [0.97, 0.02], [0.9, 0.3]]);
+  g.outline();
+  return g.pixels();
+}
+
+// ───────── 真身 ─────────
+export function inkKingTrueFrame(pose = "idle", t = 0) {
+  const q = poseOf(pose, t);
+  const g = new Grid(W, H, OX, OY);
+  // 墨水斗篷：從肩膀往兩邊、往下張開，下緣一條一條波浪（在身體後面）
+  const flap = q.hurt ? 4 : Math.round(Math.sin(q.ph * Math.PI * 2) * 2);
+  for (const side of [-1, 1]) {
+    // 從肩膀（身體兩側上方）往外、往下張開，外緣一段一段的波浪
+    const pts = [[side * 18, -52], [side * 34, -56], [side * (50 + flap), -30], [side * (54 + flap), -4], [side * 26, -4]];
+    g.poly(pts, (x, y) => {
+      const k = (Math.abs(x) - 18) / 36;
+      if (Math.abs(x) > 46 + flap && Math.round(y / 5) % 2) return C.capeD;
+      return k > 0.8 ? C.capeD : y < -40 ? C.capeL : C.cape;
+    });
+    g.line(side * 34, -56, side * (50 + flap), -30, C.gold); g.line(side * (50 + flap), -30, side * (54 + flap), -6, C.gold);   // 金邊
+  }
+  const b = body(g, q);
+  face(g, q, b);
+  // 眼角的一滴眼淚
+  if (!q.hurt) { const ey = b.by - 4, u = (q.ph * 0.5) % 1; g.rect(-17, ey + 6 + Math.floor(u * 6), 2, 3, C.blue); g.set(-17, ey + 6 + Math.floor(u * 6), C.white); }
+  // 王冠：一圈金色的底座，上面插著前面四區的東西：書頁（圖書館）、齒輪（鐘塔）、水晶（溫室）、歪花（花園）
+  const cx = b.lean - 2, cy = b.top - 2 + (q.hurt ? 4 : 0), tilt = q.hurt ? 0.3 : q.tilt * 0.15;
+  const R = (x, y) => [cx + x * Math.cos(tilt) - y * Math.sin(tilt), cy + x * Math.sin(tilt) + y * Math.cos(tilt)];
+  g.poly([R(-20, 0), R(20, 0), R(18, -6), R(-18, -6)], (x, y) => (y < cy - 3 ? C.goldL : C.gold));
+  for (const x of [-14, -4, 6, 16]) { const [px, py] = R(x, -3); g.rect(px - 1, py - 1, 2, 2, C.red2); }
+  // 書頁
+  { const [px, py] = R(-14, -8); g.poly([[px - 5, py + 2], [px + 3, py + 2], [px + 4, py - 9], [px - 4, py - 10]], (x, y) => (Math.round(y) % 3 === 0 ? C.line : C.paperL)); }
+  // 齒輪
+  { const [px, py] = R(-3, -12); gear(g, px, py, 6, 8, q.ph * Math.PI, [C.goldL, C.gold, C.goldD]); }
+  // 水晶
+  { const [px, py] = R(8, -6); spike(g, px, py, -1.57, 16, 4, Math.floor(q.ph * 4) === 1); }
+  // 歪花
+  { const [px, py] = R(17, -10); for (let i = 0; i < 5; i++) { const a = i * 1.26 + tilt; g.oval(px + Math.cos(a) * 4, py + Math.sin(a) * 4, 3, 2, a, i === 2 ? C.ink4 : C.red2); } g.ellipse(px, py, 2, 2, C.goldL); }
+  drips(g, q, b, [[-0.97, 0.12], [-0.86, 0.42], [0.9, 0.3], [0.97, 0.02]]);
   g.outline();
   return g.pixels();
 }

@@ -1,7 +1,7 @@
 // 一關的流程（企劃書 7.2～7.5）：出題 → 答題 → 施法或受傷 → 下一隻；王有護盾；結束時結算星星與成長。
 
 import { daily } from "../world/island-life.js";
-import { el, show, floatText, wait } from "../ui.js";
+import { el, show, floatText, wait, mathText } from "../ui.js";
 import { Stage, fitWidth } from "./stage.js";
 import { withChoices } from "../questions/pool.js";
 import { ACADEMIES, MODES, buildPractice, buildArea } from "../practice.js";
@@ -133,9 +133,10 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
 
     // 題目：計算題掛在怪物頭上；應用題放在下方面板
     const isWord = q.kind !== "calc";
-    bubble.textContent = isWord ? "？" : q.text.replace(" ＝ ？", " ＝ ？");
+    bubble.replaceChildren(isWord ? "？" : mathText(q.text));
+    bubble.classList.toggle("one", isWord || q.text.length <= 26);     // 短的算式不換行（不會在「＝ ？」前面斷開）
     wordPanel.hidden = !isWord;
-    wordPanel.replaceChildren(...(isWord ? [el("div.wtext", {}, q.text)] : []));
+    wordPanel.replaceChildren(...(isWord ? [el("div.wtext", {}, mathText(q.text))] : []));
     if (q.tut) { say(q.tut.text); glow(q.tut.glow); }
     else if (qi > 0 || !isWord) say(isWord ? "仔細讀題目，一句一句來。" : q.prefix ?? "");
 
@@ -231,7 +232,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     return new Promise((resolve) => {
       let done = false, retry = s.attr === "water" && uses > 0;
       const start = performance.now();
-      answers.replaceChildren(...q.options.map((o, i) => el("button.btn.answer", { "data-k": i + 1, onclick: () => pickOpt(o, btns[i]) }, q.unit && q.kind === "word" ? `${o} ${q.unit}` : o)));
+      answers.replaceChildren(...q.options.map((o, i) => el("button.btn.answer", { "data-k": i + 1, onclick: () => pickOpt(o, btns[i]) }, mathText(q.unit && q.kind === "word" ? `${o} ${q.unit}` : o))));
       const btns = [...answers.children];
       const key = (e) => { const n = Number(e.key); if (n >= 1 && n <= btns.length) btns[n - 1].click(); };
       addEventListener("keydown", key);
@@ -295,8 +296,8 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     return new Promise((resolve) => {
       const card = el("div.explain", {},
         el("div.etitle", {}, timeout ? "時間到了，沒關係！" : "沒關係，我們一起算一次！"),
-        el("div.ebody", {}, q.explain),
-        el("div.eans", {}, `答案是 ${q.answer}${q.unit ? " " + q.unit : ""}`),
+        el("div.ebody", {}, mathText(q.explain)),
+        el("div.eans", {}, mathText(`答案是 ${q.answer}${q.unit ? " " + q.unit : ""}`)),
         el("button.btn.gold", { onclick: () => { card.remove(); resolve(); } }, "知道了"));
       say("這題我先記進錯題本，之後再一起複習。");
       wrap.append(card);

@@ -17,20 +17,24 @@ import { inkKingBabyFrame } from "../../fx/ink-king-baby.js";
 import { scatterPageFrame } from "../../fx/scatter-page.js";
 import { doodleBatFrame } from "../../fx/doodle-bat.js";
 import { chaosClockFrame } from "../../fx/chaos-clock.js";
-import { inkKingPageFrame, inkKingGearFrame } from "../../fx/ink-king-forms.js";
+import { inkKingPageFrame, inkKingGearFrame, inkKingCrystalFrame, inkKingTrueFrame } from "../../fx/ink-king-forms.js";
+import { crystalBugFrame } from "../../fx/crystal-bug.js";
+import { minusShadeFrame } from "../../fx/minus-shade.js";
 
-const HD = { g1: "garden", g2: "library", g34: "clock" };
-const FRAMES = { ink: inkDropFrame, flower: crookedFlowerFrame, king: inkKingBabyFrame, pages: scatterPageFrame, bat: doodleBatFrame, tick: chaosClockFrame, kingPage: inkKingPageFrame, kingGear: inkKingGearFrame };
-const KINDS = { g1: ["ink", "flower", "ink"], g2: ["pages", "bat", "pages"], g34: ["tick", "bat", "tick"] };
-const BOSS = { g1: "king", g2: "kingPage", g34: "kingGear" };
-const BACK = { g2: { name: "回圖書館大廳", go: ["library"] } };
+const HD = { g1: "garden", g2: "library", g34: "clock", g56: "greenhouse", jh: "vault" };
+const FRAMES = { ink: inkDropFrame, flower: crookedFlowerFrame, king: inkKingBabyFrame, pages: scatterPageFrame, bat: doodleBatFrame, tick: chaosClockFrame, kingPage: inkKingPageFrame, kingGear: inkKingGearFrame, bug: crystalBugFrame, shade: minusShadeFrame, kingCrystal: inkKingCrystalFrame, kingTrue: inkKingTrueFrame };
+const KINDS = { g1: ["ink", "flower", "ink"], g2: ["pages", "bat", "pages"], g34: ["tick", "bat", "tick"], g56: ["bug", "flower", "bug"], jh: ["shade", "bat", "shade"] };
+const BOSS = { g1: "king", g2: "kingPage", g34: "kingGear", g56: "kingCrystal", jh: "kingTrue" };
+const BACK = { g2: { name: "回圖書館大廳", go: ["library"] }, jh: { name: "回圖書館大廳", go: ["library"] } };
 // 站的位置（戰鬥畫面的格子：寬 384、地面 y＝144）
 const PX = 52, MX = [128, 196, 262], BX = 334, GROUND = 144;
 const A = (p) => new URL(`../../assets/${p}`, import.meta.url).href;
 const RESTORE = {
   g1: ["哇……花園的顏色回來了！花瓣又是五瓣、六瓣，數得清清楚楚！", "墨水大王縮回地下禁書庫去了。可是它說的那句「反正沒有人會算完我」……我有點在意。", "下一個是千頁圖書館的上層書庫（二年級），從圖書館大廳上樓。我們一區一區，把學院的顏色找回來吧！"],
   g2: ["書頁全部飛回書架上了！每一本都排得整整齊齊，頁碼一頁接一頁。", "墨水大王把書頁鎧甲丟下就跑了……它一邊跑一邊喊「題目那麼多，誰算得完」。", "下一個是刻度鐘塔（三～四年級），在學院的右邊。"],
-  g34: ["鐘塔又開始滴答滴答地走了！指針指著刻度，一格都不差。", "墨水大王身上的齒輪掉了一地。它好像越來越生氣，又好像……有點寂寞？", "接下來是分晶溫室的深處（五～六年級）。要一直練習，才走得到那裡喔。"],
+  g34: ["鐘塔又開始滴答滴答地走了！指針指著刻度，一格都不差。", "墨水大王身上的齒輪掉了一地。它好像越來越生氣，又好像……有點寂寞？", "接下來是分晶溫室的深處（四年級下）。從學院右邊的溫室進去！"],
+  g56: ["溫室的水晶果實又亮起來了，一顆一顆整整齊齊，分成幾份都數得清清楚楚。", "墨水大王身上的水晶刺碎掉了。它往圖書館的地下逃走了……", "最後是地下禁書庫（中年級總複習），從圖書館大廳下樓。把學過的全部用出來吧！"],
+  jh: ["禁書庫的封印……變成一頁一頁發光的書頁了！", "墨水大王縮得好小好小，小聲地說：「原來……真的有人會把我算完。」", "學院所有的顏色都回來了！謝謝你，見習魔數師。之後也要繼續來學院練習喔！"],
 };
 
 export function areaScene(game, { grade = "g1" } = {}) {
@@ -51,7 +55,7 @@ export function areaScene(game, { grade = "g1" } = {}) {
   } else bg.style.background = `linear-gradient(${G.sky[0]}, ${G.sky[1]} 60%, ${G.ground} 61%, ${G.deep})`;
   const tint = el("div.tint"); bg.append(tint);
   const stage = el("div.areastage");
-  const back = BACK[grade] ?? { name: "回學院", go: ["map", { from: area === "clock" ? "clock" : area === "garden" ? "garden" : null }] };
+  const back = BACK[grade] ?? { name: "回學院", go: ["map", { from: { clock: "clock", garden: "garden", greenhouse: "greenhouse" }[area] ?? null }] };
   const title = el("div.areatitle", {}, el("span", {}, G.area), el("span.agrade", {}, G.name), bossDone ? el("span.clear", {}, "已恢復色彩") : null);
   const root = el("div.screen.areascr", {}, bg, stage, title,
     el("button.btn.small.areaback", { onclick: () => { stop(); s.returnTo = null; writeSave(s); game.go(...back.go); } }, back.name));

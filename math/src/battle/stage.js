@@ -13,7 +13,9 @@ import { inkKingBabyFrame } from "../../fx/ink-king-baby.js";
 import { scatterPageFrame } from "../../fx/scatter-page.js";
 import { doodleBatFrame } from "../../fx/doodle-bat.js";
 import { chaosClockFrame } from "../../fx/chaos-clock.js";
-import { inkKingPageFrame, inkKingGearFrame } from "../../fx/ink-king-forms.js";
+import { inkKingPageFrame, inkKingGearFrame, inkKingCrystalFrame, inkKingTrueFrame } from "../../fx/ink-king-forms.js";
+import { crystalBugFrame } from "../../fx/crystal-bug.js";
+import { minusShadeFrame } from "../../fx/minus-shade.js";
 
 // 程式畫的角色、怪物：每個姿勢一個循環多長（秒），每秒畫 12 格，畫過就快取
 const SPRITES = {
@@ -21,11 +23,13 @@ const SPRITES = {
   flower: { fn: crookedFlowerFrame, loop: 1.2 }, king: { fn: inkKingBabyFrame, loop: 2.0 },
   pages: { fn: scatterPageFrame, loop: 1.2 }, bat: { fn: doodleBatFrame, loop: 1.0 }, tick: { fn: chaosClockFrame, loop: 1.2 },
   kingPage: { fn: inkKingPageFrame, loop: 2.0 }, kingGear: { fn: inkKingGearFrame, loop: 2.0 },
+  bug: { fn: crystalBugFrame, loop: 1.2 }, shade: { fn: minusShadeFrame, loop: 1.6 },
+  kingCrystal: { fn: inkKingCrystalFrame, loop: 2.0 }, kingTrue: { fn: inkKingTrueFrame, loop: 2.0 },
 };
 // 每個區域會出現的雜兵、王（還沒畫的區域先用墨水滴）
-const MINIONS = { g1: ["ink", "flower"], g2: ["pages", "bat"], g34: ["tick", "bat"] };
-const BOSS = { g1: "king", g2: "kingPage", g34: "kingGear" };
-const HEAD = { ink: 42, flower: 50, king: 96, slime: 110, pages: 34, bat: 48, tick: 44, kingPage: 104, kingGear: 102 };   // 頭頂離腳底幾格（題目、答案數字掛在這裡）
+const MINIONS = { g1: ["ink", "flower"], g2: ["pages", "bat"], g34: ["tick", "bat"], g56: ["bug", "flower"], jh: ["shade", "bat"] };
+const BOSS = { g1: "king", g2: "kingPage", g34: "kingGear", g56: "kingCrystal", jh: "kingTrue" };
+const HEAD = { ink: 42, flower: 50, king: 96, slime: 110, pages: 34, bat: 48, tick: 44, kingPage: 104, kingGear: 102, bug: 36, shade: 36, kingCrystal: 100, kingTrue: 104 };   // 頭頂離腳底幾格（題目、答案數字掛在這裡）
 import { MathMagic, PopNumber } from "./mathmagic.js";
 import { areaArtNow, battleHDNow } from "./areaart.js";
 import { Ambience } from "./ambience.js";
