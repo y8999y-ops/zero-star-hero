@@ -242,6 +242,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     bubble.classList.remove("mv-shake", "mv-ink");
     if (move) { sfx("boss"); stage.flinch(); say(move === "shake" ? "墨水大王使出「搖搖晃晃」！題目在晃……穩住！" : move === "swap" ? "墨水大王使出「調換」！選項要換位置了！" : "墨水大王噴出「墨水霧」！等它散開再看清楚。"); }
 
+    wrap.classList.remove("casting");
     // 題目：計算題掛在怪物頭上；應用題放在下方面板
     const isWord = q.kind !== "calc";
     bubble.replaceChildren(isWord ? "？" : mathText(q.text));
@@ -284,6 +285,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
       if (flags.double && !boss) { combo++; flags.double = false; say("分身！連擊多加一！"); }
       sfx(`cast_${s.attr}`);
       bubble.textContent = "";
+      wrap.classList.add("casting");          // 施法時題目和答案收起來（2026-11-26 使用者）
       if (q.math) {
         // 數學變魔法：先把算式變成光球（點畫面可以加速）
         canvas.onclick = () => stage.magic?.skip();

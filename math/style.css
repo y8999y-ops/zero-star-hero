@@ -561,3 +561,44 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 .bmcard .bmd { font-size: 11px; color: var(--dim); line-height: 1.3; }
 .bmcard:disabled { opacity: .35; }
 .bmcard.bmclose { min-width: 64px; align-items: center; justify-content: center; background: transparent; border-style: dashed; }
+
+/* ── 大廳左上角的個人卡（2026-11-26：看不清楚 → 字放大、底色實一點；點了打開個人資料） ── */
+.whud .wprof { pointer-events: auto; cursor: pointer; position: relative; display: flex; align-items: center; gap: 8px; padding: 2px 8px 2px 4px; background-color: #1b1433; color: #fff; font: inherit; font-weight: 700; text-align: left; }
+.whud .wprof:active { transform: scale(.97); }
+.wpbadge { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 16px; color: #1b1433; background: var(--c); box-shadow: inset 0 -3px 0 rgba(0,0,0,.25), 0 0 0 2px #0e0a1c; flex: none; }
+.wpmain { display: flex; flex-direction: column; gap: 3px; min-width: 104px; }
+.wpname { font-size: 15px; line-height: 1.1; text-shadow: 0 1px 0 #000; white-space: nowrap; }
+.wpname b { color: var(--gold); }
+.wpexp { display: block; height: 6px; border-radius: 3px; background: #0e0a1c; overflow: hidden; }
+.wpexp i { display: block; height: 100%; background: linear-gradient(90deg, #7b5cff, #c4adff); }
+.wpcoin { display: flex; flex-direction: column; align-items: center; color: var(--gold); font-size: 15px; line-height: 1; padding-left: 8px; border-left: 2px solid #3a3058; }
+.wpcoin small { font-size: 10px; color: #d8ccff; font-weight: 400; margin-top: 2px; }
+.wpdot { position: absolute; top: -6px; right: -8px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: #ff5a7a; color: #fff; font-size: 11px; line-height: 18px; text-align: center; box-shadow: 0 0 0 2px #0e0a1c; }
+
+/* 個人資料面板：上面三個分頁，內容可以捲 */
+.panel.prof { inset: 10px 10%; padding: 10px 12px; gap: 6px; overflow: hidden; z-index: 60; }
+.ptabs { display: flex; gap: 6px; align-items: center; flex: none; }
+.ptab { flex: 1; padding: 7px 4px; border: 0; border-radius: 8px; background: var(--panel2); color: #d8ccff; font: inherit; font-weight: 700; font-size: 14px; cursor: pointer; }
+.ptab.on { background: var(--gold); color: #2a1d06; }
+.pclose { width: 34px; height: 34px; flex: none; border: 0; border-radius: 50%; background: #3a3058; color: #fff; font-size: 16px; cursor: pointer; }
+.pbody { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 2px; }
+.phead { display: flex; gap: 12px; align-items: center; }
+.pbadge { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-size: 24px; font-weight: 700; color: #1b1433; background: var(--c); box-shadow: inset 0 -4px 0 rgba(0,0,0,.25), 0 0 0 3px #0e0a1c; flex: none; }
+.pmain { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.pname { font-size: 18px; font-weight: 700; color: var(--gold); }
+.plv { color: #fff; margin-left: 8px; }
+.pschool { font-size: 13px; font-weight: 700; }
+.ptiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.ptile { background: var(--panel2); border-radius: 8px; padding: 6px 4px; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.ptile .pk { font-size: 11px; color: var(--dim); }
+.ptile .pv { font-size: 14px; }
+.pnote { font-size: 12px; color: #d8ccff; }
+.pempty { text-align: center; color: var(--dim); margin: 20px 0; }
+
+/* 施放魔法時題目、答案、詳解條收起來，讓畫面給攻擊動畫（2026-11-26 使用者） */
+.battle .answers, .battle .word, .battle .speak { transition: opacity .2s; }
+.battle.casting .answers, .battle.casting .word, .battle.casting .speak, .battle.casting .pbar, .battle.casting .bubble { opacity: 0; pointer-events: none; }
+.pbody > * { flex-shrink: 0; }
+.pbody .list li { align-items: center; }
+.rq { flex: 1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rarea { font-size: 11px; color: var(--dim); background: #120d22; border-radius: 4px; padding: 1px 6px; }

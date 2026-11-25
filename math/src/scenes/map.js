@@ -3,7 +3,7 @@
 import { el, show, mathText } from "../ui.js";
 import { ATTRS, GRADES, GRADE_IDS, RANKS, BRANCHES, UNIT_NAME, expToNext, MAX_LV, LEVEL_REWARDS, crystalLevel, maxHp } from "../data.js";
 import { rankExamReady, bookChapters, pagePageForm } from "../growth.js";
-import { reviewUnits, ACADEMY_OF } from "../practice.js";
+import { profilePanel } from "./profile.js";
 
 export function mapScene(game) {
   const s = game.save;
@@ -47,7 +47,7 @@ export function mapScene(game) {
   }));
 
   const tools = el("div.tools", {},
-    el("button.btn", { onclick: () => reviewPanel(game) }, `錯題本（${Object.keys(s.review).length}）`),
+    el("button.btn", { onclick: () => profilePanel(game, "review") }, `錯題本（${Object.keys(s.review).length}）`),
     el("button.btn", { onclick: () => growthPanel(game) }, "成長日記"),
     el("button.btn", { onclick: () => { if (confirm("回共鳴之井重新測驗？等級、星星、錯題本都會保留。")) game.go("resonance", { retest: true }); } }, "共鳴之井"),
     el("button.btn", { onclick: () => game.go("settings", { from: "map" }) }, "設定"),
@@ -56,34 +56,6 @@ export function mapScene(game) {
   show(el("div.screen.map", {}, el("h2.maptitle", {}, "魔數學院"), profile, exam, areas, tools));
 }
 
-function panel(title, ...body) {
-  const p = el("div.panel", {}, el("div.ptitle", {}, title), ...body, el("button.btn.gold", { onclick: () => p.remove() }, "關閉"));
-  document.querySelector("#app").append(p);
-}
-
-export function reviewPanel(game) {
-  const r = Object.entries(game.save.review);
-  panel("錯題本：還沒算完的題目",
-    r.length ? el("ul.list", {}, ...r.map(([k, v]) => el("li", {}, mathText(`${GRADES[v.grade]?.area ?? ""}｜${v.sample}`), el("span.left", {}, `再連對 ${v.left} 次就畢業`),
-      v.branch && v.branch in UNIT_NAME ? el("button.btn.small", { onclick: () => { document.querySelector(".panel")?.remove(); game.go("lesson", { branch: v.branch }); } }, "學一學") : null))) : el("p", {}, "目前沒有。太厲害了！"),
-    reviewUnits(game.save).length ? el("button.btn.gold", { onclick: () => { document.querySelector(".panel")?.remove(); const [b] = reviewUnits(game.save)[0]; game.go("battle", { grade: "g1", mode: "practice", practice: { academy: ACADEMY_OF[b] ?? "ice", branch: b, level: 0, review: true } }); } }, "特訓") : null);
-}
-
-export function growthPanel(game) {
-  const s = game.save;
-  // 最近 30 天（企劃書 E7）：沒玩的日子也排出來（空的一格），一眼看出有沒有每天練
-  const days = Array.from({ length: 30 }, (_, i) => { const d = new Date(Date.now() - (29 - i) * 864e5).toISOString().slice(0, 10); return [d, s.diary[d] ?? { n: 0, ok: 0 }]; });
-  const played = days.filter(([, v]) => v.n).length, total = days.reduce((a, [, v]) => a + v.ok, 0);
-  const most = Math.max(1, ...days.map(([, v]) => v.n));
-  panel("成長日記",
-    el("div.sub", {}, "魔法分支熟練度（看最近 20 題）"),
-    el("ul.list", {}, ...Object.entries(BRANCHES).map(([k, name]) => {
-      const b = s.branches[k];
-      return el("li", {}, name, el("span.left", {}, b.recent.length ? `${"★".repeat(b.best)}${"☆".repeat(5 - b.best)}（${b.recent.length} 題）` : "還沒練過"));
-    })),
-    el("div.sub", {}, `最近 30 天：練了 ${played} 天、答對 ${total} 題`),
-    el("div.bars.b30", {}, ...days.map(([d, v], i) => el("div.bar", { title: `${d}：答對 ${v.ok}／${v.n} 題` },
-      el("div.b", { style: { height: `${v.n ? Math.max(8, (100 * v.n) / most) : 0}%` } }, el("div.bok", { style: { height: v.n ? `${(100 * v.ok) / v.n}%` : "0" } })),
-      el("span", {}, i % 5 === 4 || i === 29 ? d.slice(8) : "")))),
-    );
-}
+// 錯題本、成長日記都在個人資料面板裡（scenes/profile.js）
+export const reviewPanel = (game) => profilePanel(game, "review");
+export const growthPanel = (game) => profilePanel(game, "diary");

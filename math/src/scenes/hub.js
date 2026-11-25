@@ -5,7 +5,8 @@
 
 import { el, show } from "../ui.js";
 import { sfx } from "../audio.js";
-import { ATTRS, RANKS, GRADES } from "../data.js";
+import { ATTRS, RANKS, GRADES, MAX_LV, expToNext } from "../data.js";
+import { profilePanel } from "./profile.js";
 import { rankExamReady, addExp } from "../growth.js";
 import { deanFrame } from "../../fx/dean.js";
 import { pageFrame } from "../../fx/pickups.js";
@@ -77,7 +78,14 @@ export function hubScene(game, { from } = {}) {
   const lawn = el("div.hublawn", { style: { backgroundImage: `url(${A("lawn.jpg")})` } });
   const label = el("div.hublabel", { hidden: true });
   const hud = el("div.whud", {},
-    el("div.wprof", {}, el("span", {}, rank.name), el("span", {}, `Lv ${s.lv}`), el("span", { style: { color: ATTRS[s.attr]?.color } }, ATTRS[s.attr]?.name ?? ""), el("span.coins", {}, `${s.coins} 晶幣`)),
+    // 個人卡（2026-11-26 使用者：看不清楚 → 字放大、底色實一點；點了打開個人資料，錯題本也在裡面）
+    el("button.wprof", { "aria-label": "個人資料", onclick: () => { if (busy) return; busy = true; sfx("click"); profilePanel(game, "me", (left) => { if (left) leave(); busy = false; }); } },
+      el("span.wpbadge", { style: { "--c": ATTRS[s.attr]?.color ?? "#ccc" } }, ATTRS[s.attr]?.name ?? "？"),
+      el("span.wpmain", {},
+        el("span.wpname", {}, rank.name, el("b", {}, ` Lv${s.lv}`)),
+        el("span.wpexp", {}, el("i", { style: { width: s.lv >= MAX_LV ? "100%" : `${(100 * s.exp) / expToNext(s.lv)}%` } }))),
+      el("span.wpcoin", {}, `${s.coins}`, el("small", {}, "晶幣")),
+      Object.keys(s.review).length ? el("span.wpdot", {}, `${Object.keys(s.review).length}`) : null),
     el("button.btn.small.menuBtn", { onclick: () => menu() }, "選單"));
   world.append(floor, lawn);
   pan.append(world);
@@ -203,7 +211,7 @@ export function hubScene(game, { from } = {}) {
     const fn = !s.attr ? (t.id === "well" || t.id === "dean" ? ceremony : remind) : EVENTS[t.id] ?? PREFIX[t.id.split("_")[0]];
     try { await (fn ?? (() => {}))(t); } finally { busy = false; label.hidden = true; refreshCoins(); }
   }
-  function refreshCoins() { const c = hud.querySelector(".coins"); if (c) c.textContent = `${s.coins} 晶幣`; }
+  function refreshCoins() { const c = hud.querySelector(".wpcoin"); if (c) c.firstChild.textContent = `${s.coins}`; }
   const say = (lines, choices) => talk(root, lines, choices);
   const D = (text) => ({ who: "dean", name: "圓周院長", text });
   const pick = (a) => a[Math.floor(Math.random() * a.length)];
