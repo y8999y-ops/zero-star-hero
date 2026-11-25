@@ -9,7 +9,7 @@ import { writeSave } from "../save.js";
 import { sfx } from "../audio.js";
 import { TIMER_EASE } from "../settings.js";
 import { printable } from "./mathmagic-more.js";
-import { loadAreaArt } from "./areaart.js";
+import { loadAreaArt, loadBattleHD } from "./areaart.js";
 
 const COUNT = 10;     // 一般小關的題數
 
@@ -62,7 +62,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
 
   const shield = boss ? g.boss : 0;
   const total = tut ? TUT_Q.length : exam ? EXAM : boss ? shield + 6 : COUNT;
-  const [qs] = await Promise.all([tut ? tutorialQuestions(s.attr) : buildStage(s, gradeId, boss ? 2 : exam ? 1 : stageIdx, total, boss), loadAreaArt(gradeId)]);
+  const [qs] = await Promise.all([tut ? tutorialQuestions(s.attr) : buildStage(s, gradeId, boss ? 2 : exam ? 1 : stageIdx, total, boss), loadBattleHD(gradeId).then((hd) => hd ?? loadAreaArt(gradeId))]);
 
   // ── 畫面 ──
   const canvas = el("canvas.stage");

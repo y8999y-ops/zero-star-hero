@@ -1,5 +1,5 @@
 // 千頁圖書館・大廳（企劃書 C3、C6）：《萬題之書》和頁頁的家，沒有被墨水污染。
-// 這裡放錯題本、成長日記、萬題之書（看頁頁的樣子和找回的章數）、往上層書庫（二年級區域）。
+// 這裡放錯題本、成長日記、萬題之書（看頁頁的樣子和找回的章數）、往上層書庫（二年級的區域）。
 // 室內地磚還沒有參考圖（待辦 A9），先用暫用的畫面：暖色木頭背景＋書架色塊。
 
 import { el, show } from "../ui.js";
@@ -25,8 +25,7 @@ export function libraryScene(game) {
   tick();
   const review = Object.keys(s.review).length;
   // 圖示用學院島的小物件圖（像素），不用表情符號
-  const dir = s.settings?.mapArt === "raw" ? "island-raw" : "island";
-  const icon = (art) => el("img.libicon", { src: new URL(`../../assets/map/${dir}/${art}.png`, import.meta.url).href, alt: "" });
+  const icon = (art) => el("img.libicon", { src: new URL(`../../assets/hub/p/${art}.png`, import.meta.url).href, alt: "" });
   const spot = (art, name, desc, onclick) => el("button.btn.libspot", { onclick: () => { sfx("click"); onclick(); } }, icon(art), el("span.lname", {}, name), el("span.ldesc", {}, desc));
   const root = el("div.screen.library", {},
     el("div.libtitle", {}, "千頁圖書館・大廳"),
@@ -47,7 +46,7 @@ export function libraryScene(game) {
     ]);
   }
   async function upstairs() {
-    const r = await talk(root, [{ who: "page", name: "頁頁", text: "上層書庫的書架高到看不見頂，書都被墨水弄亂了。二年級的題目在那裡，要去嗎？（區域地圖還在整理，先從關卡選單進去）" }], ["打開學院選單", "先不要"]);
-    if (r === 0) { alive = false; game.go("menu"); }
+    const r = await talk(root, [{ who: "page", name: "頁頁", text: "上層書庫的書架高到看不見頂，書都被墨水弄亂了，還有書頁黏成的怪物在滾來滾去。二年級的題目在那裡，要上去嗎？" }], ["上樓", "先不要"]);
+    if (r === 0) { alive = false; game.go("area", { grade: "g2" }); }
   }
 }

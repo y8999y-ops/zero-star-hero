@@ -7,7 +7,9 @@
 // 每一層都有彩色版和「被墨水弄灰」的版本；另外找出中景裡的金色星星花位置，給閃光用。
 // 版面數字見 art/2-草稿/<區域>/通過-日期/接進遊戲.md。還沒有正式圖的區域回傳 null（用暫用色塊）。
 
-const AREA_OF = { g1: "garden" };          // 之後每做完一區就加上去：g2 library、g34 clock、g56 greenhouse、jh vault
+const AREA_OF = { g1: "garden" };          // 像素版只剩花園（開場動畫、標題用）；戰鬥背景改用 AI 原圖（下面 loadBattleHD）
+// 室內的區域（圖書館、鐘塔）：最遠層是整間房間，不拆天空和雲
+const INDOOR = new Set(["library", "clock"]);
 const GROUND_TOP = 132;                     // ground 上緣（角色腳下 y＝144 在踏腳石那排）
 const MID_SINK = 6;                         // mid 底部壓進 ground 上緣幾格
 const MID_DIM = 0.9, MID_SAT = 0.85;        // 中景稍微調暗、降一點彩度
@@ -140,8 +142,9 @@ export async function loadAreaArt(gradeId) {
     f.drawImage(ground, gx, GROUND_TOP);
     for (let y = GROUND_TOP + ground.height; y < H; y += 16) f.drawImage(ground, 0, ground.height - 16, ground.width, 16, gx, y, ground.width, 16);
 
-    const parts = splitBack(back);
+    const parts = INDOOR.has(area) ? { base: (() => { const c = canvas(); c.getContext("2d").drawImage(back, 0, 0); return c; })(), hi: canvas(), lo: canvas(), isl: canvas() } : splitBack(back);
     cache[area] = {
+      kind: area,
       base: both(parts.base), cloudsHi: both(parts.hi), cloudsLo: both(parts.lo), island: both(parts.isl), front: both(front),
       stars: findStars(front),
     };
@@ -154,3 +157,21 @@ export async function loadAreaArt(gradeId) {
 
 /** 已經載入過的（給 Stage 同步取用） */
 export const areaArtNow = (gradeId) => cache[AREA_OF[gradeId]] ?? null;
+
+// ── AI 原圖版的戰鬥背景（使用者 2026-11-25：背景改用 AI 原圖，不重畫成像素）──
+// 圖在 assets/battle-hd/<區域>/（art/2-草稿/hd/make_hd.py 做的）：back.jpg 1152×648、mid／ground 是同一個 3 倍比例，
+// 版面數字跟像素版一樣（ground 上緣 132、mid 底部壓進 ground 6 格，都水平置中）。用 DOM 圖片疊在戰鬥畫布後面，畫布只畫角色和特效。
+const HD_AREA = { g1: "garden", g2: "library", g34: "clock" };
+const hdCache = {};
+export async function loadBattleHD(gradeId) {
+  const area = HD_AREA[gradeId];
+  if (!area) return null;
+  if (hdCache[area] !== undefined) return hdCache[area];
+  try {
+    const base = new URL(`../../assets/battle-hd/${area}/`, import.meta.url);
+    const [back, mid, ground] = await Promise.all([["back", "jpg"], ["mid", "png"], ["ground", "png"]].map(([n, e]) => loadImg(new URL(`${n}.${e}`, base).href)));
+    hdCache[area] = { hd: true, kind: area, back, mid, ground, stars: [], groundTop: GROUND_TOP, midSink: MID_SINK, k: 3 };
+  } catch (e) { console.warn("戰鬥背景（原圖）載入失敗", e); hdCache[area] = null; }
+  return hdCache[area];
+}
+export const battleHDNow = (gradeId) => hdCache[HD_AREA[gradeId]] ?? null;

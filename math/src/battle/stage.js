@@ -10,18 +10,24 @@ import { inkDropFrame } from "../../fx/ink-drop.js";
 import { pagepageFrame } from "../../fx/pagepage.js";
 import { crookedFlowerFrame } from "../../fx/crooked-flower.js";
 import { inkKingBabyFrame } from "../../fx/ink-king-baby.js";
+import { scatterPageFrame } from "../../fx/scatter-page.js";
+import { doodleBatFrame } from "../../fx/doodle-bat.js";
+import { chaosClockFrame } from "../../fx/chaos-clock.js";
+import { inkKingPageFrame, inkKingGearFrame } from "../../fx/ink-king-forms.js";
 
 // 程式畫的角色、怪物：每個姿勢一個循環多長（秒），每秒畫 12 格，畫過就快取
 const SPRITES = {
   ink: { fn: inkDropFrame, loop: 1.2 }, page: { fn: pagepageFrame, loop: 1.0 },
   flower: { fn: crookedFlowerFrame, loop: 1.2 }, king: { fn: inkKingBabyFrame, loop: 2.0 },
+  pages: { fn: scatterPageFrame, loop: 1.2 }, bat: { fn: doodleBatFrame, loop: 1.0 }, tick: { fn: chaosClockFrame, loop: 1.2 },
+  kingPage: { fn: inkKingPageFrame, loop: 2.0 }, kingGear: { fn: inkKingGearFrame, loop: 2.0 },
 };
 // 每個區域會出現的雜兵、王（還沒畫的區域先用墨水滴）
-const MINIONS = { g1: ["ink", "flower"] };
-const BOSS = { g1: "king" };
-const HEAD = { ink: 42, flower: 50, king: 96, slime: 110 };   // 頭頂離腳底幾格（題目、答案數字掛在這裡）
+const MINIONS = { g1: ["ink", "flower"], g2: ["pages", "bat"], g34: ["tick", "bat"] };
+const BOSS = { g1: "king", g2: "kingPage", g34: "kingGear" };
+const HEAD = { ink: 42, flower: 50, king: 96, slime: 110, pages: 34, bat: 48, tick: 44, kingPage: 104, kingGear: 102 };   // 頭頂離腳底幾格（題目、答案數字掛在這裡）
 import { MathMagic, PopNumber } from "./mathmagic.js";
-import { areaArtNow } from "./areaart.js";
+import { areaArtNow, battleHDNow } from "./areaart.js";
 import { Ambience } from "./ambience.js";
 
 // 高度固定 216；寬度跟著螢幕比例（手機比較寬、平板比較方），背景圖 384 寬放在中間，兩邊不夠就鏡射補上
@@ -70,7 +76,10 @@ export class Stage {
     this.t = 0; this.shake = 0; this.hurtT = 0; this.castT = -1;
     this.gray = 1;           // 1＝被墨水弄灰，0＝恢復色彩
     this.dim = 0;            // 施法時畫面暗下來，讓魔法的光更明顯
-    this.art = areaArtNow(gradeId);          // 有正式背景圖就用（要先 await loadAreaArt）
+    // 背景：有 AI 原圖版就用原圖（DOM 圖片疊在畫布後面）；沒有的話用像素版；都沒有用暫用色塊
+    const hd = battleHDNow(gradeId);
+    this.art = hd ?? areaArtNow(gradeId);
+    if (hd) this.mountHD(hd);
     this.bg = this.art ? null : this.paintBackground();
     this.ambience = this.art ? new Ambience(this.art) : null;   // 場景的動態（雲、浮空島、花瓣、蝴蝶…）
     this.grayTo = null;
@@ -97,6 +106,31 @@ export class Stage {
     x.fillStyle = this.g.deep; x.fillRect(0, GROUND, W, 2);
     for (let i = 0; i < W; i += 7) x.fillRect(i + ((i * 13) % 5), GROUND + 6 + ((i * 7) % 20), 2, 1);
     return c;
+  }
+
+  /** 原圖背景：在畫布後面放 back／mid／ground 三張圖，版面照像素版的數字（1 格＝畫面高 / 216） */
+  mountHD(A) {
+    const host = this.cv.parentElement;
+    const box = document.createElement("div"); box.className = "bghd";
+    const back = A.back.cloneNode(); back.className = "b";
+    const art = document.createElement("div"); art.className = "art";
+    const mid = A.mid.cloneNode(); mid.className = "m";
+    const gr = document.createElement("div"); gr.className = "g"; gr.style.backgroundImage = `url(${A.ground.src})`;
+    const fill = document.createElement("div"); fill.className = "gf"; fill.style.backgroundImage = `url(${A.ground.src})`;
+    const tint = document.createElement("div"); tint.className = "tint";
+    art.append(mid); box.append(back, art, gr, fill, tint);
+    host.insertBefore(box, this.cv);
+    const layout = () => {
+      const h = box.clientHeight || 1, w = box.clientWidth, u = h / 216, k = A.k;
+      const mw = (A.mid.naturalWidth / k) * u, mh = (A.mid.naturalHeight / k) * u, gw = (A.ground.naturalWidth / k) * u, gh = (A.ground.naturalHeight / k) * u;
+      Object.assign(mid.style, { width: `${mw}px`, height: `${mh}px`, left: `${(w - mw) / 2}px`, top: `${(A.groundTop + A.midSink) * u - mh}px` });
+      Object.assign(gr.style, { top: `${A.groundTop * u}px`, height: `${gh}px`, backgroundSize: `${gw}px ${gh}px`, backgroundPosition: `${(w - gw) / 2}px 0` });
+      Object.assign(fill.style, { top: `${A.groundTop * u + gh}px`, backgroundSize: `${gw}px ${gh}px`, backgroundPosition: `${(w - gw) / 2}px ${-gh * 0.6}px` });
+      this.hdU = u;
+    };
+    layout();
+    this.hdBox = box; this.hdTint = tint; this.hdGray = -1;
+    this.hdResize = new ResizeObserver(layout); this.hdResize.observe(box);
   }
 
   spawn(boss = false, force = null) {   // force：指定哪一種（教學固定是墨水滴）
@@ -183,7 +217,7 @@ export class Stage {
       if (m.state === "bump") {
         const u = Math.min(1, m.t / 0.5);
         m.x = m.home ??= m.x;
-        m.x = m.home - (m.home - (PX + 26 + (m.kind === "king" ? 34 : 0))) * Math.sin(u * Math.PI);
+        m.x = m.home - (m.home - (PX + 26 + (m.kind.startsWith("king") ? 34 : 0))) * Math.sin(u * Math.PI);
         if (u >= 1) { m.state = "walk"; m.home = undefined; }
       }
       if (m.state === "die") { m.alpha = Math.max(0, 1 - m.t / 0.25); if (m.t > 0.3) this.monster = null; }
@@ -234,7 +268,18 @@ export class Stage {
     const sk = this.opt.shake ? this.shake : 0;
     const sx = sk ? Math.round((Math.random() - 0.5) * sk) : 0;
     const sy = sk ? Math.round((Math.random() - 0.5) * sk) : 0;
-    if (this.ambience) {
+    if (this.art?.hd) {
+      // 原圖背景在畫布後面：畫布清空成透明；灰色用 CSS 濾鏡、晃動用位移
+      ctx.clearRect(0, 0, W, H);
+      if (Math.abs(this.hdGray - this.gray) > 0.004) {
+        this.hdGray = this.gray;
+        this.hdBox.style.filter = this.gray > 0.004 ? `grayscale(${0.85 * this.gray}) brightness(${1 - 0.22 * this.gray})` : "";
+        this.hdTint.style.opacity = this.gray;
+      }
+      const u = this.hdU ?? 1;
+      this.hdBox.style.transform = sx || sy ? `translate(${sx * u}px, ${sy * u}px)` : "";
+      this.ambience.draw(ctx, sx, sy, this.gray);
+    } else if (this.ambience) {
       // 正式背景＋動態；每一層都是彩色版上疊灰色版，gray 從 1 漸變到 0 就是「恢復色彩」
       const bx = Math.round((W - ART_W) / 2);
       this.ambience.draw(ctx, sx + bx, sy, this.gray);
@@ -253,7 +298,7 @@ export class Stage {
     // 角色腳下的影子：讓角色從背景裡浮出來（尤其是跟草地同色系的）
     const shadow = (x, rx) => { ctx.fillStyle = "rgba(20,14,40,0.32)"; ctx.fillRect(Math.round(x - rx) + sx, GROUND - 1 + sy, rx * 2, 2); ctx.fillRect(Math.round(x - rx + 2) + sx, GROUND + 1 + sy, rx * 2 - 4, 1); };
     if (this.hero) shadow(PX, 8);
-    if (m && m.alpha > 0 && m.kind !== "king") shadow(m.x, m.kind === "slime" ? 20 : 9);
+    if (m && m.alpha > 0 && !m.kind.startsWith("king")) shadow(m.x, m.kind === "slime" ? 20 : 9);
     if (m && m.kind === "slime" && m.alpha > 0) {
       clearFrame(this.bossFrame);
       m.inst.options.x = 56; m.inst.options.y = 72; m.inst.options.flip = true;

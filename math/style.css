@@ -321,3 +321,50 @@ img.libicon { height: 40px; image-rendering: pixelated; }
 canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 .mgsay { font-size: 13px; color: var(--gold); text-align: center; }
 .title .tag, .title .foot { text-shadow: 0 2px 0 #000, 2px 0 0 #000, -2px 0 0 #000, 0 -2px 0 #000; color: #f1ecff; }
+
+/* 戰鬥背景（AI 原圖版）：疊在戰鬥畫布後面，版面由 stage.js 依畫面高度算 */
+.bghd { position: absolute; inset: 0; overflow: hidden; background: #2a2340; }
+.bghd .b { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.bghd .art { position: absolute; inset: 0; }
+.bghd .m { position: absolute; filter: brightness(0.9) saturate(0.85); }
+.bghd .g { position: absolute; left: 0; right: 0; background-repeat: repeat-x; }
+.bghd .gf { position: absolute; left: 0; right: 0; bottom: 0; background-repeat: repeat; }
+.bghd .tint { position: absolute; inset: 0; background: rgba(70, 50, 130, 0.28); mix-blend-mode: multiply; opacity: 0; pointer-events: none; }
+.view canvas.stage { position: relative; }
+
+/* 學院全景（2026-11-25 起取代大地圖）：左右滑的橫幅 */
+#app:has(.hubscr, .areascr) { padding: 0; }
+.screen.hubscr { padding: 0; position: relative; height: 100%; overflow: hidden; user-select: none; -webkit-user-select: none; background: #9fc4e8; }
+.hubsky { position: absolute; inset: 0; background-size: auto 100%; background-repeat: repeat-x; }
+.hubpan { position: absolute; inset: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -webkit-overflow-scrolling: touch; touch-action: pan-x; }
+.hubpan::-webkit-scrollbar { display: none; }
+.hubworld { position: relative; height: 100%; }
+.hubhedge, .hubroad { position: absolute; left: 0; right: 0; background-repeat: repeat-x; pointer-events: none; }
+.hubroad { bottom: 0; background-color: #8b7d6a; z-index: 2; }
+.hubworld > * { position: absolute; }
+.hubb, .hubp { background: none; border: 0; padding: 0; margin: 0; cursor: pointer; min-height: 0; border-image: none !important; box-shadow: none !important; }
+.hubb img { width: 100%; height: 100%; display: block; filter: drop-shadow(0 4px 3px rgba(20, 14, 40, .35)); transition: filter .15s, transform .15s; }
+.hubb:active img, .hubb:hover img { filter: drop-shadow(0 0 6px #fff3b0) brightness(1.06); }
+.hubname { position: absolute; left: 50%; bottom: -4px; transform: translateX(-50%); white-space: nowrap; font-size: 12px; padding: 1px 8px; color: #fff3c4; background: rgba(23, 18, 42, .78); border-radius: 8px; pointer-events: none; text-shadow: 0 1px 0 #000; }
+.hubd { pointer-events: none; filter: drop-shadow(0 3px 2px rgba(20, 14, 40, .3)); }
+.hubd.hubtap { pointer-events: auto; cursor: pointer; }
+.hubp canvas, canvas.hubs { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+.hublabel { position: absolute; left: 50%; top: 44px; transform: translateX(-50%); background: rgba(23,18,42,.82); padding: 3px 12px; border-radius: 10px; font-size: 13px; color: var(--gold); pointer-events: none; z-index: 60; }
+.hubscr .whud { z-index: 50; }
+
+/* 區域畫面：那一區的戰鬥背景原圖＋排成一排的墨水怪 */
+.screen.areascr { padding: 0; position: relative; height: 100%; overflow: hidden; user-select: none; }
+.areabg { z-index: 0; }
+.areastage { position: absolute; inset: 0; z-index: 2; }
+.areaunit { position: absolute; background: none; border: 0; padding: 0; min-height: 0; border-image: none !important; box-shadow: none !important; cursor: pointer; }
+.areaunit canvas { display: block; image-rendering: pixelated; }
+.areaunit.locked canvas { opacity: .45; filter: grayscale(.6); }
+.areaunit.again canvas { opacity: .55; }
+.areaunit.done { pointer-events: none; }
+.areatag { position: absolute; left: 50%; top: -18px; transform: translateX(-50%); white-space: nowrap; font-size: 12px; padding: 1px 8px; color: #fff3c4; background: rgba(23,18,42,.8); border-radius: 8px; }
+.areaunit.done .areatag { position: static; transform: none; display: inline-block; color: var(--gold); }
+.areaunit.gate img { display: block; filter: drop-shadow(0 0 8px rgba(70, 40, 140, .8)); }
+.areatitle { position: absolute; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 5; display: flex; gap: 10px; align-items: center; font-weight: 700; background: rgba(23,18,42,.8); padding: 4px 14px; border-radius: 10px; }
+.areatitle .agrade { color: var(--gold); font-size: 13px; }
+.areatitle .clear { color: #9ff0a8; font-size: 12px; }
+.areaback { position: absolute; top: max(8px, env(safe-area-inset-top)); left: max(8px, env(safe-area-inset-left)); z-index: 5; }

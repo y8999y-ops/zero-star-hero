@@ -16,7 +16,6 @@ export const DEFAULT_SETTINGS = {
   lefty: false,             // 左手模式：答案按鈕左右鏡像
   tapMove: true,            // 點地移動（大地圖做好後使用）
   // 畫面
-  mapArt: "pixel",          // 大地圖美術：pixel 像素（預設，2026-11-25 決定全部像素）、raw 原圖（只是比較用）
   shake: true,              // 畫面晃動
   flash: "full",            // full 閃光、soft 減弱
 };

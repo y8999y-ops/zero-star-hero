@@ -32,7 +32,7 @@ export async function dormScene(game) {
   c.fillStyle = "#3b4a9a"; c.fillRect(18, 96, 70, 30); c.fillStyle = "#f2c24a"; c.fillRect(18, 96, 70, 2); c.fillRect(18, 124, 70, 2);   // 床
   c.fillStyle = "#fffaf0"; c.fillRect(20, 98, 18, 12);
   // 家具
-  const dir = s.settings?.mapArt === "raw" ? "island-raw" : "island";
+  const dir = "island";
   const mine = SHOP.furniture.filter((f) => (s.owned ?? []).includes(f.id));
   await Promise.all(mine.map((f, i) => new Promise((res) => {
     const im = new Image(); im.onload = () => { const [x, y] = SLOTS[i % SLOTS.length]; c.drawImage(im, Math.round(x - im.width / 2), y - im.height); res(); }; im.onerror = res;

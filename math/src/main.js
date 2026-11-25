@@ -8,7 +8,8 @@ import { settingsScene } from "./scenes/settings.js";
 import { titleScene, lookScene, introScene, afterResonance, afterTutorial } from "./scenes/intro.js";
 import { resonanceScene } from "./scenes/resonance.js";
 import { mapScene } from "./scenes/map.js";
-import { worldScene } from "./scenes/world.js";
+import { hubScene } from "./scenes/hub.js";
+import { areaScene } from "./scenes/area.js";
 import { libraryScene } from "./scenes/library.js";
 import { openingScene } from "./scenes/opening.js";
 import { minigameScene } from "./scenes/minigame.js";
@@ -23,7 +24,7 @@ const game = {
   go(scene, arg = {}) {
     const s = this.save;
     // 還沒選外觀或屬性就先補完入學流程
-    // 入學流程：開場動畫（選外觀）→ 在大地圖上走到共鳴之井（還沒有屬性也能走）→ 共鳴儀式 → 第一場戰鬥
+    // 入學流程：開場動畫（選外觀）→ 學院全景，點共鳴之井（還沒有屬性也能點）→ 共鳴儀式 → 第一場戰鬥
     if (scene === "map" && !s.look) scene = "opening";
     if (scene === "map" && s.attr && !s.seenIntro) scene = "afterResonance";
     switch (scene) {
@@ -33,7 +34,12 @@ const game = {
       case "settings": return settingsScene(this, arg);
       case "resonance": return resonanceScene(this, arg);
       case "afterResonance": return afterResonance(this);
-      case "map": return worldScene(this, arg);          // 大地圖（學院島）
+      case "map": {                                       // 學院全景（2026-11-25 起沒有大地圖，改成點選）；從區域進去打的戰鬥打完回到區域
+        const back = s.returnTo; s.returnTo = null;
+        if (back?.scene === "area" && !arg.from) return areaScene(this, { grade: back.grade });
+        return hubScene(this, arg);
+      }
+      case "area": return areaScene(this, arg);           // 受污染的區域（三群墨水怪＋王）
       case "opening": return openingScene(this, arg);     // 開場動畫＋選外觀
       case "minigame": return minigameScene(this, arg);   // 學系小遊戲
       case "shop": return shopScene(this, arg);           // 學院商店
