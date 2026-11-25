@@ -27,7 +27,7 @@ export function freshSave() {
 export function loadSave() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) { const d = JSON.parse(raw); return { ...freshSave(), ...d, settings: withDefaults(d.settings) }; }
+    if (raw) { const d = JSON.parse(raw), f = freshSave(); return { ...f, ...d, branches: { ...f.branches, ...(d.branches ?? {}) }, settings: withDefaults(d.settings) }; }   // 新加的魔法種類補上
   } catch {}
   return freshSave();
 }

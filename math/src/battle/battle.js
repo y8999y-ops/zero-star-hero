@@ -3,9 +3,9 @@
 import { daily } from "../world/island-life.js";
 import { el, show, floatText, wait } from "../ui.js";
 import { Stage, fitWidth } from "./stage.js";
-import { buildStage, withChoices } from "../questions/pool.js";
-import { ACADEMIES, buildPractice } from "../practice.js";
-import { BRANCHES } from "../data.js";
+import { withChoices } from "../questions/pool.js";
+import { ACADEMIES, MODES, buildPractice, buildArea } from "../practice.js";
+import { UNIT_NAME } from "../data.js";
 import { ATTRS, GRADES, spellTier, maxHp, abilityBonus, crystalLevel, EXP, RANKS } from "../data.js";
 import { recordAnswer, addExp } from "../growth.js";
 import { writeSave } from "../save.js";
@@ -30,7 +30,7 @@ function tutorialQuestions(attr) {
   return TUT_Q.map(([a, b, op], i) => {
     const r = op === "+" ? a + b : a - b;
     const q = withChoices({
-      kind: "calc", grade: "g1", branch: "addsub", type: op === "+" ? "add10" : "sub10", typeKey: op === "+" ? "add10" : "sub10",
+      kind: "calc", grade: "g1", branch: "big", type: op === "+" ? "add10" : "sub10", typeKey: op === "+" ? "add10" : "sub10",
       text: `${a} ${op === "+" ? "＋" : "－"} ${b} ＝ ？`, answer: `${r}`, wrong: [`${r + 1}`, `${Math.max(0, r - 1)}`, `${r + 2}`],
       explain: `${a}${op === "+" ? "＋" : "－"}${b}＝${r}`, math: { op: op === "+" ? "+" : "-", a, b },
     }, rnd);
@@ -66,7 +66,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
 
   const shield = boss ? g.boss : 0;
   const total = tut ? TUT_Q.length : exam ? EXAM : boss ? shield + 6 : prac ? 8 : COUNT;
-  const [qs] = await Promise.all([tut ? tutorialQuestions(s.attr) : prac ? buildPractice(s, practice.branch, practice.level, total) : buildStage(s, gradeId, boss ? 2 : exam ? 1 : stageIdx, total, boss),
+  const [qs] = await Promise.all([tut ? tutorialQuestions(s.attr) : prac ? buildPractice(s, practice.branch, practice.level, total) : buildArea(s, gradeId, stageIdx, total, boss, exam),
     loadBattleHD(gradeId, AC?.area).then((hd) => hd ?? loadAreaArt(gradeId))]);
 
   // ── 畫面 ──
@@ -120,7 +120,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   drawAbility();
 
   if (boss) sfx("boss");
-  say(tut ? "" : prac ? `${AC.name}・${BRANCHES[practice.branch]}練習開始！把墨水怪身上的題目算完。` : exam ? "升階考核開始！答對 7 題就通過，不限時也沒關係，慢慢來。" : boss ? "墨水大王來了！每答對一題，就能打掉一格護盾。" : "墨水怪出現了！把它身上的題目算完，就能淨化它。");
+  say(tut ? "" : prac ? `${AC.name}・${UNIT_NAME[practice.branch]}（${MODES[practice.level].name}）練習開始！` : exam ? "升階考核開始！答對 7 題就通過，不限時也沒關係，慢慢來。" : boss ? "墨水大王來了！每答對一題，就能打掉一格護盾。" : "墨水怪出現了！把它身上的題目算完，就能淨化它。");
 
   let qi = 0;
   for (; qi < qs.length && hp > 0; qi++) {

@@ -1,124 +1,115 @@
-// 學院練習（企劃書 v1.1，2026-11-25 使用者：導師、同學的對話取消；每個學院代表一項數學練習，進去練數學和打怪；
-// 遇到不會的題目可以去圖書館學）。
-//   ACADEMIES：五座學院，各教兩種數學魔法（照學系的個性分：火＝速算、水＝換個方式看同一個數、冰＝一步一步、森＝看得見的、雷＝找規律）
-//   LEVELS：每種魔法三個等級（出哪些題型、用哪些學年的題庫、限時看哪個學年）
-//   buildPractice()：一場練習的題目
-//   LESSONS：圖書館「魔法教室」每種魔法的重點（給不會的時候學）
+// 出題的總表（企劃書 v1.2，2026-11-25 使用者：題目聚焦中年級的不同單元，要有簡單和困難模式）。
+//   ACADEMIES：五座學院，各教中年級的兩個單元（照學系的個性分：火＝算得快、水＝換個樣子看、冰＝一步一步、森＝畫出來看、雷＝找規律）
+//   MODES：每個單元兩種模式——簡單（三年級程度、不限時）、困難（四年級程度、限時看設定）
+//   buildPractice()：學院練習一場的題目
+//   AREA_UNITS／buildArea()：主線五區（三上、三下、四上、四下、總複習）每一關出哪些單元
+//   LESSONS：圖書館「魔法教室」每個單元的重點（不會的時候學）
+// 題目來源：src/questions/mid.js 的產生器（每個單元簡單／困難）＋題庫（以三～四年級題庫為主）裡同單元的應用題。
 
-import { generate } from "./questions/gen.js";
+import { MID, bankBranch } from "./questions/mid.js";
 import { loadBank, seeded, withChoices } from "./questions/pool.js";
 import { numbersOf } from "./battle/mathmagic-more.js";
 
 export const ACADEMIES = {
-  fire: { name: "赤焰塔", school: "赤焰系", branches: ["addsub", "muldiv"], monster: "ink", area: "clock", art: "fire.png", desc: "紅磚高塔，屋頂的火盆從來沒熄過。這裡練的是「算得又快又準」。" },
+  fire: { name: "赤焰塔", school: "赤焰系", branches: ["big", "mul"], monster: "ink", area: "clock", art: "fire.png", desc: "紅磚高塔，屋頂的火盆從來沒熄過。這裡練的是「算得又快又準」：大數的加減、乘法。" },
   water: { name: "蒼流館", school: "蒼流系", branches: ["frac", "dec"], monster: "flower", area: "garden", art: "water.png", desc: "水道繞著館流。同一個數可以寫成分數、也可以寫成小數——換個樣子看看。" },
-  ice: { name: "白霜堂", school: "白霜系", branches: ["eq", "signed"], monster: "tick", area: "library", art: "ice.png", desc: "屋簷掛著冰晶。一步一步、穩穩地算，最後再檢查。" },
-  forest: { name: "翠森苑", school: "翠森系", branches: ["shape", "time"], monster: "pages", area: "garden", art: "forest.png", desc: "蓋在大樹裡的學院。把圖形和時間畫出來看，就看懂了。" },
-  thunder: { name: "紫雷閣", school: "紫雷系", branches: ["ratio", "seq"], monster: "bat", area: "clock", art: "thunder.png", desc: "避雷針上劈啪閃著電光。數字排在一起，一定藏著規律。" },
+  ice: { name: "白霜堂", school: "白霜系", branches: ["div", "mix"], monster: "tick", area: "library", art: "ice.png", desc: "屋簷掛著冰晶。除法和併式都要一步一步、穩穩地算，最後再檢查。" },
+  forest: { name: "翠森苑", school: "翠森系", branches: ["shape", "measure"], monster: "pages", area: "garden", art: "forest.png", desc: "蓋在大樹裡的學院。圖形、時間和單位，畫出來看就懂了。" },
+  thunder: { name: "紫雷閣", school: "紫雷系", branches: ["round", "seq"], monster: "bat", area: "clock", art: "thunder.png", desc: "避雷針上劈啪閃著電光。估算要抓住重點，數字排在一起一定藏著規律。" },
 };
 export const ACADEMY_OF = Object.fromEntries(Object.entries(ACADEMIES).flatMap(([k, a]) => a.branches.map((b) => [b, k])));
 
-// 每種魔法的三個等級：grade＝限時、難度看哪個學年；types＝程式出的計算題（[題型, 難度]）；bank＝用哪些學年題庫裡這種魔法的題目
-export const LEVELS = {
-  addsub: [
-    { name: "20 以內", grade: "g1", types: [["add20", 0], ["sub20", 1], ["make10", 1]], bank: ["g1"] },
-    { name: "100 以內", grade: "g2", types: [["add100", 1], ["sub100", 1]], bank: ["g2"] },
-    { name: "進位、借位", grade: "g2", types: [["add100", 2], ["sub100", 2]], bank: ["g2", "g34"] },
-  ],
-  muldiv: [
-    { name: "九九乘法", grade: "g34", types: [["times", 0], ["divide", 0]], bank: [] },
-    { name: "乘除互換", grade: "g34", types: [["missingFactor", 1], ["divide", 1], ["mul2x1", 1]], bank: ["g34"] },
-    { name: "先乘除後加減", grade: "g56", types: [["mixedOps", 2], ["mul2x1", 2]], bank: ["g56", "jh"] },
-  ],
-  frac: [
-    { name: "同分母", grade: "g56", types: [["fracAdd", 0]], bank: [] },
-    { name: "通分", grade: "g56", types: [["fracAdd", 1]], bank: ["g56"] },
-    { name: "分數應用", grade: "g56", types: [["fracAdd", 2]], bank: ["g56", "jh"] },
-  ],
-  dec: [
-    { name: "小數加法", grade: "g56", types: [["decAdd", 0]], bank: [] },
-    { name: "小數點對齊", grade: "g56", types: [["decAdd", 1]], bank: ["g56"] },
-    { name: "小數應用", grade: "g56", types: [["decAdd", 2]], bank: ["g34", "g56", "jh"] },
-  ],
-  eq: [
-    { name: "一步解 x", grade: "jh", types: [["linearEq", 0]], bank: [] },
-    { name: "移項", grade: "jh", types: [["linearEq", 1]], bank: ["jh"] },
-    { name: "方程式應用", grade: "jh", types: [["linearEq", 2]], bank: ["g34", "g56", "jh"] },
-  ],
-  signed: [
-    { name: "正負數加法", grade: "jh", types: [["signedAdd", 0]], bank: [] },
-    { name: "正負數乘法", grade: "jh", types: [["signedAdd", 1], ["signedMul", 1]], bank: [] },
-    { name: "混合", grade: "jh", types: [["signedAdd", 2], ["signedMul", 2]], bank: ["g56", "jh"] },
-  ],
-  shape: [
-    { name: "圖形入門", grade: "g34", types: [], bank: ["g34"] },
-    { name: "面積、周長", grade: "g56", types: [], bank: ["g56"] },
-    { name: "圖形挑戰", grade: "g56", types: [], bank: ["g34", "g56", "jh"] },
-  ],
-  time: [
-    { name: "看時鐘", grade: "g2", types: [], bank: ["g2"] },
-    { name: "經過多久", grade: "g34", types: [], bank: ["g34"] },
-    { name: "時間應用", grade: "g56", types: [], bank: ["g56", "jh"] },
-  ],
-  ratio: [
-    { name: "比例式", grade: "g56", types: [["proportion", 0]], bank: [] },
-    { name: "比和比值", grade: "g56", types: [["proportion", 1]], bank: ["g34", "g56"] },
-    { name: "比例應用", grade: "jh", types: [["proportion", 2]], bank: ["jh"] },
-  ],
-  seq: [
-    { name: "每次加一樣多", grade: "g2", types: [["seqNext", 0]], bank: [] },
-    { name: "加減的規律", grade: "g34", types: [["seqNext", 1]], bank: [] },
-    { name: "乘的規律", grade: "g56", types: [["seqNext", 2]], bank: ["jh"] },
-  ],
-};
+// 兩種模式：grade＝限時看哪一區的設定（g1 不限時、g34 有限時）；bank＝用哪些學年題庫裡同單元的應用題
+export const MODES = [
+  { name: "簡單", desc: "三年級程度・不限時", hard: false, grade: "g1", bank: ["g2", "g34"] },
+  { name: "困難", desc: "四年級程度", hard: true, grade: "g34", bank: ["g34"] },
+];
 export const PRACTICE_COUNT = 8;
 
-function bankQ(b, grade) {
+function bankQ(b, grade, branch) {
   return {
-    kind: b.choices ? "choice" : "word", id: b.id, branch: b.branch, typeKey: `bank:${b.branch}`, grade,
+    kind: b.choices ? "choice" : "word", id: b.id, branch, typeKey: `bank:${branch}`, grade,
     text: b.text, explain: b.explain, unit: b.unit ?? "",
     answer: b.choices ? b.choices["ABCD".indexOf(b.answer)] : String(b.answer),
     choices: b.choices ?? null, wrong: [],
     math: b.choices ? { op: "seal" } : { op: "word", nums: numbersOf(b.text), answer: String(b.answer) },
   };
 }
-
-/** 一場練習：count 題。有計算題產生器的魔法，大約 1/4 是題庫的應用題；只有題庫的（圖形、時間）全部用題庫 */
-export async function buildPractice(save, branch, level, count = PRACTICE_COUNT) {
-  const L = LEVELS[branch][level], rnd = seeded(Date.now());
-  const banks = (await Promise.all(L.bank.map(async (g) => (await loadBank(g)).filter((q) => q.branch === branch).map((q) => [q, g])))).flat();
-  const order = banks.map((x) => [rnd(), x]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
-  const nBank = L.types.length ? Math.min(order.length, Math.round(count / 4)) : Math.min(order.length, count);
-  const list = [];
-  for (let i = 0; i < nBank; i++) list.push(bankQ(order[i][0], order[i][1]));
-  while (list.length < count && L.types.length) {
-    const [t, d] = L.types[Math.floor(rnd() * L.types.length)];
-    list.push({ kind: "calc", grade: L.grade, prefix: "", ...generate(t, rnd, d) });
+async function bankOf(branch, grades) {
+  return (await Promise.all(grades.map(async (g) => (await loadBank(g)).filter((q) => bankBranch(q) === branch).map((q) => [q, g])))).flat();
+}
+// 選項不到四個時補上：分數改分子、有千分位逗號的數改最後幾位（pool.js 的補選項只認得一般數字）
+function pad(q) {
+  const ans = String(q.answer), w = new Set((q.wrong ?? []).map(String));
+  const add = (x) => { if (x && x !== ans && !x.startsWith("-") && !x.startsWith("0/")) w.add(x); };
+  const m = ans.match(/^(\d+又)?(\d+)\/(\d+)$/);
+  for (let k = 1; w.size < 3 && k < 6; k++) {
+    if (m) { add(`${m[1] ?? ""}${Number(m[2]) + k}/${m[3]}`); add(`${m[1] ?? ""}${Math.max(1, Number(m[2]) - k)}/${m[3]}`); }
+    else if (/^[\d,]+$/.test(ans)) { const n = Number(ans.replace(/,/g, "")), step = ans.includes(",") ? 10 ** Math.max(1, String(n).length - 2) : 1; add((n + k * step).toLocaleString("en-US")); add((n - k * step).toLocaleString("en-US")); }
+    else break;
   }
-  // 題庫題排進中間（不要第一題就是長長的應用題）
-  const calc = list.filter((q) => q.kind === "calc"), word = list.filter((q) => q.kind !== "calc");
+  q.wrong = [...w];
+  return q;
+}
+const calcQ = (branch, hard, rnd, grade) => pad({ kind: "calc", grade, prefix: "", ...MID[branch](rnd, hard), typeKey: `${branch}-${hard ? "h" : "e"}` });
+
+/** 一串題目：units＝[[單元, 困難嗎], …] 輪流出；大約 1/4 是題庫的應用題（排在中間，不會第一題就是長長的應用題） */
+async function build(save, units, count, bankGrades, grade, prefix = "") {
+  const rnd = seeded(Date.now());
+  const pools = await Promise.all(units.map(([b]) => bankOf(b, bankGrades)));
+  const bankAll = pools.flatMap((p, i) => p.map(([q, g]) => ({ q, g, b: units[i][0] }))).map((x) => [rnd(), x]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
+  const nBank = Math.min(bankAll.length, Math.round(count / 4));
+  const word = bankAll.slice(0, nBank).map(({ q, g, b }) => bankQ(q, g, b));
+  const calc = [];
+  for (let i = 0; calc.length < count - word.length; i++) { const [b, hard] = units[i % units.length]; calc.push({ ...calcQ(b, hard, rnd, grade), prefix }); }
+  // 打散順序（同一個單元不要連續太多）
+  calc.sort(() => rnd() - 0.5);
   const out = [...calc];
   word.forEach((q, i) => out.splice(Math.min(out.length, 1 + Math.floor(((i + 1) * out.length) / (word.length + 1))), 0, q));
   return out.map((q) => { q.fromReview = !!save.review[q.typeKey]; return withChoices(q, rnd); });
 }
 
-// 圖書館・魔法教室：每種魔法 3 個重點＋程式出的例題（用第 1 級）
+/** 學院練習一場：一個單元、一種模式 */
+export function buildPractice(save, branch, mode, count = PRACTICE_COUNT) {
+  const M = MODES[mode];
+  return build(save, [[branch, M.hard]], count, M.bank, M.grade);
+}
+
+// 主線五區：每一區＝一個學期的單元。第 1～3 關各練一個（或兩個）單元，王把這一區全部混在一起、用困難的
+export const AREA_UNITS = {
+  g1: { stages: [[["big", false]], [["mul", false]], [["measure", false]]], boss: ["big", "mul", "measure"] },
+  g2: { stages: [[["div", false]], [["frac", false]], [["dec", false], ["shape", false]]], boss: ["div", "frac", "dec", "shape"] },
+  g34: { stages: [[["big", true]], [["mul", true]], [["div", true], ["round", false]]], boss: ["big", "mul", "div", "round"] },
+  g56: { stages: [[["frac", true]], [["dec", true]], [["shape", true], ["mix", false]]], boss: ["frac", "dec", "shape", "mix"] },
+  jh: { stages: [[["mix", true], ["measure", true]], [["round", true], ["seq", true]], [["frac", true], ["dec", true], ["div", true]]], boss: ["big", "mul", "div", "mix", "frac", "dec", "shape", "measure", "round", "seq"] },
+};
+const AREA_PREFIX = { g1: "花園的小精靈問你：", g2: "書頁上浮出一道咒語：", g34: "鐘面上轉出一道算式：", g56: "水晶果實上刻著：", jh: "解開這道封印算式：" };
+/** 主線一關（stage 0～2）或王（boss）或升階考核（exam：這一區全部單元、簡單困難各半） */
+export function buildArea(save, grade, stage, count, boss = false, exam = false) {
+  const A = AREA_UNITS[grade] ?? AREA_UNITS.g1;
+  const units = boss ? A.boss.map((b) => [b, true]) : exam ? A.boss.flatMap((b) => [[b, false], [b, true]]) : A.stages[Math.min(stage, 2)];
+  const anyHard = units.some((u) => u[1]);
+  return build(save, units, count, anyHard ? ["g34"] : ["g2", "g34"], grade, AREA_PREFIX[grade] ?? "");
+}
+
+// 圖書館・魔法教室：每個單元 3 個重點＋例題（簡單模式出 1 題例題、困難模式出 3 題練習）
 export const LESSONS = {
-  addsub: { points: ["加法是把兩堆合起來，減法是拿走或比較差多少。", "湊 10：8＋5，先把 5 分成 2 和 3，8＋2＝10，再加 3＝13。", "直式要個位對個位；個位不夠減，向十位借 1 當 10。"] },
-  muldiv: { points: ["乘法是「好幾個一樣多」：3×4＝3 個 4 相加。", "除法想乘法：12÷3，問「3 乘多少是 12」，答案是 4。", "一個算式裡有加減也有乘除：先算乘除，再算加減。"] },
-  frac: { points: ["分數＝把一個東西平分：3/4 是分成 4 份、拿 3 份。", "分母一樣，分子直接相加，分母不變。", "分母不一樣，先通分（找一樣的分母），再相加，最後約分。"] },
-  dec: { points: ["小數點右邊第一位是「十分之幾」，第二位是「百分之幾」。", "小數加減：小數點對齊，位數不夠補 0。", "0.5＝5/10＝1/2：小數和分數可以互換。"] },
-  eq: { points: ["x 是一個不知道的數，等號兩邊要一樣重（像天平）。", "移項：從一邊搬到另一邊，加變減、減變加。", "最後兩邊同除以 x 前面的數，算完把答案代回去檢查。"] },
-  signed: { points: ["負數比 0 還小，數線上在 0 的左邊。", "加上一個負數，就是減掉它：5＋（−3）＝5－3。", "乘法：同號得正、異號得負；負負得正。"] },
-  shape: { points: ["周長是繞一圈的長度，面積是裡面有多大（幾個小方格）。", "長方形面積＝長×寬；三角形面積＝底×高÷2。", "看不懂的時候把圖畫出來，標上已知的長度。"] },
-  time: { points: ["1 小時＝60 分鐘，1 分鐘＝60 秒，1 天＝24 小時。", "算經過多久：先算到整點，再加剩下的分鐘。", "下午 3 點＝15 點（24 小時制要加 12）。"] },
-  ratio: { points: ["比是兩個數的關係，3：4 讀作「三比四」。", "比的前項、後項同時乘或除以同一個數，比不變。", "比例式 a：b＝c：x，看前項放大幾倍，後項也放大一樣倍。"] },
-  seq: { points: ["數列是一排有規律的數，先看相鄰兩個差多少。", "每次加（或減）一樣多：照同樣的差往下算。", "差不一樣的話，看看是不是每次乘一樣的數。"] },
+  big: { points: ["位值：從右邊數是個、十、百、千、萬、十萬、百萬、千萬；每往左一位就大 10 倍。", "直式加法：個位對個位，從個位加起，滿 10 往前一位進 1。", "直式減法：從個位減起，不夠減就向前一位借 1 當 10；算完用加法驗算。"] },
+  mul: { points: ["乘法是「好幾個一樣多」：237×4 是 4 個 237。", "拆開乘：237×4＝200×4＋30×4＋7×4＝800＋120＋28＝948。", "乘二位數：46×23＝46×3＋46×20，兩個加起來；乘 20 就是乘 2 再補一個 0。"] },
+  div: { points: ["除法是平分或包裝：47÷5，問「5 個一包，可以包幾包、剩幾個」。", "想乘法：5×9＝45，47－45＝2，所以 47÷5＝9 餘 2。", "餘數一定比除數小；驗算：商×除數＋餘數＝被除數。"] },
+  mix: { points: ["一個算式裡有加減也有乘除：先算乘除，再算加減。", "有括號的先算括號裡面。", "同一級的（只有加減、或只有乘除）從左算到右。"] },
+  frac: { points: ["分數＝把一個整體平分：3/5 是分成 5 份、拿 3 份。", "分母一樣，分子直接加減，分母不變；1＝5/5。", "假分數（分子比分母大）可以寫成帶分數：7/5＝1又2/5。"] },
+  dec: { points: ["0.1 是 1/10，0.01 是 1/100；小數點右邊第一位是十分位、第二位是百分位。", "小數加減：小數點對齊，位數不夠補 0。", "小數×整數：先當整數乘，原來有幾位小數，答案就點幾位。"] },
+  shape: { points: ["周長是繞一圈的長度；長方形周長＝(長＋寬)×2，正方形周長＝邊長×4。", "面積是裡面有幾個 1 平方公分；長方形面積＝長×寬。1 平方公尺＝10,000 平方公分。", "直角是 90 度，平角是 180 度；三角形三個角加起來是 180 度。"] },
+  measure: { points: ["1 公尺＝100 公分，1 公斤＝1000 公克，1 公升＝1000 毫升。", "1 小時＝60 分，1 分＝60 秒；算經過多久，先數到整點再加。", "24 時制：下午幾點就加 12（下午 3 點＝15 點）。"] },
+  round: { points: ["四捨五入：看要取的那一位的「下一位」，5 以上進 1，比 5 小捨去。", "到百位：4,672 看十位的 7，進 1 變 4,700。", "估算：先把數變成概數再算，可以很快知道答案大概多少。"] },
+  seq: { points: ["數量規律：先看相鄰兩個數差多少。", "每次加（或減）一樣多：照同樣的差往下算。", "差不一樣的話，看看是不是每次乘一樣的數，或加的數越來越多。"] },
 };
 
-/** 魔法教室的例題（第 1 級，題庫題或計算題都可以） */
-export async function lessonExamples(branch, n = 3) {
-  const out = [];
-  for (let lv = 0; lv < 3 && out.length < n; lv++) out.push(...(await buildPractice({ review: {} }, branch, lv, n - out.length)));
-  return out.slice(0, n);
+/** 魔法教室的例題：簡單 1 題當例題＋簡單、困難各一題「試試看」＋再一題困難 */
+export async function lessonExamples(branch) {
+  const save = { review: {} };
+  const [e1, e2] = await buildPractice(save, branch, 0, 2);
+  const [h1, h2] = await buildPractice(save, branch, 1, 2);
+  return [e1, e2, h1, h2].filter(Boolean);
 }

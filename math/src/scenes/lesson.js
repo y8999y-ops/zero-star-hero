@@ -6,7 +6,7 @@
 import { daily } from "../world/island-life.js";
 import { el, show } from "../ui.js";
 import { sfx } from "../audio.js";
-import { BRANCHES } from "../data.js";
+import { BRANCHES, UNIT_NAME } from "../data.js";
 import { LESSONS, lessonExamples, ACADEMIES, ACADEMY_OF } from "../practice.js";
 import { writeSave } from "../save.js";
 
@@ -15,22 +15,23 @@ const backTo = (game, back) => (back?.scene === "academy" ? game.go("academy", {
 export function lessonList(game) {
   const s = game.save;
   const weak = new Set(Object.values(s.review ?? {}).map((r) => r.branch).filter(Boolean));
-  const ids = Object.keys(BRANCHES).sort((a, b) => weak.has(b) - weak.has(a));
+  const ids = Object.keys(UNIT_NAME).sort((a, b) => weak.has(b) - weak.has(a));
   show(el("div.screen.lessons", {},
     el("h2", {}, "魔法教室"),
-    el("p.note", {}, "不會的題目來這裡學：每種魔法三個重點、例題和小練習。"),
+    el("p.note", {}, "中年級十個單元。不會的題目來這裡學：三個重點、例題，再試試看（有簡單也有困難）。"),
     el("div.lgrid", {}, ...ids.map((b) => el("button.btn.lbtn", { onclick: () => { sfx("click"); game.go("lesson", { branch: b }); } },
-      el("span.ln", {}, BRANCHES[b]), el("span.la", {}, ACADEMIES[ACADEMY_OF[b]].name), weak.has(b) ? el("span.lweak", {}, "要複習") : null))),
+      el("span.ln", {}, UNIT_NAME[b]), el("span.la", {}, `${BRANCHES[b]}・${ACADEMIES[ACADEMY_OF[b]].name}`), weak.has(b) ? el("span.lweak", {}, "要複習") : null))),
     el("button.btn.gold", { onclick: () => game.go("library") }, "回圖書館大廳")));
 }
 
-export async function lessonScene(game, { branch = "addsub", back = null } = {}) {
+export async function lessonScene(game, { branch = "big", back = null } = {}) {
+  if (!LESSONS[branch]) branch = "big";             // 舊存檔的錯題本可能是舊的分類
   const s = game.save, L = LESSONS[branch];
-  const qs = await lessonExamples(branch, 4);
+  const qs = await lessonExamples(branch);
   const [ex, ...tries] = qs;
   const body = el("div.lbody");
   const root = el("div.screen.lesson", {},
-    el("h2", {}, `魔法教室・${BRANCHES[branch]}`),
+    el("h2", {}, `魔法教室・${UNIT_NAME[branch]}（${BRANCHES[branch]}）`),
     el("ol.lpoints", {}, ...L.points.map((t) => el("li", {}, t))),
     body,
     el("div.row", {},

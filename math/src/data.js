@@ -9,20 +9,26 @@ export const ATTRS = {
 };
 export const ATTR_IDS = Object.keys(ATTRS);
 
-// 學年＝區域（企劃書 6.1）。time：每題秒數，0＝不限時
+// 主線五區（2026-11-25 使用者：題目聚焦中年級）：每一區＝中年級的一個學期，最後一區是總複習。id 沿用舊的（存檔的星星用這個 key）。
+// time：每題秒數，0＝不限時
 export const GRADES = {
-  g1:  { name: "一年級", area: "星芽花園", time: 0,  sky: ["#ffe9c7", "#ffc9d6"], ground: "#6fbf5a", deep: "#3f8a44", boss: 3 },
-  g2:  { name: "二年級", area: "千頁圖書館", time: 0,  sky: ["#f5e2c0", "#d9b98c"], ground: "#9a6a42", deep: "#5e3d27", boss: 4 },
-  g34: { name: "三～四年級", area: "刻度鐘塔", time: 12, sky: ["#c9d9ff", "#8fa6e6"], ground: "#8a8fa8", deep: "#545a75", boss: 4 },
-  g56: { name: "五～六年級", area: "分晶溫室", time: 15, sky: ["#d6fff2", "#8ee0c8"], ground: "#5fae9a", deep: "#2f6e62", boss: 5 },
-  jh:  { name: "國中", area: "地下禁書庫", time: 20, sky: ["#3a2a5e", "#1b1433"], ground: "#4a3a6e", deep: "#251a40", boss: 6 },
+  g1:  { name: "三年級上", area: "星芽花園", time: 0,  sky: ["#ffe9c7", "#ffc9d6"], ground: "#6fbf5a", deep: "#3f8a44", boss: 3 },
+  g2:  { name: "三年級下", area: "千頁圖書館", time: 0,  sky: ["#f5e2c0", "#d9b98c"], ground: "#9a6a42", deep: "#5e3d27", boss: 4 },
+  g34: { name: "四年級上", area: "刻度鐘塔", time: 14, sky: ["#c9d9ff", "#8fa6e6"], ground: "#8a8fa8", deep: "#545a75", boss: 4 },
+  g56: { name: "四年級下", area: "分晶溫室", time: 14, sky: ["#d6fff2", "#8ee0c8"], ground: "#5fae9a", deep: "#2f6e62", boss: 5 },
+  jh:  { name: "中年級總複習", area: "地下禁書庫", time: 16, sky: ["#3a2a5e", "#1b1433"], ground: "#4a3a6e", deep: "#251a40", boss: 6 },
 };
 export const GRADE_IDS = Object.keys(GRADES);
 
 // 魔法分支（企劃書 8.5）
 export const BRANCHES = {
-  addsub: "增減術", muldiv: "倍分術", time: "時律術", shape: "形陣術", frac: "分晶術",
-  dec: "點晶術", ratio: "比率術", signed: "正負術", eq: "解謎術", seq: "數列術",
+  big: "大數術", mul: "倍增術", div: "均分術", mix: "併式術", frac: "分晶術",
+  dec: "點晶術", shape: "形陣術", measure: "時律術", round: "概數術", seq: "數列術",
+};
+// 每種魔法對應的中年級單元（給玩家看）
+export const UNIT_NAME = {
+  big: "大數與加減", mul: "乘法", div: "除法", mix: "四則併式", frac: "分數",
+  dec: "小數", shape: "面積、周長與角度", measure: "時間與單位換算", round: "概數與估算", seq: "數量規律",
 };
 
 // 階級（企劃書 8.4）

@@ -389,7 +389,7 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 .acdesc { margin: 0; font-size: 13px; color: var(--dim); line-height: 1.6; }
 .accard { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; background: rgba(255, 255, 255, .05); border-radius: 8px; }
 .actitle { font-weight: 800; color: var(--gold); }
-.aclvs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.aclvs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
 .aclv { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; font-size: 13px; }
 .aclv .acs { color: var(--gold); font-size: 12px; letter-spacing: 1px; }
 .aclv.locked { opacity: .5; }
@@ -414,3 +414,7 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 .lopt.bad { border-image-source: var(--b-bad) !important; }
 .lfb, .lend { font-size: 13px; color: #ffe9a0; line-height: 1.6; }
 .lsec > .btn { align-self: flex-start; }
+.aclv .acn { font-weight: 800; font-size: 15px; }
+.aclv .acd { font-size: 11px; color: var(--dim); }
+.aclv.hard .acn { color: #ffb38a; }
+.actitle .acmagic { margin-left: 8px; font-size: 12px; color: var(--dim); font-weight: 400; }

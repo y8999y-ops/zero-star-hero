@@ -149,7 +149,8 @@ export function installMore(MathMagic) {
     const X = this.extra;
     const list = nums.slice(0, 5);
     this.text = ""; this.full = printable(answer) ? `=${answer}` : "";
-    const gap = 46, x0 = 144 - ((list.length - 1) * gap) / 2;
+    // 數字越長卡片間隔越大（四位數以上的大數不會疊在一起），但整排不超出畫面
+    const longest = Math.max(...list.map((n) => String(n).length)), gap = Math.min(Math.max(46, longest * 12 + 14), list.length > 1 ? 260 / (list.length - 1) : 46), x0 = 144 - ((list.length - 1) * gap) / 2;
     X.cards = list.map((n, i) => ({ text: n, x: 144 + (i - (list.length - 1) / 2) * 14, y: 236, tx: x0 + i * gap, ty: 82, t0: 0.05 + i * 0.12 }));
     this.at(0.9, () => { X.cards.forEach((c) => { c.tx = 144; c.ty = 86; c.fading = true; }); });
     this.at(1.15, () => { X.cards = []; this.burst(144, 86, 12); this.text = this.full; this.textShown = 0; });
