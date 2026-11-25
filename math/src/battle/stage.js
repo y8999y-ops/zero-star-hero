@@ -1,5 +1,6 @@
 // 戰鬥畫面（canvas）：背景、見習魔數師、墨水怪、魔法特效。只管畫面與動畫，答題規則在 battle.js。
-// 解析度 288×240，用 CSS 放大（image-rendering: pixelated）。
+// 解析度 384×216（橫版 16:9），用 CSS 放大（image-rendering: pixelated）。
+// 下方 22% 會被答案按鈕蓋住，所以角色站在 y = 144（不是畫面最底）。
 
 import { createFrame, clearFrame, createFx, composite, painterFor, hex as pfHex } from "../../../pixelfx/src/core/index.js";
 import { SPELLS, FX, INK, INK_POOF, crystalLight } from "./spells.js";
@@ -7,11 +8,13 @@ import { GRADES, ATTRS } from "../data.js";
 import { heroFrame } from "../../fx/hero.js";
 import { MathMagic, PopNumber } from "./mathmagic.js";
 
-export const W = 288, H = 240, GROUND = 206;
-const PX = 58;               // 玩家腳下 x
-const REACH = 112;           // 怪物走到這裡＝撞到玩家
-const START = 270;           // 怪物出現的位置
-const WAIT = 170;            // 不限時：怪物停在這裡等
+export const W = 384, H = 216, GROUND = 144;
+const PX = 76;               // 玩家腳下 x
+const REACH = 132;           // 怪物走到這裡＝撞到玩家
+const START = 356;           // 怪物出現的位置
+const WAIT = 262;            // 不限時：怪物停在這裡等
+// 數學變魔法的版面原本以 288 寬設計，整塊往右、往上移到畫面中央偏上
+const MAGIC_OX = W / 2 - 144, MAGIC_OY = -26;
 
 export class Stage {
   constructor(canvas, gradeId, look, attr, settings = {}) {
@@ -85,7 +88,7 @@ export class Stage {
   cast(tier, crystalLv = 1) {
     const spell = SPELLS[this.attr][tier - 1];
     const m = this.monster;
-    const tx = m ? m.x : 200;
+    const tx = m ? m.x : 270;
     this.castT = 0;
     this.dimTo = [0, 0.25, 0.35, 0.45, 0.6][tier];
     this.dimHold = 0.15 + spell.hit + 0.5;
@@ -218,7 +221,8 @@ export class Stage {
   /** 數學變魔法：算式變成光球、光球飛向怪物。回傳 Promise（光球出手時 resolve） */
   mathMagic(math) {
     const m = this.monster;
-    this.magic = new MathMagic(ATTRS[this.attr]?.color ?? "#8a7cff", [m ? m.x : 200, GROUND - 10]);
+    // 目標座標換成演出版面自己的座標（版面整塊位移了 MAGIC_OX、MAGIC_OY）
+    this.magic = new MathMagic(ATTRS[this.attr]?.color ?? "#8a7cff", [(m ? m.x : 270) - MAGIC_OX, GROUND - 10 - MAGIC_OY], [MAGIC_OX, MAGIC_OY]);
     this.castT = 0;
     this.dimTo = 0.3; this.dimHold = 9;
     const run = this.magic.start(math);
@@ -229,7 +233,7 @@ export class Stage {
   /** 打中時在怪物頭上跳出答案數字 */
   popNumber(text, combo) {
     const m = this.monster;
-    this.pops.push(new PopNumber(String(text).replace("−", "-"), m ? m.x : 200, m?.boss ? GROUND - 120 : GROUND - 48, ATTRS[this.attr]?.color ?? "#8a7cff", combo >= 10 ? 4 : combo >= 6 ? 3 : 2));
+    this.pops.push(new PopNumber(String(text).replace("−", "-"), m ? m.x : 270, m?.boss ? GROUND - 120 : GROUND - 48, ATTRS[this.attr]?.color ?? "#8a7cff", combo >= 10 ? 4 : combo >= 6 ? 3 : 2));
   }
 
   /** 主角某個姿勢、某一格的圖（12 格／秒，畫過就快取） */

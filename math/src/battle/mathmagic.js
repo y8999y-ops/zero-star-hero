@@ -31,7 +31,8 @@ const num = (h) => parseInt(h.slice(1), 16);
 
 export class MathMagic {
   // 其他題型（分數、小數、正負數、方程式、比例、四則、應用題、選擇題）在 mathmagic-more.js，用 plan_<op> 掛上來
-  constructor(colorHex, target = [200, 180]) {
+  constructor(colorHex, target = [200, 180], offset = [0, 0]) {
+    this.off = offset;   // 整塊版面的位移（橫版畫面把它移到中央偏上）
     this.c = pfHex(colorHex);
     this.cL = pfHex(mix(num(colorHex), 0xffffff, 0.55));
     this.cD = pfHex(mix(num(colorHex), 0x000000, 0.55));
@@ -76,7 +77,8 @@ export class MathMagic {
     if (this[`plan_${op}`]) { this.textShown = 0; this[`plan_${op}`](math, done); return promise; }
     if (op === "+") this.planAdd(a, b, result, done);
     else if (op === "-") this.planSub(a, b, result, done);
-    else if (op === "×") (a * b <= 60 ? this.planMul(a, b, result, done) : this.planArea(a, b, result, done));
+    // 九九乘法（兩個都是一位數）一定用方陣；兩位數×一位數才用面積模型
+    else if (op === "×") (a < 10 && b < 10 ? this.planMul(a, b, result, done) : this.planArea(a, b, result, done));
     else this.planDiv(a, b, result, done);
     return promise;
   }
@@ -266,7 +268,7 @@ export class MathMagic {
 
   draw(p) {
     if (!this.active && !this.orbs.length) return;
-    p.place(0, 0, false, 0);
+    p.place(this.off[0], this.off[1], false, 0);
     // 算式（大號像素字，深色外框，屬性亮色＋光暈）
     const shown = this.text.slice(0, Math.ceil(this.textShown));
     if (shown && this.active) {

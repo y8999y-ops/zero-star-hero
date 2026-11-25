@@ -29,9 +29,9 @@
     s.gray = 0;
     cells.push({ s, t, next: 0 });
   }
-  const fire = (cell) => { cell.s.monster ?? cell.s.spawn(); cell.s.monster.x = 190; cell.s.cast(cell.t).then(() => cell.s.purify()); };
+  const fire = (cell) => { cell.s.monster ?? cell.s.spawn(); cell.s.monster.x = 270; cell.s.cast(cell.t).then(() => cell.s.purify()); };
   if (freeze) {
-    for (const cell of cells) { cell.s.spawn(); cell.s.monster.x = 190; cell.s.cast(cell.t); }
+    for (const cell of cells) { cell.s.spawn(); cell.s.monster.x = 270; cell.s.cast(cell.t); }
     for (let i = 0; i < Math.round(Number(freeze) * 60); i++) for (const { s } of cells) s.update(1 / 60);
     for (const { s } of cells) s.draw();
   } else {

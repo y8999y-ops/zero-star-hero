@@ -93,7 +93,8 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
     if (boss && shieldLeft <= 0) break;
     if (exam && qi >= EXAM) break;
     const q = qs[qi];
-    if (!stage.monster) stage.spawn(boss);
+    // 上一隻還在散開（die）時也要叫新的一隻出來，不然這題會沒有怪物、沒有題目泡泡
+    if (!stage.monster || stage.monster.state === "die") stage.spawn(boss);
     drawHud();
 
     // 題目：計算題掛在怪物頭上；應用題放在下方面板

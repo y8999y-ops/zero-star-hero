@@ -74,7 +74,7 @@ function reveal(root, attr, mood) {
     const st = new Stage(canvas, "g1", "girl", attr);
     st.gray = 0;
     st.spawn();
-    st.monster.x = 190;
+    st.monster.x = 270;
     let running = true, last = performance.now(), next = 0.6;
     const loop = (now) => {
       if (!running) return;
@@ -82,7 +82,7 @@ function reveal(root, attr, mood) {
       next -= dt;
       if (next <= 0) {
         next = 3.2;
-        if (!st.monster) { st.spawn(); st.monster.x = 190; }
+        if (!st.monster) { st.spawn(); st.monster.x = 270; }
         st.cast(2).then(() => st.purify());
       }
       st.update(dt); st.draw();

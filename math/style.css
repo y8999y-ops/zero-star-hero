@@ -9,8 +9,14 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--bg); }
-body { display: flex; justify-content: center; overflow: hidden; }
-#app { position: relative; width: 100%; max-width: 480px; height: 100dvh; overflow-y: auto; background: var(--bg); }
+body { display: flex; justify-content: center; align-items: center; overflow: hidden; height: 100dvh; background: #000; }
+/* 橫版 16:9：畫面永遠是 16:9，視窗比例不同時上下或左右留黑邊 */
+#app { position: relative; width: min(100vw, calc(100dvh * 16 / 9)); height: min(100dvh, calc(100vw * 9 / 16)); overflow-y: auto; background: var(--bg); }
+/* 手機直拿：請玩家轉成橫的 */
+.rotate { display: none; position: fixed; inset: 0; z-index: 100; background: var(--bg); color: var(--text); flex-direction: column; align-items: center; justify-content: center; gap: 14px; font-size: 18px; text-align: center; padding: 24px; }
+.rotate .phone { width: 46px; height: 76px; border: 4px solid var(--gold); border-radius: 8px; animation: turn 1.6s ease-in-out infinite; }
+@keyframes turn { 0%, 20% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+@media (orientation: portrait) and (pointer: coarse) { .rotate { display: flex; } }
 h2 { margin: 12px 0 6px; font-size: 22px; }
 p { line-height: 1.6; }
 
@@ -27,7 +33,7 @@ p { line-height: 1.6; }
 .btn.big { font-size: 20px; padding: 14px 32px; }
 .btn.small { font-size: 13px; padding: 6px 10px; }
 
-.screen { padding: 16px; min-height: 100%; display: flex; flex-direction: column; gap: 10px; }
+.screen { padding: 16px 24px; min-height: 100%; display: flex; flex-direction: column; gap: 10px; }
 .sub, .note { color: var(--dim); font-size: 13px; }
 
 /* ── 標題 ── */
@@ -39,7 +45,8 @@ p { line-height: 1.6; }
 .title .foot { position: absolute; bottom: 10px; font-size: 11px; color: #776c99; padding: 0 16px; }
 
 /* ── 選外觀 ── */
-.looks { display: flex; gap: 12px; }
+.looks { display: flex; gap: 16px; justify-content: center; }
+.looks .card { flex: 0 1 220px; }
 .card { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px; font-size: 18px; }
 .heroPreview { width: 96px; height: 150px; image-rendering: pixelated; }
 
@@ -58,7 +65,7 @@ p { line-height: 1.6; }
 .step { color: var(--dim); font-size: 13px; }
 .wq { font-size: 20px; line-height: 1.6; margin: 10px 0; }
 .hintline { font-size: 13px; color: var(--dim); }
-.wopts { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.wopts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
 .btn.opt { text-align: left; font-size: 17px; padding: 12px 14px; }
 .crystal { width: 40px; height: 56px; margin: 8px auto; background: var(--c); clip-path: polygon(50% 0, 100% 35%, 50% 100%, 0 35%); box-shadow: 0 0 30px var(--c); filter: drop-shadow(0 0 12px var(--c)); }
 .type { font-size: 18px; font-weight: 700; }
@@ -74,7 +81,7 @@ p { line-height: 1.6; }
 .expbar .fill { height: 100%; background: linear-gradient(90deg, #7b5cff, #b89bff); }
 .expbar span { position: absolute; inset: 0; font-size: 10px; text-align: center; line-height: 14px; }
 .profile .next { font-size: 12px; color: #d8ccff; }
-.areas { display: flex; flex-direction: column; gap: 8px; }
+.areas { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
 .area { border-radius: 8px; padding: 10px; background: linear-gradient(135deg, var(--b), #241c3d 80%); border: 2px solid var(--line); }
 .aname { font-weight: 700; font-size: 17px; display: flex; gap: 8px; align-items: baseline; }
 .agrade { font-size: 12px; color: var(--dim); font-weight: 400; }
@@ -83,11 +90,11 @@ p { line-height: 1.6; }
 .stagebtn { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 6px 4px; font-weight: 700; }
 .stagebtn .st { font-size: 10px; color: var(--gold); font-weight: 400; }
 .stagebtn.boss { background: #5a3a6e; border-bottom-color: #321e40; }
-.tools { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .examBtn { animation: pulse 1.4s infinite; }
 @keyframes pulse { 50% { box-shadow: 0 0 16px var(--gold); } }
 
-.panel { position: absolute; inset: 12px; z-index: 20; background: var(--panel); border: 2px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+.panel { position: absolute; inset: 12px 12%; z-index: 20; background: var(--panel); border: 2px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
 .ptitle { font-weight: 700; font-size: 18px; color: var(--gold); }
 .list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
 .list li { background: var(--panel2); border-radius: 6px; padding: 8px 10px; font-size: 14px; display: flex; gap: 8px; justify-content: space-between; }
@@ -99,10 +106,11 @@ p { line-height: 1.6; }
 .toggle input { width: 22px; height: 22px; }
 
 /* ── 戰鬥 ── */
-.battle { display: flex; flex-direction: column; min-height: 100%; position: relative; }
-.view { position: relative; width: 100%; aspect-ratio: 288 / 240; }
+/* 戰鬥畫面：場景鋪滿整個 16:9，其他東西疊在上面；答案按鈕在下方一排 */
+.battle { position: absolute; inset: 0; overflow: hidden; }
+.view { position: absolute; inset: 0; }
 canvas.stage { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
-canvas.stage.small { width: 100%; aspect-ratio: 288 / 240; height: auto; border-radius: 8px; }
+canvas.stage.small { width: min(100%, 480px); aspect-ratio: 16 / 9; height: auto; border-radius: 8px; align-self: center; }
 .hud { position: absolute; inset: 6px 8px auto; display: flex; justify-content: space-between; align-items: center; font-weight: 700; text-shadow: 0 2px 0 #000; pointer-events: none; }
 .hearts { display: flex; gap: 3px; }
 .heart { width: 16px; height: 14px; background: #ff5a7a; clip-path: polygon(50% 100%, 0 40%, 15% 5%, 50% 25%, 85% 5%, 100% 40%); }
@@ -113,17 +121,18 @@ canvas.stage.small { width: 100%; aspect-ratio: 288 / 240; height: auto; border-
 .bubble { position: absolute; transform: translate(-50%, -100%); background: #fffaf0; color: #1c1533; font-weight: 800; font-size: 22px;
   padding: 4px 10px; border-radius: 8px; border: 2px solid #1c1533; pointer-events: none; max-width: calc(100% - 8px); white-space: normal; text-align: center; }
 .bubble::after { content: ""; position: absolute; left: 50%; bottom: -8px; margin-left: -6px; border: 6px solid transparent; border-top-color: #1c1533; border-bottom: 0; }
-.word { margin: 8px 10px 0; background: #fffaf0; color: #1c1533; border-radius: 8px; padding: 10px 12px; font-size: 17px; line-height: 1.6; border: 2px solid #1c1533; }
-.pagepage { margin: 8px 10px 0; min-height: 2.6em; font-size: 14px; color: #d8ccff; padding-left: 26px; position: relative; }
-.pagepage::before { content: ""; position: absolute; left: 2px; top: 2px; width: 16px; height: 20px; background: #fffaf0; border-radius: 2px 6px 2px 2px; box-shadow: 2px 2px 0 #8a7cff; }
-.answers { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; }
-.btn.answer { font-size: 24px; font-weight: 800; padding: 22px 6px; position: relative; min-height: 76px; }
+.word { position: absolute; left: 50%; top: 44px; transform: translateX(-50%); width: min(78%, 640px); z-index: 4; background: #fffaf0f2; color: #1c1533; border-radius: 8px; padding: 8px 12px; font-size: 17px; line-height: 1.55; border: 2px solid #1c1533; }
+.pagepage { position: absolute; left: 12px; right: 30%; bottom: calc(22% + 6px); z-index: 4; font-size: 13px; color: #f1ecff; padding: 4px 10px 4px 32px; background: #120d22b0; border-radius: 6px; text-shadow: 0 1px 0 #000; }
+.pagepage:empty { display: none; }
+.pagepage::before { content: ""; position: absolute; left: 8px; top: 4px; width: 16px; height: 20px; background: #fffaf0; border-radius: 2px 6px 2px 2px; box-shadow: 2px 2px 0 #8a7cff; }
+.answers { position: absolute; left: 0; right: 0; bottom: 0; height: 22%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 8px 12px 10px; z-index: 4; background: linear-gradient(transparent, #0b0818c0 40%); }
+.btn.answer { font-size: 24px; font-weight: 800; padding: 4px 6px; position: relative; background: #4a4266e6; }
 .btn.answer::before { content: attr(data-k); position: absolute; left: 6px; top: 4px; font-size: 10px; opacity: .5; font-weight: 400; }
 .btn.answer.right { background: var(--ok); color: #0c2a0c; opacity: 1; }
 .btn.answer.wrong { background: var(--bad); opacity: 1; }
 .btn.answer.zapped { text-decoration: line-through; }
-.btn.ability { margin: 0 10px 10px; background: #5b4a8a; }
-.explain { position: absolute; left: 12px; right: 12px; top: 30%; z-index: 10; background: var(--panel); border: 2px solid var(--gold); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 8px 0 #0008; }
+.btn.ability { position: absolute; right: 12px; bottom: calc(22% + 6px); z-index: 4; background: #5b4a8a; }
+.explain { position: absolute; left: 50%; transform: translateX(-50%); width: min(70%, 560px); top: 18%; z-index: 10; background: var(--panel); border: 2px solid var(--gold); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 8px 0 #0008; }
 .etitle { color: var(--gold); font-weight: 700; }
 .ebody { font-size: 17px; line-height: 1.7; }
 .eans { font-weight: 800; font-size: 18px; }
@@ -131,13 +140,16 @@ canvas.stage.small { width: 100%; aspect-ratio: 288 / 240; height: auto; border-
 @keyframes floatUp { to { transform: translate(-50%, -60px); opacity: 0; } }
 
 /* ── 結算 ── */
-.result { align-items: stretch; text-align: center; justify-content: center; }
+.result { align-items: center; text-align: center; justify-content: center; }
+.result .list, .result .row { width: min(100%, 560px); }
 .bigstars { font-size: 44px; color: var(--gold); letter-spacing: 6px; }
 .row { display: flex; gap: 10px; justify-content: center; }
 .row .btn { flex: 1; }
 
 /* ── 設定 ── */
-.settings { gap: 12px; }
+.settings { gap: 12px; display: grid; grid-template-columns: 1fr 1fr; align-content: start; }
+.settings > h2, .settings > .note, .settings > .btn.big { grid-column: 1 / -1; }
+.settings > .btn.big { justify-self: center; }
 .set-group { background: var(--panel); border: 2px solid var(--line); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; }
 .set-group h3 { margin: 0; font-size: 15px; color: var(--gold); }
 .set-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 36px; }
