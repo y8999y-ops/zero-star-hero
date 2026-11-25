@@ -74,7 +74,6 @@ function reveal(root, attr, mood) {
       el("p", {}, a.praise),
       el("p.ability", {}, `學系能力：${a.ability}——${a.abilityDesc}`),
       canvas,
-      el("p.note", {}, "每一種屬性都是好的數學腦。想換的話，之後可以回共鳴之井重新測。"),
       mood >= 2 ? el("p.note", {}, "頁頁：「放輕鬆，我們慢慢來。」（已幫你把限時調寬鬆）") : null,
       el("button.btn.gold.big", { onclick: () => { running = false; res(); } }, "好！"),
     ].filter(Boolean));

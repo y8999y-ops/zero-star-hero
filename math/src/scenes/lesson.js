@@ -18,7 +18,6 @@ export function lessonList(game) {
   const ids = Object.keys(UNIT_NAME).sort((a, b) => weak.has(b) - weak.has(a));
   show(el("div.screen.lessons", {},
     el("h2", {}, "魔法教室"),
-    el("p.note", {}, "中年級十個單元。不會的題目來這裡學：三個重點、例題，再試試看（有簡單也有困難）。"),
     el("div.lgrid", {}, ...ids.map((b) => el("button.btn.lbtn", { onclick: () => { sfx("click"); game.go("lesson", { branch: b }); } },
       el("span.ln", {}, UNIT_NAME[b]), el("span.la", {}, `${BRANCHES[b]}・${ACADEMIES[ACADEMY_OF[b]].name}`), weak.has(b) ? el("span.lweak", {}, "要複習") : null))),
     el("button.btn.gold", { onclick: () => game.go("library") }, "回圖書館大廳")));

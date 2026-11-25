@@ -195,8 +195,8 @@ export function hubScene(game, { from } = {}) {
     },
     well: async () => {
       const d = daily(s);
-      const opts = [d.wish ? "今天已經許過願了" : "投一枚晶幣許願（每天一次）", "重新做共鳴儀式", "看著井水發呆一下", s.lv >= 20 ? `副屬性${s.subAttr ? `（現在：${ATTRS[s.subAttr].name}）` : ""}` : "副屬性（Lv20 開放）", "離開"];
-      const r = await say([{ who: null, name: "共鳴之井", text: `井水輕輕發著光。你的數晶跟著閃了一下——${ATTRS[s.attr]?.school ?? ""}的顏色。` }], opts);
+      const opts = [d.wish ? "今天已許過願" : "許願（1 晶幣）", "重新共鳴儀式", s.lv >= 20 ? `副屬性${s.subAttr ? `（現在：${ATTRS[s.subAttr].name}）` : ""}` : "副屬性（Lv20 開放）", "離開"];
+      const r = await say([{ who: null, name: "共鳴之井", text: "要做什麼？" }], opts);
       if (r === 0 && !d.wish && s.coins >= 1) {
         s.coins -= 1; d.wish = true;
         const luck = [["井水亮了起來，湧出 15 枚晶幣！", () => (s.coins += 15)], ["一道光鑽進你的數晶：經驗＋20！", () => addExp(s, 20)], ["水面浮出一顆小數晶：數晶點數＋1！", () => (s.crystals[s.attr] = (s.crystals[s.attr] ?? 0) + 1)], ["井水映出你算題目的樣子。頁頁說：「你今天也很棒喔！」", () => (s.coins += 3)]];
@@ -204,8 +204,7 @@ export function hubScene(game, { from } = {}) {
         await say([{ who: null, name: "共鳴之井", text: `叮咚——${text}` }]);
       } else if (r === 0 && !d.wish) await say([{ who: null, name: "", text: "身上沒有晶幣……" }]);
       if (r === 1) { if (confirm("重新做共鳴儀式？等級、星星、錯題本都會保留。")) { leave(); game.go("resonance", { retest: true }); } }
-      else if (r === 2) await say([{ who: null, name: "", text: "水面映出一串一串的數字，轉呀轉的，又變回星星。" }]);
-      else if (r === 3) {
+      else if (r === 2) {
         // 副屬性（企劃書 8.3：Lv20 開放）：再裝一個其他屬性的學系能力，效果、次數減半
         if (s.lv < 20) { await say([{ who: null, name: "共鳴之井", text: `等你到 Lv20，井水就會讓你的數晶再多共鳴一種顏色。（現在 Lv${s.lv}）` }]); return; }
         const others = Object.keys(ATTRS).filter((k) => k !== s.attr);
@@ -236,8 +235,8 @@ export function hubScene(game, { from } = {}) {
       if (key === "greenhouse") { await planter(); return; }
       if (key === "clock") {
         const exam = rankExamReady(s);
-        const opts = ["進去鐘塔（四年級上）", ...(exam ? ["參加升階考核"] : []), s.lv >= 15 ? `挑戰模式（最高連對 ${s.challengeBest ?? 0} 題）` : "挑戰模式（Lv15 開放）", "先不要"];
-        const r = await say([{ who: null, name: "刻度鐘塔", text: BLURB.clock + (exam ? `鐘塔亮了！你可以參加升階考核（→ ${RANKS[s.rank + 1].name}）。` : "裡面的機芯大廳被墨水弄亂了，四年級上的墨水怪在裡面。") }], opts);
+        const opts = ["進去（四年級上）", ...(exam ? ["參加升階考核"] : []), s.lv >= 15 ? `挑戰模式（最高連對 ${s.challengeBest ?? 0} 題）` : "挑戰模式（Lv15 開放）", "先不要"];
+        const r = await say([{ who: null, name: "刻度鐘塔", text: exam ? `可以參加升階考核（→ ${RANKS[s.rank + 1].name}）` : "要做什麼？" }], opts);
         if (r === 0) { leave(); game.go("area", { grade: "g34" }); }
         else if (exam && r === 1) { leave(); game.go("battle", { grade: s.lastGrade ?? "g1", mode: "exam" }); }
         else if (r === (exam ? 2 : 1)) {
@@ -274,7 +273,7 @@ export function hubScene(game, { from } = {}) {
   // 分晶溫室：數晶盆栽（每答對 15 題長大一階，第 4 階收成）；深處通往五～六年級的區域
   async function planter() {
     const okTotal = Object.values(s.diary ?? {}).reduce((a, d) => a + (d.ok ?? 0), 0);
-    const r0 = await say([{ who: null, name: "分晶溫室", text: "玻璃裡長著會發光的數晶果實。深處的溫室被墨水弄亂了，是五～六年級的區域。" }], ["看看數晶盆栽", "往溫室深處（五～六年級）", "離開"]);
+    const r0 = await say([{ who: null, name: "分晶溫室", text: "要做什麼？" }], ["數晶盆栽", "溫室深處（四年級下）", "離開"]);
     if (r0 === 1) { leave(); game.go("area", { grade: "g56" }); return; }
     if (r0 !== 0) return;
     if (!s.plant) {

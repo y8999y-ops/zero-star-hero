@@ -12,11 +12,11 @@ export const ATTR_IDS = Object.keys(ATTRS);
 // 主線五區（2026-11-25 使用者：題目聚焦中年級）：每一區＝中年級的一個學期，最後一區是總複習。id 沿用舊的（存檔的星星用這個 key）。
 // time：每題秒數，0＝不限時
 export const GRADES = {
-  g1:  { name: "三年級上", area: "星芽花園", time: 0,  sky: ["#ffe9c7", "#ffc9d6"], ground: "#6fbf5a", deep: "#3f8a44", boss: 3 },
-  g2:  { name: "三年級下", area: "千頁圖書館", time: 0,  sky: ["#f5e2c0", "#d9b98c"], ground: "#9a6a42", deep: "#5e3d27", boss: 4 },
-  g34: { name: "四年級上", area: "刻度鐘塔", time: 14, sky: ["#c9d9ff", "#8fa6e6"], ground: "#8a8fa8", deep: "#545a75", boss: 4 },
+  g1:  { name: "三年級上", area: "星芽花園", time: 0,  sky: ["#ffe9c7", "#ffc9d6"], ground: "#6fbf5a", deep: "#3f8a44", boss: 5 },
+  g2:  { name: "三年級下", area: "千頁圖書館", time: 0,  sky: ["#f5e2c0", "#d9b98c"], ground: "#9a6a42", deep: "#5e3d27", boss: 5 },
+  g34: { name: "四年級上", area: "刻度鐘塔", time: 14, sky: ["#c9d9ff", "#8fa6e6"], ground: "#8a8fa8", deep: "#545a75", boss: 5 },
   g56: { name: "四年級下", area: "分晶溫室", time: 14, sky: ["#d6fff2", "#8ee0c8"], ground: "#5fae9a", deep: "#2f6e62", boss: 5 },
-  jh:  { name: "中年級總複習", area: "地下禁書庫", time: 16, sky: ["#3a2a5e", "#1b1433"], ground: "#4a3a6e", deep: "#251a40", boss: 6 },
+  jh:  { name: "中年級總複習", area: "地下禁書庫", time: 16, sky: ["#3a2a5e", "#1b1433"], ground: "#4a3a6e", deep: "#251a40", boss: 5 },
 };
 export const GRADE_IDS = Object.keys(GRADES);
 

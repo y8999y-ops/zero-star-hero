@@ -17,7 +17,7 @@ import { TIMER_EASE } from "../settings.js";
 import { printable } from "./mathmagic-more.js";
 import { loadAreaArt, loadBattleHD } from "./areaart.js";
 
-const COUNT = 10;     // 一般小關的題數
+const COUNT = 3;      // 一般小關的題數（2026-11-25 使用者：每一關三題就好；王關 5 題）
 
 // 第一場戰鬥（教學，企劃書 3.6）：5 題一年級加減法，頁頁一題教一件事。glow：要發光的地方
 const TUT_Q = [[2, 3, "+"], [4, 4, "+"], [6, 3, "+"], [5, 5, "+"], [7, 2, "-"]];
@@ -72,7 +72,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
 
   const shield = boss ? g.boss : 0;
   const prevBossStars = s.stars[`${gradeId}-boss`] ?? 0;          // 第一次打倒這一區的王（最終戰打完要接結局）
-  const total = tut ? TUT_Q.length : exam ? EXAM : boss ? shield + 6 : prac ? 8 : chal ? 60 : COUNT;
+  const total = tut ? TUT_Q.length : exam ? EXAM : boss ? shield + 6 : prac ? COUNT : chal ? 60 : COUNT;   // 王：5 格護盾＝答對 5 題，答錯的會多出一題補上
   const [qs] = await Promise.all([tut ? tutorialQuestions(s.attr) : chal ? buildChallenge(s) : prac ? (practice.review ? buildReview(s, total) : buildPractice(s, practice.branch, practice.level, total)) : buildArea(s, gradeId, stageIdx, total, boss, exam),
     loadBattleHD(gradeId, AC?.area).then((hd) => hd ?? loadAreaArt(gradeId))]);
 
@@ -160,7 +160,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   }
 
   if (boss) sfx("boss");
-  say(tut ? "" : chal ? `挑戰模式！每題 ${Math.round(limit)} 秒，答錯一題就結束。看你能連對幾題！（最高紀錄 ${s.challengeBest ?? 0} 題）` : prac && practice.review ? "錯題本特訓開始！這些都是之前算錯的單元，這次一定可以。" : prac ? `${AC.name}・${UNIT_NAME[practice.branch]}（${MODES[practice.level].name}）練習開始！` : exam ? "升階考核開始！答對 7 題就通過，不限時也沒關係，慢慢來。" : boss ? "墨水大王來了！每答對一題，就能打掉一格護盾。" : "墨水怪出現了！把它身上的題目算完，就能淨化它。");
+  say(tut ? "" : chal ? `挑戰：每題 ${Math.round(limit)} 秒，答錯就結束` : prac && practice.review ? "錯題本特訓" : prac ? `${UNIT_NAME[practice.branch]}・${MODES[practice.level].name}` : exam ? "升階考核：答對 7 題通過" : boss ? "墨水大王！答對一題打掉一格護盾" : "");
 
   // 最終戰（地下禁書庫的墨水大王・真身，世界觀第 7 節第 4 點）：開打前、打到一半、最後一題都有對話
   const final = boss && gradeId === "jh";
@@ -207,7 +207,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     if (q.tut) { say(q.tut.text); glow(q.tut.glow); }
     else if (move) {}
     else if (qi === 0 && !isWord && !q.prefix) {}             // 第一題：留著開場說明（練習、挑戰、特訓的說明）
-    else if (qi > 0 || !isWord) say(isWord ? "仔細讀題目，一句一句來。" : q.prefix ?? "");
+    else if (qi > 0) say("");
 
     const t0 = performance.now();
     const result = await askOne(q);
@@ -229,7 +229,6 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
       bubble.textContent = "";
       if (q.math) {
         // 數學變魔法：先把算式變成光球（點畫面可以加速）
-        say("把算式寫出來……");
         canvas.onclick = () => stage.magic?.skip();
         await stage.mathMagic(q.math);
         canvas.onclick = null;
@@ -280,7 +279,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   const acc = asked ? right / asked : 0;
   let stars = 0, passed = false;
   if (exam) passed = right >= 7;
-  else if (hp > 0 && (!boss || shieldLeft <= 0)) stars = acc >= 1 ? 3 : acc >= 0.9 ? 2 : acc >= 0.7 ? 1 : 0;
+  else if (hp > 0 && (!boss || shieldLeft <= 0)) stars = acc >= 1 ? 3 : acc >= 0.66 ? 2 : 1;   // 3 題：全對 3 星、錯 1 題 2 星
   if (stars === 0 && !exam && hp > 0 && (!boss || shieldLeft <= 0)) stars = 1;   // 有打完就至少一顆星
   const key = `${gradeId}-${boss ? "boss" : stageIdx + 1}`;
   let newBest = false;

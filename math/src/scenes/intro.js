@@ -51,7 +51,6 @@ export function lookScene(game) {
   const pickLook = (look) => { sfx("click"); game.save.look = look; writeSave(game.save); game.go("intro"); };
   show(el("div.screen.look", {},
     el("h2", {}, "你是哪一位新生？"),
-    el("p.sub", {}, "兩位的能力和故事都一樣，只有外觀不同。"),
     el("div.looks", {},
       el("button.btn.card", { onclick: () => pickLook("girl") }, heroCanvas("girl"), "女生"),
       el("button.btn.card", { onclick: () => pickLook("boy") }, heroCanvas("boy"), "男生")),

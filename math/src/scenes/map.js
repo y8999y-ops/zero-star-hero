@@ -66,8 +66,7 @@ export function reviewPanel(game) {
   panel("錯題本：還沒算完的題目",
     r.length ? el("ul.list", {}, ...r.map(([k, v]) => el("li", {}, mathText(`${GRADES[v.grade]?.area ?? ""}｜${v.sample}`), el("span.left", {}, `再連對 ${v.left} 次就畢業`),
       v.branch && v.branch in UNIT_NAME ? el("button.btn.small", { onclick: () => { document.querySelector(".panel")?.remove(); game.go("lesson", { branch: v.branch }); } }, "學一學") : null))) : el("p", {}, "目前沒有。太厲害了！"),
-    el("p.note", {}, "錯題本裡的題型，之後的關卡會比較常出現，答對還有額外經驗。"),
-    reviewUnits(game.save).length ? el("button.btn.gold", { onclick: () => { document.querySelector(".panel")?.remove(); const [b] = reviewUnits(game.save)[0]; game.go("battle", { grade: "g1", mode: "practice", practice: { academy: ACADEMY_OF[b] ?? "ice", branch: b, level: 0, review: true } }); } }, "錯題本特訓（8 題）") : null);
+    reviewUnits(game.save).length ? el("button.btn.gold", { onclick: () => { document.querySelector(".panel")?.remove(); const [b] = reviewUnits(game.save)[0]; game.go("battle", { grade: "g1", mode: "practice", practice: { academy: ACADEMY_OF[b] ?? "ice", branch: b, level: 0, review: true } }); } }, "特訓") : null);
 }
 
 export function growthPanel(game) {
@@ -86,6 +85,5 @@ export function growthPanel(game) {
     el("div.bars.b30", {}, ...days.map(([d, v], i) => el("div.bar", { title: `${d}：答對 ${v.ok}／${v.n} 題` },
       el("div.b", { style: { height: `${v.n ? Math.max(8, (100 * v.n) / most) : 0}%` } }, el("div.bok", { style: { height: v.n ? `${(100 * v.ok) / v.n}%` : "0" } })),
       el("span", {}, i % 5 === 4 || i === 29 ? d.slice(8) : "")))),
-    el("p.note", {}, "柱子的高度＝那天答了幾題；亮的部分＝答對的。"),
-    el("p.note", {}, "這些紀錄只存在這台裝置的瀏覽器裡。"));
+    );
 }

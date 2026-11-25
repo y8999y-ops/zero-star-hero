@@ -19,19 +19,18 @@ export function academyScene(game, { academy = "fire" } = {}) {
       const st = stars(b, i);
       return el("button.btn.aclv" + (M.hard ? ".hard" : ""), {
         onclick: () => { sfx("click"); s.returnTo = { scene: "academy", academy }; writeSave(s); game.go("battle", { grade: M.grade, mode: "practice", practice: { academy, branch: b, level: i } }); },
-      }, el("span.acn", {}, M.name), el("span.acd", {}, M.desc), el("span.acs", {}, "★".repeat(st) + "☆".repeat(3 - st)));
+      }, el("span.acn", {}, M.name), el("span.acs", {}, "★".repeat(st) + "☆".repeat(3 - st)));
     });
     return el("div.accard", {},
       el("div.actitle", {}, UNIT_NAME[b], el("span.acmagic", {}, BRANCHES[b])),
       el("div.aclvs", {}, ...lv),
-      el("button.btn.small.aclearn", { onclick: () => { sfx("click"); game.go("lesson", { branch: b, back: { scene: "academy", academy } }); } }, "不會的時候：去圖書館學一學"));
+      el("button.btn.small.aclearn", { onclick: () => { sfx("click"); game.go("lesson", { branch: b, back: { scene: "academy", academy } }); } }, "學一學"));
   };
   const root = el("div.screen.acscr", {},
     el("div.acbg", { style: { backgroundImage: `url(${A(`battle-hd/${AC.area}/back.jpg`)})` } }),
     el("img.acbuild", { src: A(`hub/${AC.art}`), alt: AC.name }),
     el("div.acpanel", {},
       el("h2.acname", {}, AC.name, el("span.acschool", {}, AC.school)),
-      el("p.acdesc", {}, AC.desc),
       ...AC.branches.map(card)),
     el("button.btn.small.acback", { onclick: () => { sfx("click"); game.go("map", { from: academy }); } }, "回學院"));
   show(root);

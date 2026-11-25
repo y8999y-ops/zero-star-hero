@@ -65,7 +65,7 @@ export function shopScene(game, { tab = "hat" } = {}) {
   show(el("div.screen.shop", {},
     el("div.shophead", {}, el("span.stitle", {}, "學院商店"), el("span.scoins", {}, `${s.coins} 晶幣`)),
     el("div.shopbody", {},
-      el("div.shopleft", {}, preview(s), el("p.note", {}, "店長：「歡迎光臨！穿上看看嘛～」")),
+      el("div.shopleft", {}, preview(s)),
       el("div.shopright", {}, tabs, el("div.shoplist", {}, ...SHOP[tab].map(item)))),
     el("button.btn.gold", { onclick: () => game.go("map") }, "離開商店")));
 }

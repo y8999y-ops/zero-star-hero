@@ -26,16 +26,16 @@ export function libraryScene(game) {
   const review = Object.keys(s.review).length;
   // 圖示用學院島的小物件圖（像素），不用表情符號
   const icon = (art) => el("img.libicon", { src: new URL(`../../assets/hub/p/${art}.png`, import.meta.url).href, alt: "" });
-  const spot = (art, name, desc, onclick) => el("button.btn.libspot", { onclick: () => { sfx("click"); onclick(); } }, icon(art), el("span.lname", {}, name), el("span.ldesc", {}, desc));
+  const spot = (art, name, desc, onclick) => el("button.btn.libspot", { onclick: () => { sfx("click"); onclick(); } }, icon(art), el("span.lname", {}, name), desc ? el("span.ldesc", {}, desc) : null);
   const root = el("div.screen.library", {},
     el("div.libtitle", {}, "千頁圖書館・大廳"),
     el("div.shelves"),
     el("div.librow", {},
-      spot("scroll", "魔法教室", "不會的題目來這裡學", () => { alive = false; game.go("lessons"); }),
-      spot("books", "錯題本", review ? `還有 ${review} 種題目沒算完` : "目前沒有", () => reviewPanel(game)),
-      spot("board", "成長日記", "熟練度星星、最近 7 天", () => growthPanel(game)),
-      spot("flag", "墨水圖鑑", `${Object.keys(s.dex ?? {}).length} / 12 種`, () => { alive = false; game.go("dex"); }),
-      spot("crystal", "萬題之書", `找回 ${bookChapters(s)} 章`, () => bookTalk()),
+      spot("scroll", "魔法教室", "", () => { alive = false; game.go("lessons"); }),
+      spot("books", "錯題本", review ? `${review}` : "", () => reviewPanel(game)),
+      spot("board", "成長日記", "", () => growthPanel(game)),
+      spot("flag", "墨水圖鑑", `${Object.keys(s.dex ?? {}).length} / 12`, () => { alive = false; game.go("dex"); }),
+      spot("crystal", "萬題之書", `${bookChapters(s)} 章`, () => bookTalk()),
       spot("sign", "上層書庫", `${GRADES.g2.name}的區域`, () => upstairs()),
       spot("chest", "地下禁書庫", `${GRADES.jh.name}`, () => downstairs())),
     el("div.libfoot", {}, page, el("button.btn.gold", { onclick: () => { alive = false; game.go("map", { map: "island", from: "library" }); } }, "離開圖書館")),

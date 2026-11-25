@@ -24,7 +24,7 @@ export const MODES = [
   { name: "簡單", desc: "三年級程度・不限時", hard: false, grade: "g1", bank: ["g2", "g34"] },
   { name: "困難", desc: "四年級程度", hard: true, grade: "g34", bank: ["g34"] },
 ];
-export const PRACTICE_COUNT = 8;
+export const PRACTICE_COUNT = 3;
 
 function bankQ(b, grade, branch) {
   return {
@@ -83,7 +83,7 @@ export const AREA_UNITS = {
   g56: { stages: [[["frac", true]], [["dec", true]], [["shape", true], ["mix", false]]], boss: ["frac", "dec", "shape", "mix"] },
   jh: { stages: [[["mix", true], ["measure", true]], [["round", true], ["seq", true]], [["frac", true], ["dec", true], ["div", true]]], boss: ["big", "mul", "div", "mix", "frac", "dec", "shape", "measure", "round", "seq"] },
 };
-const AREA_PREFIX = { g1: "花園的小精靈問你：", g2: "書頁上浮出一道咒語：", g34: "鐘面上轉出一道算式：", g56: "水晶果實上刻著：", jh: "解開這道封印算式：" };
+const AREA_PREFIX = {};          // 2026-11-25 使用者：刪掉多餘的補充（原本每區題目前有一句情境話）
 /** 主線一關（stage 0～2）或王（boss）或升階考核（exam：這一區全部單元、簡單困難各半） */
 export function buildArea(save, grade, stage, count, boss = false, exam = false) {
   const A = AREA_UNITS[grade] ?? AREA_UNITS.g1;
