@@ -89,18 +89,26 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   const wordPanel = el("div.word", { hidden: true });
   const line = el("div.pagepage");
   const answers = el("div.answers");
-  const magicBtn = el("button.btn.bmagic", { hidden: true }, "分支魔法");
-  const ultBtn = el("button.btn.gold.ultbtn", { hidden: true, onclick: () => {
-    if (armed || energy < 3) return;
-    armed = true; energy = 0; drawHud(); sfx("combo"); ultBtn.classList.add("armed"); ultBtn.textContent = "大招準備！";
-    say("數晶亮起來了！答對這一題就放出大招！");
-  } }, "大招");
+  // 技能列（2026-11-25 使用者：技能和大招位置不一樣、不好操作 → 重新設計）：
+  //   右邊固定一排兩顆一樣大的圓鈕，一直都在同一個地方，只是狀態不同（暗＝還不能用、亮＝可以用、發光＝準備好了）
+  //   大招：按鈕裡面就是 3 顆數晶（集滿才亮）；魔法：右上角數字＝這場還剩幾招
+  const ultPips = el("span.skpips", {}, el("i"), el("i"), el("i"));
+  const ultBtn = el("button.skb.ult", { onclick: () => {
+    if (!cur || cur.done()) return;
+    if (armed) return;
+    if (energy < 3) { say(`數晶 ${energy}／3：再答對 ${3 - energy} 題就可以放大招！`); return; }
+    armed = true; energy = 0; drawHud(); sfx("combo");
+    say("大招準備！答對這一題就放出去！");
+  } }, el("span.skico", {}, "✦"), el("span.skl", {}, "大招"), ultPips);
+  const magicBadge = el("span.skbadge");
+  const magicBtn = el("button.skb.mag", {}, el("span.skico", {}, "✧"), el("span.skl", {}, "魔法"), magicBadge);
+  const skdock = el("div.skdock", { hidden: tut }, magicBtn, ultBtn);
   // 朗讀題目：喇叭按鈕（題目左邊）；設定「自動朗讀」時每題出來就念
   let speakText = "";
   const speakBtn = el("button.btn.small.speak", { hidden: !canSpeak(), "aria-label": "念題目", onclick: () => speak(speakText, s.settings.mute) }, "🔊");
   let aborted = false;
   const leave = tut ? null : el("button.btn.small.leave", { onclick: () => { if (confirm("離開這一關？這關的進度不會保存。")) { aborted = true; running = false; game.go("map"); } } }, "離開");
-  const wrap = el("div.battle", {}, el("div.view", {}, canvas, hud, bubble, speakBtn, leave), wordPanel, line, answers, magicBtn, ultBtn);
+  const wrap = el("div.battle", {}, el("div.view", {}, canvas, hud, bubble, speakBtn, leave), wordPanel, line, answers, skdock);
   show(wrap);
   const app = document.querySelector("#app");
   fitWidth(app.clientWidth / app.clientHeight);          // 戰鬥畫面的寬度跟著螢幕比例
@@ -135,36 +143,48 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
 
   const say = (t) => { line.textContent = t; if (t) stage?.setPage("talk", Math.min(2.4, 0.5 + t.length * 0.06)); };
   const drawHud = () => {
+    drawSkills();
     hud.replaceChildren(
       el("div.hearts", {}, ...Array.from({ length: maxHp(s.lv) }, (_, i) => el(`span.heart${i < hp ? "" : ".empty"}`))),
       el("div.combo", {}, combo >= 2 ? `連擊 ×${combo}` : ""),
-      tut ? null : el("div.energy", { title: "數晶：集滿 3 顆可以放大招" }, ...[0, 1, 2].map((k) => el(`span${k < energy ? ".on" : ""}`))),
       el("div.prog", {}, chal ? `連對 ${right}` : boss ? `護盾 ${"◆".repeat(shieldLeft)}${"◇".repeat(shield - shieldLeft)}` : exam ? `考核 ${right}/${EXAM}` : `${Math.min(qi + 1, total)}/${total}`),
     );
   };
 
-  // 分支魔法的選單：點按鈕打開，列出還沒用過的招式
-  magicBtn.hidden = !magic.length;
+  // 技能列的樣子：每次數晶、魔法用量、能不能按改變時都重畫
+  function drawSkills() {
+    const left = magic.filter((b) => !usedMagic.has(b)).length, asking = !!cur && !cur.done();
+    [...ultPips.children].forEach((p, k) => p.classList.toggle("on", armed || k < energy));
+    ultBtn.classList.toggle("ready", energy >= 3 && !armed);
+    ultBtn.classList.toggle("armed", armed);
+    ultBtn.classList.toggle("off", !asking || (energy < 3 && !armed));
+    magicBadge.textContent = magic.length ? String(left) : "🔒";
+    magicBtn.classList.toggle("off", !asking || !left);
+  }
+  // 分支魔法的選單：在技能列旁邊打開，一招一張大卡片；再按一次「魔法」或「不用了」關起來
   magicBtn.onclick = () => {
-    if (!cur || cur.done() || wrap.querySelector(".bmenu")) return;
-    const left = magic.filter((b) => !usedMagic.has(b));
-    const menu = el("div.bmenu", {}, el("div.bmt", {}, "分支魔法（每招一場一次）"),
-      ...magic.map((b) => el("button.btn.small", { disabled: usedMagic.has(b), onclick: () => { menu.remove(); castMagic(b); } }, `${BRANCH_MAGIC[b].name}・${UNIT_NAME[b]}`, el("span.bmd", {}, BRANCH_MAGIC[b].desc))),
-      el("button.btn.small", { onclick: () => menu.remove() }, "不用了"));
-    if (!left.length) { say("分支魔法這場都用過了。"); return; }
+    const open = wrap.querySelector(".bmenu");
+    if (open) { open.remove(); return; }
+    if (!magic.length) { say("在學院把一個單元練到 3 星，就會學會那個單元的分支魔法！"); return; }
+    if (!cur || cur.done()) return;
+    if (!magic.some((b) => !usedMagic.has(b))) { say("分支魔法這場都用過了。"); return; }
+    const menu = el("div.bmenu", {},
+      ...magic.map((b) => el("button.bmcard", { disabled: usedMagic.has(b), onclick: () => { menu.remove(); castMagic(b); } },
+        el("b", {}, BRANCH_MAGIC[b].name), el("span.bmd", {}, BRANCH_MAGIC[b].desc))),
+      el("button.bmcard.bmclose", { onclick: () => menu.remove() }, "不用了"));
     wrap.append(menu);
   };
   function castMagic(b) {
     const M = BRANCH_MAGIC[b];
     usedMagic.add(b); sfx("combo");
-    magicBtn.disabled = usedMagic.size >= magic.length;
     if (M.fx === "heal") { hp = Math.min(maxHp(s.lv), hp + 1); drawHud(); say("回復！魔力＋1。"); }
     else if (M.fx === "shield") { flags.shield = true; say("護陣張開了：下一次答錯不扣魔力。"); }
     else if (M.fx === "double") { flags.double = true; say("分身！下一題答對，威力加倍。"); }
     else if (M.fx === "retry") { flags.retry = true; say("回流：這一題答錯可以再選一次。"); }
-    else if (M.fx === "cut") { if (!cur.zap()) { usedMagic.delete(b); magicBtn.disabled = false; say("已經沒有可以劈掉的選項了。"); } else say("消去！劈掉了一個錯的選項。"); }
-    else if (M.fx === "slow") { if (limit) { cur.slow(); say("慢流：這一題的時間多一倍。"); } else { usedMagic.delete(b); magicBtn.disabled = false; say("這一題本來就不限時喔。"); } }
+    else if (M.fx === "cut") { if (!cur.zap()) { usedMagic.delete(b); say("已經沒有可以劈掉的選項了。"); } else say("消去！劈掉了一個錯的選項。"); }
+    else if (M.fx === "slow") { if (limit) { cur.slow(); say("慢流：這一題的時間多一倍。"); } else { usedMagic.delete(b); say("這一題本來就不限時喔。"); } }
     else if (M.fx === "hint") say(`預知：${hintOf(cur.q)}`);
+    drawSkills();
   }
 
   if (boss) sfx("boss");
@@ -240,7 +260,6 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     const perfectSec = isWord ? 9 : 4;
     const pbar = tut ? null : el("div.pbar", {}, el("div.pfill", { style: { animationDuration: `${perfectSec}s` } }));
     if (pbar) wrap.querySelector(".view").append(pbar);
-    ultBtn.hidden = tut || (energy < 3 && !armed);
     const t0 = performance.now();
     const result = await askOne(q);
     pbar?.remove();
@@ -255,7 +274,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     if (result.ok) {
       right++; combo++; best = Math.max(best, combo);
       const perfect = !tut && sec <= perfectSec;
-      const ult = armed; armed = false; ultBtn.classList.remove("armed"); ultBtn.textContent = "大招";
+      const ult = armed; armed = false;
       const comboTech = !tut && sub && combo % 3 === 0;          // 一般關卡只有 3 題：每連擊 3 下一次
       let tier = ult || comboTech ? 4 : Math.min(4, spellTier(combo) + (perfect ? 1 : 0));
       if (!ult) energy = Math.min(3, energy + 1);
@@ -384,6 +403,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
         return true;
       }
       cur = { q, zap, slow: () => { if (limit) start += limit * 1000; }, done: () => done };
+      drawSkills();
       const timer = limit ? setInterval(() => {
         if (aborted) { clearInterval(timer); return; }
         const frac = Math.min(1, (performance.now() - start) / 1000 / limit);
@@ -410,6 +430,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
       function finish(ok, timeout) {
         if (done) return;
         done = true;
+        wrap.querySelector(".bmenu")?.remove(); drawSkills();
         if (timer) clearInterval(timer);
         removeEventListener("keydown", key);
         btns.forEach((x) => (x.disabled = true));
