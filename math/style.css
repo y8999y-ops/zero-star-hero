@@ -571,8 +571,8 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 .wpname b { color: var(--gold); }
 .wpexp { display: block; height: 6px; border-radius: 3px; background: #0e0a1c; overflow: hidden; }
 .wpexp i { display: block; height: 100%; background: linear-gradient(90deg, #7b5cff, #c4adff); }
-.wpcoin { display: flex; flex-direction: column; align-items: center; color: var(--gold); font-size: 15px; line-height: 1; padding-left: 8px; border-left: 2px solid #3a3058; }
-.wpcoin small { font-size: 10px; color: #d8ccff; font-weight: 400; margin-top: 2px; }
+.wpcoin { display: flex; flex-direction: column; align-items: center; color: #ffd76a; text-shadow: 0 1px 0 #000; font-size: 16px; line-height: 1; padding-left: 8px; border-left: 2px solid #3a3058; }
+.wpcoin small { font-size: 11px; color: #e6dcff; font-weight: 400; margin-top: 2px; }
 .wpdot { position: absolute; top: -6px; right: -8px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: #ff5a7a; color: #fff; font-size: 11px; line-height: 18px; text-align: center; box-shadow: 0 0 0 2px #0e0a1c; }
 
 /* 個人資料面板：上面三個分頁，內容可以捲 */
