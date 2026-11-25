@@ -6,6 +6,7 @@ import { Stage, fitWidth } from "./stage.js";
 import { withChoices } from "../questions/pool.js";
 import { ACADEMIES, MODES, buildPractice, buildArea, buildReview, buildChallenge } from "../practice.js";
 import { talk } from "../world/talk.js";
+import { speak, stopSpeak, canSpeak } from "../speak.js";
 import { BRANCH_MAGIC, learnedMagic } from "./branch-magic.js";
 import { UNIT_NAME } from "../data.js";
 import { ATTRS, GRADES, spellTier, maxHp, abilityBonus, crystalLevel, EXP, RANKS } from "../data.js";
@@ -85,9 +86,12 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   const abilityBtn = el("button.btn.ability");
   const subBtn = el("button.btn.ability.subab", { hidden: true });
   const magicBtn = el("button.btn.bmagic", { hidden: true }, "分支魔法");
+  // 朗讀題目：喇叭按鈕（題目左邊）；設定「自動朗讀」時每題出來就念
+  let speakText = "";
+  const speakBtn = el("button.btn.small.speak", { hidden: !canSpeak(), "aria-label": "念題目", onclick: () => speak(speakText, s.settings.mute) }, "🔊");
   let aborted = false;
   const leave = tut ? null : el("button.btn.small.leave", { onclick: () => { if (confirm("離開這一關？這關的進度不會保存。")) { aborted = true; running = false; game.go("map"); } } }, "離開");
-  const wrap = el("div.battle", {}, el("div.view", {}, canvas, hud, bubble, leave), wordPanel, line, answers, abilityBtn, subBtn, magicBtn);
+  const wrap = el("div.battle", {}, el("div.view", {}, canvas, hud, bubble, speakBtn, leave), wordPanel, line, answers, abilityBtn, subBtn, magicBtn);
   show(wrap);
   const app = document.querySelector("#app");
   fitWidth(app.clientWidth / app.clientHeight);          // 戰鬥畫面的寬度跟著螢幕比例
@@ -188,6 +192,8 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     bubble.classList.toggle("one", isWord || q.text.length <= 26);     // 短的算式不換行（不會在「＝ ？」前面斷開）
     wordPanel.hidden = !isWord;
     wordPanel.replaceChildren(...(isWord ? [el("div.wtext", {}, mathText(q.text))] : []));
+    speakText = q.text;
+    if (s.settings.voice) setTimeout(() => speak(q.text, s.settings.mute), move ? 1700 : 250);
     if (move) { bubble.classList.add(`mv-${move}`); if (move === "ink") setTimeout(() => bubble.classList.remove("mv-ink"), 1600); }
     if (q.tut) { say(q.tut.text); glow(q.tut.glow); }
     else if (move) {}
@@ -251,7 +257,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   }
 
   if (aborted) return;
-  running = false;
+  running = false; stopSpeak();
   if (tut) {
     // 教學：經驗照算、錯題本照記；不給星星和晶幣，直接接劇情
     const ups = addExp(s, gained);

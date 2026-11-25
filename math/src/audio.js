@@ -70,6 +70,9 @@ const SFX = {
   click: [{ f: 700, d: 0.03 }],
   step: [{ noise: "lowpass", filt: 700, d: 0.05, g: 0.05 }],
   blip: [{ f: 880, d: 0.025, type: "square", g: 0.025 }],
+  // 第 10 批補的：進建築開門（木門喀一聲＋低低的吱）、翻書頁（沙一聲往上掃）
+  door: [{ noise: "lowpass", filt: 900, d: 0.06, g: 0.18 }, { at: 0.05, f: 180, f2: 240, d: 0.22, type: "sawtooth", g: 0.03, vib: [9, 12] }, { at: 0.24, noise: "lowpass", filt: 500, d: 0.08, g: 0.12 }],
+  flip: [{ noise: "bandpass", filt: 1800, f2filt: 5200, q: 0.8, d: 0.18, g: 0.12, a: 0.03 }],
 };
 
 export function sfx(name) {

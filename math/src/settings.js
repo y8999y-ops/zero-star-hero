@@ -2,6 +2,7 @@
 // 存在存檔的 settings 裡；舊存檔少了的欄位會用預設值補上。
 
 import { setSound, setVolume } from "./audio.js";
+import { setMusic } from "./music.js";
 
 export const DEFAULT_SETTINGS = {
   // 聲音
@@ -11,10 +12,9 @@ export const DEFAULT_SETTINGS = {
   timerEase: "normal",      // normal 標準、loose 寬鬆、veryloose 很寬鬆
   magic: "full",            // 數學變魔法演出：full 完整、short 簡短
   bigText: false,           // 戰鬥文字放大
+  voice: false,             // 自動朗讀題目（瀏覽器內建語音）
   // 操作
-  stick: "left",            // 虛擬搖桿位置（大地圖做好後使用）
   lefty: false,             // 左手模式：答案按鈕左右鏡像
-  tapMove: true,            // 點地移動（大地圖做好後使用）
   // 畫面
   shake: true,              // 畫面晃動
   flash: "full",            // full 閃光、soft 減弱
@@ -33,6 +33,7 @@ export function withDefaults(s) {
 export function applySettings(st) {
   setSound(!st.mute);
   setVolume(st.sfx / 100);
+  setMusic(st.music / 100, st.mute);
   const app = document.querySelector("#app");
   app.classList.toggle("bigtext", !!st.bigText);
   app.classList.toggle("lefty", !!st.lefty);

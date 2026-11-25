@@ -47,7 +47,7 @@ export function endingScene(game) {
     if (i >= PAGES.length - 1) { alive = false; game.go("map", { from: "library" }); return; }
     i++;
     const P = PAGES[i];
-    sfx(i === PAGES.length - 1 ? "level" : i === 2 ? "restore" : "click");
+    sfx(i === PAGES.length - 1 ? "level" : i === 2 ? "restore" : "flip");
     bg.style.filter = `grayscale(${P.gray}) brightness(${1 - 0.25 * P.gray})`;
     lib.style.filter = bg.style.filter;
     glow.classList.toggle("on", !!P.book);

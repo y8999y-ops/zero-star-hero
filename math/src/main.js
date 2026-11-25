@@ -21,6 +21,7 @@ import { dormScene } from "./scenes/dorm.js";
 import { resultScene } from "./scenes/result.js";
 import { runBattle } from "./battle/battle.js";
 import { battleIn, battleOut } from "./transition.js";
+import { playMusic } from "./music.js";
 
 const game = {
   save: loadSave(),
@@ -30,6 +31,11 @@ const game = {
     // 入學流程：開場動畫（選外觀）→ 學院全景，點共鳴之井（還沒有屬性也能點）→ 共鳴儀式 → 第一場戰鬥
     if (scene === "map" && !s.look) scene = "opening";
     if (scene === "map" && s.attr && !s.seenIntro) scene = "afterResonance";
+    // 背景音樂：照畫面換（同一首不重來）
+    const MUSIC = { title: "title", look: "title", intro: "title", opening: "title", settings: null, resonance: "library", afterResonance: "hub",
+      map: "hub", academy: "hub", shop: "hub", dorm: "hub", library: "library", lesson: "library", lessons: "library", dex: "library", menu: "hub",
+      area: "area", ending: "ending", battle: arg.mode === "boss" ? "boss" : "battle" };
+    if (scene in MUSIC && MUSIC[scene] !== null) playMusic(MUSIC[scene]);
     switch (scene) {
       case "title": return titleScene(this);
       case "look": return lookScene(this);

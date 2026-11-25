@@ -167,7 +167,7 @@ export function hubScene(game, { from } = {}) {
   function stop() { running = false; window.removeEventListener("resize", onResize); window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); if (current === api) current = null; }
   const api = { stop };
   current = api;
-  function leave() { writeSave(s); stop(); }
+  function leave() { writeSave(s); stop(); sfx("door"); }
 
   // ── 點東西 ──
   let busy = false;

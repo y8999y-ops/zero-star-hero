@@ -478,3 +478,5 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 .dormroom canvas.dormcv { height: 100%; width: auto; }
 .dormmarks { position: absolute; inset: 0; margin: 0 auto; aspect-ratio: 16 / 9; height: 100%; }
 .dormslot { position: absolute; transform: translate(-50%, -50%); min-width: 34px; opacity: .92; }
+.btn.speak { position: absolute; left: 8px; top: max(30px, 8%); z-index: 3; min-width: 40px; }
+#app.lefty .btn.speak { left: auto; right: 8px; top: 44px; }
