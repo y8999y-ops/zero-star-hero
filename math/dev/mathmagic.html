@@ -13,16 +13,23 @@
 </style>
 </head>
 <body>
-<!-- 開發用：加減乘除的「數學變魔法」演出。網址加 ?t=0.8 停在第 0.8 秒；不加就一直重播。 -->
+<!-- 開發用：「數學變魔法」演出。網址加 ?t=0.8 停在第 0.8 秒；?set=2 看分數、小數、正負數、方程式、比例、四則、應用題、選擇題。 -->
 <div class="grid" id="grid"></div>
 <script type="module">
   import { Stage } from "../src/battle/stage.js";
-  const cases = [
+  const set2 = [
+    ["同分母", { op: "frac", parts: [[2, 7], [3, 7]] }], ["通分", { op: "frac", parts: [[1, 3], [1, 4]], common: 12 }], ["小數進位", { op: "dec", a: 3.7, b: 2.6 }],
+    ["正負數加法", { op: "sadd", a: 4, b: -9 }], ["正負數乘法", { op: "smul", a: -3, b: -4 }], ["方程式", { op: "eq", a: 3, b: 2, c: 11, x: 3 }],
+    ["比例", { op: "ratio", a: 2, b: 5, k: 3 }], ["先乘再加", { op: "mix", a: 6, b: 3, c: 4 }], ["應用題", { op: "word", nums: ["24", "8", "2"], answer: "384" }],
+    ["選擇題", { op: "seal" }], ["小數多條", { op: "dec", a: 9.4, b: 8.75 }], ["負數乘正數", { op: "smul", a: 6, b: -3 }],
+  ];
+  const set1 = [
     ["湊十進位", { op: "+", a: 7, b: 5 }], ["不進位", { op: "+", a: 3, b: 4 }], ["兩位數進位", { op: "+", a: 47, b: 36 }],
     ["借位", { op: "-", a: 12, b: 5 }], ["不借位", { op: "-", a: 9, b: 4 }], ["兩位數借位", { op: "-", a: 52, b: 27 }],
     ["乘法方陣", { op: "×", a: 3, b: 4 }], ["九九大方陣", { op: "×", a: 7, b: 8 }], ["面積模型", { op: "×", a: 37, b: 6 }],
     ["平分", { op: "÷", a: 12, b: 3 }], ["平分成 8 束", { op: "÷", a: 56, b: 8 }], ["大數平分", { op: "÷", a: 108, b: 9 }],
   ];
+  const cases = new URLSearchParams(location.search).get("set") === "2" ? set2 : set1;
   const freeze = new URLSearchParams(location.search).get("t");
   const cells = cases.map(([name, m], i) => {
     const c = document.createElement("canvas");
@@ -33,7 +40,7 @@
     s.gray = 0;
     return { s, m, next: 0 };
   });
-  const ans = ({ op, a, b }) => (op === "+" ? a + b : op === "-" ? a - b : op === "×" ? a * b : a / b);
+  const ans = ({ op, a, b, answer, x }) => (op === "+" ? a + b : op === "-" ? a - b : op === "×" ? a * b : op === "÷" ? a / b : answer ?? x ?? "OK");
   const go = (cell) => { cell.s.spawn(); cell.s.monster.x = 200; cell.s.mathMagic(cell.m).then(() => cell.s.cast(1)).then(() => { cell.s.popNumber(ans(cell.m), 3); cell.s.purify(); }); };
   if (freeze) {
     for (const cell of cells) go(cell);

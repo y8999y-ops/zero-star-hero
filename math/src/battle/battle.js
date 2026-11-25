@@ -8,6 +8,7 @@ import { recordAnswer, addExp } from "../growth.js";
 import { writeSave } from "../save.js";
 import { sfx } from "../audio.js";
 import { TIMER_EASE } from "../settings.js";
+import { printable } from "./mathmagic-more.js";
 
 const COUNT = 10;     // 一般小關的題數
 const EXAM = 10;      // 升階考核題數，答對 7 題通過
@@ -126,7 +127,9 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady) {
       }
       say(["", "咒語成立！", "魔法變強了！", "大魔法！", "終極魔法！！"][tier]);
       await stage.cast(tier, crystalLevel(s.crystals[s.attr]));
-      stage.popNumber(q.answer, combo);
+      // 答案數字跳出來；選擇題的答案可能是中文（像素字寫不出來），就跳一顆星
+      const shown = String(q.answer).replace(/−|－/g, "-");
+      stage.popNumber(printable(shown) && shown.length <= 8 ? shown : "!", combo);
       sfx("hit");
       if (boss) {
         shieldLeft--;

@@ -64,38 +64,38 @@ export const TYPES = {
     const den = ri(rnd, 3, [9, 12, 12][d]);
     if (d < 2) {
       const a = ri(rnd, 1, den - 2), b = ri(rnd, 1, den - 1 - a);
-      return { branch: "frac", text: `${a}/${den} ＋ ${b}/${den} ＝ ？`, answer: frac(a + b, den), wrong: [`${a + b}/${den * 2}`, frac(a + b + 1, den), frac(Math.abs(a - b) || 1, den)], explain: `分母一樣，分子相加：${a}＋${b}＝${a + b}，答案 ${frac(a + b, den)}` };
+      return { branch: "frac", text: `${a}/${den} ＋ ${b}/${den} ＝ ？`, answer: frac(a + b, den), wrong: [`${a + b}/${den * 2}`, frac(a + b + 1, den), frac(Math.abs(a - b) || 1, den)], explain: `分母一樣，分子相加：${a}＋${b}＝${a + b}，答案 ${frac(a + b, den)}`, math: { op: "frac", parts: [[a, den], [b, den]] } };
     }
     const d1 = pick(rnd, [2, 3, 4]), d2 = pick(rnd, [3, 5, 6].filter((x) => x !== d1));
     const n = d1 * d2 / gcd(d1, d2);
-    return { branch: "frac", text: `1/${d1} ＋ 1/${d2} ＝ ？`, answer: frac(n / d1 + n / d2, n), wrong: [`2/${d1 + d2}`, frac(1, n), frac(n / d1 + n / d2 + 1, n)], explain: `通分成分母 ${n}：${n / d1}/${n}＋${n / d2}/${n}＝${frac(n / d1 + n / d2, n)}` };
+    return { branch: "frac", text: `1/${d1} ＋ 1/${d2} ＝ ？`, answer: frac(n / d1 + n / d2, n), wrong: [`2/${d1 + d2}`, frac(1, n), frac(n / d1 + n / d2 + 1, n)], explain: `通分成分母 ${n}：${n / d1}/${n}＋${n / d2}/${n}＝${frac(n / d1 + n / d2, n)}`, math: { op: "frac", parts: [[1, d1], [1, d2]], common: n } };
   },
   decAdd(rnd, d) {
     const a = ri(rnd, 11, 99) / 10, b = ri(rnd, d ? 101 : 11, d ? 999 : 99) / (d ? 100 : 10);
     const s = Math.round((a + b) * 100) / 100;
-    return { branch: "dec", text: `${a} ＋ ${b} ＝ ？`, answer: `${s}`, wrong: [`${Math.round((a * 10 + b) * 100) / 100}`, `${Math.round((s + 0.1) * 100) / 100}`, `${Math.round((s - 1) * 100) / 100}`], explain: `小數點對齊再相加：${a}＋${b}＝${s}` };
+    return { branch: "dec", text: `${a} ＋ ${b} ＝ ？`, answer: `${s}`, wrong: [`${Math.round((a * 10 + b) * 100) / 100}`, `${Math.round((s + 0.1) * 100) / 100}`, `${Math.round((s - 1) * 100) / 100}`], explain: `小數點對齊再相加：${a}＋${b}＝${s}`, math: { op: "dec", a, b } };
   },
   mixedOps(rnd, d) {
     const a = ri(rnd, 2, 20), b = ri(rnd, 2, 9), c = ri(rnd, 2, 9);
-    return { branch: "muldiv", text: `${a} ＋ ${b} × ${c} ＝ ？`, answer: `${a + b * c}`, wrong: [`${(a + b) * c}`, `${a + b + c}`, `${a + b * c + 1}`], explain: `先乘除後加減：${b}×${c}＝${b * c}，${a}＋${b * c}＝${a + b * c}` };
+    return { branch: "muldiv", text: `${a} ＋ ${b} × ${c} ＝ ？`, answer: `${a + b * c}`, wrong: [`${(a + b) * c}`, `${a + b + c}`, `${a + b * c + 1}`], explain: `先乘除後加減：${b}×${c}＝${b * c}，${a}＋${b * c}＝${a + b * c}`, math: { op: "mix", a, b, c } };
   },
   // ── 國中 ──
   signedAdd(rnd, d) {
     const a = ri(rnd, -15, 15) || 3, b = ri(rnd, -15, -1);
-    return { branch: "signed", text: `${par(a)} ＋ ${par(b)} ＝ ？`, answer: neg(a + b), wrong: [neg(a - b), neg(-(a + b)), neg(a + b + 1)], explain: `加上負數就是減：${neg(a)}－${-b}＝${neg(a + b)}` };
+    return { branch: "signed", text: `${par(a)} ＋ ${par(b)} ＝ ？`, answer: neg(a + b), wrong: [neg(a - b), neg(-(a + b)), neg(a + b + 1)], explain: `加上負數就是減：${neg(a)}－${-b}＝${neg(a + b)}`, math: { op: "sadd", a, b } };
   },
   signedMul(rnd) {
     const a = ri(rnd, 2, 9) * pick(rnd, [1, -1]), b = -ri(rnd, 2, 9);
-    return { branch: "signed", text: `${par(a)} × ${par(b)} ＝ ？`, answer: neg(a * b), wrong: [neg(-a * b), neg(a + b), neg(a * b + 1)], explain: `${a * b > 0 ? "負負得正" : "正負得負"}：${Math.abs(a)}×${Math.abs(b)}＝${Math.abs(a * b)}，答案 ${neg(a * b)}` };
+    return { branch: "signed", text: `${par(a)} × ${par(b)} ＝ ？`, answer: neg(a * b), wrong: [neg(-a * b), neg(a + b), neg(a * b + 1)], explain: `${a * b > 0 ? "負負得正" : "正負得負"}：${Math.abs(a)}×${Math.abs(b)}＝${Math.abs(a * b)}，答案 ${neg(a * b)}`, math: { op: "smul", a, b } };
   },
   linearEq(rnd, d) {
     const x = ri(rnd, -6 * (d > 1), 9) || 2, a = ri(rnd, 2, 7), b = ri(rnd, -9, 12) || 1, c = a * x + b;
     const bs = b < 0 ? `－ ${-b}` : `＋ ${b}`;
-    return { branch: "eq", text: `${a}x ${bs} ＝ ${neg(c)}，x ＝ ？`, answer: neg(x), wrong: [neg(c - b), neg((c + b) / a === Math.trunc((c + b) / a) ? (c + b) / a : x + 1), neg(-x || x + 2)], explain: `移項：${a}x＝${neg(c)}${b < 0 ? "＋" + -b : "－" + b}＝${neg(c - b)}，x＝${neg(c - b)}÷${a}＝${neg(x)}` };
+    return { branch: "eq", text: `${a}x ${bs} ＝ ${neg(c)}，x ＝ ？`, answer: neg(x), wrong: [neg(c - b), neg((c + b) / a === Math.trunc((c + b) / a) ? (c + b) / a : x + 1), neg(-x || x + 2)], explain: `移項：${a}x＝${neg(c)}${b < 0 ? "＋" + -b : "－" + b}＝${neg(c - b)}，x＝${neg(c - b)}÷${a}＝${neg(x)}`, math: { op: "eq", a, b, c, x } };
   },
   proportion(rnd) {
     const a = ri(rnd, 2, 9), b = ri(rnd, 2, 9), k = ri(rnd, 2, 6);
-    return { branch: "ratio", text: `${a}：${b} ＝ ${a * k}：x，x ＝ ？`, answer: `${b * k}`, wrong: [`${b + k}`, `${a * k + b - a}`, `${b * k + b}`], explain: `前項放大 ${k} 倍（${a}×${k}＝${a * k}），後項也要放大：${b}×${k}＝${b * k}` };
+    return { branch: "ratio", text: `${a}：${b} ＝ ${a * k}：x，x ＝ ？`, answer: `${b * k}`, wrong: [`${b + k}`, `${a * k + b - a}`, `${b * k + b}`], explain: `前項放大 ${k} 倍（${a}×${k}＝${a * k}），後項也要放大：${b}×${k}＝${b * k}`, math: { op: "ratio", a, b, k } };
   },
 };
 

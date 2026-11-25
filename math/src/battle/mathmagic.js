@@ -9,6 +9,7 @@
 //      每格 m.update(dt)、m.draw(painter)；m.skip() 加速（點一下畫面）。
 
 import { hex as pfHex, FONTS } from "../../../pixelfx/src/core/index.js";
+import { installMore } from "./mathmagic-more.js";
 
 // pixelfx 的大字沒有 × 和 ÷，在這裡補上（不改函式庫本身）
 const glyph = (src) => { const rows = src.split("|"); return { w: rows[0].length, rows: rows.map((r) => [...r].map((c) => c === "#")) }; };
@@ -29,6 +30,7 @@ function mix(a, b, k) {
 const num = (h) => parseInt(h.slice(1), 16);
 
 export class MathMagic {
+  // 其他題型（分數、小數、正負數、方程式、比例、四則、應用題、選擇題）在 mathmagic-more.js，用 plan_<op> 掛上來
   constructor(colorHex, target = [200, 180]) {
     this.c = pfHex(colorHex);
     this.cL = pfHex(mix(num(colorHex), 0xffffff, 0.55));
@@ -60,14 +62,18 @@ export class MathMagic {
   at(t, fn) { this.events.push({ t, fn }); }
   flash(x, y, r) { this.flashes.push({ x, y, r, t: 0 }); }
 
-  start({ op, a, b }) {
+  start(math) {
+    const { op, a, b } = math;
     this.active = true; this.t = 0; this.speed = 1; this.orbs = []; this.events = []; this.flashes = []; this.boards = []; this.groups = []; this.blocks = [];
+    this.extra = {};   // 其他題型（mathmagic-more.js）用的狀態
+    this.lines = [];   // 算式下面一行一行出現的步驟
     const result = op === "+" ? a + b : op === "-" ? a - b : op === "×" ? a * b : a / b;
     this.text = `${a}${op}${b}`;
     this.full = `${a}${op}${b}=${result}`;
     this.textShown = 0;
     let done;
     const promise = new Promise((r) => (done = r));
+    if (this[`plan_${op}`]) { this.textShown = 0; this[`plan_${op}`](math, done); return promise; }
     if (op === "+") this.planAdd(a, b, result, done);
     else if (op === "-") this.planSub(a, b, result, done);
     else if (op === "×") (a * b <= 60 ? this.planMul(a, b, result, done) : this.planArea(a, b, result, done));
@@ -240,6 +246,7 @@ export class MathMagic {
     dt *= this.speed;
     this.t += dt;
     for (const e of this.events) if (!e.done && this.t >= e.t) { e.done = true; e.fn(); }
+    this.updateExtra?.(dt);
     // 算式一個字一個字寫出來
     this.textShown = Math.min(this.text.length, this.textShown + dt * 14);
     for (const o of this.orbs) {
@@ -282,6 +289,13 @@ export class MathMagic {
       if (o.kind === "ten") p.ring(o.x, o.y, r + 2, 1, this.cL, o.alpha * 0.8);
       if (!o.fade) p.glow(o.x, o.y, r + 4, o.color, 0.35 * o.alpha);
     }
+    // 算式下面的步驟（一行一行出現）
+    if (this.active) this.lines.forEach((ln, i) => {
+      if (this.t < ln.t0) return;
+      const n = Math.ceil(Math.min(ln.text.length, (this.t - ln.t0) * 16));
+      p.text(ln.text.slice(0, n), 144, 58 + i * 17, ln.hi ? WHITE : this.cL, { font: "big", scale: 2, align: "center", outline: INK_D });
+    });
+    this.drawExtra?.(p);
     // 方陣、平分的框
     if (this.active) for (const g of this.groups) {
       const c = g.hi ? WHITE : this.cL, a = g.hi ? 0.9 : 0.6;
@@ -322,3 +336,6 @@ export class PopNumber {
     p.glow(this.x, y + 6, 14, this.c, 0.4 * a);
   }
 }
+
+// 其他題型的演出（等 class 定義好之後才掛上去，避免循環載入的問題）
+installMore(MathMagic);

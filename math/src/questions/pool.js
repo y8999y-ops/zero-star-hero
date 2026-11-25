@@ -1,6 +1,7 @@
 // 出題：把程式產生的計算題和題庫的應用題、選擇題混在一起，並照錯題本加權（企劃書 6.2、7.6）。
 
 import { PLAN, generate } from "./gen.js";
+import { numbersOf } from "../battle/mathmagic-more.js";
 
 const cache = {};
 export async function loadBank(grade) {
@@ -41,6 +42,8 @@ export async function buildStage(save, grade, stage, count, boss = false) {
       text: b.text, explain: b.explain, unit: b.unit ?? "",
       answer: b.choices ? b.choices["ABCD".indexOf(b.answer)] : String(b.answer),
       choices: b.choices ?? null, wrong: [],
+      // 數學變魔法：選擇題用封印、應用題讓題目裡的數字飛上來
+      math: b.choices ? { op: "seal" } : { op: "word", nums: numbersOf(b.text), answer: String(b.answer) },
     };
   };
 

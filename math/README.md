@@ -11,7 +11,7 @@
 
 - 網址加 `?mute` 不出聲（測試用）。
 - 開發用：http://localhost:5173/math/dev/spells.html 同時播放五個屬性 × 四級魔法；加 `?t=0.6` 停在施法後第 0.6 秒，方便截圖比較。
-- 開發用：http://localhost:5173/math/dev/mathmagic.html 加減乘除的「數學變魔法」十二種情況（湊十進位、借位、乘法方陣、面積模型、平分…）；一樣可以加 `?t=1.0`。
+- 開發用：http://localhost:5173/math/dev/mathmagic.html 「數學變魔法」演出：預設是加減乘除十二種情況，`?set=2` 是分數、小數、正負數、方程式、比例、四則、應用題、選擇題；一樣可以加 `?t=1.0`。
 - 開發用：http://localhost:5173/math/dev/transition.html 按鈕播放五個屬性的戰鬥轉場（一般／王戰）；`?attr=ice&t=0.7`（加 `&boss`）停在第 0.7 秒。
 - 主控台的 `__game` 可以看存檔、直接跳畫面，例如 `__game.go("battle", { grade: "jh", mode: "boss" })`。
 
@@ -53,7 +53,7 @@ math/
     ui.js            建立元素、對話框、飄字
     transition.js    戰鬥轉場（墨水→魔法陣→屬性魔法蓋滿→打開）
     questions/       gen.js 計算題產生器、pool.js 出題與四個選項
-    battle/          battle.js 一關的流程、stage.js 戰鬥畫面、spells.js 五屬性四級魔法、mathmagic.js 數學變魔法與答案數字
+    battle/          battle.js 一關的流程、stage.js 戰鬥畫面、spells.js 五屬性四級魔法、mathmagic.js 數學變魔法（加減乘除）與答案數字、mathmagic-more.js 其他題型的演出
     scenes/          標題與劇情、共鳴儀式、學院地圖、結算、設定
   dev/               開發用頁面（魔法一覽）
   fx/                角色與怪物的像素圖（程式畫）：hero.js 見習魔數師
