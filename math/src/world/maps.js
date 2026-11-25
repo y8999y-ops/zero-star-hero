@@ -47,6 +47,7 @@ const DEF = {
     const map = {
       id: "island", name: "學院島", size: L.size,
       ground: `${dir}/ground.png`,
+      overlay: `${dir}/clouds-front.png`,          // 島南邊蓋在斷崖前面的雲（最上層）
       start: { x: DOCK.x + 70, y: DOCK.y + 90, dir: "left" },      // 剛下浮空船
       walkable(x, y) {
         const k = ((x - icx) / (irx - 10)) ** 2 + ((y - icy) / (iry - 16)) ** 2;

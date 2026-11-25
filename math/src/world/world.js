@@ -62,7 +62,7 @@ export class World {
 
   async load() {
     const base = new URL("../../assets/map/", import.meta.url);
-    const files = { ground: this.map.ground, ...Object.fromEntries(this.map.objects.filter((o) => o.file).map((o) => [o.art, o.file])) };
+    const files = { ground: this.map.ground, ...(this.map.overlay ? { overlay: this.map.overlay } : {}), ...Object.fromEntries(this.map.objects.filter((o) => o.file).map((o) => [o.art, o.file])) };
     const entries = await Promise.all(Object.entries(files).map(async ([k, f]) => [k, await loadImg(new URL(f, base).href)]));
     this.img = Object.fromEntries(entries);
     for (const o of this.map.objects) if (o.frame) this.img[o.art] = toCanvas(o.frame()).canvas;   // 程式畫的小東西（書頁、寶箱）
@@ -246,6 +246,7 @@ export class World {
     const h = this.hero;
     list.push({ y: h.y, draw: () => { const s = this.heroSprite(); shadow(h.x, h.y, 7); ctx.drawImage(s.canvas, Math.round(h.x) - s.ox - cx, Math.round(h.y) - s.oy - cy); } });
     list.sort((a, b) => a.y - b.y).forEach((d) => d.draw());
+    if (this.img.overlay) ctx.drawImage(this.img.overlay, -cx, -cy);   // 最上層的雲
     this.drawAmbient(ctx, cx, cy);
   }
 
