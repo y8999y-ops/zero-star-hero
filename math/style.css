@@ -791,3 +791,10 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 .titleacct.need { outline: 2px solid #e0565b; outline-offset: 1px; animation: lbglow 1.6s ease-in-out infinite; }
 @keyframes lbglow { 50% { box-shadow: 0 0 12px #ff5a7a; } }
 .loginwarn { font-size: 14px; line-height: 1.6; color: #e6dcff; }
+
+/* 標題頁 QR Code（2026-11-26 使用者） */
+.titleqr { position: absolute !important; top: max(10px, env(safe-area-inset-top)); left: max(12px, env(safe-area-inset-left)); z-index: 5; font-size: 13px; }
+.qrbox { align-self: center; padding: 6px; background: #fff; border-radius: 8px; line-height: 0; }
+.qrbox svg { width: min(220px, 38vh); height: auto; display: block; }
+.cloudmodal:has(.qrbox) { gap: 6px; }
+.qrurl { font-size: 12px; color: #c9bdf0; word-break: break-all; }

@@ -211,13 +211,14 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     if (boss && phase === 1 && shieldLeft <= Math.ceil(shield / 2) && shieldLeft < shield && stage.monster) {
       phase = 2; stage.monster.phase2 = true;
       sfx("boss"); stage.shake = 10; stage.flinch(); stage.flashC = "#b483ff"; stage.flashA = 0.5; stage.flashT = 0.4;
-      say("墨水大王變身了！招式變多了，小心！");
+      say("墨水大王變身了！別慌，一題一題算！");
       await wait(900);
     }
     if (final && !saidHalf && shieldLeft <= Math.ceil(shield / 2)) { saidHalf = true; await scene([K("明明這麼難、這麼多……你為什麼不放棄？"), PG("不會就去圖書館學，學會了再回來算。我們才不會說「算了」！")]); }
     if (final && !saidLast && shieldLeft === 1) { saidLast = true; await scene([K("最後這一題……是創校以來最早被丟進來的，幾百年都沒人算完。"), PG("小魔數師，一起為它畫下句點吧！")]); }
     // 王的招式（企劃書 E8）：第一階段每三題一次（晃動、墨水霧）；變身後每兩題一次，多一招「調換選項」
-    const move = !boss || qi === 0 ? null : phase === 1 ? (qi % 3 === 2 ? (qi % 2 ? "shake" : "ink") : null) : (qi % 2 === 1 ? ["ink", "shake"][Math.floor(qi / 2) % 2] : null);   // 2026-11-26：拿掉「調換選項」
+    // 2026-11-26 使用者：王的招式（調換選項、搖搖晃晃、墨水霧）都會干擾作答 → 全部取消；王只剩變身演出
+    const move = null;
     curMove = move;
     bubble.classList.remove("mv-shake", "mv-ink");
     wordPanel.classList.remove("mv-shake", "mv-ink");

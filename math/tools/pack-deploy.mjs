@@ -25,8 +25,9 @@ for (const rel of ["index.html", "manifest.json", "style.css", "src", "fx", "ass
   copy(path.join(root, rel), path.join(dist, "math", rel));
 }
 
-// 2. 教師後台 -> dist/admin/
+// 2. 教師後台 -> dist/admin/（遊戲標題頁的 QR Code 也用到 admin/qr.js → 另外放一份到 dist/math/admin/）
 copy(path.join(root, "admin"), path.join(dist, "admin"));
+copy(path.join(root, "admin", "qr.js"), path.join(dist, "math", "admin", "qr.js"));
 
 // 3. pixelfx 特效庫 -> dist/pixelfx/src/
 const pixelfxSrc = path.resolve(root, "..", "pixelfx", "src");

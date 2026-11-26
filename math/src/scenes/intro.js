@@ -4,6 +4,21 @@ import { el, show, dialog } from "../ui.js";
 import { sfx } from "../audio.js";
 import { resetSave, writeSave } from "../save.js";
 import { getStudent, isCloudAvailable, isTeacher, accountLabel, openLoginModal } from "../cloud.js";
+import { qrSvg } from "../../admin/qr.js";
+
+// 遊戲網址的 QR Code（2026-11-26 使用者：標題頁要能打開）：線上就用現在的網址；離線版（file://）用正式網址
+const GAME_URL = "https://mosu-academy.y8999y.workers.dev/math/";
+function openQr() {
+  const url = /^https?:$/.test(location.protocol) ? location.origin + location.pathname : GAME_URL;
+  const back = el("div.cloudback", { onclick: (e) => { if (e.target === back) back.remove(); } });
+  const code = el("div.qrbox"); code.innerHTML = qrSvg(url, 220);
+  back.append(el("div.panel.cloudmodal", {},
+    el("div.ptitle", {}, "掃描進入遊戲"),
+    code,
+    el("div.qrurl", {}, url),
+    el("div.cloudbtns", {}, el("button.btn.gold", { onclick: () => { sfx("click"); back.remove(); } }, "關閉"))));
+  document.querySelector("#app").append(back);
+}
 import { heroFrame } from "../../fx/hero.js";
 import { ATTRS } from "../data.js";
 import { loadAreaArt } from "../battle/areaart.js";
@@ -35,7 +50,8 @@ export function titleScene(game) {
   const who = st ? el("div.titlewho", {}, "歡迎回來，", el("b", {}, st.name)) : isTeacher() ? el("div.titlewho", {}, el("b", {}, "老師"), "試玩中") : null;
   const bar = needLogin ? el("button.loginbar", { onclick: login }, el("span.lbdot"), "還沒登入：進度只存在這台裝置", el("b", {}, "登入")) : null;
   if (needLogin) cloudBar?.classList.add("need");
-  show(el("div.screen.title", {}, bg, cloudBar,
+  const qrBtn = el("button.btn.small.titleqr", { onclick: () => { sfx("click"); openQr(); } }, "QR Code");
+  show(el("div.screen.title", {}, bg, cloudBar, qrBtn,
     el("div.logo", {}, el("span.l1", {}, "魔數"), el("span.l2", {}, "學院")),
     el("div.tag", {}, "數學是一種魔法"),
     who,
