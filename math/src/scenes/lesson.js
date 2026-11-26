@@ -30,7 +30,7 @@ export async function lessonScene(game, { branch = "big", back = null } = {}) {
   const [ex, ...tries] = qs;
   const body = el("div.lbody");
   const root = el("div.screen.lesson", {},
-    el("h2", {}, `魔法教室・${UNIT_NAME[branch]}（${BRANCHES[branch]}）`),
+    el("h2", {}, `魔法教室・${UNIT_NAME[branch]}`),
     el("ol.lpoints", {}, ...L.points.map((t) => el("li", {}, mathText(t)))),
     body,
     el("div.row", {},

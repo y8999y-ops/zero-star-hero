@@ -11,7 +11,7 @@ export function resultScene(game, r) {
   const g = GRADES[r.gradeId];
   const title = r.mode === "challenge" ? `挑戰模式：連對 ${r.right} 題！` : r.mode === "exam"
     ? (r.passed ? "升階考核通過！" : "這次差一點點！")
-    : r.hp <= 0 ? (r.gentle ? "休息一下" : "魔力耗盡") : r.mode === "boss" ? `${g.area}恢復色彩了！` : r.mode === "practice" ? (r.practice.review ? "錯題本特訓完成！" : `${UNIT_NAME[r.practice.branch]}（${MODES[r.practice.level].name}）練習完成！`) : "過關！";
+    : r.hp <= 0 ? (r.gentle ? "休息一下" : "魔力耗盡") : r.mode === "boss" ? `${g.area}恢復色彩了！` : r.mode === "practice" ? (r.practice.review ? "錯題本特訓完成！" : `${UNIT_NAME[r.practice.branch]}練習完成！`) : "過關！";
   // 2026-11-25 使用者：結算要精簡乾淨、一頁看完不用上下翻 → 一張卡：標題、星星、一排數字、一排小標籤、按鈕
   const stats = r.mode === "challenge" ? [[r.right, "連對"], [r.newBest ? "新紀錄" : r.best2, "最高"]]
     : r.mode === "exam" ? [[`${r.right}/7`, "答對"]]

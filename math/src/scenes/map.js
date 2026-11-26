@@ -22,12 +22,12 @@ export function mapScene(game) {
     el("div.prow.small", {},
       el("span", {}, `魔力 ${maxHp(s.lv)}`),
       el("span", {}, `數晶 Lv${crystalLevel(s.crystals[s.attr])}`),
-      el("span", {}, `頁頁：${pagePageForm(s)}（萬題之書 ${bookChapters(s)} 章）`)),
+      el("span", {}, `頁頁：${pagePageForm(s)}`)),
     nextReward ? el("div.next", {}, `下一個獎勵：Lv${nextReward[0]} ${nextReward[1]}`) : null,
   );
 
   const exam = rankExamReady(s)
-    ? el("button.btn.gold.examBtn", { onclick: () => game.go("battle", { grade: s.lastGrade ?? "g1", mode: "exam" }) }, `鐘塔亮了！參加升階考核（→ ${RANKS[s.rank + 1].name}）`)
+    ? el("button.btn.gold.examBtn", { onclick: () => game.go("battle", { grade: s.lastGrade ?? "g1", mode: "exam" }) }, "鐘塔亮了！參加升階考核")
     : null;
 
   const areas = el("div.areas", {}, ...GRADE_IDS.map((gid) => {
@@ -47,7 +47,7 @@ export function mapScene(game) {
   }));
 
   const tools = el("div.tools", {},
-    el("button.btn", { onclick: () => profilePanel(game, "review") }, `錯題本（${Object.keys(s.review).length}）`),
+    el("button.btn", { onclick: () => profilePanel(game, "review") }, "錯題本", Object.keys(s.review).length ? el("span.cnt", {}, `${Object.keys(s.review).length}`) : null),
     el("button.btn", { onclick: () => growthPanel(game) }, "成長日記"),
     el("button.btn", { onclick: () => { if (confirm("回共鳴之井重新測驗？等級、星星、錯題本都會保留。")) game.go("resonance", { retest: true }); } }, "共鳴之井"),
     el("button.btn", { onclick: () => game.go("settings", { from: "map" }) }, "設定"),

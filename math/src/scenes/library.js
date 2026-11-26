@@ -45,7 +45,7 @@ export function libraryScene(game) {
   async function bookTalk() {
     await talk(root, [
       { who: "page", name: "頁頁", text: `這就是《萬題之書》！我是從裡面掉出來的那一頁。現在我是「${pagePageForm(s)}」的樣子。` },
-      { who: "page", name: "頁頁", text: "每當你把一門數學魔法練到精通（成長日記裡的 ★★★），那一章的書頁就會飛回來，我也會跟著長大喔！" },
+      { who: "page", name: "頁頁", text: "每當你把一門數學魔法練到精通，那一章的書頁就會飛回來，我也會跟著長大喔！" },
     ]);
   }
   async function downstairs() {

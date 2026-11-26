@@ -108,7 +108,7 @@ export async function dormScene(game) {
     writeSave(s);
     const cups = TROPHY.filter((g) => (s.stars[`${g}-boss`] ?? 0) > 0).length;
     await talk(root, [
-      { who: "page", name: "頁頁", text: "呼～在床上躺一下。（進度已經存好了）" },
+      { who: "page", name: "頁頁", text: "呼～在床上躺一下，進度已經存好了。" },
       { who: "page", name: "頁頁", text: d ? `今天算了 ${d.n} 題，答對 ${d.ok} 題。${d.ok >= 10 ? "好認真！" : "休息夠了再去算幾題吧！"}` : "今天還沒算題目呢。休息夠了，去學院練習吧！" },
       { who: "page", name: "頁頁", text: cups ? `牆上已經有 ${cups} 個獎盃了！${cups < 5 ? `還差${TROPHY.filter((g) => !(s.stars[`${g}-boss`] > 0)).map((g) => GRADES[g].area).join("、")}。` : "五區全部恢復色彩，你是學院的英雄！"}` : "牆上的獎盃架還空空的。打倒墨水大王，就會多一個獎盃喔。" },
     ]);

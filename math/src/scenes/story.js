@@ -73,7 +73,7 @@ export async function openingStory(game, { replay = false, back = "title" } = {}
     D.caption("今年的新生，搭著浮空船來了。");
     await Promise.all([ship.to({ x: 192 }, 3.4, "out"), front.to({ x: 192 }, 3.4, "out"), kids.girl.to({ x: 164 }, 3.4, "out"), kids.boy.to({ x: 220 }, 3.4, "out")]);
     if (!chosen) {
-      D.caption("你是哪一位新生？（兩位的能力和故事都一樣，只有外觀不同）");
+      D.caption("你是哪一位新生？");
       chosen = await pick(root);
       s.look = chosen; writeSave(s); sfx("good");
     }
@@ -91,7 +91,7 @@ export async function openingStory(game, { replay = false, back = "title" } = {}
     await D.fadeOut("#fffaeb", 1);
   });
   // 跳過的時候還沒選外觀：在同一個畫面上選
-  if (!chosen) { const c = document.querySelector(".csscr") ?? root; const cap = c?.querySelector(".cscap"); if (cap) { cap.hidden = false; cap.textContent = "你是哪一位新生？（兩位的能力和故事都一樣，只有外觀不同）"; } chosen = await pick(c); s.look = chosen; writeSave(s); }
+  if (!chosen) { const c = document.querySelector(".csscr") ?? root; const cap = c?.querySelector(".cscap"); if (cap) { cap.hidden = false; cap.textContent = "你是哪一位新生？"; } chosen = await pick(c); s.look = chosen; writeSave(s); }
   void r;
   if (replay) { game.go("settings", { from: back }); return; }
   s.world = null; writeSave(s);
@@ -113,14 +113,14 @@ export async function ceremonyStory(game) {
     hop(dean);
     await D.say([D_("喔喔，新生到了！歡迎來到魔數學院，我是院長，大家叫我圓周院長。"), D_("入學典禮開始！首先，院長致詞：圓周率是三點一四一五九二六五三五八九七九三二三八四六二六四三……")]);
     // 院長講不完：太陽都換了位置（快轉），同學打瞌睡
-    D.caption("（院長講了很久很久……）");
+    D.caption("院長講了很久很久……");
     D.filter("saturate(.75) sepia(.35) hue-rotate(-12deg)", 2);
     await Promise.all(st.map((a, i) => a.to({ rot: i % 2 ? 8 : -8 }, 1.2)));
     await D.wait(1.2);
     D.filter("saturate(.75)", 1);
     await Promise.all(st.map((a) => a.to({ rot: 0 }, 0.3)));
     D.caption("");
-    await D.say([N_("（旁邊的老師輕輕咳了一聲。）"), D_("……咳，總之！每位新生都要站上「共鳴之井」。井水會問你幾個問題——不是問你會不會算，是問你「喜歡怎麼想」。"), D_("沒有對錯，照你真的會做的選就好。來，站上去吧！")]);
+    await D.say([N_("旁邊的老師輕輕咳了一聲。"), D_("……咳，總之！每位新生都要站上「共鳴之井」。井水會問你幾個問題——不是問你會不會算，是問你「喜歡怎麼想」。"), D_("沒有對錯，照你真的會做的選就好。來，站上去吧！")]);
     // 新生走上井邊，井水發光
     await me.to({ x: 192, y: GY + 12 }, 1.4);
     sfx("restore");

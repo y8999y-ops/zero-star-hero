@@ -4,7 +4,7 @@
 
 import { el, show } from "../ui.js";
 import { sfx } from "../audio.js";
-import { BRANCHES, UNIT_NAME, LENGTHS } from "../data.js";
+import { UNIT_NAME, LENGTHS } from "../data.js";
 import { ACADEMIES, MODES } from "../practice.js";
 import { writeSave } from "../save.js";
 
@@ -26,7 +26,7 @@ export function academyScene(game, { academy = "fire" } = {}) {
       }, el("span.acn", {}, M.name), el("span.acs", {}, "★".repeat(st) + "☆".repeat(3 - st)));
     });
     return el("div.accard", {},
-      el("div.actitle", {}, UNIT_NAME[b], el("span.acmagic", {}, BRANCHES[b])),
+      el("div.actitle", {}, UNIT_NAME[b]),
       el("div.aclvs", {}, ...lv),
       el("button.btn.small.aclearn", { onclick: () => { sfx("click"); game.go("lesson", { branch: b, back: { scene: "academy", academy } }); } }, "學一學"));
   };

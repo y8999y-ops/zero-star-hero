@@ -76,7 +76,7 @@ export async function resonanceScene(game, { retest = false } = {}) {
     await D.wait(0.8);
     await D.say([{ who: null, name: `${A.name}屬性・${A.school}`, text: `你是「${A.type}」。${A.praise}` },
       { who: null, name: `${A.school}的魔法`, text: `${A.spells}……每次答對都不太一樣，連擊越高越華麗！` },
-      ...(mood >= 2 ? [{ who: "page", name: "頁頁", text: "放輕鬆，我們慢慢來。（限時已經幫你調寬鬆）" }] : [])]);
+      ...(mood >= 2 ? [{ who: "page", name: "頁頁", text: "放輕鬆，我們慢慢來。" }] : [])]);
     void page;
   }, { skippable: false });
   if (retest || s.seenIntro) game.go("map", { from: "well" });

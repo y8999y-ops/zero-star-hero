@@ -641,3 +641,15 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 .hubarrow.off { opacity: 0; pointer-events: none; animation: none; }
 @keyframes harrowL { 0%, 100% { transform: translateX(0); opacity: .5; } 50% { transform: translateX(-10px); opacity: .85; } }
 @keyframes harrowR { 0%, 100% { transform: translateX(0); opacity: .5; } 50% { transform: translateX(10px); opacity: .85; } }
+
+/* 卷軸（2026-11-26 使用者：太醜 → 重新設計）：細的深色軌道＋圓角紫水晶滑塊，按住時變金色；上下沒有箭頭鈕 */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: rgba(14, 10, 28, .55); border-radius: 5px; margin: 8px; box-shadow: inset 0 0 0 1px rgba(196, 173, 255, .12); }
+::-webkit-scrollbar-thumb { border-radius: 5px; border: 2px solid transparent; background: linear-gradient(180deg, #d9c9ff, #8a6cff 55%, #6a4fd8) padding-box; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45); }
+::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #efe6ff, #a48aff 55%, #7b5cff) padding-box; }
+::-webkit-scrollbar-thumb:active { background: linear-gradient(180deg, #fff3c2, #f2c24a 55%, #c9902a) padding-box; }
+::-webkit-scrollbar-button, ::-webkit-scrollbar-corner { display: none; background: transparent; }
+@supports not selector(::-webkit-scrollbar) { * { scrollbar-width: thin; scrollbar-color: #8a6cff rgba(14, 10, 28, .55); } }
+/* 數量小紅點（取代「錯題本（3）」的括號） */
+.cnt { display: inline-block; min-width: 18px; height: 18px; padding: 0 5px; margin-left: 6px; border-radius: 9px; background: #ff5a7a; color: #fff; font-size: 11px; line-height: 18px; text-align: center; vertical-align: 1px; }
+#app:has(> .panel) .hubarrow { opacity: 0; pointer-events: none; animation: none; }

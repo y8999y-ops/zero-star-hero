@@ -57,8 +57,7 @@ export function mainQuest(s) {
   for (const [g, target] of MAIN) {
     if ((s.stars[`${g}-boss`] ?? 0) > 0) continue;
     const n = [1, 2, 3].filter((k) => (s.stars[`${g}-${k}`] ?? 0) > 0).length;
-    const where = g === "g2" ? "（從圖書館上樓）" : g === "jh" ? "（從圖書館下樓）" : "";
-    return { text: `淨化${GRADES[g].area}（${GRADES[g].name}）${n < 3 ? `：墨水怪 ${n}/3` : "：打倒墨水大王"}${where}`, target };
+    return { text: `淨化${GRADES[g].area}${n < 3 ? `：墨水怪 ${n}/3` : "：打倒墨水大王"}`, target };
   }
   return { text: "主線完成！到學院練習、挑戰更難的題目吧", target: null };
 }
@@ -232,13 +231,13 @@ export function hubScene(game, { from } = {}) {
     dean: async () => {
       const first = !s.flags?.metDean;
       s.flags = { ...(s.flags ?? {}), metDean: true }; writeSave(s);
-      if (first) await say([D("喔喔，是新來的見習魔數師！歡迎來到魔數學院。"), D("我是院長，大家叫我圓周院長。圓周率是三點一四一五九二六五三五八九七九三二三八四六……"), { who: null, name: "", text: "（院長停不下來了。你輕輕咳了一聲。）" }, D("……咳，總之！往右邊走是千頁圖書館、五座學院、溫室、鐘塔，最右邊是星芽花園，都可以去看看。")]);
+      if (first) await say([D("喔喔，是新來的見習魔數師！歡迎來到魔數學院。"), D("我是院長，大家叫我圓周院長。圓周率是三點一四一五九二六五三五八九七九三二三八四六……"), { who: null, name: "", text: "院長停不下來了。你輕輕咳了一聲。" }, D("……咳，總之！往右邊走是千頁圖書館、五座學院、溫室、鐘塔，最右邊是星芽花園，都可以去看看。")]);
       const r = await say([D(pick(["今天也要好好算喔。圓周率的下一位是……二六四三三八三二七九……", "墨水大王把學院的顏色吸走了。你算完的每一題，都會讓學院亮一點點。", "累了就去共鳴之井旁邊坐坐。人會成長，想法也會變喔。"]))], ["好的院長！", "院長，圓周率背到哪了？"]);
-      if (r === 1) await say([D("五〇二八八四一九七一六九三九九三七五一〇五八二〇九七四九四四五九二三〇七八一六四〇六二八六二〇八九九八六二八〇三四八二五三四二一一七〇六七……"), { who: null, name: "", text: "（你決定先去別的地方逛逛。）" }]);
+      if (r === 1) await say([D("五〇二八八四一九七一六九三九九三七五一〇五八二〇九七四九四四五九二三〇七八一六四〇六二八六二〇八九九八六二八〇三四八二五三四二一一七〇六七……"), { who: null, name: "", text: "你決定先去別的地方逛逛。" }]);
     },
     well: async () => {
       const d = daily(s);
-      const opts = [d.wish ? "今天已許過願" : "許願（1 晶幣）", "重新共鳴儀式", s.lv >= 20 ? `副屬性${s.subAttr ? `（現在：${ATTRS[s.subAttr].name}）` : ""}` : "副屬性（Lv20 開放）", "離開"];
+      const opts = [d.wish ? "今天已許過願" : "許願", "重新共鳴儀式", "副屬性", "離開"];
       const r = await say([{ who: null, name: "共鳴之井", text: "要做什麼？" }], opts);
       if (r === 0 && !d.wish && s.coins >= 1) {
         s.coins -= 1; d.wish = true;
@@ -249,9 +248,9 @@ export function hubScene(game, { from } = {}) {
       if (r === 1) { if (confirm("重新做共鳴儀式？等級、星星、錯題本都會保留。")) { leave(); game.go("resonance", { retest: true }); } }
       else if (r === 2) {
         // 副屬性（Lv20 開放）：2026-11-25 學系能力取消後，副屬性只用在組合技（連擊每 3 下合成一招）
-        if (s.lv < 20) { await say([{ who: null, name: "共鳴之井", text: `等你到 Lv20，井水就會讓你的數晶再多共鳴一種顏色。（現在 Lv${s.lv}）` }]); return; }
+        if (s.lv < 20) { await say([{ who: null, name: "共鳴之井", text: `等你到 Lv20，井水就會讓你的數晶再多共鳴一種顏色。` }]); return; }
         const others = Object.keys(ATTRS).filter((k) => k !== s.attr);
-        const c = await say([{ who: null, name: "共鳴之井", text: "選一種副屬性。連擊每 3 下，會跟它合成「組合技」，隨時可以回來換。" }], [...others.map((k) => `${ATTRS[k].name}・${ATTRS[k].school}（${ATTRS[k].spells}）`), "不要副屬性"]);
+        const c = await say([{ who: null, name: "共鳴之井", text: "選一種副屬性。連擊每 3 下，會跟它合成「組合技」，隨時可以回來換。" }], [...others.map((k) => `${ATTRS[k].name}・${ATTRS[k].school}`), "不要副屬性"]);
         if (c == null) return;
         s.subAttr = c < others.length ? others[c] : null; writeSave(s); sfx("restore");
         await say([{ who: null, name: "共鳴之井", text: s.subAttr ? `你的數晶多了一道${ATTRS[s.subAttr].name}色的光。` : "數晶的光回到一種顏色了。" }]);
@@ -262,9 +261,9 @@ export function hubScene(game, { from } = {}) {
     toGarden: async () => { leave(); game.go("area", { grade: "g1" }); },
     board: async () => {
       const d = daily(s);
-      const lines = QUESTS.map((q) => `${d.claimed.includes(q.id) ? "✔" : q.done(s) ? "★" : "・"} ${q.text}（${q.coins} 晶幣）`);
+      const lines = QUESTS.map((q) => `${d.claimed.includes(q.id) ? "✔" : q.done(s) ? "★" : "・"} ${q.text}`);
       const ready = QUESTS.filter((q) => q.done(s) && !d.claimed.includes(q.id));
-      const r = await say([{ who: null, name: "布告欄・今日委託", text: lines.join("　") }], ready.length ? [`領取獎勵（${ready.reduce((a, q) => a + q.coins, 0)} 晶幣）`, "離開"] : ["離開"]);
+      const r = await say([{ who: null, name: "布告欄・今日委託", text: lines.join("　") }], ready.length ? ["領取獎勵", "離開"] : ["離開"]);
       if (ready.length && r === 0) { ready.forEach((q) => { d.claimed.push(q.id); s.coins += q.coins; }); writeSave(s); sfx("level"); }
     },
   };
@@ -278,12 +277,12 @@ export function hubScene(game, { from } = {}) {
       if (key === "greenhouse") { await planter(); return; }
       if (key === "clock") {
         const exam = rankExamReady(s);
-        const opts = ["進去（四年級上）", ...(exam ? ["參加升階考核"] : []), s.lv >= 15 ? `挑戰模式（最高連對 ${s.challengeBest ?? 0} 題）` : "挑戰模式（Lv15 開放）", "先不要"];
-        const r = await say([{ who: null, name: "刻度鐘塔", text: exam ? `可以參加升階考核（→ ${RANKS[s.rank + 1].name}）` : "要做什麼？" }], opts);
+        const opts = ["進去", ...(exam ? ["參加升階考核"] : []), "挑戰模式", "先不要"];
+        const r = await say([{ who: null, name: "刻度鐘塔", text: exam ? "可以參加升階考核" : "要做什麼？" }], opts);
         if (r === 0) { leave(); game.go("area", { grade: "g34" }); }
         else if (exam && r === 1) { leave(); game.go("battle", { grade: s.lastGrade ?? "g1", mode: "exam" }); }
         else if (r === (exam ? 2 : 1)) {
-          if (s.lv < 15) { await say([{ who: null, name: "刻度鐘塔", text: `挑戰模式：每題 20 秒、一直連答，答錯就結束。等你到 Lv15 再來挑戰！（現在 Lv${s.lv}）` }]); return; }
+          if (s.lv < 15) { await say([{ who: null, name: "刻度鐘塔", text: `挑戰模式：每題 20 秒、一直連答，答錯就結束。等你到 Lv15 再來挑戰！` }]); return; }
           leave(); game.go("battle", { grade: "g34", mode: "challenge" });
         }
         return;
@@ -294,7 +293,7 @@ export function hubScene(game, { from } = {}) {
     page: async (t) => {
       const i = Number(t.id.split("_")[1]); s.pages = [...new Set([...(s.pages ?? []), i])]; s.coins += 5; writeSave(s); sfx("good");
       tapped(t.node);
-      await say([{ who: "page", name: "頁頁", text: `找到《萬題之書》的書頁了！（${s.pages.length} / ${PAGES.length}）上面寫著：` }, { who: null, name: "書頁", text: PAGES[i] }]);
+      await say([{ who: "page", name: "頁頁", text: "找到《萬題之書》的書頁了！上面寫著：" }, { who: null, name: "書頁", text: PAGES[i] }]);
       if (s.pages.length === PAGES.length) await say([{ who: "page", name: "頁頁", text: "全部的書頁都找到了！你真是最會找東西的魔數師！" }]);
     },
     chest: async (t) => {
@@ -308,7 +307,7 @@ export function hubScene(game, { from } = {}) {
       const i = Number(t.id.split("_")[1]), q = riddleFor(s, { id: `ink${i}` });
       const r = await say([{ who: "page", name: "頁頁", text: "學院裡也冒出墨水了！這灘墨水上浮著一題，算完它就會散掉：" }, { who: null, name: "墨水小點", text: q.text }], q.options.map(String));
       daily(s).ink.push(i); writeSave(s); tapped(t.node);
-      if (q.options[r] === q.answer) { s.coins += 3; addExp(s, 6); writeSave(s); sfx(`cast_${s.attr}`); await say([{ who: "page", name: "頁頁", text: "淨化！地面又乾淨了。（＋3 晶幣）" }]); }
+      if (q.options[r] === q.answer) { s.coins += 3; addExp(s, 6); writeSave(s); sfx(`cast_${s.attr}`); await say([{ who: "page", name: "頁頁", text: "淨化！地面又乾淨了。" }]); }
       else { sfx("hurt"); await say([{ who: "page", name: "頁頁", text: `答案是 ${q.answer}。沒關係，明天它還會再冒出來給你練習。` }]); }
     },
   };
@@ -316,7 +315,7 @@ export function hubScene(game, { from } = {}) {
   // 分晶溫室：數晶盆栽（每答對 15 題長大一階，第 4 階收成）；深處通往五～六年級的區域
   async function planter() {
     const okTotal = Object.values(s.diary ?? {}).reduce((a, d) => a + (d.ok ?? 0), 0);
-    const r0 = await say([{ who: null, name: "分晶溫室", text: "要做什麼？" }], ["數晶盆栽", "溫室深處（四年級下）", "離開"]);
+    const r0 = await say([{ who: null, name: "分晶溫室", text: "要做什麼？" }], ["數晶盆栽", "溫室深處", "離開"]);
     if (r0 === 1) { leave(); game.go("area", { grade: "g56" }); return; }
     if (r0 !== 0) return;
     if (!s.plant) {
@@ -326,20 +325,20 @@ export function hubScene(game, { from } = {}) {
     }
     const grown = okTotal - s.plant.base, stage = Math.min(4, Math.floor(grown / 15));
     const LOOK = ["一顆發光的種子埋在土裡。", "冒出一根小小的嫩芽！", "長出兩片葉子，葉子上有細細的光點。", "長成一棵小苗，頂端有一顆小花苞在發光。", "開花了！花心結出一顆閃亮的數晶果實！"];
-    if (stage < 4) { await say([{ who: null, name: "數晶盆栽", text: `${LOOK[stage]}（再答對 ${15 * (stage + 1) - grown} 題會再長大）` }]); return; }
+    if (stage < 4) { await say([{ who: null, name: "數晶盆栽", text: LOOK[stage] }]); return; }
     const r = await say([{ who: null, name: "數晶盆栽", text: LOOK[4] }], ["收成", "先放著"]);
     if (r === 0) { s.crystals[s.attr] = (s.crystals[s.attr] ?? 0) + 3; s.plant = { base: okTotal }; writeSave(s); sfx("level"); await say([{ who: "page", name: "頁頁", text: "你的數晶多了 3 點！魔法會更亮喔。盆栽裡又冒出新的種子了。" }]); }
   }
   // 入學典禮：劇情動畫（scenes/story.js）→ 共鳴儀式
   async function ceremony() { leave(); game.go("ceremony"); }
-  async function remind() { await say([D("新生！新生！先到共鳴之井來（往右滑一點，那個發光的井），入學典禮要開始囉！")]); }
+  async function remind() { await say([D("新生！新生！先到共鳴之井來，入學典禮要開始囉！")]); }
 
   function menu() {
     if (busy) return;
     busy = true;
     const p = el("div.panel.wmenu", {},
       el("div.ptitle", {}, "選單"),
-      el("button.btn", { onclick: () => { leave(); game.go("menu"); } }, "學院選單（所有區域、錯題本、成長日記）"),
+      el("button.btn", { onclick: () => { leave(); game.go("menu"); } }, "學院選單"),
       el("button.btn", { onclick: () => { leave(); game.go("settings", { from: "map" }); } }, "設定"),
       el("button.btn", { onclick: () => { leave(); game.go("title"); } }, "回標題"),
       el("button.btn.gold", { onclick: () => { p.remove(); busy = false; } }, "關閉"));

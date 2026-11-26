@@ -15,7 +15,7 @@ export function profilePanel(game, tab = "me", onClose) {
   const s = game.save;
   const body = el("div.pbody");
   const tabBtns = TABS.map(([id, name]) => el("button.ptab", { onclick: () => { sfx("click"); go(id); } },
-    id === "review" && Object.keys(s.review).length ? `${name}（${Object.keys(s.review).length}）` : name));
+    name, id === "review" && Object.keys(s.review).length ? el("span.cnt", {}, `${Object.keys(s.review).length}`) : null));
   const close = () => { p.remove(); onClose?.(); };
   const p = el("div.panel.prof", {},
     el("div.ptabs", {}, ...tabBtns, el("button.pclose", { "aria-label": "關閉", onclick: () => { sfx("click"); close(); } }, "✕")),
@@ -101,7 +101,7 @@ export function diaryBody(s) {
           el("span.gun", {}, UNIT_NAME[b]),
           bar(p),
           el("span.gup", {}, p >= 1 ? "通過 ✓" : `${Math.round(p * 100)}%`),
-          el("span.gum", { title: "熟練度（最近 20 題）" }, m?.recent?.length ? "★".repeat(m.best) + "☆".repeat(5 - m.best) : "還沒練"));
+          el("span.gum", { title: "熟練度" }, m?.recent?.length ? "★".repeat(m.best) + "☆".repeat(5 - m.best) : "還沒練"));
       }))),
     el("div.sub", {}, `最近 30 天：練了 ${played} 天、答對 ${okAll} 題`),
     el("div.bars.b30", {}, ...days.map(([d, v], i) => el("div.bar", { title: `${d}：答對 ${v.ok}／${v.n} 題` },
