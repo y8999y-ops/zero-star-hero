@@ -26,6 +26,9 @@ export const MODES = [
   { name: "困難", desc: "四年級程度", hard: true, grade: "g34", bank: ["g34"] },
 ];
 export const PRACTICE_COUNT = 3;
+// 2026-11-26 使用者：簡單與困難合併成一關 → 每個單元只有一關，題目由易到難（前一半簡單、後一半困難），星星記在「單元-0」
+/** 一個單元的訓練星星（舊存檔的簡單、困難取比較高的） */
+export const unitStars = (s, b) => Math.min(3, Math.max(s.practice?.[`${b}-0`] ?? 0, s.practice?.[`${b}-1`] ?? 0));
 
 function bankQ(b, grade, branch) {
   return {
@@ -55,25 +58,27 @@ function pad(q) {
 const calcQ = (branch, hard, rnd, grade) => pad({ kind: "calc", grade, prefix: "", ...MID[branch](rnd, hard), typeKey: `${branch}-${hard ? "h" : "e"}` });
 
 /** 一串題目：units＝[[單元, 困難嗎], …] 輪流出；大約 1/4 是題庫的應用題（排在中間，不會第一題就是長長的應用題） */
-async function build(save, units, count, bankGrades, grade, prefix = "") {
+async function build(save, units, count, bankGrades, grade, prefix = "", ordered = false) {
   const rnd = seeded(Date.now());
   const pools = await Promise.all(units.map(([b]) => bankOf(b, bankGrades)));
   const bankAll = pools.flatMap((p, i) => p.map(([q, g]) => ({ q, g, b: units[i][0] }))).map((x) => [rnd(), x]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
   const nBank = Math.min(bankAll.length, Math.round(count / 4));
   const word = bankAll.slice(0, nBank).map(({ q, g, b }) => bankQ(q, g, b));
   const calc = [];
-  for (let i = 0; calc.length < count - word.length; i++) { const [b, hard] = units[i % units.length]; calc.push({ ...calcQ(b, hard, rnd, grade), prefix }); }
+  const nCalc = count - word.length;
+  for (let i = 0; calc.length < nCalc; i++) { const [b, hard] = ordered ? units[Math.floor((i * units.length) / nCalc)] : units[i % units.length]; calc.push({ ...calcQ(b, hard, rnd, grade), prefix }); }
   // 打散順序（同一個單元不要連續太多）
-  calc.sort(() => rnd() - 0.5);
+  if (!ordered) calc.sort(() => rnd() - 0.5);
   const out = [...calc];
   word.forEach((q, i) => out.splice(Math.min(out.length, 1 + Math.floor(((i + 1) * out.length) / (word.length + 1))), 0, q));
   return out.map((q) => { q.fromReview = !!save.review[q.typeKey]; return withChoices(q, rnd); });
 }
 
-/** 學院練習一場：一個單元、一種模式 */
+/** 學院練習一場：一個單元，由易到難（前一半簡單、後一半困難；題庫應用題用三下＋四上） */
 export function buildPractice(save, branch, mode, count = PRACTICE_COUNT) {
-  const M = MODES[mode];
-  return build(save, [[branch, M.hard]], count, M.bank, M.grade);
+  const easy = Math.ceil(count / 2);
+  const units = Array.from({ length: count }, (_, i) => [branch, i >= easy]);
+  return build(save, units, count, ["g2", "g34"], "g1", "", true);
 }
 
 // 主線五區：每一區＝一個學期的單元。第 1～3 關各練一個（或兩個）單元，王把這一區全部混在一起、用困難的

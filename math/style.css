@@ -414,7 +414,7 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 .aclen .btn.on { opacity: 1; outline: 2px solid #ffd76a; }
 .accard { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; background: rgba(255, 255, 255, .05); border-radius: 8px; }
 .actitle { font-weight: 800; color: var(--gold); }
-.aclvs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.aclvs { display: grid; grid-template-columns: 1fr; gap: 6px; }
 .aclv { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; font-size: 13px; }
 .aclv .acs { color: var(--gold); font-size: 12px; letter-spacing: 1px; }
 .aclv.locked { opacity: .5; }

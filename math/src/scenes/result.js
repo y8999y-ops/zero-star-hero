@@ -2,7 +2,6 @@
 
 import { el, show, mathText } from "../ui.js";
 import { BRANCHES, UNIT_NAME, LEVEL_REWARDS, GRADES } from "../data.js";
-import { MODES } from "../practice.js";
 import { BRANCH_MAGIC } from "../battle/branch-magic.js";
 import { sfx } from "../audio.js";
 import { ACADEMIES } from "../practice.js";

@@ -5,7 +5,7 @@ import { el, mathText } from "../ui.js";
 import { sfx } from "../audio.js";
 import { ATTRS, GRADES, RANKS, UNIT_NAME, expToNext, MAX_LV, LEVEL_REWARDS, crystalLevel, maxHp } from "../data.js";
 import { bookChapters, pagePageForm } from "../growth.js";
-import { reviewUnits, ACADEMY_OF, ACADEMIES } from "../practice.js";
+import { reviewUnits, ACADEMY_OF, ACADEMIES, unitStars } from "../practice.js";
 
 const TABS = [["me", "我的資料"], ["review", "錯題本"], ["diary", "成長日記"]];
 
@@ -77,8 +77,7 @@ export function reviewBody(s, leaveTo) {
 // 2026-11-26 使用者：用動態進度條顯示，全部通過就是 100%。
 //   每個單元的進度＝學院練習簡單＋困難的星星（各 3 顆，共 6 顆）；兩種模式都 3 星＝通過。總進度＝全部單元加起來。
 export function diaryBody(s) {
-  const st = (b, l) => Math.min(3, s.practice?.[`${b}-${l}`] ?? 0);
-  const unitPct = (b) => (st(b, 0) + st(b, 1)) / 6;
+  const unitPct = (b) => unitStars(s, b) / 3;           // 2026-11-26：簡單困難合併成一關，3 星＝通過
   const all = Object.values(ACADEMIES).flatMap((A) => A.branches);
   const total = all.reduce((x, b) => x + unitPct(b), 0) / all.length;
   const passed = all.filter((b) => unitPct(b) >= 1).length;
