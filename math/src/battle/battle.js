@@ -45,13 +45,14 @@ function tutorialQuestions(attr) {
   });
 }
 // 怪物個性（2026-11-25 使用者：遊戲性不夠 → 照建議做「怪物有個性」）：每種墨水怪打法不一樣，第一次出現時頁頁提醒一句
-//   hp：要答對幾題才會散開；combo：要「連續」答對（答錯就黏回去）；shield：第一題只打破盾；shuffle：出題後選項換位置；blot：一個選項被塗黑一下
+//   hp：要答對幾題才會散開；combo：要「連續」答對（答錯就黏回去）；shield：第一題只打破盾（shuffle、blot 2026-11-26 取消）
 const TRAITS = {
   pages: { hp: 2, combo: true, line: "散頁怪要「連續」答對兩題才會散開，答錯它會黏回去！" },
   shade: { hp: 2, line: "負號影有一個分身，要答對兩題！" },
   bug: { hp: 2, shield: true, line: "碎晶蟲身上有水晶盾，第一題先打破盾！" },
-  tick: { shuffle: true, line: "亂針鐘會把選項換位置，看清楚再按！" },
-  bat: { blot: true, line: "塗鴉蝙蝠會把一個選項塗黑，等墨水散開再看！" },
+  // 2026-11-26 使用者：選項換位置、選項塗黑會干擾作答 → 取消（亂針鐘、塗鴉蝙蝠只剩外型和台詞）
+  tick: { line: "亂針鐘的指針轉個不停，別被滴答聲嚇到，慢慢算！" },
+  bat: { line: "塗鴉蝙蝠在亂飛，專心看題目就打得到！" },
 };
 // 屬性組合技（有副屬性時，連擊每 3 下）：兩個屬性合成一招
 const COMBO_NAME = { "fire+water": "沸騰蒸氣", "fire+ice": "冰火交響", "fire+forest": "燎原花火", "fire+thunder": "爆炎雷", "water+ice": "冰晶浪潮",
@@ -216,11 +217,11 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     if (final && !saidHalf && shieldLeft <= Math.ceil(shield / 2)) { saidHalf = true; await scene([K("明明這麼難、這麼多……你為什麼不放棄？"), PG("不會就去圖書館學，學會了再回來算。我們才不會說「算了」！")]); }
     if (final && !saidLast && shieldLeft === 1) { saidLast = true; await scene([K("最後這一題……是創校以來最早被丟進來的，幾百年都沒人算完。"), PG("小魔數師，一起為它畫下句點吧！")]); }
     // 王的招式（企劃書 E8）：第一階段每三題一次（晃動、墨水霧）；變身後每兩題一次，多一招「調換選項」
-    const move = !boss || qi === 0 ? null : phase === 1 ? (qi % 3 === 2 ? (qi % 2 ? "shake" : "ink") : null) : (qi % 2 === 1 ? ["swap", "ink", "shake"][Math.floor(qi / 2) % 3] : null);
+    const move = !boss || qi === 0 ? null : phase === 1 ? (qi % 3 === 2 ? (qi % 2 ? "shake" : "ink") : null) : (qi % 2 === 1 ? ["ink", "shake"][Math.floor(qi / 2) % 2] : null);   // 2026-11-26：拿掉「調換選項」
     curMove = move;
     bubble.classList.remove("mv-shake", "mv-ink");
     wordPanel.classList.remove("mv-shake", "mv-ink");
-    if (move) { sfx("boss"); stage.flinch(); say(move === "shake" ? "墨水大王使出「搖搖晃晃」！題目在晃……穩住！" : move === "swap" ? "墨水大王使出「調換」！選項要換位置了！" : "墨水大王噴出「墨水霧」！等它散開再看清楚。"); }
+    if (move) { sfx("boss"); stage.flinch(); say(move === "shake" ? "墨水大王使出「搖搖晃晃」！題目在晃……穩住！" : "墨水大王噴出「墨水霧」！等它散開再看清楚。"); }
 
     wrap.classList.remove("casting");
     // 題目：計算題用大字泡泡；應用題用寬面板（都在 .qstack 裡，完美詠唱條自動排在下方不重疊）
@@ -401,20 +402,6 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
         return el(`button.btn.answer${cls}`, { "data-k": i + 1, "data-v": o, onclick: (e) => pickOpt(o, e.currentTarget) }, mathText(txt));
       }));
       let btns = [...answers.children];
-      // 怪物個性：亂針鐘把選項換位置、塗鴉蝙蝠把一個選項塗黑一下
-      if (curTrait?.shuffle || curMove === "swap") setTimeout(() => {
-        if (done) return;
-        const order = btns.map((b) => [Math.random(), b]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
-        if (order.every((b, k) => b === btns[k])) order.push(order.shift());
-        answers.classList.add("shuffling"); sfx("tick");
-        setTimeout(() => { answers.replaceChildren(...order); btns = order; btns.forEach((b, k) => b.setAttribute("data-k", k + 1)); answers.classList.remove("shuffling"); }, 180);
-      }, 1600);
-      if (curTrait?.blot) setTimeout(() => {
-        if (done) return;
-        const b = btns[Math.floor(Math.random() * btns.length)];
-        b.classList.add("blot"); sfx("hurt");
-        setTimeout(() => b.classList.remove("blot"), 1800);
-      }, 900);
       const key = (e) => { const n = Number(e.key); if (n >= 1 && n <= btns.length) btns[n - 1].click(); };
       addEventListener("keydown", key);
       function zap() {
