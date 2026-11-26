@@ -11,7 +11,8 @@
     "pack": "node tools/pack-deploy.mjs",
     "dev:cloud": "node tools/local-worker.mjs",
     "test:cloud": "node tools/test-worker.mjs",
-    "deploy": "npx wrangler d1 execute mosu-db --remote --file=worker/schema.sql --config worker/wrangler.toml && npx wrangler deploy --config worker/wrangler.toml"
+    "deploy": "npx wrangler d1 execute mosu-db --remote --file=worker/schema.sql --config worker/wrangler.toml && npx wrangler deploy --config worker/wrangler.toml",
+    "offline": "node tools/build-offline.mjs"
   },
   "devDependencies": {
     "hyparquet": "^1.33.2"

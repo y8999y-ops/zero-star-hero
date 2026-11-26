@@ -3,3 +3,4 @@ data/questions/work/
 dist/
 worker/.dev.vars
 worker/.local.sqlite*
+offline/
