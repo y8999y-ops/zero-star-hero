@@ -119,6 +119,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   // 這一區的王已經打倒過＝已經恢復色彩；還沒的話是被墨水弄灰的樣子
   stage.gray = prac || s.stars[`${gradeId}-boss`] ? 0 : 1;          // 學院沒有被污染
 
+  const wrongs = [];          // 這場答錯的題目（結算畫面看講解）
   let hp = maxHp(s.lv), combo = 0, best = 0, right = 0, wrong = 0, sparks = 0, shieldLeft = shield, gained = 0;
   // 分支魔法：學會的每一招這場可以用一次
   const magic = tut ? [] : learnedMagic(s), usedMagic = new Set(), flags = { shield: false, retry: false, double: false };
@@ -142,14 +143,19 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   };
   requestAnimationFrame(loop);
 
+  // 王的血條（2026-11-26 使用者：顯示怪的血條、不寫數字）：固定一條在右上角，護盾少一格就縮短（有動畫）
+  const bossFill = el("i"), bossBar = boss ? el("div.bossbar", {}, el("span", {}, "墨水大王"), el("div.bhp", {}, bossFill)) : null;
   const say = (t) => { line.textContent = t; if (t) stage?.setPage("talk", Math.min(2.4, 0.5 + t.length * 0.06)); };
+  let lastHp = maxHp(s.lv);
   const drawHud = () => {
     drawSkills();
     hud.replaceChildren(
-      el("div.hearts", {}, ...Array.from({ length: maxHp(s.lv) }, (_, i) => el(`span.heart${i < hp ? "" : ".empty"}`))),
+      el("div.hearts", {}, ...Array.from({ length: maxHp(s.lv) }, (_, i) => el(`span.heart${i < hp ? "" : ".empty"}${i >= hp && i < lastHp ? ".lost" : ""}`))),
       el("div.combo", {}, combo >= 2 ? `連擊 ×${combo}` : ""),
-      el("div.prog", {}, chal ? `連對 ${right}` : boss ? `護盾 ${"◆".repeat(shieldLeft)}${"◇".repeat(shield - shieldLeft)}` : exam ? `考核 ${right}/${EXAM}` : `${Math.min(qi + 1, total)}/${total}`),
+      boss ? bossBar : el("div.prog", {}, chal ? `連對 ${right}` : exam ? `考核 ${right}/${EXAM}` : `${Math.min(qi + 1, total)}/${total}`),
     );
+    lastHp = hp;
+    if (boss) bossFill.style.width = `${(100 * Math.max(0, shieldLeft)) / shield}%`;
   };
 
   // 技能列的樣子：每次數晶、魔法用量、能不能按改變時都重畫
@@ -220,10 +226,14 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     if (!stage.monster || stage.monster.state === "die") {
       stage.spawn(boss, tut ? "ink" : null);
       const T = !boss && TRAITS[stage.monster.kind];
-      if (T) {
-        stage.monster.hp = stage.monster.maxHp = T.hp ?? 1;
-        if (!seenTrait.has(stage.monster.kind)) { seenTrait.add(stage.monster.kind); await talk(wrap, [{ who: "page", name: "頁頁", text: T.line }]); }
+      if (!boss) {
+        // 2026-11-26 使用者：怪不能打一下就死 → 一隻要打 2～3 下（照剩下的題數分配，最後一隻剛好打完）
+        const rem = (exam ? EXAM : qs.length) - qi;
+        const hits = rem >= 2 ? Math.max(T?.hp ?? 1, hitsFor(rem)) : 1;
+        stage.monster.hp = stage.monster.maxHp = hits;
+        stage.monster.qLeft = hits;          // 分給這隻的題數：用完還沒打倒就縮回墨水裡（換下一隻）
       }
+      if (T && !seenTrait.has(stage.monster.kind)) { seenTrait.add(stage.monster.kind); await talk(wrap, [{ who: "page", name: "頁頁", text: T.line }]); }
     }
     const mon = stage.monster, trait = !boss && mon ? TRAITS[mon.kind] : null;
     curTrait = trait;                    // 答題（askOne）要用：換選項、塗黑
@@ -285,7 +295,8 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
       if (perfect) { floatText(wrap, "完美詠唱！", "exp"); gained += 5; }
       if (tier > spellTier(combo - 1)) setTimeout(() => sfx("combo"), 120);   // 連擊升級（魔法變強）
       sparks += 1 + tier;
-      if (flags.double && !boss) { combo++; flags.double = false; say("分身！連擊多加一！"); }
+      const dbl = flags.double && !boss;
+      if (dbl) { combo++; flags.double = false; say("分身！連擊多加一！"); }
       sfx(`cast_${s.attr}`);
       bubble.textContent = "";
       wordPanel.hidden = true;
@@ -311,13 +322,13 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
         stage.shake = 6;
         if (shieldLeft > 0) stage.flinch();
         if (shieldLeft <= 0) { stage.purify(); if (!s.stars[`${gradeId}-boss`]) { stage.restoreColor(); setTimeout(() => sfx("restore"), 400); s.flags = { ...(s.flags ?? {}), restore: gradeId }; } }
-      } else if (mon && mon.hp > 1 && (ult || comboTech)) { mon.hp = 1; stage.purify();        // 大招、組合技：有兩格的怪也一次散開
-      } else if (mon && mon.hp > 1) {
-        // 還沒散開：答對打掉一格（碎晶蟲＝打破盾）
-        mon.hp--; stage.flinch();
-        if (trait?.shield && mon.hp === mon.maxHp - 1) { sfx("shatter"); say("水晶盾碎了！再一題！"); } else say(`還要 ${mon.hp} 題！`);
-      } else stage.purify();
-      if (stage.monster && (!boss || shieldLeft <= 0)) { const k = stage.monster.kind; s.dex = { ...(s.dex ?? {}), [k]: (s.dex?.[k] ?? 0) + 1 }; }   // 墨水圖鑑
+      } else if (mon) {
+        // 答對打掉一格血；大招、組合技一次打光；分身打兩格（碎晶蟲：第一下先打破盾）
+        mon.hp = ult || comboTech ? 0 : Math.max(0, mon.hp - (dbl ? 2 : 1));
+        if (mon.hp <= 0) stage.purify();
+        else { stage.flinch(); if (trait?.shield && mon.hp === mon.maxHp - 1) { sfx("shatter"); say("水晶盾碎了！"); } }
+      }
+      if (stage.monster && stage.monster.state === "die" && (!boss || shieldLeft <= 0)) { const k = stage.monster.kind; s.dex = { ...(s.dex ?? {}), [k]: (s.dex?.[k] ?? 0) + 1 }; }   // 墨水圖鑑
       await wait(650);
     } else {
       wrong++; combo = 0; q.missed = true;
@@ -325,14 +336,16 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
       else if (!exam && !tut) { hp--; stage.hurt(); sfx("hurt"); }
       else if (tut) sfx("hurt");
       stage.setPage("worried", 3);
+      // 2026-11-26 使用者：錯題講解不直接跳出來 → 記下來，戰鬥結束在結算畫面看；這裡只亮出正確答案一下
+      wrongs.push({ text: q.text, answer: q.answer, unit: q.unit, explain: q.explain, pick: result.pick ?? null, timeout: result.timeout, branch: q.branch });
+      say(result.timeout ? `時間到了！答案是 ${q.answer}${q.unit ? " " + q.unit : ""}` : `答案是 ${q.answer}${q.unit ? " " + q.unit : ""}，戰鬥後可以看講解。`);
+      if (!boss && mon && trait?.combo && mon.hp < mon.maxHp) { mon.hp = mon.maxHp; say("散頁怪又黏回去了……要連續答對！"); }
+      await wait(1300);
       bubble.textContent = "";
       wordPanel.hidden = true;
-      await showExplain(q, result.timeout);
-      if (!boss && mon && mon.hp > 1) { if (trait?.combo && mon.hp < mon.maxHp) { mon.hp = mon.maxHp; say("散頁怪又黏回去了……再連對兩題！"); } }
-      else if (!boss) stage.purify();
-      await wait(300);
       if (chal) break;                 // 挑戰模式：答錯就結束
     }
+    if (!boss && mon && mon.state !== "die" && --mon.qLeft <= 0) { stage.purify(); say("墨水怪縮回墨水裡了。"); }
     drawHud();
   }
 
@@ -376,7 +389,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
 
   const firstClear = boss && stars > 0 && !(prevBossStars > 0);
   const missed = [...new Set(qs.slice(0, right + wrong).filter((q) => q.missed).map((q) => q.branch))];
-  onEnd({ gradeId, mode, stageIdx, practice, missed, firstClear, newBest, best2: s.challengeBest, stars, passed, right, wrong, best, hp, sparks, gained, coins, ups, events, gentle: hp <= 0 && (s.mood >= 3 || gradeId === "g1" || gradeId === "g2") });
+  onEnd({ gradeId, mode, stageIdx, practice, missed, wrongs, firstClear, newBest, best2: s.challengeBest, stars, passed, right, wrong, best, hp, sparks, gained, coins, ups, events, gentle: hp <= 0 && (s.mood >= 3 || gradeId === "g1" || gradeId === "g2") });
 
   // ── 一題：等玩家點答案或時間到 ──
   function askOne(q) {
@@ -437,16 +450,16 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
         }
         btns.forEach((x) => { if (x.dataset.v === q.answer) x.classList.add("right"); });
         if (!ok) b.classList.add("wrong");
-        finish(ok, false);
+        finish(ok, false, o);
       }
-      function finish(ok, timeout) {
+      function finish(ok, timeout, pick = null) {
         if (done) return;
         done = true;
         wrap.querySelector(".bmenu")?.remove(); drawSkills();
         if (timer) clearInterval(timer);
         removeEventListener("keydown", key);
         btns.forEach((x) => (x.disabled = true));
-        resolve({ ok, timeout });
+        resolve({ ok, timeout, pick });
       }
     });
   }
@@ -458,17 +471,10 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     else if (what === "combo") hud.classList.add("tutglow");
   }
 
-  function showExplain(q, timeout) {
-    return new Promise((resolve) => {
-      const card = el("div.explain", {},
-        el("div.etitle", {}, timeout ? "時間到了，沒關係！" : "沒關係，我們一起算一次！"),
-        el("div.ebody", {}, mathText(q.explain)),
-        el("div.eans", {}, mathText(`答案是 ${q.answer}${q.unit ? " " + q.unit : ""}`)),
-        el("button.btn.gold", { onclick: () => { card.remove(); resolve(); } }, "知道了"));
-      wrap.append(card);
-    });
-  }
 }
+
+// 一隻怪要打幾下：照剩下的題數分配（3、5、10 題＝3／3＋2／3＋3＋2＋2），最後一隻剛好打完
+const hitsFor = (rem) => (rem === 4 || rem === 2 ? 2 : rem === 1 ? 1 : 3);
 
 // 估算視覺字寬（全形＝2、半形＝1），用來決定題目不換行或答案字體縮小
 const visLen = (s) => [...String(s ?? "")].reduce((n, c) => n + (c.charCodeAt(0) > 127 ? 2 : 1), 0);

@@ -268,6 +268,9 @@ export class Stage {
       if (m.flinch > 0) m.flinch = Math.max(0, m.flinch - dt);
       if (m.kb > 0) m.kb = Math.max(0, m.kb - dt * 40);
       if (m.whiteT > 0) m.whiteT -= dt;
+      // 血條：紅色很快縮到目前的血、後面白色那段慢慢跟上
+      m.hpShow = m.hpShow == null ? m.hp : m.hpShow + (m.hp - m.hpShow) * Math.min(1, dt * 10);
+      m.hpLag = m.hpLag == null ? m.hp : m.hpLag > m.hpShow ? Math.max(m.hpShow, m.hpLag - dt * 0.9 * (m.maxHp ?? 1)) : m.hpShow;
       if (m.state === "walk" && m.target != null) m.x += (m.target - m.x) * Math.min(1, dt * 3);
       if (m.state === "bump") {
         const u = Math.min(1, m.t / 0.5);
@@ -387,11 +390,28 @@ export class Stage {
         big(whiteOf(sp.canvas), mx, GROUND, sp.ox, sp.oy, k);
       }
       ctx.globalAlpha = 1;
+      // 怪物血條（2026-11-26 使用者：顯示血條、不寫數字）：頭上一條像素小血條；王的血條在畫面右上角（HTML）
+      if (!m.boss && m.maxHp) this.hpBar(mx, Math.round(GROUND - (HEAD[m.kind] ?? 42) * scaleOf(m.kind) - 9), m);
     }
     composite(frame, this.img.data, null, this.opt.softFlash ? 0.55 : 1);
     this.lctx.putImageData(this.img, 0, 0);
     ctx.drawImage(this.layer, sx, sy);
     if (this.flashT > 0) { ctx.globalAlpha = (this.flashT / 0.16) * this.flashA; ctx.fillStyle = this.flashC; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+  }
+
+  hpBar(cx, y, m) {
+    const ctx = this.ctx, w = 32, x = Math.round(cx - w / 2), k = Math.max(0, m.hpShow ?? m.hp) / m.maxHp, lag = Math.max(0, m.hpLag ?? m.hp) / m.maxHp;
+    ctx.globalAlpha = m.alpha;
+    ctx.fillStyle = "#11102e"; ctx.fillRect(x - 1, y - 1, w + 2, 6);          // 外框
+    ctx.fillStyle = "#3a3058"; ctx.fillRect(x, y, w, 4);                       // 空的
+    ctx.fillStyle = "#fff4e0"; ctx.fillRect(x, y, Math.round(w * lag), 4);     // 剛被打掉的那段
+    const fw = Math.round(w * k);
+    ctx.fillStyle = "#e8405e"; ctx.fillRect(x, y, fw, 4);
+    ctx.fillStyle = "#ff8aa0"; ctx.fillRect(x, y, fw, 1);                     // 上緣亮一點
+    // 一格一格的分隔線（打幾下看得出來，但不寫數字）
+    ctx.fillStyle = "#11102e";
+    for (let i = 1; i < m.maxHp; i++) ctx.fillRect(x + Math.round((w * i) / m.maxHp), y, 1, 4);
+    ctx.globalAlpha = 1;
   }
 
   /** 恢復色彩：灰色慢慢退掉（打倒王時） */

@@ -1,6 +1,6 @@
 // 結算：星星、經驗、升級、成長事件（企劃書 7.7、8）。
 
-import { el, show } from "../ui.js";
+import { el, show, mathText } from "../ui.js";
 import { BRANCHES, UNIT_NAME, LEVEL_REWARDS, GRADES } from "../data.js";
 import { MODES } from "../practice.js";
 import { BRANCH_MAGIC } from "../battle/branch-magic.js";
@@ -36,9 +36,25 @@ export function resultScene(game, r) {
       tags.length ? el("div.restags", {}, ...tags.slice(0, 3).map((t) => el("span", {}, t))) : null,
       el("div.resbtns", {},
         el("button.btn", { onclick: () => game.go("battle", again) }, "再一次"),
+        r.wrongs?.length ? el("button.btn", { onclick: () => { sfx("click"); wrongPanel(game, r, learn); } }, "錯題講解", el("span.cnt", {}, String(r.wrongs.length))) : null,
         learn ? el("button.btn", { onclick: () => { game.save.returnTo = null; game.go("lesson", { branch: learn }); } }, "去學一學") : null,
         r.firstClear && r.gradeId === "jh"
           ? el("button.btn.gold", { onclick: () => { game.save.returnTo = null; game.go("ending"); } }, "繼續")       // 最終戰打完：接結局
           : el("button.btn.gold", { onclick: () => { if (r.practice?.review) game.save.returnTo = null; game.go(r.practice?.review ? "library" : "map"); } }, r.practice?.review ? "回圖書館" : r.mode === "practice" ? `回${ACADEMIES[r.practice.academy].name}` : "回去"))),
   ));
+}
+
+// 錯題講解（2026-11-26 使用者：戰鬥中不直接跳出來，戰鬥結束後可以查看）：這場答錯的每一題＋你選的＋答案＋講解
+function wrongPanel(game, r) {
+  document.querySelector("#app .panel.wrongs")?.remove();
+  const u = (w) => (w.unit ? " " + w.unit : "");
+  const p = el("div.panel.wrongs", {},
+    el("div.wh", {}, el("b", {}, "錯題講解"), el("button.pclose", { "aria-label": "關閉", onclick: () => { sfx("click"); p.remove(); } }, "✕")),
+    ...r.wrongs.map((w) => el("div.wcard", {},
+      el("div.wq", {}, mathText(w.text)),
+      el("div.wpick", {}, w.timeout || w.pick == null ? "時間到了，沒有選" : mathText(`你選了 ${w.pick}${u(w)}`)),
+      el("div.wans", {}, mathText(`答案是 ${w.answer}${u(w)}`)),
+      w.explain ? el("div.wexp", {}, mathText(String(w.explain))) : null,
+      w.branch && UNIT_NAME[w.branch] ? el("button.btn.small", { onclick: () => { game.save.returnTo = null; game.go("lesson", { branch: w.branch }); } }, "去學一學") : null)));
+  document.querySelector("#app").append(p);
 }

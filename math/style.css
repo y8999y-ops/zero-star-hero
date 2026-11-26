@@ -114,9 +114,16 @@ p { line-height: 1.6; }
 canvas.stage { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
 canvas.stage.small { width: min(100%, 480px); aspect-ratio: 16 / 9; height: auto; border-radius: 8px; align-self: center; }
 .hud { position: absolute; inset: 6px 8px auto; display: flex; justify-content: space-between; align-items: center; font-weight: 700; text-shadow: 0 2px 0 #000; pointer-events: none; }
-.hearts { display: flex; gap: 3px; }
-.heart { width: 16px; height: 14px; background: #ff5a7a; clip-path: polygon(50% 100%, 0 40%, 15% 5%, 50% 25%, 85% 5%, 100% 40%); }
+/* 魔力愛心（2026-11-26 使用者：放大、要明顯）：深色外框＋亮面，掉一顆時縮一下 */
+.hearts { display: flex; gap: 5px; filter: drop-shadow(0 2px 0 #11102e) drop-shadow(0 0 1px #11102e) drop-shadow(0 0 1px #11102e); }
+.heart { width: 27px; height: 24px; background: radial-gradient(circle at 32% 30%, #ffd0da 0 14%, #ff5a7a 15% 62%, #d8304f 63%); clip-path: polygon(50% 100%, 0 40%, 15% 5%, 50% 25%, 85% 5%, 100% 40%); }
 .heart.empty { background: #3a3058; }
+.heart.lost { animation: heartlost .45s ease-out; }
+@keyframes heartlost { 0% { transform: scale(1.35); background: #ff5a7a; } 100% { transform: scale(1); } }
+/* 王的血條：右上角一條（不寫數字） */
+.bossbar { display: flex; align-items: center; gap: 6px; margin-right: 64px; font-size: 13px; color: #e9ddff; }
+.bhp { width: clamp(120px, 24vw, 220px); height: 12px; background: #3a3058; border: 2px solid #11102e; border-radius: 3px; overflow: hidden; box-shadow: 0 2px 0 #0008; }
+.bhp i { display: block; height: 100%; width: 100%; background: linear-gradient(#ff8aa0 0 25%, #e8405e 25%); transition: width .6s cubic-bezier(.2, .8, .2, 1); }
 .combo { color: var(--gold); font-size: 18px; }
 .prog { font-size: 14px; margin-right: 64px; }
 .leave { position: absolute; top: 4px; right: 6px; z-index: 5; opacity: .85; }
@@ -685,3 +692,14 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
   img.libicon { height: 28px; }
   canvas.libpage { width: 48px; height: 60px; }
 }
+
+/* 結算畫面的錯題講解（2026-11-26 使用者：戰鬥中不跳出來，結束後可以查看） */
+.panel.wrongs { inset: 10px 10%; z-index: 30; gap: 8px; }
+.wrongs .wh { display: flex; align-items: center; justify-content: space-between; flex: none; }
+.wrongs .wh b { color: var(--gold); font-size: 17px; }
+.wcard { flex: none; background: #1d1636; border: 2px solid #3a3058; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.wcard .wq { font-weight: 800; font-size: 17px; line-height: 1.5; }
+.wcard .wpick { font-size: 14px; color: #ff9fb2; }
+.wcard .wans { font-weight: 800; color: #9df0b0; }
+.wcard .wexp { font-size: 15px; line-height: 1.7; color: #e9e3ff; background: #120d22; border-radius: 6px; padding: 6px 10px; }
+.wcard .btn { align-self: flex-start; }
