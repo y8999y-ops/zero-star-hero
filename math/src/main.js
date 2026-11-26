@@ -1,6 +1,7 @@
 // 《魔數學院》入口：讀存檔、切換畫面。
 
-import { loadSave } from "./save.js";
+import { loadSave, setSaveListener } from "./save.js";
+import { initCloud, queueSaveSync } from "./cloud.js";
 import { autoFullscreen } from "./fullscreen.js";
 import { installUiArt } from "./ui-art.js";
 import { applySettings } from "./settings.js";
@@ -84,9 +85,14 @@ const game = {
   },
 };
 
+setSaveListener(queueSaveSync);
 installUiArt();                   // 像素外框、按鈕（變成 CSS 變數）
 applySettings(game.save.settings);
 applyOutfit(game.save);           // 商店買的帽子、斗篷
 autoFullscreen();
 window.__game = game;   // 開發用：在主控台看存檔
 game.go("title");
+initCloud(game).then(() => {
+  // 掃碼或記住登入載入雲端存檔後，若還停在標題頁就刷新按鈕狀態
+  if (document.querySelector("#app > .screen.title")) game.show("title");
+});

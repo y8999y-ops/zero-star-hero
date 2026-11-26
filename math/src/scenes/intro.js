@@ -3,6 +3,7 @@
 import { el, show, dialog } from "../ui.js";
 import { sfx } from "../audio.js";
 import { resetSave, writeSave } from "../save.js";
+import { getStudent, isCloudAvailable, formatStudentLabel, openLoginModal } from "../cloud.js";
 import { heroFrame } from "../../fx/hero.js";
 import { ATTRS } from "../data.js";
 import { loadAreaArt } from "../battle/areaart.js";
@@ -10,8 +11,13 @@ import { loadAreaArt } from "../battle/areaart.js";
 export function titleScene(game) {
   const s = game.save;
   const started = !!s.attr;
+  const st = getStudent();
   const bg = el("canvas.titlebg", { width: 384, height: 216 });
-  show(el("div.screen.title", {}, bg,
+  const cloudBar = st || isCloudAvailable()
+    ? el("button.btn.small.titleacct", { onclick: () => { sfx("click"); openLoginModal(game, (changed) => { if (changed) game.show("title"); }); } },
+        st ? `${formatStudentLabel(st)} ▾` : "學生代碼登入")
+    : null;
+  show(el("div.screen.title", {}, bg, cloudBar,
     el("div.logo", {}, el("span.l1", {}, "魔數"), el("span.l2", {}, "學院")),
     el("div.tag", {}, "數學是一種魔法"),
     el("button.btn.gold.big", { onclick: () => { sfx("click"); game.go("map"); } }, started ? "繼續冒險" : "開始入學"),

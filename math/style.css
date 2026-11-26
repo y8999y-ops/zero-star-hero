@@ -670,6 +670,18 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
   canvas.libpage { width: 48px; height: 60px; }
 }
 
+/* ── 學生代碼登入（src/cloud.js） ── */
+.titleacct { position: absolute !important; top: max(10px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); z-index: 5; font-size: 13px; }
+.cloudback { position: fixed; inset: 0; z-index: 90; background: rgba(11, 8, 24, .75); display: grid; place-items: center; padding: 16px; }
+.panel.cloudmodal { position: static; inset: auto; width: min(92vw, 420px); max-height: 90vh; display: flex; flex-direction: column; gap: 10px; text-align: center; }
+.cloudcur { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; padding: 6px 10px; background: var(--panel2); border-radius: 6px; font-size: 14px; }
+.cloudcode { font-family: ui-monospace, Consolas, monospace; color: var(--gold); font-weight: 700; letter-spacing: 1px; }
+.cloudinput { width: 100%; padding: 10px 12px; font-size: 20px; font-weight: 700; letter-spacing: 2px; text-align: center; text-transform: uppercase; color: #fff; background: #120d22; border: 2px solid var(--line); border-radius: 8px; outline: none; }
+.cloudinput:focus { border-color: var(--gold); }
+.cloudmsg { min-height: 1.3em; font-size: 13px; color: #ff9aa8; }
+.cloudbtns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.cloudbtns .btn { min-width: 88px; }
+
 /* 結算畫面的錯題講解（2026-11-26 使用者：戰鬥中不跳出來，結束後可以查看） */
 .panel.wrongs { inset: 10px 10%; z-index: 30; gap: 8px; }
 .wrongs .wh { display: flex; align-items: center; justify-content: space-between; flex: none; }

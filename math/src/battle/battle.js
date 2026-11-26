@@ -13,6 +13,7 @@ import { UNIT_NAME } from "../data.js";
 import { ATTRS, GRADES, spellTier, maxHp, crystalLevel, EXP, STAGE_LEN, RANKS } from "../data.js";
 import { recordAnswer, addExp, pagePageLevel } from "../growth.js";
 import { writeSave } from "../save.js";
+import { trackAnswer, flushCloud } from "../cloud.js";
 import { sfx } from "../audio.js";
 import { TIMER_EASE } from "../settings.js";
 import { printable } from "./mathmagic-more.js";
@@ -253,7 +254,9 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     if (aborted) return;
     const sec = (performance.now() - t0) / 1000;
 
+    const hadReview = !!s.review[q.typeKey];
     const rec = recordAnswer(s, { ...q, targetSec: limit ? limit / 2 : 8 }, result.ok, sec);
+    trackAnswer({ q, ok: result.ok, pick: result.pick ?? (result.timeout ? "逾時未答" : ""), mode, graduated: hadReview && !s.review[q.typeKey] });
     events.push(...rec.events);
     if (rec.exp) { gained += rec.exp; floatText(wrap, `＋${rec.exp} 經驗`, "exp"); }
 
@@ -386,6 +389,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   s.coins += coins;
   if (!prac && !chal) s.lastGrade = gradeId;
   writeSave(s);
+  flushCloud(false);
 
   const firstClear = boss && stars > 0 && !(prevBossStars > 0);
   const missed = [...new Set(qs.slice(0, right + wrong).filter((q) => q.missed).map((q) => q.branch))];

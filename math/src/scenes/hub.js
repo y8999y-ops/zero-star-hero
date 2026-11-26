@@ -12,6 +12,7 @@ import { deanFrame } from "../../fx/dean.js";
 import { pageFrame } from "../../fx/pickups.js";
 import { PAGES, CHESTS, QUESTS, riddleFor, daily } from "../world/island-life.js";
 import { writeSave } from "../save.js";
+import { getStudent, isCloudAvailable, openLoginModal } from "../cloud.js";
 import { talk } from "../world/talk.js";
 
 const U = 270;                 // 畫面高幾格
@@ -336,9 +337,11 @@ export function hubScene(game, { from } = {}) {
   function menu() {
     if (busy) return;
     busy = true;
+    const st = getStudent();
     const p = el("div.panel.wmenu", {},
       el("div.ptitle", {}, "選單"),
       el("button.btn", { onclick: () => { leave(); game.go("menu"); } }, "學院選單"),
+      st || isCloudAvailable() ? el("button.btn", { onclick: () => { p.remove(); openLoginModal(game, (changed) => { busy = false; if (changed) { leave(); game.go("title"); } }); } }, st ? "切換學生帳號" : "學生代碼登入") : null,
       el("button.btn", { onclick: () => { leave(); game.go("settings", { from: "map" }); } }, "設定"),
       el("button.btn", { onclick: () => { leave(); game.go("title"); } }, "回標題"),
       el("button.btn.gold", { onclick: () => { p.remove(); busy = false; } }, "關閉"));

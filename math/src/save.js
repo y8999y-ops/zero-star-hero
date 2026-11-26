@@ -32,8 +32,12 @@ export function loadSave() {
   return freshSave();
 }
 
-export function writeSave(s) {
+let saveListener = null;
+export function setSaveListener(fn) { saveListener = fn; }
+
+export function writeSave(s, { silent = false } = {}) {
   try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {}
+  if (!silent) saveListener?.(s);
 }
 
 export function resetSave() {
