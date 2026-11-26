@@ -38,10 +38,12 @@ function randToken() {
   return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-// 2026-11-26 使用者：學生只要輸入 4 碼代碼就能登入（32 種字 → 約 100 萬組，重複就重抽）
+// 2026-11-26 使用者：學生只要輸入 4 碼數字就能登入（0000～9999，可以有 0；重複就重抽）
 // 舊的「班級-組別-座號-2碼」代碼照樣能登入（比對 login_key）
 function buildLoginCode() {
-  const loginCode = randChars(4);
+  const n = new Uint32Array(1);
+  crypto.getRandomValues(n);
+  const loginCode = String(n[0] % 10000).padStart(4, "0");
   return { loginCode, loginKey: normCode(loginCode) };
 }
 
@@ -91,6 +93,9 @@ async function readBody(req) {
   if (!txt) return {};
   try { return JSON.parse(txt); } catch { return null; }
 }
+
+// Excel 開 CSV 會把 0427 變成 427 → 用 ="0427" 讓它當文字
+const xlText = (v) => (/^\d+$/.test(String(v ?? "")) ? `="${v}"` : v);
 
 function csvCell(v) {
   const s = String(v ?? "").replace(/\r?\n/g, " ");
@@ -511,7 +516,7 @@ async function handleApi(req, env) {
           `魔數學院-錯題明細-${today}.csv`,
           ["班級", "組別", "座號", "姓名", "登入碼", "時間", "單元", "題目", "學生作答", "正確答案", "狀態"],
           results.map((r) => [
-            r.class_name, r.group_name, r.seat_no, r.name, r.login_code,
+            r.class_name, r.group_name, r.seat_no, r.name, xlText(r.login_code),
             r.created_at, UNIT_NAME[r.branch] ?? r.branch, r.question_text,
             r.student_answer, r.correct_answer, r.resolved ? "已畢業" : "未畢業",
           ])
@@ -532,7 +537,7 @@ async function handleApi(req, env) {
         `魔數學院-全班學習總表-${today}.csv`,
         ["班級", "組別", "座號", "姓名", "登入碼", "等級", "課程進度(%)", "未畢業錯題數", "遊玩次數", "本週時長(分)", "累積時長(分)", "總答題數", "正確率(%)", "最後上線"],
         results.map((r) => [
-          r.class_name, r.group_name, r.seat_no, r.name, r.login_code,
+          r.class_name, r.group_name, r.seat_no, r.name, xlText(r.login_code),
           r.lv, r.progress_pct, r.review_count, r.session_count,
           Math.round((r.week_play_sec || 0) / 60 * 10) / 10,
           Math.round((r.total_play_sec || 0) / 60 * 10) / 10,

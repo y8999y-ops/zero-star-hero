@@ -280,7 +280,7 @@ function renderManage() {
                 <td><span class="code">${esc(c.code)}</span></td>
                 <td><b>${esc(c.name)}</b></td>
                 <td>${c.student_count} 人</td>
-                <td><button class="btn sm" data-regen-class="${c.id}" data-cname="${esc(c.name)}">全班換成 4 碼</button> <button class="btn sm danger" data-del-class="${c.id}" data-cname="${esc(c.name)}">刪除</button></td>
+                <td><button class="btn sm" data-regen-class="${c.id}" data-cname="${esc(c.name)}">全班換成 4 位數</button> <button class="btn sm danger" data-del-class="${c.id}" data-cname="${esc(c.name)}">刪除</button></td>
               </tr>`).join("")}
             </tbody>
           </table>` : `<div class="empty">尚未建立班級。</div>`}
@@ -288,7 +288,7 @@ function renderManage() {
       </div>
 
       <div class="card">
-        <h2>批量新增學生（每人自動產生 4 碼登入代碼）</h2>
+        <h2>批量新增學生（每人自動產生 4 位數登入代碼）</h2>
         <form id="bulkForm">
           <div class="form-row">
             <div class="field" style="flex:1">
@@ -519,7 +519,7 @@ function render() {
     } catch (ex) { alert(ex.message); }
   };
   root.querySelectorAll("[data-regen-class]").forEach((b) => (b.onclick = async () => {
-    if (!confirm(`把「${b.dataset.cname}」全班的登入代碼換成新的 4 碼？舊代碼與已登入的裝置會失效，要重新發登入小卡。`)) return;
+    if (!confirm(`把「${b.dataset.cname}」全班的登入代碼換成新的 4 位數？舊代碼與已登入的裝置會失效，要重新發登入小卡。`)) return;
     const r = await api(`/api/admin/classes/${b.dataset.regenClass}/regen-codes`, { method: "POST" });
     alert(`已換好 ${r.count} 位學生的代碼。`);
     await loadAll();
