@@ -748,3 +748,7 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 @keyframes skbandout { to { opacity: 0; transform: scaleY(.3); } }
 @keyframes skshine { to { left: 110%; } }
 @keyframes skult { from { transform: scale(2.4); opacity: 0; filter: blur(2px); } to { transform: none; opacity: 1; filter: none; } }
+
+/* 王被打中：血條抖一下、閃白 */
+.bossbar.hit .bhp { animation: bosshit .4s ease-out; }
+@keyframes bosshit { 0% { transform: translateX(0); background: #fff; } 20% { transform: translateX(-4px); } 40% { transform: translateX(4px); } 60% { transform: translateX(-2px); } 100% { transform: none; } }

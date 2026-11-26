@@ -72,9 +72,14 @@ import * as healFx from "../../../pixelfx/src/fx/holy/heal.js";
 import * as divineShield from "../../../pixelfx/src/fx/holy/divine-shield.js";
 import * as haste from "../../../pixelfx/src/fx/status/haste.js";
 import * as slowed from "../../../pixelfx/src/fx/status/slowed.js";
+import * as burning from "../../../pixelfx/src/fx/status/burning.js";
+import * as frozenFx from "../../../pixelfx/src/fx/status/frozen.js";
+import * as poisoned from "../../../pixelfx/src/fx/status/poisoned.js";
+import * as bleeding from "../../../pixelfx/src/fx/status/bleeding.js";
+import * as bluntHit from "../../../pixelfx/src/fx/impacts/blunt-hit.js";
 import { PAL } from "../../../pixelfx/src/core/index.js";
 
-export const FX = { castCircle, poof, xpOrb, hitFlash, slime, spellCharge, manaBurst, critHit, hitSpark, implosion, sunburst, healFx, divineShield, haste, slowed, circleCast, fireworkBurst };
+export const FX = { castCircle, poof, xpOrb, hitFlash, slime, spellCharge, manaBurst, critHit, hitSpark, implosion, sunburst, healFx, divineShield, haste, slowed, circleCast, fireworkBurst, bluntHit };
 
 // 墨水色：深墨藍紫，亮部帶一點紫光（世界觀：被放棄的題目變成的墨水）
 export const INK = ["#05040a", "#0f0b1c", "#1c1533", "#2d2350", "#463a78", "#7a6cb0", "#d8d0ff"];
@@ -227,4 +232,13 @@ export const ULT = {
     S(stormCloud, "target", { dur: 1.7, speed: 1.6, y: 24 }),
     S(strike, "target", { delay: 0.3, speed: 2.4, x: -36, opts: { seed: 2 } }), S(strike, "target", { delay: 0.45, speed: 2.4, x: 36, opts: { seed: 4 } }), S(strike, "target", { delay: 0.6, speed: 2.4, x: -14, opts: { seed: 6 } }), S(strike, "target", { delay: 0.75, speed: 2.4, x: 14, opts: { seed: 8 } }),
     S(strike, "target", { delay: 0.95, speed: 2.2 }), S(thunderclap, "target", { delay: 0.95, speed: 1.8 })] },
+};
+
+// 怪物被打中的屬性反應（2026-11-26 使用者：怪被打到要有對應特效表現）：火＝燒起來、冰＝結霜、雷＝觸電、水＝濕答答滴水、森＝冒孢子
+export const REACT = {
+  fire: { mod: burning, dur: 0.9, y: 4, tint: "#ff7a2f" },
+  ice: { mod: frozenFx, dur: 1.0, y: 2, tint: "#9be3ff" },
+  thunder: { mod: electrified, dur: 0.8, y: 4, tint: "#d8b8ff", jitter: true },
+  water: { mod: bleeding, dur: 1.0, y: -6, tint: "#3fa7ff", opts: { palette: PAL.water } },
+  forest: { mod: poisoned, dur: 1.0, y: 0, tint: "#6fd46a", opts: { palette: PAL.leaf } },
 };

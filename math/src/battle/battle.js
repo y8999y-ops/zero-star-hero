@@ -158,7 +158,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     const b = magic.find((k) => BRANCH_MAGIC[k].fx === fx && uses[k] > 0);
     if (!b) return false;
     uses[b]--; sfx("combo");
-    skillPop(wrap, BRANCH_MAGIC[b].name, fx, BRANCH_MAGIC[b].desc);
+    skillPop(wrap, BRANCH_MAGIC[b].name, fx);
     stage.skillFx(fx);
     return true;
   }
@@ -199,7 +199,10 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
         // 2026-11-26 使用者：怪不能打一下就死 → 一隻要打 2～3 下（照剩下的題數分配，最後一隻剛好打完）
         const rem = (exam ? EXAM : qs.length) - qi;
         const hits = rem >= 2 ? Math.max(T?.hp ?? 1, hitsFor(rem)) : 1;
-        stage.monster.hp = stage.monster.maxHp = hits;
+        // 2026-11-26 使用者：血量改成數值 → 每一下的份量（unit）照區域和怪物種類；血量＝要打幾下 × unit
+        const unit = Math.round((HP_UNIT[gradeId] ?? 50) * (KIND_MUL[stage.monster.kind] ?? 1));
+        stage.monster.unit = unit;
+        stage.monster.hp = stage.monster.maxHp = hits * unit;
         stage.monster.qLeft = hits;          // 分給這隻的題數：用完還沒打倒就縮回墨水裡（換下一隻）
       }
       if (T && !seenTrait.has(stage.monster.kind)) { seenTrait.add(stage.monster.kind); await talk(wrap, [{ who: "page", name: "頁頁", text: T.line }]); }
@@ -284,7 +287,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
         sfx("combo"); setTimeout(() => sfx(`cast_${s.attr}`), 900);
         await stage.ultimate(crystalLevel(s.crystals[s.attr]), comboTech ? sub : null);
       } else {
-        if (comboTech) { skillPop(wrap, comboName(s.attr, sub), "combo", "屬性組合技"); stage.flashC = ATTRS[sub].color; stage.flashA = 0.45; stage.flashT = 0.35; }
+        if (comboTech) { skillPop(wrap, comboName(s.attr, sub), "combo"); stage.flashC = ATTRS[sub].color; stage.flashA = 0.45; stage.flashT = 0.35; }
         await stage.cast(tier, crystalLevel(s.crystals[s.attr]), q.branch, comboTech ? sub : null);
       }
       stage.setPage("happy", 1.6);
@@ -292,31 +295,46 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
       const shown = String(q.answer).replace(/−|－/g, "-");
       stage.popNumber(printable(shown) && shown.length <= 8 ? shown : "!", combo);
       sfx("hit");
+      const crit = perfect || tier >= 3 || dbl || ult || comboTech;
+      const roll = (u) => Math.round(u * (TIER_MUL[tier] ?? 1) * (perfect ? 1.25 : 1) * (0.92 + Math.random() * 0.16));
       if (boss) {
+        const before = shieldLeft;
         shieldLeft--;
         if ((ult || comboTech) && shieldLeft > 1) shieldLeft--;
         if (dbl && shieldLeft > 1) shieldLeft--;
+        // 王的傷害數字：一格護盾＝bossUnit
+        const bu = Math.round((HP_UNIT[gradeId] ?? 50) * 2.2);
+        stage.damage((before - Math.max(0, shieldLeft)) * roll(bu) * (ult ? 2 : 1), crit ? "crit" : "hit");
+        bossBar.classList.remove("hit"); void bossBar.offsetWidth; bossBar.classList.add("hit");
         stage.shake = 6;
         if (shieldLeft > 0) stage.flinch();
         if (shieldLeft <= 0) { stage.purify(); if (!s.stars[`${gradeId}-boss`]) { stage.restoreColor(); setTimeout(() => sfx("restore"), 400); s.flags = { ...(s.flags ?? {}), restore: gradeId }; } }
       } else if (mon) {
-        // 答對打掉一格血；大招、組合技一次打光；分身打兩格（碎晶蟲：第一下先打破盾）
-        mon.hp = ult || comboTech ? 0 : Math.max(0, mon.hp - (dbl ? 2 : 1));
+        // 傷害＝unit × 魔法等級 × 完美詠唱 × 一點點隨機；分身兩倍；碎晶蟲第一下打在盾上只有一半；
+        // 大招、組合技、或這是分給這隻的最後一題：一定打倒（最後一隻剛好打完）
+        const unit = mon.unit ?? 50;
+        let dmg = roll(unit) * (dbl ? 2 : 1);
+        const shieldHit = trait?.shield && mon.hp === mon.maxHp;
+        if (shieldHit) dmg = Math.round(dmg * 0.5);
+        if (ult || comboTech) dmg = Math.max(Math.round(unit * 3.2), mon.hp);
+        else if (mon.qLeft <= 1) dmg = Math.max(dmg, mon.hp);
+        mon.hp = Math.max(0, mon.hp - dmg);
+        stage.damage(dmg, crit ? "crit" : "hit");
         if (mon.hp <= 0) stage.purify();
-        else { stage.flinch(); if (trait?.shield && mon.hp === mon.maxHp - 1) { sfx("shatter"); say("水晶盾碎了！"); } }
+        else { stage.flinch(); if (shieldHit) { sfx("shatter"); say("水晶盾碎了！"); } }
       }
       if (stage.monster && stage.monster.state === "die" && (!boss || shieldLeft <= 0)) { const k = stage.monster.kind; s.dex = { ...(s.dex ?? {}), [k]: (s.dex?.[k] ?? 0) + 1 }; }   // 墨水圖鑑
       await wait(ult ? 1400 : 650);        // 大招：等光爆散掉才叫下一隻
     } else {
       wrong++; combo = 0; q.missed = true;
-      if (!exam && !tut && flags.shield) { flags.shield = false; sfx("tick"); skillPop(wrap, "護陣擋住了", "block", "這次不扣魔力"); stage.skillFx("shield"); }
+      if (!exam && !tut && flags.shield) { flags.shield = false; sfx("tick"); skillPop(wrap, "護陣擋住了", "block"); stage.skillFx("shield"); }
       else if (!exam && !tut) { hp--; stage.hurt(); sfx("hurt"); }
       else if (tut) sfx("hurt");
       stage.setPage("worried", 3);
       // 2026-11-26 使用者：錯題講解不直接跳出來 → 記下來，戰鬥結束在結算畫面看；這裡只亮出正確答案一下
       wrongs.push({ text: q.text, answer: q.answer, unit: q.unit, explain: q.explain, pick: result.pick ?? null, timeout: result.timeout, branch: q.branch });
       say(result.timeout ? `時間到了！答案是 ${q.answer}${q.unit ? " " + q.unit : ""}` : `答案是 ${q.answer}${q.unit ? " " + q.unit : ""}，戰鬥後可以看講解。`);
-      if (!boss && mon && trait?.combo && mon.hp < mon.maxHp) { mon.hp = mon.maxHp; say("散頁怪又黏回去了……要連續答對！"); }
+      if (!boss && mon && trait?.combo && mon.hp < mon.maxHp) { stage.damage(mon.maxHp - mon.hp, "heal"); mon.hp = mon.maxHp; say("散頁怪又黏回去了……要連續答對！"); }
       await wait(1300);
       // 自動魔法：剩 1 顆心＝回復；答錯過一次＝張開護陣擋下一次
       if (!exam && !tut && hp === 1 && maxHp(s.lv) > 1 && useMagic("heal")) { hp++; drawHud(); await wait(900); }
@@ -456,6 +474,11 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   }
 
 }
+
+// 怪物血量（數值）：每一下的份量照區域，再乘上怪物種類；魔法等級越高、打越痛
+const HP_UNIT = { g1: 40, g2: 55, g34: 70, g56: 85, jh: 100 };
+const KIND_MUL = { ink: 1, flower: 1.1, pages: 0.9, bat: 0.95, tick: 1.05, bug: 1.25, shade: 1.15 };
+const TIER_MUL = [1, 1, 1.15, 1.35, 1.6];
 
 // 一隻怪要打幾下：照剩下的題數分配（3、5、10 題＝3／3＋2／3＋3＋2＋2），最後一隻剛好打完
 const hitsFor = (rem) => (rem === 4 || rem === 2 ? 2 : rem === 1 ? 1 : 3);

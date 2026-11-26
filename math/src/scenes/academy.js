@@ -4,7 +4,7 @@
 
 import { el, show } from "../ui.js";
 import { sfx } from "../audio.js";
-import { UNIT_NAME, LENGTHS } from "../data.js";
+import { UNIT_NAME, LENGTHS, LEN_NAME } from "../data.js";
 import { ACADEMIES, MODES } from "../practice.js";
 import { writeSave } from "../save.js";
 
@@ -15,8 +15,8 @@ export function academyScene(game, { academy = "fire" } = {}) {
   const stars = (b, l) => s.practice?.[`${b}-${l}`] ?? 0;
   // 題數：3、5、10 題（2026-11-25 使用者），記住上次選的
   let len = LENGTHS.includes(s.pracLen) ? s.pracLen : 3;
-  const lenRow = el("div.aclen", {}, el("span", {}, "題數"), ...LENGTHS.map((n) => el("button.btn.small" + (n === len ? ".on" : ""), {
-    onclick: (e) => { sfx("click"); len = s.pracLen = n; writeSave(s); lenRow.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === e.currentTarget)); } }, `${n} 題`)));
+  const lenRow = el("div.aclen", {}, el("span", {}, "訓練"), ...LENGTHS.map((n) => el("button.btn.small" + (n === len ? ".on" : ""), {
+    onclick: (e) => { sfx("click"); len = s.pracLen = n; writeSave(s); lenRow.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === e.currentTarget)); } }, LEN_NAME[n])));
   const card = (b) => {
     // 簡單、困難兩種模式都可以直接選
     const lv = MODES.map((M, i) => {

@@ -58,3 +58,5 @@ export const spellTier = (combo) => (combo >= 10 ? 4 : combo >= 6 ? 3 : combo >=
 // 題數（2026-11-25 使用者：遊戲裡要有 3、5、10 題的關）：每一區第 1、2、3 關；學院練習可以選
 export const STAGE_LEN = [3, 5, 10];
 export const LENGTHS = [3, 5, 10];
+// 題數的說法（2026-11-26 使用者：不要寫幾題 → 基礎、進階、精熟）
+export const LEN_NAME = { 3: "基礎", 5: "進階", 10: "精熟" };

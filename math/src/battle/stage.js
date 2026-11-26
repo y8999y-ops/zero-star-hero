@@ -3,7 +3,7 @@
 // 下方 22% 會被答案按鈕蓋住，所以角色站在 y = 144（不是畫面最底）。
 
 import { createFrame, clearFrame, createFx, composite, painterFor, hex as pfHex } from "../../../pixelfx/src/core/index.js";
-import { pickSpell, ATTR_HIT, UNIT_SPELL, ULT, FX, INK, INK_POOF, crystalLight } from "./spells.js";
+import { pickSpell, ATTR_HIT, UNIT_SPELL, ULT, REACT, FX, INK, INK_POOF, crystalLight } from "./spells.js";
 import { GRADES, ATTRS } from "../data.js";
 import { heroFrame } from "../../fx/hero.js";
 import { inkDropFrame } from "../../fx/ink-drop.js";
@@ -249,11 +249,14 @@ export class Stage {
     // 屬性自己的打擊火花
     const H = ATTR_HIT[this.attr];
     if (H) this.addFx(H.mod, { x: x + (H.x ?? 0), y: GROUND + (H.y ?? 0), speed: H.speed, dur: H.dur, opts: { light: 0.8, ...(H.opts ?? {}) } });
-    this.addFx(tier >= 3 ? FX.critHit : FX.hitSpark, { x: x - 6, y: GROUND - 18, speed: 1.3, opts: { palette: [...ramp, "#ffffff"], height: 18 + tier * 4 } });
-    if (tier >= 2) this.addFx(FX.hitFlash, { x, y: GROUND - 20, speed: 1.2, opts: { palette: ramp } });
-    if (tier >= 4) {
-      this.addFx(FX.manaBurst, { x, y: GROUND + 4, speed: 1.6, opts: { palette: ramp } });
-    }
+    this.addFx(tier >= 2 ? FX.critHit : FX.hitSpark, { x: x - 6, y: GROUND - 18, speed: 1.3, opts: { palette: [...ramp, "#ffffff"], height: 18 + tier * 5 } });
+    this.addFx(FX.hitFlash, { x, y: GROUND - 20, speed: 1.2, opts: { palette: ramp } });
+    // 2026-11-26 使用者：普通攻擊要更華麗、打怪反饋更強 → 每一下都有：墨水被打飛的碎屑、屬性反應、怪物被壓扁再彈回、打擊停頓加長
+    this.addFx(FX.bluntHit, { x: x + 4, y: GROUND, speed: 1.4, opts: { palette: INK, warm: ramp[4], dust: "#7a6cb0", clod: "#2d2350", height: 16 + tier * 3, seed: 3 + tier } });
+    if (tier >= 3) this.addFx(FX.manaBurst, { x, y: GROUND + 4, speed: 1.9, opts: { palette: ramp } });
+    const R0 = REACT[this.attr];
+    if (R0 && m) { this.addFx(R0.mod, { x, y: GROUND + R0.y, speed: 1.2, dur: R0.dur, opts: { ...(R0.opts ?? {}) } }); m.tintC = R0.tint; m.tintT = 0.55; m.jitter = R0.jitter ? 0.45 : 0; }
+    if (tier >= 4) this.addFx(FX.manaBurst, { x, y: GROUND + 4, speed: 1.6, delay: 0.1, opts: { palette: [...ramp].reverse() } });
     // 數晶外觀進化（企劃書 8.7）：數晶等級越高，打中時多一層——Lv2 多一道閃光、Lv3 多一圈反方向的火花、
     // Lv4 第 3 級魔法也有魔力爆發、Lv5 終極魔法換成第二型態（兩圈魔力爆發、畫面晃更大）
     const lv = this.crystalLv ?? 1;
@@ -262,8 +265,9 @@ export class Stage {
     if (lv >= 4 && tier === 3) this.addFx(FX.manaBurst, { x, y: GROUND + 4, speed: 1.9, opts: { palette: ramp } });
     if (lv >= 5 && tier >= 4) this.addFx(FX.manaBurst, { x, y: GROUND + 4, speed: 1.3, delay: 0.25, opts: { palette: [...ramp].reverse(), seed: 4 } });
     this.flashT = 0.16; this.flashA = (soft ? 0.12 : 0.22) + tier * (soft ? 0.03 : 0.06); this.flashC = ramp[5];
-    this.freezeT = 0.04 + tier * 0.03;                 // 打擊停頓：畫面頓一下，打下去比較有重量
-    if (m) { m.kb = 6 + tier * 4; m.whiteT = 0.14; }
+    this.freezeT = 0.07 + tier * 0.035;                // 打擊停頓：畫面頓一下，打下去比較有重量
+    if (m) { m.kb = 10 + tier * 5; m.whiteT = 0.16; m.squash = 1; }
+    this.punch = 0.12 + tier * 0.03;                    // 畫面往前推一下（CSS 放大一點點再回來）
   }
 
   addFx(mod, { x, y, from = null, to = null, delay = 0, speed = 1, dur = Infinity, opts = {} }) {
@@ -309,6 +313,10 @@ export class Stage {
       if (m.flinch > 0) m.flinch = Math.max(0, m.flinch - dt);
       if (m.kb > 0) m.kb = Math.max(0, m.kb - dt * 40);
       if (m.whiteT > 0) m.whiteT -= dt;
+      if (m.squash > 0) m.squash = Math.max(0, m.squash - dt * 4);
+      if (m.tintT > 0) m.tintT -= dt;
+      if (m.jitter > 0) m.jitter -= dt;
+      if (m.barHit > 0) m.barHit -= dt;
       // 血條：紅色很快縮到目前的血、後面白色那段慢慢跟上
       m.hpShow = m.hpShow == null ? m.hp : m.hpShow + (m.hp - m.hpShow) * Math.min(1, dt * 10);
       m.hpLag = m.hpLag == null ? m.hp : m.hpLag > m.hpShow ? Math.max(m.hpShow, m.hpLag - dt * 0.9 * (m.maxHp ?? 1)) : m.hpShow;
@@ -336,6 +344,7 @@ export class Stage {
     this.fx = this.fx.filter((f) => !f.inst || !f.inst.done());
     this.magic?.update(dt);
     for (const n of this.pops) n.update(dt);
+    if (this.punch > 0) { this.punch = Math.max(0, this.punch - dt); this.cv.style.transform = this.opt.shake && this.punch > 0.01 ? `scale(${1 + this.punch * 0.12})` : ""; }
     this.pops = this.pops.filter((n) => !n.done);
   }
 
@@ -417,7 +426,7 @@ export class Stage {
     if (m && SPRITES[m.kind] && m.alpha > 0) {
       const sp = this.sprite(m.kind, m.state === "die" || m.flinch > 0 ? "hurt" : "idle", m.t + m.phase);
       ctx.globalAlpha = m.alpha;
-      const mx = Math.round(m.x + (m.kb ?? 0));
+      const mx = Math.round(m.x + (m.kb ?? 0) + (m.jitter > 0 ? (Math.random() - 0.5) * 4 : 0));
       // 王變身（第二階段）：身體變大一點，外面一圈一閃一閃的紫色光暈
       const k = scaleOf(m.kind) * (m.phase2 ? 1.12 : 1);
       if (m.phase2) {
@@ -425,10 +434,16 @@ export class Stage {
         for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) big(tintOf(sp.canvas, "#b483ff"), mx + dx, GROUND + dy, sp.ox, sp.oy, k);
         ctx.globalAlpha = m.alpha;
       }
-      big(sp.canvas, mx, GROUND, sp.ox, sp.oy, k);
+      // 被打中：先壓扁再彈回（腳下不動）
+      const sq = m.squash > 0 ? Math.sin(m.squash * Math.PI) * 0.22 * m.squash : 0;
+      const drawM = (c) => ctx.drawImage(c, mx - sp.ox * k * (1 + sq) + sx, GROUND - sp.oy * k * (1 - sq) + sy, c.width * k * (1 + sq), c.height * k * (1 - sq));
+      drawM(sp.canvas);
       if (m.whiteT > 0) {        // 被打中閃白
         ctx.globalAlpha = Math.min(1, m.whiteT / 0.14) * 0.85 * m.alpha;
-        big(whiteOf(sp.canvas), mx, GROUND, sp.ox, sp.oy, k);
+        drawM(whiteOf(sp.canvas));
+      } else if (m.tintT > 0 && m.tintC) {   // 接著染上屬性色（燒紅、結霜、觸電…）慢慢退掉
+        ctx.globalAlpha = Math.min(1, m.tintT / 0.55) * 0.5 * m.alpha;
+        drawM(tintOf(sp.canvas, m.tintC));
       }
       ctx.globalAlpha = 1;
       // 怪物血條（2026-11-26 使用者：顯示血條、不寫數字）：頭上一條像素小血條；王的血條在畫面右上角（HTML）
@@ -441,18 +456,29 @@ export class Stage {
   }
 
   hpBar(cx, y, m) {
-    const ctx = this.ctx, w = 32, x = Math.round(cx - w / 2), k = Math.max(0, m.hpShow ?? m.hp) / m.maxHp, lag = Math.max(0, m.hpLag ?? m.hp) / m.maxHp;
+    // 2026-11-26 使用者：血量改成數值、掉血要有特效 → 血條不寫數字；被打時血條抖一下、閃白，紅色很快縮、白色那段慢慢跟上；剩不到三成會一閃一閃
+    const ctx = this.ctx, w = 34, hit = Math.max(0, m.barHit ?? 0);
+    const x = Math.round(cx - w / 2 + (hit > 0 ? (Math.random() - 0.5) * 4 * hit / 0.35 : 0)), yy = y + (hit > 0.2 ? -1 : 0);
+    const k = Math.max(0, m.hpShow ?? m.hp) / m.maxHp, lag = Math.max(0, m.hpLag ?? m.hp) / m.maxHp;
+    const low = k < 0.3 && Math.floor(this.t * 6) % 2 === 0;
     ctx.globalAlpha = m.alpha;
-    ctx.fillStyle = "#11102e"; ctx.fillRect(x - 1, y - 1, w + 2, 6);          // 外框
-    ctx.fillStyle = "#3a3058"; ctx.fillRect(x, y, w, 4);                       // 空的
-    ctx.fillStyle = "#fff4e0"; ctx.fillRect(x, y, Math.round(w * lag), 4);     // 剛被打掉的那段
+    ctx.fillStyle = "#11102e"; ctx.fillRect(x - 1, yy - 1, w + 2, 7);
+    ctx.fillStyle = "#3a3058"; ctx.fillRect(x, yy, w, 5);
+    ctx.fillStyle = "#fff4e0"; ctx.fillRect(x, yy, Math.round(w * lag), 5);
     const fw = Math.round(w * k);
-    ctx.fillStyle = "#e8405e"; ctx.fillRect(x, y, fw, 4);
-    ctx.fillStyle = "#ff8aa0"; ctx.fillRect(x, y, fw, 1);                     // 上緣亮一點
-    // 一格一格的分隔線（打幾下看得出來，但不寫數字）
-    ctx.fillStyle = "#11102e";
-    for (let i = 1; i < m.maxHp; i++) ctx.fillRect(x + Math.round((w * i) / m.maxHp), y, 1, 4);
+    ctx.fillStyle = low ? "#ff9a3c" : "#e8405e"; ctx.fillRect(x, yy, fw, 5);
+    ctx.fillStyle = low ? "#ffd08a" : "#ff8aa0"; ctx.fillRect(x, yy, fw, 2);
+    ctx.fillStyle = "#b02848"; ctx.fillRect(x, yy + 4, fw, 1);
+    if (hit > 0.22) { ctx.globalAlpha = m.alpha * 0.8; ctx.fillStyle = "#ffffff"; ctx.fillRect(x - 1, yy - 1, w + 2, 7); }
     ctx.globalAlpha = 1;
+  }
+
+  /** 傷害數字（從怪物身上彈出來、往旁邊落下）。kind：hit 一般、crit 暴擊、heal 補血、block 擋住 */
+  damage(n, kind = "hit") {
+    const m = this.monster;
+    const x = (m ? m.x : 270) + 18, y = GROUND - Math.min(60, (HEAD[m?.kind] ?? 42) * scaleOf(m?.kind)) * 0.45;
+    if (m && kind !== "heal") m.barHit = 0.35;
+    this.pops.push(new DmgNumber(kind === "heal" ? `+${n}` : String(n), x, y, kind));
   }
 
   /** 恢復色彩：灰色慢慢退掉（打倒王時） */
@@ -473,7 +499,7 @@ export class Stage {
   /** 打中時在怪物頭上跳出答案數字 */
   popNumber(text, combo) {
     const m = this.monster;
-    this.pops.push(new PopNumber(String(text).replace("−", "-"), m ? m.x : 270, GROUND - (HEAD[m?.kind] ?? 42) * scaleOf(m?.kind) - 8, ATTRS[this.attr]?.color ?? "#8a7cff", combo >= 10 ? 4 : combo >= 6 ? 3 : 2));
+    this.pops.push(new PopNumber(String(text).replace("−", "-"), m ? m.x : 270, GROUND - (HEAD[m?.kind] ?? 42) * scaleOf(m?.kind) - 24, ATTRS[this.attr]?.color ?? "#8a7cff", combo >= 10 ? 4 : combo >= 6 ? 3 : 2));
   }
 
   /** 頁頁的表情：talk 說話、happy 開心、worried 擔心，維持 sec 秒後回到待機 */
@@ -544,3 +570,22 @@ function tintOf(c, col) {
   return byCol[col];
 }
 function rampOf(c) { return [mix(c, "#000000", 0.85), mix(c, "#000000", 0.6), mix(c, "#000000", 0.3), c, mix(c, "#ffffff", 0.4), mix(c, "#ffffff", 0.75), "#ffffff"]; }
+
+// 傷害數字：先放大彈出、往右上跳再落下、最後淡掉；暴擊是金色、比較大，補血是綠色往上飄
+const DMG_COLOR = { hit: ["#ffd23f", "#5a1a08"], crit: ["#ff6a3c", "#2a0800"], heal: ["#9df0b0", "#0e4a22"], block: ["#bfe0ff", "#14306a"] };   // 跟答案數字（白色、頭上）分開：傷害是黃／橘紅、在身體旁邊
+class DmgNumber {
+  constructor(text, x, y, kind) { Object.assign(this, { text, x, y, kind, t: 0, vx: 18 + Math.random() * 14 }); }
+  update(dt) { this.t += dt; }
+  get done() { return this.t > 1.0; }
+  draw(p) {
+    p.place(0, 0, false, 0);
+    const u = this.t, crit = this.kind === "crit", heal = this.kind === "heal";
+    const pop = u < 0.1 ? 1.8 - u * 8 : 1;
+    const x = this.x + (heal ? 0 : this.vx * u);
+    const y = heal ? this.y - 26 * u : this.y - 34 * u + 60 * u * u;
+    const a = u > 0.7 ? Math.max(0, 1 - (u - 0.7) / 0.3) : 1;
+    const [c, o] = DMG_COLOR[this.kind] ?? DMG_COLOR.hit;
+    p.text(this.text, x, y, pfHex(c), { font: "big", scale: Math.max(1, Math.round((crit ? 3 : 2) * pop)), align: "center", outline: pfHex(o), a });
+    if (crit) p.glow(x, y + 6, 18, pfHex("#ff7a2f"), 0.6 * a);
+  }
+}
