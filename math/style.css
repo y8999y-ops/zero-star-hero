@@ -629,9 +629,10 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 .dormcard.on { box-shadow: inset 0 0 0 2px #9cf0a0; }
 
 /* 大廳左右的滑動提示箭頭（2026-11-26 使用者）：半透明三角形，往外輕輕推 */
-.hubarrow { position: absolute; top: 50%; width: 54px; height: 108px; margin-top: -54px; z-index: 45; border: 0; padding: 0; cursor: pointer; background: linear-gradient(180deg, rgba(122, 96, 214, .85), rgba(52, 36, 110, .85)); border-image: none !important; box-shadow: none !important; filter: drop-shadow(0 2px 3px rgba(20, 14, 40, .45)); transition: opacity .35s; }
-.hubarrow.l { left: max(6px, env(safe-area-inset-left)); clip-path: polygon(0 50%, 100% 0, 72% 50%, 100% 100%); animation: harrowL 1.4s ease-in-out infinite; }
-.hubarrow.r { right: max(6px, env(safe-area-inset-right)); clip-path: polygon(100% 50%, 0 0, 28% 50%, 0 100%); animation: harrowR 1.4s ease-in-out infinite; }
+/* 2026-11-26：原本的紫色箭頭太細，看起來像一條紫線 → 改成圓形按鈕 */
+.hubarrow { position: absolute; top: 50%; width: 40px; height: 40px; margin-top: -20px; z-index: 45; padding: 0 0 2px; cursor: pointer; display: grid; place-items: center; font-size: 18px; line-height: 1; color: #ffd76a; background: rgba(23, 18, 42, .82); border: 2px solid #f2c24a; border-radius: 50%; border-image: none !important; box-shadow: 0 2px 0 #0e0a1c, 0 0 10px rgba(242, 194, 74, .35) !important; transition: opacity .35s; }
+.hubarrow.l { left: max(6px, env(safe-area-inset-left)); padding-right: 3px; animation: harrowL 1.4s ease-in-out infinite; }
+.hubarrow.r { right: max(6px, env(safe-area-inset-right)); padding-left: 3px; animation: harrowR 1.4s ease-in-out infinite; }
 .hubarrow.off { opacity: 0; pointer-events: none; animation: none; }
 @keyframes harrowL { 0%, 100% { transform: translateX(0); opacity: .5; } 50% { transform: translateX(-10px); opacity: .85; } }
 @keyframes harrowR { 0%, 100% { transform: translateX(0); opacity: .5; } 50% { transform: translateX(10px); opacity: .85; } }
@@ -769,3 +770,24 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 /* 王被打中：血條抖一下、閃白 */
 .bossbar.hit .bhp { animation: bosshit .4s ease-out; }
 @keyframes bosshit { 0% { transform: translateX(0); background: #fff; } 20% { transform: translateX(-4px); } 40% { transform: translateX(4px); } 60% { transform: translateX(-2px); } 100% { transform: none; } }
+
+/* 2026-11-26 使用者：左上狀態卡每一項加底色（不跟背景混在一起）；下面顯示登入名稱或未登入 */
+.wpcol { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; pointer-events: none; }
+.whud .wprof { background-color: #1b1433 !important; }
+.wpmain { background: #0e0a1c; padding: 4px 8px 5px; border-radius: 6px; }
+.wpcoin { background: #0e0a1c; padding: 3px 8px; border-radius: 6px; border-left: 0; }
+.wpacct { pointer-events: auto; cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; font: inherit; font-size: 13px; font-weight: 700; color: #fff; background: #0e0a1c; border: 2px solid #3a3058; border-radius: 8px; box-shadow: 0 2px 0 rgba(0,0,0,.4); white-space: nowrap; }
+.wpacct small { font-size: 11px; font-weight: 400; color: #c9bdf0; }
+.wpacct.no { border-color: #e0565b; }
+.wpacct.no i { width: 8px; height: 8px; border-radius: 50%; background: #ff5a7a; box-shadow: 0 0 6px #ff5a7a; animation: lbpulse 1.2s ease-in-out infinite; }
+.wpacct:active { transform: scale(.97); }
+/* 標題頁：登入提示 */
+.titlewho { margin: -14px 0 10px; font-size: 14px; color: #f1ecff; text-shadow: 0 2px 0 #000, 2px 0 0 #000, -2px 0 0 #000, 0 -2px 0 #000; }
+.titlewho b { color: var(--gold); margin: 0 2px; }
+.loginbar { position: absolute !important; left: 0; right: 0; margin: 0 auto !important; width: max-content; bottom: max(10px, env(safe-area-inset-bottom)); z-index: 5; display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 14px; font: inherit; font-size: 14px; font-weight: 700; color: #fff; background: rgba(14, 10, 28, .9); border: 2px solid #e0565b; border-radius: 10px; cursor: pointer; white-space: nowrap; box-shadow: 0 3px 0 #0e0a1c; }
+.loginbar b { padding: 4px 14px; border-radius: 6px; color: #2a1a05; background: var(--gold); }
+.lbdot { width: 10px; height: 10px; border-radius: 50%; background: #ff5a7a; box-shadow: 0 0 8px #ff5a7a; animation: lbpulse 1.2s ease-in-out infinite; }
+@keyframes lbpulse { 50% { opacity: .35; } }
+.titleacct.need { outline: 2px solid #e0565b; outline-offset: 1px; animation: lbglow 1.6s ease-in-out infinite; }
+@keyframes lbglow { 50% { box-shadow: 0 0 12px #ff5a7a; } }
+.loginwarn { font-size: 14px; line-height: 1.6; color: #e6dcff; }

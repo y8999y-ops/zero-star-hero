@@ -17,12 +17,32 @@ export function titleScene(game) {
     ? el("button.btn.small.titleacct", { onclick: () => { sfx("click"); openLoginModal(game, (changed) => { if (changed) game.show("title"); }); } },
         accountLabel())
     : null;
+  // 2026-11-26 使用者：沒登入也能玩，但登入提示要明顯 → 下面一條提示列；按開始時再提醒一次
+  const needLogin = !st && !isTeacher() && isCloudAvailable();
+  const login = () => { sfx("click"); openLoginModal(game, (changed) => { if (changed) game.show("title"); }); };
+  const start = () => {
+    sfx("click");
+    if (!needLogin) return game.go("map");
+    const back = el("div.cloudback");
+    back.append(el("div.panel.cloudmodal", {},
+      el("div.ptitle", {}, "還沒登入喔"),
+      el("div.loginwarn", {}, "不登入也可以玩，但進度只存在這台裝置，老師看不到你的學習紀錄。"),
+      el("div.cloudbtns", {},
+        el("button.btn.gold", { onclick: () => { back.remove(); login(); } }, "登入"),
+        el("button.btn", { onclick: () => { sfx("click"); back.remove(); game.go("map"); } }, "先玩再說"))));
+    document.querySelector("#app").append(back);
+  };
+  const who = st ? el("div.titlewho", {}, "歡迎回來，", el("b", {}, st.name)) : isTeacher() ? el("div.titlewho", {}, el("b", {}, "老師"), "試玩中") : null;
+  const bar = needLogin ? el("button.loginbar", { onclick: login }, el("span.lbdot"), "還沒登入：進度只存在這台裝置", el("b", {}, "登入")) : null;
+  if (needLogin) cloudBar?.classList.add("need");
   show(el("div.screen.title", {}, bg, cloudBar,
     el("div.logo", {}, el("span.l1", {}, "魔數"), el("span.l2", {}, "學院")),
     el("div.tag", {}, "數學是一種魔法"),
-    el("button.btn.gold.big", { onclick: () => { sfx("click"); game.go("map"); } }, started ? "繼續冒險" : "開始入學"),
+    who,
+    el("button.btn.gold.big", { onclick: start }, started ? "繼續冒險" : "開始入學"),
     el("button.btn", { onclick: () => game.go("settings", { from: "title" }) }, "設定"),
     started ? el("button.btn.red.small", { onclick: () => { if (confirm("確定要重新入學嗎？所有進度都會清除。")) { game.save = resetSave(); game.go("opening"); } } }, "重新入學") : null,
+    bar,
   ));
   titleBackground(bg);
 }

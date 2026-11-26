@@ -79,7 +79,14 @@ export function hubScene(game, { from } = {}) {
   const floor = el("div.hubfloor", { style: { backgroundImage: `url(${A("floor.jpg")})` } });
   const lawn = el("div.hublawn", { style: { backgroundImage: `url(${A("lawn.jpg")})` } });
   const label = el("div.hublabel", { hidden: true });
+  // 狀態卡下面：登入的名稱或「未登入」（2026-11-26 使用者）；點了開登入
+  const stu = getStudent();
+  const acct = stu || isTeacher() || isCloudAvailable()
+    ? el("button.wpacct" + (stu || isTeacher() ? "" : ".no"), { onclick: () => { if (busy) return; busy = true; sfx("click"); openLoginModal(game, (changed) => { busy = false; if (changed) { leave(); game.go("title"); } }); } },
+        stu ? [el("small", {}, "學生"), stu.name] : isTeacher() ? [el("small", {}, "老師"), "試玩中"] : [el("i"), "未登入", el("small", {}, "點這裡登入")])
+    : null;
   const hud = el("div.whud", {},
+    el("div.wpcol", {},
     // 個人卡（2026-11-26 使用者：看不清楚 → 字放大、底色實一點；點了打開個人資料，錯題本也在裡面）
     el("button.wprof", { "aria-label": "個人資料", onclick: () => { if (busy) return; busy = true; sfx("click"); profilePanel(game, "me", (left) => { if (left) leave(); busy = false; }); } },
       el("span.wpbadge", { style: { "--c": ATTRS[s.attr]?.color ?? "#ccc" } }, ATTRS[s.attr]?.name ?? "？"),
@@ -88,12 +95,13 @@ export function hubScene(game, { from } = {}) {
         el("span.wpexp", {}, el("i", { style: { width: s.lv >= MAX_LV ? "100%" : `${(100 * s.exp) / expToNext(s.lv)}%` } }))),
       el("span.wpcoin", {}, `${s.coins}`, el("small", {}, "晶幣")),
       Object.keys(s.review).length ? el("span.wpdot", {}, `${Object.keys(s.review).length}`) : null),
+    acct),
     el("button.btn.small.menuBtn", { onclick: () => menu() }, "選單"));
   world.append(floor, lawn);
   pan.append(world);
   // 左右兩邊的半透明大箭頭：提示可以左右滑（2026-11-26 使用者）；點了也會滑一段；滑到底那一邊就淡掉
-  const arrowL = el("button.hubarrow.l", { "aria-label": "往左看", onclick: () => smoothScroll(pan.scrollLeft - app.clientWidth * 0.6, 500) });
-  const arrowR = el("button.hubarrow.r", { "aria-label": "往右看", onclick: () => smoothScroll(pan.scrollLeft + app.clientWidth * 0.6, 500) });
+  const arrowL = el("button.hubarrow.l", { "aria-label": "往左看", onclick: () => smoothScroll(pan.scrollLeft - app.clientWidth * 0.6, 500) }, "◀");
+  const arrowR = el("button.hubarrow.r", { "aria-label": "往右看", onclick: () => smoothScroll(pan.scrollLeft + app.clientWidth * 0.6, 500) }, "▶");
   const root = el("div.screen.hubscr", {}, sky, far, haze, pan, arrowL, arrowR, hud, label);
   show(root);
 
