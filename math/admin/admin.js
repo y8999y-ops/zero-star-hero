@@ -11,7 +11,8 @@ const ALL_BRANCHES = Object.keys(UNIT_NAME);
 const TOKEN_KEY = "mosu-admin-token-v1";
 
 const state = {
-  token: sessionStorage.getItem(TOKEN_KEY) || "",
+  // 2026-11-26：跟遊戲標題頁的老師登入共用（localStorage），在遊戲登入過就不用再打密碼
+  token: (() => { try { return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY) || ""; } catch { return ""; } })(),
   tab: "overview",        // overview | analytics | manage
   classes: [],
   students: [],
@@ -149,7 +150,7 @@ function renderLogin() {
     try {
       const res = await api("/api/admin/login", { method: "POST", body: { password: pw.value } });
       state.token = res.token;
-      sessionStorage.setItem(TOKEN_KEY, res.token);
+      try { localStorage.setItem(TOKEN_KEY, res.token); } catch {}
       await loadAll();
     } catch (ex) { errEl.textContent = ex.message; }
   };
@@ -443,10 +444,10 @@ function render() {
     <div class="topbar">
       <div class="brand">魔數學院 <span>教師管理後台</span></div>
       <div class="top-actions">
-        <a class="btn ghost" href="/math/" target="_blank" style="text-decoration:none;">開啟遊戲</a>
+        <a class="btn ghost" href="/math/" style="text-decoration:none;">試玩遊戲</a>
         <button class="btn ghost" id="btnPrintCards">列印登入小卡</button>
-        <button class="btn ghost" id="btnExpOverview">匯出總表 CSV</button>
-        <button class="btn ghost" id="btnExpMistakes">匯出錯題 CSV</button>
+        <button class="btn ghost" id="btnExpOverview">下載總表</button>
+        <button class="btn ghost" id="btnExpMistakes">下載錯題</button>
         <button class="btn ghost" id="btnLogout">登出</button>
       </div>
     </div>
@@ -477,7 +478,7 @@ function render() {
 
   // ── 綁定事件 ──
   root.querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => { state.tab = b.dataset.tab; render(); }));
-  root.querySelector("#btnLogout").onclick = () => { state.token = ""; sessionStorage.removeItem(TOKEN_KEY); render(); };
+  root.querySelector("#btnLogout").onclick = () => { state.token = ""; try { localStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(TOKEN_KEY); } catch {} render(); };
   root.querySelector("#btnExpOverview").onclick = () => downloadCsv("overview");
   root.querySelector("#btnExpMistakes").onclick = () => downloadCsv("mistakes");
   root.querySelector("#btnPrintCards").onclick = () => {

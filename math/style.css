@@ -681,6 +681,11 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 .cloudmsg { min-height: 1.3em; font-size: 13px; color: #ff9aa8; }
 .cloudbtns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 .cloudbtns .btn { min-width: 88px; }
+.cloudtabs { display: flex; gap: 6px; justify-content: center; }
+.cloudtab { flex: 1; padding: 6px 0; font: inherit; font-weight: 700; color: var(--dim, #b8acd6); background: #120d22; border: 2px solid var(--line); border-radius: 8px; cursor: pointer; }
+.cloudtab.on { color: #fff; border-color: var(--gold); background: var(--panel2); }
+.cloudbody { display: flex; flex-direction: column; gap: 10px; }
+.cloudinput.pw { text-transform: none; letter-spacing: 4px; }
 
 /* 結算畫面的錯題講解（2026-11-26 使用者：戰鬥中不跳出來，結束後可以查看） */
 .panel.wrongs { inset: 10px 10%; z-index: 30; gap: 8px; }

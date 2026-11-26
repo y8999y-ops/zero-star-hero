@@ -8,6 +8,8 @@ import { applySettings } from "./settings.js";
 import { applyOutfit } from "./scenes/shop.js";
 
 const AUTH_KEY = "mosu-academy-cloud-v1";
+// 2026-11-26 使用者：老師跟學生在同一個頁面登入；老師用密碼登入後可以開後台，也可以試玩（試玩不記錄）
+const TEACHER_KEY = "mosu-admin-token-v1";   // 跟 /admin/ 共用同一把鑰匙，登入一次兩邊都能用
 const IDLE_MS = 60_000;        // 60 秒沒有操作就暫停計時，避免開著網頁忘記關灌水
 
 let available = false;
@@ -75,6 +77,43 @@ function applyLoadedSave(game, cloudSave) {
 }
 
 export const isCloudAvailable = () => available;
+
+function teacherToken() {
+  let t = "";
+  try { t = localStorage.getItem(TEACHER_KEY) || sessionStorage.getItem(TEACHER_KEY) || ""; } catch {}
+  const exp = Number(t.split(".")[1]);
+  return t && Number.isFinite(exp) && exp > Date.now() ? t : "";
+}
+export const isTeacher = () => !!teacherToken();
+function setTeacher(t) {
+  try {
+    if (t) localStorage.setItem(TEACHER_KEY, t); else localStorage.removeItem(TEACHER_KEY);
+    sessionStorage.removeItem(TEACHER_KEY);
+  } catch {}
+  listeners.forEach((fn) => { try { fn(auth?.student ?? null); } catch {} });
+}
+/** 標題頁右上角那顆按鈕的字 */
+export const accountLabel = () => isTeacher() ? "老師 ▾" : auth?.student ? `${formatStudentLabel(auth.student)} ▾` : "登入";
+
+/** 老師用密碼登入（學生先登出，避免老師試玩寫進學生的存檔） */
+export async function loginTeacher(password, game) {
+  if (!password) return { ok: false, error: "請輸入密碼" };
+  try {
+    const res = await fetch("/api/admin/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.token) return { ok: false, error: data.error || "密碼錯誤" };
+    if (auth) await logoutCloud(game, { stay: true });
+    setTeacher(data.token);
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "連線失敗，請確認網路狀態" };
+  }
+}
+export function logoutTeacher() { setTeacher(""); }
 export const getStudent = () => auth?.student ?? null;
 export function onAuthChange(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 
@@ -162,6 +201,7 @@ export async function loginWithCode(code, game) {
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) return { ok: false, error: data.error || "登入失敗，請再試一次" };
     available = true;
+    if (isTeacher()) setTeacher("");   // 學生登入就把老師登出
     saveAuth({ token: data.token, student: data.student });
     applyLoadedSave(game, data.save);
     pendingMistakes = [];
@@ -176,7 +216,7 @@ export async function loginWithCode(code, game) {
 }
 
 /** 登出／切換學生（共用平板用） */
-export async function logoutCloud(game) {
+export async function logoutCloud(game, { stay = false } = {}) {
   if (auth) await flushCloud(false);
   saveAuth(null);
   session = null;
@@ -186,7 +226,7 @@ export async function logoutCloud(game) {
   writeSave(game.save, { silent: true });
   applySettings(game.save.settings);
   applyOutfit(game.save);
-  game.go("title");
+  if (!stay) game.go("title");
 }
 
 /** writeSave 自動觸發的防抖同步 */
@@ -259,46 +299,66 @@ export async function flushCloud(useBeacon = false) {
   } catch {}
 }
 
-/** 學生代碼登入／切換帳號彈窗 */
+/** 登入彈窗：學生（代碼）／老師（密碼）兩個分頁；已登入就顯示帳號與登出 */
 export function openLoginModal(game, onDone) {
   document.querySelector("#app .cloudback")?.remove();
   const st = getStudent();
-  const input = el("input.cloudinput", {
-    type: "text",
-    placeholder: "輸入代碼，例如 402-1-07-K9",
-    autocomplete: "off",
-    autocapitalize: "characters",
-    spellcheck: false,
-  });
-  const msg = el("div.cloudmsg");
-  const submitBtn = el("button.btn.gold", { onclick: () => submit() }, "登入");
-  const close = () => { overlay.remove(); onDone?.(false); };
-
-  async function submit() {
-    const code = input.value.trim();
-    if (!code) { msg.textContent = "請輸入老師發的代碼！"; input.focus(); return; }
-    submitBtn.disabled = true;
-    msg.textContent = "登入中…";
-    const r = await loginWithCode(code, game);
-    submitBtn.disabled = false;
-    if (!r.ok) { msg.textContent = r.error; sfx("hurt"); return; }
-    sfx("good");
-    overlay.remove();
-    onDone?.(true);
-  }
-  input.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
-
-  const box = el("div.panel.cloudmodal", {},
-    el("div.ptitle", {}, st ? "學生帳號" : "學生代碼登入"),
-    st ? el("div.cloudcur", {}, el("b", {}, formatStudentLabel(st)), el("span.cloudcode", {}, st.loginCode)) : null,
-    input,
-    msg,
-    el("div.cloudbtns", {},
-      submitBtn,
-      st ? el("button.btn.red", { onclick: async () => { sfx("click"); overlay.remove(); await logoutCloud(game); onDone?.(true); } }, "登出") : null,
-      el("button.btn", { onclick: () => { sfx("click"); close(); } }, "取消")),
-  );
+  const close = (changed = false) => { overlay.remove(); onDone?.(changed); };
+  const box = el("div.panel.cloudmodal");
   const overlay = el("div.cloudback", { onclick: (e) => { if (e.target === overlay) close(); } }, box);
   document.querySelector("#app").append(overlay);
-  setTimeout(() => input.focus(), 50);
+
+  // 老師已登入
+  if (isTeacher()) {
+    box.append(
+      el("div.ptitle", {}, "老師"),
+      el("div.cloudcur", {}, el("b", {}, "已登入"), el("span", {}, "試玩不會記錄成學生的資料")),
+      el("div.cloudbtns", {},
+        el("button.btn.gold", { onclick: () => { sfx("click"); location.href = "/admin/"; } }, "開啟後台"),
+        el("button.btn", { onclick: () => { sfx("click"); close(); } }, "試玩遊戲"),
+        el("button.btn.red", { onclick: () => { sfx("click"); logoutTeacher(); close(true); } }, "登出")));
+    return;
+  }
+
+  let who = "student";
+  const tabs = el("div.cloudtabs");
+  const body = el("div.cloudbody");
+  const msg = el("div.cloudmsg");
+  const draw = () => {
+    tabs.replaceChildren(
+      el(`button.cloudtab${who === "student" ? ".on" : ""}`, { onclick: () => { who = "student"; draw(); } }, "學生"),
+      el(`button.cloudtab${who === "teacher" ? ".on" : ""}`, { onclick: () => { who = "teacher"; draw(); } }, "老師"));
+    msg.textContent = "";
+    const teacher = who === "teacher";
+    const input = el("input.cloudinput", teacher
+      ? { type: "password", placeholder: "老師密碼", autocomplete: "current-password" }
+      : { type: "text", placeholder: "輸入代碼，例如 402-1-07-K9", autocomplete: "off", autocapitalize: "characters", spellcheck: false });
+    if (teacher) input.classList.add("pw");
+    const submitBtn = el("button.btn.gold", { onclick: () => submit() }, "登入");
+    async function submit() {
+      const v = input.value.trim();
+      if (!v) { msg.textContent = teacher ? "請輸入老師密碼" : "請輸入老師發的代碼！"; input.focus(); return; }
+      submitBtn.disabled = true;
+      msg.textContent = "登入中…";
+      const r = teacher ? await loginTeacher(v, game) : await loginWithCode(v, game);
+      submitBtn.disabled = false;
+      if (!r.ok) { msg.textContent = r.error; sfx("hurt"); return; }
+      sfx("good");
+      if (teacher) { draw2(); return; }
+      close(true);
+    }
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+    body.replaceChildren(...[
+      st && !teacher ? el("div.cloudcur", {}, el("b", {}, formatStudentLabel(st)), el("span.cloudcode", {}, st.loginCode)) : null,
+      input, msg,
+      el("div.cloudbtns", {},
+        submitBtn,
+        st && !teacher ? el("button.btn.red", { onclick: async () => { sfx("click"); overlay.remove(); await logoutCloud(game); onDone?.(true); } }, "登出") : null,
+        el("button.btn", { onclick: () => { sfx("click"); close(); } }, "取消"))].filter(Boolean));
+    setTimeout(() => input.focus(), 50);
+  };
+  // 老師登入成功：直接問要開後台還是試玩
+  const draw2 = () => { overlay.remove(); onDone?.(true); openLoginModal(game, onDone); };
+  box.append(el("div.ptitle", {}, "登入"), tabs, body);
+  draw();
 }
