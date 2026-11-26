@@ -291,7 +291,7 @@ export function hubScene(game, { from } = {}) {
         if (r === 0) { leave(); game.go("area", { grade: "g34" }); }
         else if (exam && r === 1) { leave(); game.go("battle", { grade: s.lastGrade ?? "g1", mode: "exam" }); }
         else if (r === (exam ? 2 : 1)) {
-          if (s.lv < 15) { await say([{ who: null, name: "刻度鐘塔", text: "挑戰模式於 Lv15 開放：每題限時 20 秒，連答到底！" }]); return; }
+          if (s.lv < 15) { await say([{ who: null, name: "刻度鐘塔", text: "挑戰模式於 Lv15 開放：連答到底，答錯就結束！" }]); return; }
           leave(); game.go("battle", { grade: "g34", mode: "challenge" });
         }
         return;

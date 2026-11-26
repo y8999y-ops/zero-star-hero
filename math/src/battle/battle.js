@@ -15,7 +15,6 @@ import { recordAnswer, addExp, pagePageLevel } from "../growth.js";
 import { writeSave } from "../save.js";
 import { trackAnswer, flushCloud } from "../cloud.js";
 import { sfx } from "../audio.js";
-import { TIMER_EASE } from "../settings.js";
 import { printable } from "./mathmagic-more.js";
 import { loadAreaArt, loadBattleHD } from "./areaart.js";
 
@@ -69,14 +68,10 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   const boss = mode === "boss", exam = mode === "exam", tut = mode === "tutorial", prac = mode === "practice", chal = mode === "challenge";
   const AC = prac ? ACADEMIES[practice.academy] : null;
 
-  // 限時：學年規則 × 心情題（企劃書 4.3、5）
-  let limit = s.settings.timer ? g.time : 0;
-  if (s.mood >= 3) limit = 0;
-  else if (s.mood >= 2) limit *= 1.3;
+  // 2026-11-26 使用者：時間限制全部取消（挑戰模式也是）；完美詠唱保留，但不顯示時間條
+  let slowNext = false;               // 慢流：下一題完美詠唱時間多一倍
+  const limit = 0;
   const sub = s.subAttr && s.subAttr !== s.attr && s.lv >= 20 ? s.subAttr : null;   // 副屬性（Lv20）：只用在組合技的特效
-  limit *= TIMER_EASE[s.settings.timerEase] ?? 1;
-  if (tut) limit = 0;                       // 教學不限時
-  if (chal) limit = 20;                      // 挑戰模式：一定限時 20 秒（2026-11-25 使用者：限時給兩倍）
 
   const shield = boss ? g.boss : 0;
   const prevBossStars = s.stars[`${gradeId}-boss`] ?? 0;          // 第一次打倒這一區的王（最終戰打完要接結局）
@@ -165,7 +160,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   }
 
   if (boss) sfx("boss");
-  say(chal ? `挑戰：每題 ${Math.round(limit)} 秒，答錯即結束` : exam ? "升階考核：答對 7 題通過" : "");
+  say(chal ? "挑戰：連答到底，答錯就結束" : exam ? "升階考核：答對 7 題通過" : "");
 
   // 最終戰（地下禁書庫的墨水大王・真身，世界觀第 7 節第 4 點）：開打前、打到一半、最後一題都有對話
   const final = boss && gradeId === "jh";
@@ -243,19 +238,17 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     else if (qi === 0 && !isWord && !q.prefix) {}             // 第一題：留著開場說明（練習、挑戰、特訓的說明）
     else if (qi > 0) say("");
 
-    // 完美詠唱：計算題 4 秒、應用題 9 秒內答對（時間條排在題目下面）
-    const perfectSec = isWord ? 9 : 4;
-    const pbar = tut ? null : el("div.pbar", {}, el("div.pfill", { style: { animationDuration: `${perfectSec}s` } }));
-    if (pbar) qstack.append(pbar);
+    // 完美詠唱：計算題 4 秒、應用題 9 秒內答對（2026-11-26 使用者：保留，但不顯示時間條）
+    const perfectSec = (isWord ? 9 : 4) * (slowNext ? 2 : 1);   // 慢流發動過：這一題的完美詠唱時間多一倍
+    slowNext = false;
     const t0 = performance.now();
     const result = await askOne(q);
-    pbar?.remove();
     glow(null);
     if (aborted) return;
     const sec = (performance.now() - t0) / 1000;
 
     const hadReview = !!s.review[q.typeKey];
-    const rec = recordAnswer(s, { ...q, targetSec: limit ? limit / 2 : 8 }, result.ok, sec);
+    const rec = recordAnswer(s, { ...q, targetSec: g.time ? g.time / 2 : 8 }, result.ok, sec);
     trackAnswer({ q, ok: result.ok, pick: result.pick ?? (result.timeout ? "逾時未答" : ""), mode, graduated: hadReview && !s.review[q.typeKey] });
     events.push(...rec.events);
     if (rec.exp) { gained += rec.exp; floatText(wrap, `＋${rec.exp} 經驗`, "exp"); }
@@ -269,6 +262,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
       if (ult) energy = 0;
       else if (!tut) { energy = Math.min(3, energy + 1); if (energy === 3) setTimeout(() => say("數晶集滿了！下一題答對就放大招！"), 1800); }
       if (perfect) { floatText(wrap, "完美詠唱！", "exp"); gained += 5; }
+      else if (!tut && !ult && useMagic("slow")) slowNext = true;   // 慢流（2026-11-26 沒有限時了）：答對但不夠快 → 下一題完美詠唱時間多一倍
       if (tier > spellTier(combo - 1)) setTimeout(() => sfx("combo"), 120);   // 連擊升級（魔法變強）
       sparks += 1 + tier;
       // 分身：連擊到 3 自動發動，這一下打兩格（王：多打掉一格護盾）

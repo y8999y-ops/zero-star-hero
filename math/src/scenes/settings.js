@@ -46,8 +46,6 @@ export function settingsScene(game, { from = "title" } = {}) {
       slider("音效音量", "sfx"),
       toggle("全部靜音", "mute")),
     group("遊戲",
-      toggle("限時", "timer"),
-      choice("限時寬鬆度", "timerEase", [["normal", "標準"], ["loose", "寬鬆"], ["veryloose", "很寬鬆"]]),
       choice("數學變魔法演出", "magic", [["full", "完整"], ["short", "簡短"]]),
       toggle("戰鬥文字放大", "bigText"),
       toggle("自動朗讀題目", "voice")),
