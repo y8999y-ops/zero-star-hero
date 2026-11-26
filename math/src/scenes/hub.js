@@ -15,7 +15,9 @@ import { writeSave } from "../save.js";
 import { talk } from "../world/talk.js";
 
 const U = 270;                 // 畫面高幾格
-const GY = 192;                // 建築站的線（石板廣場的後緣）；下面一直到畫面底都是地面（石板廣場→草地），不會空
+const GY = 232;                // 建築站的線（石板廣場的後緣）；下面一直到畫面底都是地面（石板廣場→草地），不會空
+// 2026-11-26 使用者：建築往下 15%（192 → 232，畫面高 270 的 15%），建築之間的間隔加 15%（所有東西的 x 乘 SP）
+const SP = 1.15;
 const A = (n) => new URL(`../../assets/hub/${n}`, import.meta.url).href;
 const BHD = (n) => new URL(`../../assets/battle-hd/garden/${n}`, import.meta.url).href;
 
@@ -89,12 +91,15 @@ export function hubScene(game, { from } = {}) {
     el("button.btn.small.menuBtn", { onclick: () => menu() }, "選單"));
   world.append(floor, lawn);
   pan.append(world);
-  const root = el("div.screen.hubscr", {}, sky, far, haze, pan, hud, label);
+  // 左右兩邊的半透明大箭頭：提示可以左右滑（2026-11-26 使用者）；點了也會滑一段；滑到底那一邊就淡掉
+  const arrowL = el("button.hubarrow.l", { "aria-label": "往左看", onclick: () => smoothScroll(pan.scrollLeft - app.clientWidth * 0.6, 500) });
+  const arrowR = el("button.hubarrow.r", { "aria-label": "往右看", onclick: () => smoothScroll(pan.scrollLeft + app.clientWidth * 0.6, 500) });
+  const root = el("div.screen.hubscr", {}, sky, far, haze, pan, arrowL, arrowR, hud, label);
   show(root);
 
   // ── 擺東西（位置都用「格」，換成 CSS 像素在 layout()） ──
   const items = [];          // { node, x, y（底部）, h, w? }
-  const put = (node, x, h, yBottom, z) => { node.style.zIndex = z; world.append(node); items.push({ node, x, h, y: yBottom }); return node; };
+  const put = (node, x, h, yBottom, z) => { node.style.zIndex = z; world.append(node); items.push({ node, x: x * SP, h, y: yBottom }); return node; };
   const img = (src, cls = "") => el(`img${cls}`, { src: A(src), alt: "", draggable: false });
   for (const b of BUILDINGS) {
     const n = el("button.hubb", { "aria-label": b.name }, img(b.art), el("span.hubname", {}, b.name));
@@ -119,22 +124,22 @@ export function hubScene(game, { from } = {}) {
     c.clearRect(0, 0, sp.cv.width, sp.cv.height);
     c.putImageData(new ImageData(new Uint8ClampedArray(f.px.buffer.slice(0)), f.w, f.h), 0, 0);
   };
-  for (const n of NPCS) sprite(n.fn, n.x, 1, GY + 20, 40, { ...n, kind: "npc" }, n.name);
+  for (const n of NPCS) sprite(n.fn, n.x, 1, GY + 12, 40, { ...n, kind: "npc" }, n.name);
   s.pages ??= []; s.chests ??= [];
-  PAGES.forEach((_, i) => { if (!s.pages.includes(i)) sprite((t) => pageFrame(t + i * 0.13), PAGE_AT[i % PAGE_AT.length] + (i >= PAGE_AT.length ? 30 : 0) + 22, 1, GY + 34, 35, { id: `page_${i}`, name: "發光的書頁" }, "發光的書頁"); });
-  CHESTS.forEach((_, i) => { if (!s.chests.includes(i)) { const n = img("p/chest.png", ".hubd.hubtap"); n.addEventListener("click", (e) => tap(e, { id: `chest_${i}`, name: "數字鎖寶箱" })); put(n, CHEST_AT[i], 26, GY + 30, 35); } });
-  INK_AT.forEach(([x, src], i) => { if (!daily(s).ink.includes(i)) { const n = img(src, ".hubd.hubtap"); n.addEventListener("click", (e) => tap(e, { id: `ink_${i}`, name: "墨水小點" })); put(n, x, 16, GY + 40, 34); } });
+  PAGES.forEach((_, i) => { if (!s.pages.includes(i)) sprite((t) => pageFrame(t + i * 0.13), PAGE_AT[i % PAGE_AT.length] + (i >= PAGE_AT.length ? 30 : 0) + 22, 1, GY + 24, 35, { id: `page_${i}`, name: "發光的書頁" }, "發光的書頁"); });
+  CHESTS.forEach((_, i) => { if (!s.chests.includes(i)) { const n = img("p/chest.png", ".hubd.hubtap"); n.addEventListener("click", (e) => tap(e, { id: `chest_${i}`, name: "數字鎖寶箱" })); put(n, CHEST_AT[i], 26, GY + 22, 35); } });
+  INK_AT.forEach(([x, src], i) => { if (!daily(s).ink.includes(i)) { const n = img(src, ".hubd.hubtap"); n.addEventListener("click", (e) => tap(e, { id: `ink_${i}`, name: "墨水小點" })); put(n, x, 16, GY + 30, 34); } });
   { const n = img("p/board.png", ".hubd.hubtap"); n.addEventListener("click", (e) => tap(e, { id: "board", name: "布告欄・今日委託" })); put(n, 596, 44, GY + 4, 12); }
 
   // ── 版面：依畫面高算 1 格多大 ──
   let u = 1;
   function layout() {
     u = app.clientHeight / U;
-    world.style.width = `${PW * u}px`;
+    world.style.width = `${PW * SP * u}px`;
     Object.assign(far.style, { top: `${(GY - 58) * u}px`, height: `${56 * u}px`, backgroundSize: `auto ${56 * u}px` });
     // 地板是平的（2026-11-25 使用者：3D 透視會讓地板變形）；遠近感改用顏色：後面亮、前面暗一點（樣式在 .hubfloor::after）
-    Object.assign(floor.style, { top: `${(GY - 6) * u}px`, height: `${58 * u}px`, backgroundSize: `auto ${22 * u}px` });
-    Object.assign(lawn.style, { top: `${(GY + 52) * u}px`, bottom: "0", backgroundSize: `auto ${30 * u}px` });
+    Object.assign(floor.style, { top: `${(GY - 6) * u}px`, height: `${(U - GY - 4) * u}px`, backgroundSize: `auto ${22 * u}px` });
+    Object.assign(lawn.style, { top: `${(U - 10) * u}px`, bottom: "0", backgroundSize: `auto ${30 * u}px` });
     for (const it of items) {
       const n = it.node, im = n.tagName === "IMG" ? n : n.querySelector("img, canvas");
       if (!im) { const w = Number(n.dataset.w) * u, h = it.h * u; Object.assign(n.style, { left: `${it.x * u - w / 2}px`, top: `${it.y * u - h}px`, width: `${w}px`, height: `${h}px` }); continue; }
@@ -145,18 +150,24 @@ export function hubScene(game, { from } = {}) {
     parallax();
   }
   // 天空比前景慢（遠近感）
-  function parallax() { sky.style.backgroundPosition = `${-pan.scrollLeft * 0.15}px 0`; far.style.backgroundPosition = `${-pan.scrollLeft * 0.45}px 0`; }
+  function arrows() {
+    const max = pan.scrollWidth - pan.clientWidth, locked = pan.classList.contains("locked");
+    arrowL.classList.toggle("off", locked || pan.scrollLeft <= 4);
+    arrowR.classList.toggle("off", locked || pan.scrollLeft >= max - 4);
+  }
+  function parallax() {
+    arrows(); sky.style.backgroundPosition = `${-pan.scrollLeft * 0.15}px 0`; far.style.backgroundPosition = `${-pan.scrollLeft * 0.45}px 0`; }
   pan.addEventListener("scroll", () => { parallax(); s.hub = { x: Math.round(pan.scrollLeft / u) }; }, { passive: true });
   root.querySelectorAll("img").forEach((im) => { if (!im.complete) im.addEventListener("load", layout, { once: true }); });
   layout();
   // 一開始看哪裡：從哪裡回來就看哪裡；沒有的話是上次的位置；新生是碼頭
   const focus = { library: 750, garden: 1930, clock: 1810, shop: 385, dorm: 257, well: 520 }[from] ?? BUILDINGS.find((b) => b.id === `b_${from}`)?.x;
-  const startX = !s.attr ? 100 : focus ?? s.hub?.x ?? 520;
+  const startX = !s.attr ? 100 * SP : focus != null ? focus * SP : s.hub?.x ?? 520 * SP;
   pan.scrollLeft = startX * u - app.clientWidth / 2;
 
   // ── 主線任務：上方的任務列＋目標建築頭上的箭頭、建築發光 ──
   const Q = mainQuest(s);
-  const goTarget = (smooth = true) => { const b = BUILDINGS.find((x) => x.id === Q.target); if (b) smoothScroll(b.x * u - app.clientWidth / 2, smooth ? 900 : 0); };
+  const goTarget = (smooth = true) => { const b = BUILDINGS.find((x) => x.id === Q.target); if (b) smoothScroll(b.x * SP * u - app.clientWidth / 2, smooth ? 900 : 0); };
   hud.append(el("div.questbar", {}, el("span.qlabel", {}, "主線"), el("span.qtext", {}, Q.text), Q.target ? el("button.btn.small.gold.qgo", { onclick: () => { sfx("click"); goTarget(); } }, "前往") : null));
   const tb = BUILDINGS.find((x) => x.id === Q.target);
   if (tb) {
@@ -174,6 +185,7 @@ export function hubScene(game, { from } = {}) {
   }
   // 還沒入學：強制引導——不能左右滑，鏡頭從碼頭自動移到共鳴之井
   if (!s.attr) { pan.classList.add("locked"); setTimeout(() => goTarget(true), 900); }
+  arrows();
 
   // 滑鼠拖曳也能捲（手機是原生捲動）；拖過就不算點
   let drag = null, dragged = false;
