@@ -133,7 +133,7 @@ canvas.stage.small { width: min(100%, 480px); aspect-ratio: 16 / 9; height: auto
   padding: 4px 16px; border-radius: 8px; border: 2px solid #1c1533; box-shadow: 0 3px 0 rgba(20, 14, 40, .45); pointer-events: none; max-width: 100%; white-space: normal; text-wrap: balance; overflow-wrap: break-word; text-align: center; }
 .bubble[hidden], .word[hidden] { display: none; }
 .word { width: 100%; max-height: 42vh; overflow-y: auto; pointer-events: auto; background: #fffaf0f2; color: #1c1533; border-radius: 8px; padding: 8px 12px; font-size: clamp(14px, 2.5vw, 17px); line-height: 1.5; border: 2px solid #1c1533; }
-.pagepage { position: absolute; left: max(12px, env(safe-area-inset-left)); right: max(152px, 24%); bottom: calc(clamp(78px, 22%, 124px) + 6px); z-index: 4; font-size: 13px; color: #f1ecff; padding: 4px 10px 4px 32px; background: #120d22b0; border-radius: 6px; text-shadow: 0 1px 0 #000; }
+.pagepage { position: absolute; left: max(12px, env(safe-area-inset-left)); right: max(12px, 18%); bottom: calc(clamp(78px, 22%, 124px) + 6px); z-index: 4; font-size: 13px; color: #f1ecff; padding: 4px 10px 4px 32px; background: #120d22b0; border-radius: 6px; text-shadow: 0 1px 0 #000; }
 .pagepage:empty { display: none; }
 .pagepage::before { content: ""; position: absolute; left: 8px; top: 4px; width: 16px; height: 20px; background: #fffaf0; border-radius: 2px 6px 2px 2px; box-shadow: 2px 2px 0 #8a7cff; }
 .answers { position: absolute; left: 0; right: 0; bottom: 0; height: clamp(78px, 22%, 124px); display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 8px 12px 10px; z-index: 4; background: linear-gradient(transparent, #0b0818c0 40%); }
@@ -198,7 +198,7 @@ canvas.stage.small { width: min(100%, 480px); aspect-ratio: 16 / 9; height: auto
 #app.bigtext .pagepage, #app.bigtext .ebody { font-size: 18px; }
 #app.lefty .answers { direction: rtl; }
 #app.lefty .answers .btn { direction: ltr; }
-#app.lefty .pagepage { left: max(152px, 24%); right: max(12px, env(safe-area-inset-right)); }
+
 
 /* 戰鬥轉場 */
 .transition { position: fixed; z-index: 50; image-rendering: pixelated; object-fit: cover; }
@@ -554,29 +554,6 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 .energy span.on { background: #9fe6f2; box-shadow: 0 0 6px #9fe6f2; }
 @keyframes ultpulse { 50% { transform: scale(1.08); } }
 
-/* 技能列（2026-11-25 重新設計）：右邊固定兩顆一樣大的圓鈕，位置永遠不變 */
-.skdock { position: absolute; right: max(10px, env(safe-area-inset-right)); bottom: calc(clamp(78px, 22%, 124px) + 8px); z-index: 5; display: flex; gap: 8px; }
-#app.lefty .skdock { right: auto; left: max(10px, env(safe-area-inset-left)); }
-.skb { position: relative; width: 60px; height: 60px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .35); background: #2b2150e6; color: #fff; font: inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 0; cursor: pointer; box-shadow: 0 3px 0 #0008; transition: transform .1s, opacity .2s; }
-.skb:active { transform: translateY(2px); box-shadow: 0 1px 0 #0008; }
-.skb .skico { font-size: 18px; line-height: 1; }
-.skb .skl { font-size: 12px; font-weight: bold; line-height: 1.1; }
-.skb.off { opacity: .45; }
-.skb.mag { border-color: #b9a6ff; }
-.skb .skbadge { position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 4px; border-radius: 10px; background: #b483ff; color: #fff; font-size: 12px; line-height: 20px; font-weight: bold; }
-.skb.ult { border-color: #9fe6f2; }
-.skb .skpips { display: flex; gap: 3px; margin-top: 1px; }
-.skb .skpips i { width: 7px; height: 7px; transform: rotate(45deg); background: rgba(255, 255, 255, .2); border: 1px solid rgba(255, 255, 255, .5); }
-.skb .skpips i.on { background: #9fe6f2; box-shadow: 0 0 5px #9fe6f2; }
-.skb.ult.ready { opacity: 1; background: linear-gradient(#ffe27a, #e0a21c); color: #3a2400; border-color: #fff3b0; animation: ultpulse 1s ease-in-out infinite; }
-.skb.ult.armed { opacity: 1; background: #fff3b0; color: #3a2400; box-shadow: 0 0 14px #fff3b0; animation: none; }
-.bmenu { position: absolute; right: max(10px, env(safe-area-inset-right)); bottom: calc(clamp(78px, 22%, 124px) + 78px); z-index: 20; display: flex; gap: 6px; padding: 8px; background: #1b1433f2; border: 1px solid #b9a6ff80; border-radius: 12px; max-width: calc(100% - 20px); overflow-x: auto; }
-#app.lefty .bmenu { right: auto; left: max(10px, env(safe-area-inset-left)); }
-.bmcard { min-width: 92px; max-width: 120px; padding: 8px; border-radius: 10px; border: 1px solid #b9a6ff; background: #3a2d6a; color: #fff; font: inherit; display: flex; flex-direction: column; gap: 3px; text-align: left; cursor: pointer; }
-.bmcard b { font-size: 15px; color: #e6dcff; }
-.bmcard .bmd { font-size: 11px; color: var(--dim); line-height: 1.3; }
-.bmcard:disabled { opacity: .35; }
-.bmcard.bmclose { min-width: 64px; align-items: center; justify-content: center; background: transparent; border-style: dashed; }
 
 /* ── 大廳左上角的個人卡（2026-11-26：看不清楚 → 字放大、底色實一點；點了打開個人資料） ── */
 .whud .wprof { pointer-events: auto; cursor: pointer; position: relative; display: flex; align-items: center; gap: 8px; padding: 2px 8px 2px 4px; background-color: #1b1433; color: #fff; font: inherit; font-weight: 700; text-align: left; }
@@ -703,3 +680,71 @@ canvas.mgmentor { width: 80px; height: 120px; image-rendering: pixelated; }
 .wcard .wans { font-weight: 800; color: #9df0b0; }
 .wcard .wexp { font-size: 15px; line-height: 1.7; color: #e9e3ff; background: #120d22; border-radius: 6px; padding: 6px 10px; }
 .wcard .btn { align-self: flex-start; }
+
+/* ── 技能自動施放（2026-11-26 使用者：技能鈕刪掉、改自動；每個技能發動都有專屬跳字） ── */
+.hstack { display: flex; align-items: center; gap: 10px; }
+.ultpips { display: flex; gap: 5px; padding: 3px 7px; border-radius: 10px; background: #120d22a0; }
+.ultpips[hidden] { display: none; }
+.ultpips i { width: 10px; height: 10px; transform: rotate(45deg); background: rgba(255, 255, 255, .15); border: 1.5px solid rgba(255, 255, 255, .5); transition: background .3s, box-shadow .3s; }
+.ultpips i.on { background: #9fe6f2; border-color: #e8fbff; box-shadow: 0 0 6px #9fe6f2; }
+.ultpips.full i { background: #ffe27a; border-color: #fff8d0; box-shadow: 0 0 8px #ffd23f; animation: pipglow .8s ease-in-out infinite alternate; }
+@keyframes pipglow { to { box-shadow: 0 0 14px #ffd23f, 0 0 3px #fff; } }
+
+.skpop { --c: #c9b8ff; --c2: #6a4fd0; position: absolute; left: 50%; top: 30%; z-index: 8; pointer-events: none; display: flex; align-items: center; gap: 8px; padding: 6px 16px 6px 8px; border-radius: 999px;
+  background: linear-gradient(90deg, #120d22e6, #1d1640cc); border: 2px solid var(--c); box-shadow: 0 0 16px color-mix(in srgb, var(--c) 60%, transparent), 0 4px 0 #0009;
+  transform: translate(-50%, 0); animation: skin .28s cubic-bezier(.2, 1.6, .4, 1) both, skout .4s ease-in 1.3s forwards; white-space: nowrap; }
+.skpop .sico { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 18px; font-weight: 900; color: #fff; background: radial-gradient(circle at 35% 30%, #fff8 0 15%, var(--c) 40%, var(--c2)); box-shadow: 0 0 10px var(--c); }
+.skpop .sname { font-size: 24px; font-weight: 900; color: #fff; letter-spacing: 2px; text-shadow: 0 2px 0 var(--c2), 0 0 10px var(--c); }
+.skpop .sname span { display: inline-block; animation: sklet .35s cubic-bezier(.2, 1.8, .4, 1) both; }
+.skpop .ssub { font-size: 12px; color: #eee8ff; opacity: .9; }
+@keyframes skin { from { transform: translate(-50%, 10px) scale(.4); opacity: 0; } to { transform: translate(-50%, 0) scale(1); opacity: 1; } }
+@keyframes skout { to { transform: translate(-50%, -26px) scale(.96); opacity: 0; } }
+@keyframes sklet { from { transform: translateY(-14px) scale(1.6); opacity: 0; } to { transform: none; opacity: 1; } }
+/* 回復：綠色、從主角身上升起，圖示跳動 */
+.skpop.k-heal { --c: #6fe08a; --c2: #1f7a3c; left: 20%; top: 40%; animation: skin .28s cubic-bezier(.2, 1.6, .4, 1) both, skrise 1s ease-out .5s forwards; }
+.skpop.k-heal .sico { animation: skbeat .4s ease-in-out 3; }
+@keyframes skrise { to { transform: translate(-50%, -60px); opacity: 0; } }
+@keyframes skbeat { 50% { transform: scale(1.3); } }
+/* 護陣、護陣擋住：藍色，後面一圈光環擴散 */
+.skpop.k-shield, .skpop.k-block { --c: #7ab8ff; --c2: #2456a8; left: 22%; top: 34%; }
+.skpop.k-shield::before, .skpop.k-block::before { content: ""; position: absolute; inset: -6px; border-radius: 999px; border: 3px solid var(--c); animation: skring .7s ease-out 2 both; }
+@keyframes skring { from { transform: scale(.8); opacity: 1; } to { transform: scale(1.35); opacity: 0; } }
+.skpop.k-block { --c: #bfe0ff; }
+/* 分身：橘色，字有兩個分身往兩邊分開 */
+.skpop.k-double { --c: #ffb347; --c2: #b05a10; }
+.skpop.k-double .sname { animation: skclone .9s ease-out .15s both; }
+@keyframes skclone { from { text-shadow: 0 2px 0 var(--c2), 0 0 0 #ffb34700, 0 0 0 #ffb34700; } to { text-shadow: 0 2px 0 var(--c2), -14px 0 0 #ffb34766, 14px 0 0 #ffb34766; } }
+/* 消去：紅色，斜斜劈進來、一道斬線 */
+.skpop.k-cut { --c: #ff6a7a; --c2: #9a1f33; top: 52%; animation: skslash .3s ease-out both, skout .4s ease-in 1.3s forwards; }
+.skpop.k-cut::after { content: ""; position: absolute; left: -10%; right: -10%; top: 50%; height: 3px; background: linear-gradient(90deg, transparent, #fff, var(--c), transparent); transform: rotate(-12deg); animation: skline .35s ease-out .1s both; }
+@keyframes skslash { from { clip-path: inset(0 100% 0 0); transform: translate(-50%, 0) skewX(-15deg); } to { clip-path: inset(0 0 0 0); transform: translate(-50%, 0); } }
+@keyframes skline { from { transform: rotate(-12deg) scaleX(0); } to { transform: rotate(-12deg) scaleX(1); opacity: 0; } }
+/* 回流：青色，圖示轉一圈 */
+.skpop.k-retry { --c: #5fd8ff; --c2: #11648a; top: 52%; }
+.skpop.k-retry .sico { animation: skspin .7s ease-out both; }
+@keyframes skspin { from { transform: rotate(-360deg) scale(.5); } }
+/* 慢流：水藍綠，字慢慢拉開 */
+.skpop.k-slow { --c: #5fe0d0; --c2: #116a62; }
+.skpop.k-slow .sname { animation: skwide 1.3s ease-out both; }
+@keyframes skwide { from { letter-spacing: 0; } to { letter-spacing: 8px; } }
+/* 預知：紫色，一閃一閃 */
+.skpop.k-hint { --c: #d0a8ff; --c2: #5a2fa0; top: 52%; }
+.skpop.k-hint .sico { animation: skblink .5s ease-in-out 3; }
+@keyframes skblink { 50% { opacity: .3; transform: scale(1.25); } }
+/* 組合技：兩種顏色流動 */
+.skpop.k-combo { --c: #ffd76a; --c2: #7a3fd0; }
+.skpop.k-combo .sname { color: #fff6d8; animation: skflow 1s linear infinite; }
+@keyframes skflow { 0%, 100% { text-shadow: 0 2px 0 #7a3fd0, -3px 0 10px #ff8ad0, 3px 0 10px #8ab8ff; } 50% { text-shadow: 0 2px 0 #7a3fd0, 3px 0 10px #ff8ad0, -3px 0 10px #8ab8ff; } }
+/* 數晶大招：整條橫幅從左邊掃進來，金色大字，一道亮光掃過 */
+.skpop.k-ult { --c: #ffd23f; --c2: #8a5200; top: 22%; left: 0; right: 0; transform: none; justify-content: center; border-radius: 0; padding: 8px 0; gap: 12px; border-width: 2px 0;
+  background: linear-gradient(90deg, transparent, #1a1030ee 12%, #2a1a50f2 50%, #1a1030ee 88%, transparent); overflow: hidden;
+  animation: skband .35s cubic-bezier(.2, 1, .3, 1) both, skbandout .45s ease-in 1.9s forwards; }
+.skpop.k-ult::after { content: ""; position: absolute; top: 0; bottom: 0; width: 30%; left: -30%; background: linear-gradient(100deg, transparent, #fff8, transparent); animation: skshine .7s ease-out .35s both; }
+.skpop.k-ult .sico { width: 40px; height: 40px; font-size: 24px; animation: skspin .6s ease-out both; }
+.skpop.k-ult .sname { font-size: clamp(30px, 6vw, 44px); letter-spacing: 6px; color: #fff6cf; text-shadow: 0 3px 0 #8a5200, 0 0 18px #ffd23f, 0 0 4px #fff; }
+.skpop.k-ult .sname span { animation: skult .4s cubic-bezier(.2, 1.8, .4, 1) both; }
+.skpop.k-ult .ssub { font-size: 14px; color: #ffe9a0; letter-spacing: 3px; order: -1; }
+@keyframes skband { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes skbandout { to { opacity: 0; transform: scaleY(.3); } }
+@keyframes skshine { to { left: 110%; } }
+@keyframes skult { from { transform: scale(2.4); opacity: 0; filter: blur(2px); } to { transform: none; opacity: 1; filter: none; } }

@@ -66,9 +66,15 @@ import * as thunderclap from "../../../pixelfx/src/fx/lightning/thunderclap.js";
 import * as zapHit from "../../../pixelfx/src/fx/lightning/zap-hit.js";
 import * as stormCloud from "../../../pixelfx/src/fx/lightning/storm-cloud.js";
 import * as electrified from "../../../pixelfx/src/fx/lightning/electrified.js";
+import * as implosion from "../../../pixelfx/src/fx/explosions/implosion.js";
+import * as sunburst from "../../../pixelfx/src/fx/holy/sunburst.js";
+import * as healFx from "../../../pixelfx/src/fx/holy/heal.js";
+import * as divineShield from "../../../pixelfx/src/fx/holy/divine-shield.js";
+import * as haste from "../../../pixelfx/src/fx/status/haste.js";
+import * as slowed from "../../../pixelfx/src/fx/status/slowed.js";
 import { PAL } from "../../../pixelfx/src/core/index.js";
 
-export const FX = { castCircle, poof, xpOrb, hitFlash, slime, spellCharge, manaBurst, critHit, hitSpark };
+export const FX = { castCircle, poof, xpOrb, hitFlash, slime, spellCharge, manaBurst, critHit, hitSpark, implosion, sunburst, healFx, divineShield, haste, slowed, circleCast, fireworkBurst };
 
 // 墨水色：深墨藍紫，亮部帶一點紫光（世界觀：被放棄的題目變成的墨水）
 export const INK = ["#05040a", "#0f0b1c", "#1c1533", "#2d2350", "#463a78", "#7a6cb0", "#d8d0ff"];
@@ -197,4 +203,28 @@ export const UNIT_SPELL = {
   round: { hit: 0.5, parts: [U(groundSlam, "target", { speed: 2.2, x: -20 })] },
   // 數量規律：一串星星接連落下
   seq: { hit: 0.7, parts: [U(starFall, "target", { speed: 1.8 })] },
+};
+
+
+// ── 數晶大招（2026-11-26 使用者：大招特效做的不夠好）──
+// 跟連擊的「終極魔法」分開：先集氣（畫面暗下來、杖頭把光吸進來），再一連串屬性大招轟下去，最後一圈光爆。
+// name＝跳字顯示的招式名；hit＝從轟炸開始算第幾秒打中。
+export const ULT = {
+  fire: { name: "流星焚天", hit: 1.05, parts: [
+    S(meteor, "target", { speed: 1.9, x: -34, opts: { seed: 2 } }), S(meteor, "target", { delay: 0.18, speed: 1.9 }), S(meteor, "target", { delay: 0.34, speed: 1.9, x: 34, opts: { seed: 5 } }),
+    S(fireRing, "target", { delay: 0.85, speed: 2.2 }), S(flamePillar, "target", { delay: 0.9, x: -40, speed: 2.4, opts: { height: 120, seed: 3 } }), S(flamePillar, "target", { delay: 1.0, x: 40, speed: 2.4, opts: { height: 120, seed: 8 } })] },
+  water: { name: "萬潮歸海", hit: 0.95, parts: [
+    S(whirlpool, "target", { dur: 1.6, speed: 1.4 }), S(geyser, "target", { delay: 0.1, x: -40, speed: 2, dur: 1.2, opts: { seed: 2 } }), S(geyser, "target", { delay: 0.25, x: 40, speed: 2, dur: 1.2, opts: { seed: 6 } }),
+    S(waveCrash, "target", { delay: 0.3, speed: 1.8 }), S(splash, "target", { delay: 0.95, speed: 2.2 }), S(splash, "target", { delay: 1.1, x: 30, speed: 2.2, opts: { seed: 4 } })] },
+  ice: { name: "千冰封界", hit: 1.0, parts: [
+    S(iceSpikes, "caster", { speed: 2.4 }), S(icicleFall, "target", { speed: 1.6, x: -26 }), S(icicleFall, "target", { delay: 0.2, speed: 1.6, x: 26, opts: { seed: 4 } }),
+    S(blizzard, "target", { dur: 1.6, delay: 0.3, speed: 1.3 }), S(frostNova, "target", { delay: 0.85, speed: 1.8 }), S(iceShatter, "target", { delay: 1.0, speed: 2, x: 20 })] },
+  forest: { name: "萬木參天", hit: 1.0, parts: [
+    S(thorns, "caster", { speed: 2.2 }), S(quake, "target", { delay: 0.2, speed: 2.2, x: -40 }),
+    S(earthSpike, "target", { delay: 0.45, x: -30, speed: 2.4, opts: { height: 70, seed: 2 } }), S(earthSpike, "target", { delay: 0.6, x: 30, speed: 2.4, opts: { height: 70, seed: 6 } }), S(earthSpike, "target", { delay: 0.8, speed: 2.4, opts: { height: 96 } }),
+    S(leafStorm, "target", { dur: 1.6, delay: 0.3, speed: 1.4 })] },
+  thunder: { name: "九天雷鳴", hit: 1.0, parts: [
+    S(stormCloud, "target", { dur: 1.7, speed: 1.6, y: 24 }),
+    S(strike, "target", { delay: 0.3, speed: 2.4, x: -36, opts: { seed: 2 } }), S(strike, "target", { delay: 0.45, speed: 2.4, x: 36, opts: { seed: 4 } }), S(strike, "target", { delay: 0.6, speed: 2.4, x: -14, opts: { seed: 6 } }), S(strike, "target", { delay: 0.75, speed: 2.4, x: 14, opts: { seed: 8 } }),
+    S(strike, "target", { delay: 0.95, speed: 2.2 }), S(thunderclap, "target", { delay: 0.95, speed: 1.8 })] },
 };

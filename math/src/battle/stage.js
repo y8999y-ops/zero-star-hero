@@ -3,7 +3,7 @@
 // 下方 22% 會被答案按鈕蓋住，所以角色站在 y = 144（不是畫面最底）。
 
 import { createFrame, clearFrame, createFx, composite, painterFor, hex as pfHex } from "../../../pixelfx/src/core/index.js";
-import { pickSpell, ATTR_HIT, UNIT_SPELL, FX, INK, INK_POOF, crystalLight } from "./spells.js";
+import { pickSpell, ATTR_HIT, UNIT_SPELL, ULT, FX, INK, INK_POOF, crystalLight } from "./spells.js";
 import { GRADES, ATTRS } from "../data.js";
 import { heroFrame } from "../../fx/hero.js";
 import { inkDropFrame } from "../../fx/ink-drop.js";
@@ -201,6 +201,47 @@ export class Stage {
     return new Promise((res) => setTimeout(() => { this.shake = (spell.shake ?? 2) + tier + (crystalLv >= 5 ? 2 : 0); this.impact(tier); res(); }, (0.15 + spell.hit) * 1000));
   }
 
+  /** 數晶大招：① 集氣 0.9 秒（畫面很暗、腳下大魔法陣、杖頭把光吸進來）② 一連串屬性大招 ③ 光爆＋長停頓＋大晃動。回傳 Promise：打中時 resolve */
+  ultimate(crystalLv = 1, extraAttr = null) {
+    const U = ULT[this.attr] ?? ULT.fire, ramp = rampOf(ATTRS[this.attr].color), m = this.monster, tx = m ? m.x : 270;
+    const CH = 0.9;                         // 集氣多久
+    this.castT = 0; this.castHold = CH + U.hit + 0.3; this.dimTo = 0.72; this.dimHold = CH + U.hit + 0.9;   // 主角整段都維持施法姿勢
+    this.addFx(FX.circleCast, { x: PX, y: GROUND + 4, speed: 2.2, dur: CH + U.hit, opts: { palette: ramp } });
+    this.addFx(FX.implosion, { x: PX + 8, y: GROUND - 30, speed: 1.25, opts: { palette: ramp } });    // 光被吸進杖頭，0.88 秒時炸開＝出手
+    this.addFx(FX.spellCharge, { x: PX + 6, y: GROUND - 20, speed: 1.6, dur: CH, opts: { palette: ramp } });
+    const o = { light: crystalLight(crystalLv) + 0.2 };
+    for (const p of U.parts) {
+      let x = p.at === "caster" ? PX + 15 + (p.x ?? 0) : tx + (p.x ?? 0), y = GROUND + (p.y ?? (p.at === "caster" && p.mod.meta.origin[1] < 40 ? -24 : 0));
+      const opts = { ...(p.opts ?? {}), ...o };
+      if (p.at === "caster" && "length" in (p.mod.meta.options ?? {})) opts.length = Math.max(40, tx - PX - 15);
+      this.addFx(p.mod, { x, y, delay: CH + p.delay, speed: p.speed, dur: p.dur, opts });
+    }
+    if (extraAttr) { const ex = pickSpell(extraAttr, 3); for (const p of ex.parts) if (p.at === "target") this.addFx(p.mod, { x: tx + (p.x ?? 0), y: GROUND + (p.y ?? 0), delay: CH + 0.2 + p.delay, speed: p.speed, dur: p.dur, opts: p.opts ?? {} }); }
+    this.crystalLv = crystalLv;
+    // 出手那一下：畫面閃屬性色、小晃
+    setTimeout(() => { this.flashT = 0.16; this.flashA = this.opt.softFlash ? 0.2 : 0.4; this.flashC = ramp[5]; this.shake = 4; }, CH * 1000);
+    return new Promise((res) => setTimeout(() => {
+      this.impact(4);
+      // 大招才有的收尾：光芒四射＋兩圈魔力爆發＋煙火、打擊停頓拉長、畫面晃很大、閃白
+      this.addFx(FX.sunburst, { x: tx, y: GROUND - 28, speed: 2, dur: 0.75, opts: { palette: [...ramp, "#ffffff"].slice(-8), rays: 12 } });
+      this.addFx(FX.manaBurst, { x: tx, y: GROUND + 4, speed: 1.4, delay: 0.12, opts: { palette: [...ramp].reverse(), seed: 4 } });
+      this.addFx(FX.fireworkBurst, { x: tx, y: GROUND - 50, speed: 1.8, delay: 0.1, opts: { palette: ramp } });
+      this.freezeT = 0.22; this.shake = 14 + (crystalLv >= 5 ? 3 : 0);
+      this.flashT = 0.16; this.flashA = this.opt.softFlash ? 0.3 : 0.75; this.flashC = "#ffffff";
+      res();
+    }, (CH + U.hit) * 1000));
+  }
+
+  /** 技能發動時角色身上的小特效（回復、護陣、慢流、分身…） */
+  skillFx(kind) {
+    const at = { x: PX, y: GROUND };
+    if (kind === "heal") this.addFx(FX.healFx, { ...at, speed: 1.4 });
+    else if (kind === "shield") this.addFx(FX.divineShield, { x: PX, y: GROUND - 4, speed: 1.2, dur: 1.4, opts: { palette: ["#0a1838", "#14306a", "#2456a8", "#3f86e0", "#7ab8ff", "#bfe0ff", "#eaf6ff", "#ffffff"] } });
+    else if (kind === "slow") { const m = this.monster; this.addFx(FX.slowed, { x: m ? m.x : 270, y: GROUND, speed: 1, dur: 1.6 }); }
+    else if (kind === "double") this.addFx(FX.haste, { x: PX + 10, y: GROUND, speed: 1, dur: 1.2 });
+    else this.addFx(FX.castCircle, { x: PX, y: GROUND + 2, speed: 1.8, dur: 0.8, opts: { palette: rampOf(ATTRS[this.attr].color) } });
+  }
+
   /** 打中的那一下（2026-11-25 使用者：攻擊動畫要更華麗）：
    *  打擊火花（第 3、4 級是爆擊火花）、第 4 級多一圈魔力爆發、畫面閃一下屬性色、打擊停頓、怪物被擊退並閃白 */
   impact(tier) {
@@ -253,7 +294,7 @@ export class Stage {
     if (this.freezeT > 0) { this.freezeT -= dt; this.shake = Math.max(0, this.shake - dt * 6); return; }
     this.t += dt;
     if (this.flashT > 0) this.flashT -= dt;
-    if (this.castT >= 0) { this.castT += dt; if (this.castT > 0.6 && !this.magic?.active) this.castT = -1; }
+    if (this.castT >= 0) { this.castT += dt; if (this.castT > (this.castHold ?? 0.6) && !this.magic?.active) { this.castT = -1; this.castHold = 0.6; } }
     this.hurtT = Math.max(0, this.hurtT - dt);
     this.ambience?.update(dt);
     if (this.grayTo != null) { this.gray += (this.grayTo - this.gray) * Math.min(1, dt * 1.6); if (Math.abs(this.gray - this.grayTo) < 0.002) { this.gray = this.grayTo; this.grayTo = null; } }
