@@ -32,7 +32,7 @@ export function settingsScene(game, { from = "title" } = {}) {
 
   let clearStep = 0;
   const clearBtn = el("button.btn.red", { onclick: () => {
-    if (clearStep === 0) { clearStep = 1; clearBtn.textContent = "真的要清除嗎？再按一次就會清除全部進度"; return; }
+    if (clearStep === 0) { clearStep = 1; clearBtn.textContent = "再按一次確認清除"; return; }
     if (!confirm("最後確認：清除後無法復原。確定清除存檔？")) { clearStep = 0; clearBtn.textContent = "清除存檔"; return; }
     game.save = resetSave();
     applySettings(game.save.settings);
@@ -61,7 +61,6 @@ export function settingsScene(game, { from = "title" } = {}) {
       el("button.btn", { onclick: () => game.go("opening", { replay: true, back: from }) }, "重看開場動畫"),
       s.attr ? el("button.btn", { onclick: () => game.go("resonance", { retest: true }) }, "重新做共鳴儀式") : null,
       clearBtn),
-    el("p.note", {}, "iPhone：分享 →「加入主畫面」才能全螢幕"),
     el("button.btn.gold.big", { onclick: () => { sfx("click"); game.go(from); } }, "完成"),
   ));
 }

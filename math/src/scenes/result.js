@@ -36,7 +36,7 @@ export function resultScene(game, r) {
       tags.length ? el("div.restags", {}, ...tags.slice(0, 3).map((t) => el("span", {}, t))) : null,
       el("div.resbtns", {},
         el("button.btn", { onclick: () => game.go("battle", again) }, "再一次"),
-        learn ? el("button.btn", { onclick: () => { game.save.returnTo = null; game.go("lesson", { branch: learn }); } }, `去學${UNIT_NAME[learn]}`) : null,
+        learn ? el("button.btn", { onclick: () => { game.save.returnTo = null; game.go("lesson", { branch: learn }); } }, "去學一學") : null,
         r.firstClear && r.gradeId === "jh"
           ? el("button.btn.gold", { onclick: () => { game.save.returnTo = null; game.go("ending"); } }, "繼續")       // 最終戰打完：接結局
           : el("button.btn.gold", { onclick: () => { if (r.practice?.review) game.save.returnTo = null; game.go(r.practice?.review ? "library" : "map"); } }, r.practice?.review ? "回圖書館" : r.mode === "practice" ? `回${ACADEMIES[r.practice.academy].name}` : "回去"))),

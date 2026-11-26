@@ -72,7 +72,6 @@ export async function dormScene(game) {
     c.drawImage(hc, 120 - 16, 112 - 48);
     const pf = pagepageFrame("happy", 0.3, pagePageLevel(s)), pc = sprite(pf);
     c.drawImage(pc, 98 - pf.ox, 96 - pf.oy);
-    if (!owned.length) { c.fillStyle = "#3a2a22cc"; c.fillRect(56, 60, 128, 14); c.fillStyle = "#fff"; c.font = "9px sans-serif"; c.fillText("房間空空的……去商店買家具吧", 62, 70); }
   }
   await draw();
 
@@ -107,10 +106,8 @@ export async function dormScene(game) {
     const d = s.diary?.[new Date().toISOString().slice(0, 10)];
     writeSave(s);
     const cups = TROPHY.filter((g) => (s.stars[`${g}-boss`] ?? 0) > 0).length;
-    await talk(root, [
-      { who: "page", name: "頁頁", text: "呼～在床上躺一下，進度已經存好了。" },
-      { who: "page", name: "頁頁", text: d ? `今天算了 ${d.n} 題，答對 ${d.ok} 題。${d.ok >= 10 ? "好認真！" : "休息夠了再去算幾題吧！"}` : "今天還沒算題目呢。休息夠了，去學院練習吧！" },
-      { who: "page", name: "頁頁", text: cups ? `牆上已經有 ${cups} 個獎盃了！${cups < 5 ? `還差${TROPHY.filter((g) => !(s.stars[`${g}-boss`] > 0)).map((g) => GRADES[g].area).join("、")}。` : "五區全部恢復色彩，你是學院的英雄！"}` : "牆上的獎盃架還空空的。打倒墨水大王，就會多一個獎盃喔。" },
-    ]);
+    const todayMsg = d ? `今天已經答對 ${d.ok} 題${d.ok >= 10 ? "，超認真！" : "！"}` : "休息夠了再去練幾題吧！";
+    const cupMsg = cups === 5 ? "五座獎盃全集齊了！" : cups ? `獎盃架上已經有 ${cups} 座獎盃囉。` : "";
+    await talk(root, [{ who: "page", name: "頁頁", text: `呼～躺一下好舒服。${todayMsg}${cupMsg}` }]);
   }
 }

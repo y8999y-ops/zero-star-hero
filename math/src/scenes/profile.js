@@ -57,7 +57,6 @@ function meBody(s) {
       tile("星星", `${starsAll} ★`, "#ffd76a"),
       tile("挑戰最佳", `連對 ${s.challengeBest ?? 0}`),
       tile("墨水圖鑑", `${Object.keys(s.dex ?? {}).length} 種`)),
-    a ? el("div.pnote", {}, `招式：${a.spells}`) : null,
     next ? el("div.pnote", {}, `下一個等級獎勵：Lv${next[0]} ${next[1]}`) : null,
   ];
 }
@@ -67,10 +66,9 @@ export function reviewBody(s, leaveTo) {
   const r = Object.entries(s.review);
   const units = reviewUnits(s);
   return [
-    el("div.sub", {}, r.length ? "還沒算完的題目：同一種題目連對 3 次就畢業" : ""),
     r.length ? el("ul.list", {}, ...r.map(([, v]) => el("li", {}, el("span.rq", {}, el("span.rarea", {}, GRADES[v.grade]?.area ?? ""), mathText(v.sample)), el("span.left", {}, `再連對 ${v.left} 次`),
       v.branch && v.branch in UNIT_NAME ? el("button.btn.small", { onclick: () => leaveTo("lesson", { branch: v.branch }) }, "學一學") : null)))
-      : el("p.pempty", {}, "錯題本是空的。太厲害了！"),
+      : el("p.pempty", {}, "目前沒有錯題！"),
     units.length ? el("button.btn.gold", { onclick: () => { const [b] = units[0]; leaveTo("battle", { grade: "g1", mode: "practice", practice: { academy: ACADEMY_OF[b] ?? "ice", branch: b, level: 0, review: true } }); } }, "錯題特訓") : null,
   ];
 }
@@ -107,7 +105,6 @@ export function diaryBody(s) {
     el("div.bars.b30", {}, ...days.map(([d, v], i) => el("div.bar", { title: `${d}：答對 ${v.ok}／${v.n} 題` },
       el("div.b", { "data-h": String(v.n ? Math.max(8, (100 * v.n) / most) : 0) }, el("div.bok", { style: { height: v.n ? `${(100 * v.ok) / v.n}%` : "0" } })),
       el("span", {}, i % 5 === 4 || i === 29 ? d.slice(8) : "")))),
-    el("div.pnote", {}, "每個單元：學院練習「簡單」「困難」都拿到 3 星就通過。★ 是最近 20 題的熟練度。"),
   ];
 }
 

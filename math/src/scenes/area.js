@@ -30,11 +30,11 @@ const BACK = { g2: { name: "回圖書館大廳", go: ["library"] }, jh: { name: 
 const PX = 52, MX = [128, 196, 262], BX = 334, GROUND = 144;
 const A = (p) => new URL(`../../assets/${p}`, import.meta.url).href;
 const RESTORE = {
-  g1: ["哇……花園的顏色回來了！花瓣又是五瓣、六瓣，數得清清楚楚！", "墨水大王縮回地下禁書庫去了。可是它說的那句「反正沒有人會算完我」……我有點在意。", "下一個是千頁圖書館的上層書庫，從圖書館大廳上樓。我們一區一區，把學院的顏色找回來吧！"],
-  g2: ["書頁全部飛回書架上了！每一本都排得整整齊齊，頁碼一頁接一頁。", "墨水大王把書頁鎧甲丟下就跑了……它一邊跑一邊喊「題目那麼多，誰算得完」。", "下一個是刻度鐘塔，在學院的右邊。"],
-  g34: ["鐘塔又開始滴答滴答地走了！指針指著刻度，一格都不差。", "墨水大王身上的齒輪掉了一地。它好像越來越生氣，又好像……有點寂寞？", "接下來是分晶溫室的深處。從學院右邊的溫室進去！"],
-  g56: ["溫室的水晶果實又亮起來了，一顆一顆整整齊齊，分成幾份都數得清清楚楚。", "墨水大王身上的水晶刺碎掉了。它往圖書館的地下逃走了……", "最後是地下禁書庫，從圖書館大廳下樓。把學過的全部用出來吧！"],
-  jh: ["禁書庫的封印……變成一頁一頁發光的書頁了！", "墨水大王縮得好小好小，小聲地說：「原來……真的有人會把我算完。」", "學院所有的顏色都回來了！謝謝你，見習魔數師。之後也要繼續來學院練習喔！"],
+  g1: ["花瓣找回原本的色彩和片數了！星芽花園亮起來了！", "墨水大王逃走時小聲唸著「反正沒人會算完」……下一站，去千頁圖書館的上層書庫吧！"],
+  g2: ["飛散的書頁全都乖乖歸位了，圖書館又安靜又明亮！", "它丟下書頁鎧甲就逃往刻度鐘塔，嘴裡還喊著「題目那麼多，誰算得完」……"],
+  g34: ["滴答、滴答——大齒輪重新轉起來，全島的時間一秒都不差！", "墨水大王的齒輪碎了一地，卻越看越像在生悶氣……接著去分晶溫室深處追它吧！"],
+  g56: ["水晶果實重新透出光芒，每一顆都分得整整齊齊！", "它退回千頁圖書館底下的地下禁書庫了。最後一戰，把學過的魔法全都帶上吧！"],
+  jh: ["禁書庫的暗影化成了滿天發光的書頁！", "小魔數師，學院所有的色彩都回來了！"],
 };
 
 export function areaScene(game, { grade = "g1" } = {}) {
@@ -85,15 +85,13 @@ export function areaScene(game, { grade = "g1" } = {}) {
   if (!gateOpen) {
     const gate = el("button.areaunit.gate", {}, el("img", { src: A("hub/p/ink-18.png"), alt: "墨水封印門" }));
     gate.addEventListener("click", () => say([{ who: "page", name: "頁頁", text: cleared.some((v) => !v)
-      ? `墨水把門封住了……裡面有好濃的墨水味，是墨水大王！還有 ${cleared.filter((v) => !v).length} 群墨水怪，先把它們淨化，封印就會變弱。`
-      : `封印裡面是墨水大王的真身……可是封印還連著其他區域的墨水。先去淨化${othersLeft.map((g) => GRADES[g].area).join("、")}的墨水大王！` }]));
+      ? `墨水大王就在門後！先把前面 ${cleared.filter((v) => !v).length} 群墨水怪淨化，封印就會解開。`
+      : `封印還連著其他區域的墨水——先去淨化${othersLeft.map((g) => GRADES[g].area).join("、")}的墨水大王！` }]));
     gate.dataset.x = BX; stage.append(gate);
   } else if (!bossDone) {
     sprite((t) => (FRAMES[BOSS[grade]] ?? inkKingBabyFrame)("idle", t), BX, { tag: "墨水大王", onTap: () => fight("boss") });
   } else {
-    const done = el("div.areaunit.done", {}, el("span.areatag", {}, `王 ${"★".repeat(star("boss"))}${"☆".repeat(3 - star("boss"))}`));
-    done.dataset.x = BX; stage.append(done);
-    sprite((t) => (FRAMES[BOSS[grade]] ?? inkKingBabyFrame)("idle", t), BX, { tag: `再挑戰王`, onTap: () => fight("boss") });
+    sprite((t) => (FRAMES[BOSS[grade]] ?? inkKingBabyFrame)("idle", t), BX, { tag: `再挑戰王 ${"★".repeat(star("boss"))}${"☆".repeat(3 - star("boss"))}`, onTap: () => fight("boss") });
     sprites.at(-1).n.classList.add("again");
   }
 
@@ -182,8 +180,8 @@ export function areaScene(game, { grade = "g1" } = {}) {
       bg.style.transition = "filter 2.6s ease"; tint.style.transition = "opacity 2.6s ease"; setGray(0); sfx("restore");
     }, 1900);
     setTimeout(() => { if (kingSp && bossDone) kingSp.n.style.display = ""; say((RESTORE[grade] ?? []).map((text) => ({ who: "page", name: "頁頁", text }))); }, 4800);
-  } else if (!cleared[0] && !s.flags?.[`areaHint_${grade}`]) {
-    s.flags = { ...(s.flags ?? {}), [`areaHint_${grade}`]: true }; writeSave(s);
-    say([{ who: "page", name: "頁頁", text: `這裡就是${G.area}……顏色都被墨水吸走了。點墨水怪就可以開始淨化！一群一群來，最後是封印門後面的墨水大王。` }]);
+  } else if (grade === "g1" && !cleared[0] && !s.flags?.areaHint) {
+    s.flags = { ...(s.flags ?? {}), areaHint: true }; writeSave(s);
+    say([{ who: "page", name: "頁頁", text: "點墨水怪就可以開戰！三群都淨化後，封印門就會打開。" }]);
   }
 }

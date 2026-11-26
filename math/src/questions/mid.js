@@ -72,7 +72,7 @@ export const MID = {
   frac(rnd, hard) {
     const d = ri(rnd, 3, 12);
     if (!hard) {
-      if (rnd() < 0.5) { const a = ri(rnd, 1, d - 2), b = ri(rnd, 1, d - 1 - a); return { branch: "frac", text: `${a}/${d} ＋ ${b}/${d} ＝ ？`, answer: `${a + b}/${d}`, wrong: uniq(`${a + b}/${d}`, [`${a + b}/${d * 2}`, `${a + b + 1}/${d}`, `${Math.abs(a - b) || 1}/${d}`]), explain: `分母一樣（都分成 ${d} 份），分子相加：${a}＋${b}＝${a + b}，答案 ${a + b}/${d}`, math: { op: "frac", parts: [[a, d], [b, d]] } }; }
+      if (rnd() < 0.5) { const a = ri(rnd, 1, d - 2), b = ri(rnd, 1, d - 1 - a); return { branch: "frac", text: `${a}/${d} ＋ ${b}/${d} ＝ ？`, answer: `${a + b}/${d}`, wrong: uniq(`${a + b}/${d}`, [`${a + b}/${d * 2}`, `${a + b + 1}/${d}`, `${Math.abs(a - b) || 1}/${d}`]), explain: `分母一樣，分子直接相加：${a}＋${b}＝${a + b}，答案 ${a + b}/${d}`, math: { op: "frac", parts: [[a, d], [b, d]] } }; }
       const a = ri(rnd, 2, d - 1), b = ri(rnd, 1, a - 1);
       if (rnd() < 0.4) return { branch: "frac", text: `1 － ${b}/${d} ＝ ？`, answer: `${d - b}/${d}`, wrong: uniq(`${d - b}/${d}`, [`${b}/${d}`, `${1 - 0}/${d - b}`, `${d - b - 1}/${d}`]), explain: `1 個整體＝${d}/${d}，${d}/${d}－${b}/${d}＝${d - b}/${d}` };
       return { branch: "frac", text: `${a}/${d} － ${b}/${d} ＝ ？`, answer: `${a - b}/${d}`, wrong: uniq(`${a - b}/${d}`, [`${a - b}/0`.replace("/0", `/${d * 2}`), `${a + b}/${d}`, `${a - b + 1}/${d}`]), explain: `分母一樣，分子相減：${a}－${b}＝${a - b}，答案 ${a - b}/${d}` };
@@ -90,33 +90,33 @@ export const MID = {
     const a = ri(rnd, k + 1, k * 50) / k, b = ri(rnd, 1, k * 30) / k, add = rnd() < 0.55;
     const [x, y] = add || a >= b ? [a, b] : [b, a];
     const r = dec(add ? x + y : x - y, p);
-    return { branch: "dec", text: `${x} ${add ? "＋" : "－"} ${y} ＝ ？`, answer: r, wrong: uniq(r, [dec(Number(r) + 1 / k, p), dec(Number(r) - 1, p), dec(add ? x + y * 10 : x - y / 10, p), dec(Number(r) + 1, p)]), explain: `小數點對齊再${add ? "加" : "減"}（位數不夠補 0）：${x}${add ? "＋" : "－"}${y}＝${r}`, math: add ? { op: "dec", a: x, b: y } : fly([x, y], r) };
+    return { branch: "dec", text: `${x} ${add ? "＋" : "－"} ${y} ＝ ？`, answer: r, wrong: uniq(r, [dec(Number(r) + 1 / k, p), dec(Number(r) - 1, p), dec(add ? x + y * 10 : x - y / 10, p), dec(Number(r) + 1, p)]), explain: `小數點對齊再${add ? "加" : "減"}：${x}${add ? "＋" : "－"}${y}＝${r}`, math: add ? { op: "dec", a: x, b: y } : fly([x, y], r) };
   },
   // ⑦ 面積、周長與角度：簡單＝長方形、正方形的周長和面積；困難＝反推邊長、三角形的角、平方公尺換平方公分
   shape(rnd, hard) {
     const L = ri(rnd, 3, hard ? 25 : 12), Wd = ri(rnd, 2, Math.max(2, L - 1)), kind = ri(rnd, 0, hard ? 3 : 2);
     if (!hard) {
-      if (kind === 0) return { branch: "shape", text: `長 ${L} 公分、寬 ${Wd} 公分的長方形，面積是幾平方公分？`, answer: `${L * Wd}`, wrong: uniq(L * Wd, [2 * (L + Wd), L + Wd, L * Wd + L]), explain: `長方形面積＝長×寬：${L}×${Wd}＝${L * Wd}（平方公分）` };
-      if (kind === 1) return { branch: "shape", text: `長 ${L} 公分、寬 ${Wd} 公分的長方形，周長是幾公分？`, answer: `${2 * (L + Wd)}`, wrong: uniq(2 * (L + Wd), [L * Wd, L + Wd, 2 * L + Wd]), explain: `周長＝繞一圈：(長＋寬)×2＝(${L}＋${Wd})×2＝${2 * (L + Wd)}（公分）` };
-      return { branch: "shape", text: `邊長 ${L} 公分的正方形，周長是幾公分？`, answer: `${4 * L}`, wrong: uniq(4 * L, [L * L, 2 * L, 4 * L + 4]), explain: `正方形四邊一樣長：${L}×4＝${4 * L}（公分）` };
+      if (kind === 0) return { branch: "shape", text: `長 ${L} 公分、寬 ${Wd} 公分的長方形，面積是幾平方公分？`, answer: `${L * Wd}`, wrong: uniq(L * Wd, [2 * (L + Wd), L + Wd, L * Wd + L]), explain: `長方形面積＝長×寬：${L}×${Wd}＝${L * Wd} 平方公分` };
+      if (kind === 1) return { branch: "shape", text: `長 ${L} 公分、寬 ${Wd} 公分的長方形，周長是幾公分？`, answer: `${2 * (L + Wd)}`, wrong: uniq(2 * (L + Wd), [L * Wd, L + Wd, 2 * L + Wd]), explain: `周長＝(長＋寬)×2＝(${L}＋${Wd})×2＝${2 * (L + Wd)} 公分` };
+      return { branch: "shape", text: `邊長 ${L} 公分的正方形，周長是幾公分？`, answer: `${4 * L}`, wrong: uniq(4 * L, [L * L, 2 * L, 4 * L + 4]), explain: `正方形四邊一樣長：${L}×4＝${4 * L} 公分` };
     }
-    if (kind === 0) return { branch: "shape", text: `一個長方形面積 ${L * Wd} 平方公分，長 ${L} 公分，寬是幾公分？`, answer: `${Wd}`, wrong: uniq(Wd, [L * Wd - L, Wd + 1, L * Wd / 2]), explain: `面積＝長×寬，所以寬＝面積÷長：${L * Wd}÷${L}＝${Wd}（公分）` };
-    if (kind === 1) { const a = ri(rnd, 30, 80), b = ri(rnd, 30, 150 - a - 10); return { branch: "shape", text: `三角形的兩個角是 ${a} 度和 ${b} 度，第三個角是幾度？`, answer: `${180 - a - b}`, wrong: uniq(180 - a - b, [360 - a - b, a + b, 90 - Math.min(a, b)]), explain: `三角形三個角加起來是 180 度：180－${a}－${b}＝${180 - a - b}（度）` }; }
-    if (kind === 2) { const m = ri(rnd, 2, 9); return { branch: "shape", text: `${m} 平方公尺 ＝ ？平方公分`, answer: fmt(m * 10000), wrong: uniq(fmt(m * 10000), [fmt(m * 100), fmt(m * 1000), fmt(m * 100000)]), explain: `1 平方公尺＝100 公分×100 公分＝10,000 平方公分，所以 ${m} 平方公尺＝${fmt(m * 10000)} 平方公分` }; }
+    if (kind === 0) return { branch: "shape", text: `一個長方形面積 ${L * Wd} 平方公分，長 ${L} 公分，寬是幾公分？`, answer: `${Wd}`, wrong: uniq(Wd, [L * Wd - L, Wd + 1, L * Wd / 2]), explain: `寬＝面積÷長：${L * Wd}÷${L}＝${Wd} 公分` };
+    if (kind === 1) { const a = ri(rnd, 30, 80), b = ri(rnd, 30, 150 - a - 10); return { branch: "shape", text: `三角形的兩個角是 ${a} 度和 ${b} 度，第三個角是幾度？`, answer: `${180 - a - b}`, wrong: uniq(180 - a - b, [360 - a - b, a + b, 90 - Math.min(a, b)]), explain: `三角形三個角合起來是 180 度：180－${a}－${b}＝${180 - a - b} 度` }; }
+    if (kind === 2) { const m = ri(rnd, 2, 9); return { branch: "shape", text: `${m} 平方公尺 ＝ ？平方公分`, answer: fmt(m * 10000), wrong: uniq(fmt(m * 10000), [fmt(m * 100), fmt(m * 1000), fmt(m * 100000)]), explain: `1 平方公尺＝10,000 平方公分，所以 ${m} 平方公尺＝${fmt(m * 10000)} 平方公分` }; }
     const a = ri(rnd, 20, 160);
-    return { branch: "shape", text: `一個直角被分成兩個角，其中一個是 ${a % 80 + 5} 度，另一個是幾度？`, answer: `${90 - (a % 80 + 5)}`, wrong: uniq(90 - (a % 80 + 5), [180 - (a % 80 + 5), a % 80 + 5, 100 - (a % 80 + 5)]), explain: `直角是 90 度：90－${a % 80 + 5}＝${90 - (a % 80 + 5)}（度）` };
+    return { branch: "shape", text: `一個直角被分成兩個角，其中一個是 ${a % 80 + 5} 度，另一個是幾度？`, answer: `${90 - (a % 80 + 5)}`, wrong: uniq(90 - (a % 80 + 5), [180 - (a % 80 + 5), a % 80 + 5, 100 - (a % 80 + 5)]), explain: `直角是 90 度：90－${a % 80 + 5}＝${90 - (a % 80 + 5)} 度` };
   },
   // ⑧ 時間與單位換算：簡單＝公尺公分、時和分、經過多久；困難＝公斤公克、公升毫升、時間的加法、24 時制
   measure(rnd, hard) {
     const kind = ri(rnd, 0, 2);
     if (!hard) {
-      if (kind === 0) { const m = ri(rnd, 1, 9), c = ri(rnd, 1, 99); return { branch: "measure", text: `${m} 公尺 ${c} 公分 ＝ ？公分`, answer: `${m * 100 + c}`, wrong: uniq(m * 100 + c, [m * 10 + c, m * 1000 + c, m + c]), explain: `1 公尺＝100 公分：${m}×100＋${c}＝${m * 100 + c}（公分）` }; }
-      if (kind === 1) { const h = ri(rnd, 1, 4), mm = ri(rnd, 0, 5) * 10; return { branch: "measure", text: `${h} 小時 ${mm} 分鐘 ＝ ？分鐘`, answer: `${h * 60 + mm}`, wrong: uniq(h * 60 + mm, [h * 100 + mm, h * 10 + mm, h * 60]), explain: `1 小時＝60 分鐘：${h}×60＋${mm}＝${h * 60 + mm}（分鐘）` }; }
+      if (kind === 0) { const m = ri(rnd, 1, 9), c = ri(rnd, 1, 99); return { branch: "measure", text: `${m} 公尺 ${c} 公分 ＝ ？公分`, answer: `${m * 100 + c}`, wrong: uniq(m * 100 + c, [m * 10 + c, m * 1000 + c, m + c]), explain: `1 公尺＝100 公分：${m}×100＋${c}＝${m * 100 + c} 公分` }; }
+      if (kind === 1) { const h = ri(rnd, 1, 4), mm = ri(rnd, 0, 5) * 10; return { branch: "measure", text: `${h} 小時 ${mm} 分鐘 ＝ ？分鐘`, answer: `${h * 60 + mm}`, wrong: uniq(h * 60 + mm, [h * 100 + mm, h * 10 + mm, h * 60]), explain: `1 小時＝60 分鐘：${h}×60＋${mm}＝${h * 60 + mm} 分鐘` }; }
       const h = ri(rnd, 7, 10), m1 = ri(rnd, 0, 5) * 10, dur = ri(rnd, 3, 9) * 5, end = h * 60 + m1 + dur;
       const t = (x) => `${Math.floor(x / 60)}:${String(x % 60).padStart(2, "0")}`;
       return { branch: "measure", text: `上午 ${t(h * 60 + m1)} 到 ${t(end)}，經過幾分鐘？`, answer: `${dur}`, wrong: uniq(dur, [dur + 40, Math.abs((end % 60) - m1), dur + 10]), explain: `先數到整點再加：${t(h * 60 + m1)} 到 ${t(end)} 共 ${dur} 分鐘` };
     }
-    if (kind === 0) { const unit = pick(rnd, [["公斤", "公克"], ["公升", "毫升"]]), a = ri(rnd, 1, 9), b = ri(rnd, 5, 995); return { branch: "measure", text: `${a} ${unit[0]} ${b} ${unit[1]} ＝ ？${unit[1]}`, answer: `${a * 1000 + b}`, wrong: uniq(a * 1000 + b, [a * 100 + b, a + b, a * 10000 + b]), explain: `1 ${unit[0]}＝1000 ${unit[1]}：${a}×1000＋${b}＝${a * 1000 + b}（${unit[1]}）` }; }
+    if (kind === 0) { const unit = pick(rnd, [["公斤", "公克"], ["公升", "毫升"]]), a = ri(rnd, 1, 9), b = ri(rnd, 5, 995); return { branch: "measure", text: `${a} ${unit[0]} ${b} ${unit[1]} ＝ ？${unit[1]}`, answer: `${a * 1000 + b}`, wrong: uniq(a * 1000 + b, [a * 100 + b, a + b, a * 10000 + b]), explain: `1 ${unit[0]}＝1000 ${unit[1]}：${a}×1000＋${b}＝${a * 1000 + b} ${unit[1]}` }; }
     if (kind === 1) { const h1 = ri(rnd, 1, 3), m1 = ri(rnd, 15, 55), h2 = ri(rnd, 1, 3), m2 = ri(rnd, Math.max(15, 61 - m1), 59), tot = (h1 + h2) * 60 + m1 + m2; const ans = `${Math.floor(tot / 60)} 時 ${tot % 60} 分`; return { branch: "measure", text: `${h1} 時 ${m1} 分 ＋ ${h2} 時 ${m2} 分 ＝ ？`, answer: ans, wrong: uniq(ans, [`${h1 + h2} 時 ${m1 + m2} 分`, `${Math.floor(tot / 60) + 1} 時 ${tot % 60} 分`, `${Math.floor(tot / 60)} 時 ${(tot % 60) + 10} 分`, `${Math.floor(tot / 60) - 1} 時 ${tot % 60} 分`]), explain: `時加時、分加分：${h1 + h2} 時 ${m1 + m2} 分；${m1 + m2} 分超過 60 分就進 1 時，答案 ${ans}` }; }
     const h = ri(rnd, 1, 11), m = ri(rnd, 0, 11) * 5, pm = rnd() < 0.6, ans = `${pm ? h + 12 : h}:${String(m).padStart(2, "0")}`;
     return { branch: "measure", text: `${pm ? "下午" : "上午"} ${h} 點 ${m} 分，用 24 時制寫是？`, answer: ans, wrong: uniq(ans, [`${h}:${String(m).padStart(2, "0")}`, `${pm ? h + 10 : h + 12}:${String(m).padStart(2, "0")}`, `${pm ? h + 12 : h}:${String((m + 30) % 60).padStart(2, "0")}`, `${pm ? h + 11 : h + 1}:${String(m).padStart(2, "0")}`]), explain: `24 時制：${pm ? `下午要加 12，${h}＋12＝${h + 12}` : "上午照寫"}，答案 ${ans}` };
@@ -135,7 +135,7 @@ export const MID = {
       const k = ri(rnd, 2, 12), a = ri(rnd, 1, 30), downward = rnd() < 0.35;
       list = [0, 1, 2, 3].map((i) => (downward ? a + 4 * k - i * k : a + i * k)); ans = downward ? a : a + 4 * k; rule = downward ? `每次都少 ${k}` : `每次都多 ${k}`;
     } else if (rnd() < 0.5) { const a = ri(rnd, 1, 5), r = pick(rnd, [2, 3]); list = [a, a * r, a * r * r, a * r ** 3]; ans = a * r ** 4; rule = `每次都乘 ${r}`; }
-    else { const a = ri(rnd, 1, 10), k = ri(rnd, 1, 4); list = [a, a + k, a + 3 * k, a + 6 * k]; ans = a + 10 * k; rule = `加的數一次多 ${k}（＋${k}、＋${2 * k}、＋${3 * k}，下一次＋${4 * k}）`; }
+    else { const a = ri(rnd, 1, 10), k = ri(rnd, 1, 4); list = [a, a + k, a + 3 * k, a + 6 * k]; ans = a + 10 * k; rule = `每次加的數多 ${k}：＋${k}、＋${2 * k}、＋${3 * k}，下一次＋${4 * k}`; }
     const d = list[3] - list[2];
     return { branch: "seq", text: `${list.join("，")}，下一個是？`, answer: `${ans}`, wrong: uniq(ans, [list[3] + d, ans + 1, ans - 1, ans + d]), explain: `${rule}：${list[3]} 的下一個是 ${ans}` };
   },

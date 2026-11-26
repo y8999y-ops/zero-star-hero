@@ -23,7 +23,7 @@ const COUNT = 3;
 // 第一場戰鬥（教學，企劃書 3.6）：5 題一年級加減法，頁頁一題教一件事。glow：要發光的地方
 const TUT_Q = [[2, 3, "+"], [4, 4, "+"], [6, 3, "+"], [5, 5, "+"], [7, 2, "-"]];
 // 2026-11-25 使用者：學系能力取消，五種屬性只差造型和攻擊特效
-const TUT_ATTR = (attr) => ({ text: `你是${ATTRS[attr]?.school ?? "赤焰系"}！每次答對的魔法都會有點不一樣，連擊越高越華麗！`, glow: "combo" });
+const TUT_ATTR = (attr) => ({ text: `你是${ATTRS[attr]?.school ?? "赤焰系"}，每次施法都有不同變化喔！`, glow: "combo" });
 function tutorialQuestions(attr) {
   const rnd = Math.random;
   return TUT_Q.map(([a, b, op], i) => {
@@ -34,11 +34,11 @@ function tutorialQuestions(attr) {
       explain: `${a}${op === "+" ? "＋" : "－"}${b}＝${r}`, math: { op: op === "+" ? "+" : "-", a, b },
     }, rnd);
     q.tut = [
-      { text: "看！墨水怪頭上的泡泡就是題目。從下面四個答案選一個！", glow: "answers" },
-      { text: "答對了，算式就會變成魔法打出去！演出的時候點畫面可以快一點。再一題！", glow: "answers" },
-      { text: "連續答對叫「連擊」，魔法會越來越強喔！看左上角的連擊數字。", glow: "combo" },
+      { text: "墨水怪頭上就是題目，點下面四個答案施法！", glow: "answers" },
+      { text: "算式成立就會化作魔法！再來一題！", glow: "answers" },
+      { text: "連續答對會累積連擊，魔法會越變越華麗！", glow: "combo" },
       TUT_ATTR(attr),
-      { text: "最後一題！就算算錯也沒關係，我會陪你一起算一次。", glow: "answers" },
+      { text: "最後一題！算錯也只是咒語散掉，我們再算一次就好。", glow: "answers" },
     ][i];
     return q;
   });
@@ -87,6 +87,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   const hud = el("div.hud");
   const bubble = el("div.bubble");
   const wordPanel = el("div.word", { hidden: true });
+  const qstack = el("div.qstack", {}, bubble, wordPanel);
   const line = el("div.pagepage");
   const answers = el("div.answers");
   // 技能列（2026-11-25 使用者：技能和大招位置不一樣、不好操作 → 重新設計）：
@@ -108,7 +109,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   const speakBtn = el("button.btn.small.speak", { hidden: !canSpeak(), "aria-label": "念題目", onclick: () => speak(speakText, s.settings.mute) }, "🔊");
   let aborted = false;
   const leave = tut ? null : el("button.btn.small.leave", { onclick: () => { if (confirm("離開這一關？這關的進度不會保存。")) { aborted = true; running = false; game.go("map"); } } }, "離開");
-  const wrap = el("div.battle", {}, el("div.view", {}, canvas, hud, bubble, speakBtn, leave), wordPanel, line, answers, skdock);
+  const wrap = el("div.battle", {}, el("div.view", {}, canvas, hud, qstack, speakBtn, leave), line, answers, skdock);
   show(wrap);
   const app = document.querySelector("#app");
   fitWidth(app.clientWidth / app.clientHeight);          // 戰鬥畫面的寬度跟著螢幕比例
@@ -188,7 +189,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
   }
 
   if (boss) sfx("boss");
-  say(tut ? "" : chal ? `挑戰：每題 ${Math.round(limit)} 秒，答錯就結束` : prac && practice.review ? "錯題本特訓" : prac ? `${UNIT_NAME[practice.branch]}・${MODES[practice.level].name}` : exam ? "升階考核：答對 7 題通過" : boss ? "墨水大王！答對一題打掉一格護盾" : "");
+  say(chal ? `挑戰：每題 ${Math.round(limit)} 秒，答錯即結束` : exam ? "升階考核：答對 7 題通過" : "");
 
   // 最終戰（地下禁書庫的墨水大王・真身，世界觀第 7 節第 4 點）：開打前、打到一半、最後一題都有對話
   const final = boss && gradeId === "jh";
@@ -205,7 +206,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     sfx("boss"); stage.shake = 6;
     for (let i = 1; i <= 20; i++) { stage.monster.alpha = i / 20; await wait(60); }
   }
-  await scene([K("又來了……反正沒有人會算完我。每個人算到一半，就說「算了」。"), PG("才不是！見習魔數師一路把花園、書庫、鐘塔、溫室都算完了！"), K("那就算算看吧——把我身上所有的題目都算完！")]);
+  await scene([K("又來了……每個人算到一半，最後還不是說一聲「算了」就走掉。"), PG("才不是！小魔數師一路把花園、書庫、鐘塔、溫室全都算完了！"), K("……那就試試看吧。把我身上幾百年的題目，全都算完！")]);
   let saidHalf = false, saidLast = false;
 
   const seenTrait = new Set(s.flags?.seenTrait ?? []);
@@ -234,33 +235,35 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
       say("墨水大王變身了！招式變多了，小心！");
       await wait(900);
     }
-    if (final && !saidHalf && shieldLeft <= Math.ceil(shield / 2)) { saidHalf = true; await scene([K("……你真的一直算下去？明明那麼多題。"), PG("不會的就去圖書館學，學會了再回來算！我們不會說「算了」。")]); }
-    if (final && !saidLast && shieldLeft === 1) { saidLast = true; await scene([K("最後一題……是最早被丟進來的那一題。幾百年來，從來沒有人算完它。"), PG("見習魔數師，就是這一題！")]); }
+    if (final && !saidHalf && shieldLeft <= Math.ceil(shield / 2)) { saidHalf = true; await scene([K("明明這麼難、這麼多……你為什麼不放棄？"), PG("不會就去圖書館學，學會了再回來算。我們才不會說「算了」！")]); }
+    if (final && !saidLast && shieldLeft === 1) { saidLast = true; await scene([K("最後這一題……是創校以來最早被丟進來的，幾百年都沒人算完。"), PG("小魔數師，一起為它畫下句點吧！")]); }
     // 王的招式（企劃書 E8）：第一階段每三題一次（晃動、墨水霧）；變身後每兩題一次，多一招「調換選項」
     const move = !boss || qi === 0 ? null : phase === 1 ? (qi % 3 === 2 ? (qi % 2 ? "shake" : "ink") : null) : (qi % 2 === 1 ? ["swap", "ink", "shake"][Math.floor(qi / 2) % 3] : null);
     curMove = move;
     bubble.classList.remove("mv-shake", "mv-ink");
+    wordPanel.classList.remove("mv-shake", "mv-ink");
     if (move) { sfx("boss"); stage.flinch(); say(move === "shake" ? "墨水大王使出「搖搖晃晃」！題目在晃……穩住！" : move === "swap" ? "墨水大王使出「調換」！選項要換位置了！" : "墨水大王噴出「墨水霧」！等它散開再看清楚。"); }
 
     wrap.classList.remove("casting");
-    // 題目：計算題掛在怪物頭上；應用題放在下方面板
+    // 題目：計算題用大字泡泡；應用題用寬面板（都在 .qstack 裡，完美詠唱條自動排在下方不重疊）
     const isWord = q.kind !== "calc";
-    bubble.replaceChildren(isWord ? "？" : mathText(q.text));
-    bubble.classList.toggle("one", isWord || q.text.length <= 26);     // 短的算式不換行（不會在「＝ ？」前面斷開）
+    bubble.replaceChildren(...(isWord ? [] : [mathText(q.text)]));
+    bubble.classList.toggle("one", !isWord && visLen(q.text) <= 22);     // 真正短的算式不換行（不會在「＝ ？」前面斷開）
     wordPanel.hidden = !isWord;
     wordPanel.replaceChildren(...(isWord ? [el("div.wtext", {}, mathText(q.text))] : []));
     speakText = q.text;
     if (s.settings.voice) setTimeout(() => speak(q.text, s.settings.mute), move ? 1700 : 250);
-    if (move && move !== "swap") { bubble.classList.add(`mv-${move}`); if (move === "ink") setTimeout(() => bubble.classList.remove("mv-ink"), 1600); }
+    const qBox = isWord ? wordPanel : bubble;
+    if (move && move !== "swap") { qBox.classList.add(`mv-${move}`); if (move === "ink") setTimeout(() => qBox.classList.remove("mv-ink"), 1600); }
     if (q.tut) { say(q.tut.text); glow(q.tut.glow); }
     else if (move) {}
     else if (qi === 0 && !isWord && !q.prefix) {}             // 第一題：留著開場說明（練習、挑戰、特訓的說明）
     else if (qi > 0) say("");
 
-    // 完美詠唱：計算題 4 秒、應用題 9 秒內答對（時間條在題目下面）
+    // 完美詠唱：計算題 4 秒、應用題 9 秒內答對（時間條排在題目下面）
     const perfectSec = isWord ? 9 : 4;
     const pbar = tut ? null : el("div.pbar", {}, el("div.pfill", { style: { animationDuration: `${perfectSec}s` } }));
-    if (pbar) wrap.querySelector(".view").append(pbar);
+    if (pbar) qstack.append(pbar);
     const t0 = performance.now();
     const result = await askOne(q);
     pbar?.remove();
@@ -285,6 +288,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
       if (flags.double && !boss) { combo++; flags.double = false; say("分身！連擊多加一！"); }
       sfx(`cast_${s.attr}`);
       bubble.textContent = "";
+      wordPanel.hidden = true;
       wrap.classList.add("casting");          // 施法時題目和答案收起來（2026-11-26 使用者）
       if (q.math) {
         // 數學變魔法：先把算式變成光球（點畫面可以加速）
@@ -292,7 +296,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
         await stage.mathMagic(q.math);
         canvas.onclick = null;
       }
-      say(ult ? "大招！數晶全部放出去！" : comboTech ? `組合技「${comboName(s.attr, sub)}」！` : perfect ? "完美詠唱！魔法升一級！" : ["", "咒語成立！", "魔法變強了！", "大魔法！", "終極魔法！！"][tier]);
+      say(ult ? "數晶解放！" : comboTech ? `組合技「${comboName(s.attr, sub)}」！` : perfect ? "" : ["", "咒語成立！", "魔法變強了！", "大魔法！", "終極魔法！！"][tier]);
       if (ult || comboTech) { stage.flashC = ATTRS[comboTech ? sub : s.attr].color; stage.flashA = 0.45; stage.flashT = 0.35; }
       await stage.cast(tier, crystalLevel(s.crystals[s.attr]), q.branch, comboTech ? sub : null);
       stage.setPage("happy", 1.6);
@@ -322,6 +326,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
       else if (tut) sfx("hurt");
       stage.setPage("worried", 3);
       bubble.textContent = "";
+      wordPanel.hidden = true;
       await showExplain(q, result.timeout);
       if (!boss && mon && mon.hp > 1) { if (trait?.combo && mon.hp < mon.maxHp) { mon.hp = mon.maxHp; say("散頁怪又黏回去了……再連對兩題！"); } }
       else if (!boss) stage.purify();
@@ -378,7 +383,12 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
     return new Promise((resolve) => {
       let done = false;
       let start = performance.now();
-      answers.replaceChildren(...q.options.map((o, i) => el("button.btn.answer", { "data-k": i + 1, "data-v": o, onclick: (e) => pickOpt(o, e.currentTarget) }, mathText(q.unit && q.kind === "word" ? `${o} ${q.unit}` : o))));
+      answers.replaceChildren(...q.options.map((o, i) => {
+        const txt = q.unit && q.kind === "word" ? `${o} ${q.unit}` : String(o);
+        const vl = visLen(txt);
+        const cls = vl > 20 ? ".xlong" : vl > 10 ? ".long" : "";
+        return el(`button.btn.answer${cls}`, { "data-k": i + 1, "data-v": o, onclick: (e) => pickOpt(o, e.currentTarget) }, mathText(txt));
+      }));
       let btns = [...answers.children];
       // 怪物個性：亂針鐘把選項換位置、塗鴉蝙蝠把一個選項塗黑一下
       if (curTrait?.shuffle || curMove === "swap") setTimeout(() => {
@@ -455,11 +465,13 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
         el("div.ebody", {}, mathText(q.explain)),
         el("div.eans", {}, mathText(`答案是 ${q.answer}${q.unit ? " " + q.unit : ""}`)),
         el("button.btn.gold", { onclick: () => { card.remove(); resolve(); } }, "知道了"));
-      say("這題我先記進錯題本，之後再一起複習。");
       wrap.append(card);
     });
   }
 }
+
+// 估算視覺字寬（全形＝2、半形＝1），用來決定題目不換行或答案字體縮小
+const visLen = (s) => [...String(s ?? "")].reduce((n, c) => n + (c.charCodeAt(0) > 127 ? 2 : 1), 0);
 
 function hintOf(q) {
   // 把詳解裡的最後答案藏起來，只留想法

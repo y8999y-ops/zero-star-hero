@@ -17,7 +17,6 @@ export function titleScene(game) {
     el("button.btn.gold.big", { onclick: () => { sfx("click"); game.go("map"); } }, started ? "繼續冒險" : "開始入學"),
     el("button.btn", { onclick: () => game.go("settings", { from: "title" }) }, "設定"),
     started ? el("button.btn.red.small", { onclick: () => { if (confirm("確定要重新入學嗎？所有進度都會清除。")) { game.save = resetSave(); game.go("opening"); } } }, "重新入學") : null,
-    el("div.foot", {}, "題庫：TMMLU+、Calc-ape210k，已改寫成學院情境　字型：俐方體 11 號"),
   ));
   titleBackground(bg);
 }
@@ -61,10 +60,10 @@ export async function introScene(game, { replay = false, back = "title" } = {}) 
   const root = el("div.screen.story", {}, el("div.storybg"));
   show(root);
   await dialog(root, [
-    { who: "", text: "數律之地。這裡的一切都照數字運作，而數學，就是真正的魔法。" },
-    { who: "圓周院長", text: "歡迎來到魔數學院！我是院長。圓周率是三點一四一五九二六五三五八……" },
-    { who: "", text: "院長講了很久很久。" },
-    { who: "圓周院長", text: "咳。總之，新生要先到「共鳴之井」，讓井水看看你喜歡怎麼想。" },
+    { who: "", text: "數律之地——萬物都照著數字運轉，而數學就是真正的魔法。" },
+    { who: "圓周院長", text: "歡迎來到魔數學院！我是圓周院長，圓周率是三點一四一五九二六五三五八……" },
+    { who: "", text: "院長講了很久很久……" },
+    { who: "圓周院長", text: "咳！總之，新生請先站上「共鳴之井」，讓井水看看你喜歡怎麼想。" },
   ]);
   // 從設定重看時，看完回設定，不重做入學流程
   if (replay) game.go("settings", { from: back });

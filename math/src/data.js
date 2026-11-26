@@ -1,11 +1,11 @@
 // 遊戲的固定資料：屬性、學年與區域、魔法分支、成長數值。數值來源：docs/企劃書.md 第 5、6、8 節。
 
 export const ATTRS = {
-  fire:    { name: "火", school: "赤焰系", type: "直覺速算型", color: "#ff7a2f", spells: "火球、火焰柱、火環、流星", praise: "你的腦袋轉得飛快，答案常常一眼就看出來。速度是你的魔法。" },
-  water:   { name: "水", school: "蒼流系", type: "變通型", color: "#3fa7ff", spells: "水柱、水球、噴泉、大浪", praise: "一條路不通，你就換一條。會變通的人，什麼題目都難不倒。" },
-  ice:     { name: "冰", school: "白霜系", type: "精確步驟型", color: "#9be3ff", spells: "冰槍、冰刺、凍結、暴風雪", praise: "你一步一步、穩穩地算，最後還會檢查。精確就是你的力量。" },
-  forest:  { name: "森", school: "翠森系", type: "圖像型", color: "#6fd46a", spells: "藤蔓、荊棘、大石、地震", praise: "你喜歡畫出來、排排看。看得見的數學，就是你最強的咒語。" },
-  thunder: { name: "雷", school: "紫雷系", type: "推理找規律型", color: "#b483ff", spells: "雷球、閃電鏈、雷雲、落雷", praise: "你總想知道「為什麼」，也很會找規律。推理就是你的閃電。" },
+  fire:    { name: "火", school: "赤焰系", type: "直覺速算型", color: "#ff7a2f", spells: "火球、火焰柱、火環、流星", praise: "你腦袋轉得飛快，常常一眼看穿答案。果斷與速度就是你的魔法！" },
+  water:   { name: "水", school: "蒼流系", type: "變通型", color: "#3fa7ff", spells: "水柱、水球、噴泉、大浪", praise: "此路不通就換條路走。懂得靈活轉彎的人，沒有解不開的題！" },
+  ice:     { name: "冰", school: "白霜系", type: "精確步驟型", color: "#9be3ff", spells: "冰槍、冰刺、凍結、暴風雪", praise: "你一步一步穩穩推算，還不忘回頭檢查。精準就是你最強的力量！" },
+  forest:  { name: "森", school: "翠森系", type: "圖像型", color: "#6fd46a", spells: "藤蔓、荊棘、大石、地震", praise: "你擅長把題目畫出來、排排看。讓抽象變成畫面，就是你的拿手咒語！" },
+  thunder: { name: "雷", school: "紫雷系", type: "推理找規律型", color: "#b483ff", spells: "雷球、閃電鏈、雷雲、落雷", praise: "你愛追問「為什麼」，總能一眼揪出規律。推理就是你的閃電！" },
 };
 export const ATTR_IDS = Object.keys(ATTRS);
 

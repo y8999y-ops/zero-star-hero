@@ -11,7 +11,6 @@ import { sfx } from "../audio.js";
 import { playCutscene } from "../cutscene.js";
 import { plaza, GY } from "./story.js";
 import { heroWalkFrame } from "../../fx/hero-walk.js";
-import { pagepageFrame } from "../../fx/pagepage.js";
 
 let data = null;
 async function load() {
@@ -32,13 +31,11 @@ export async function resonanceScene(game, { retest = false } = {}) {
     const root = document.querySelector(".csscr");
     await plaza(D);
     const me = D.sprite((t) => heroWalkFrame(s.look ?? "girl", "down", "idle", t, "#8a7cff"), { x: 150, y: GY + 14, z: 6, px: 1.3 });
-    const page = retest ? null : D.sprite((t) => pagepageFrame("idle", t), { x: 120, y: GY - 34, z: 7, px: 1.5 }).bob(2, 3);
     await me.to({ x: 192, y: GY + 12 }, 1.2);
     await D.wait(0.4);
     // 上面的五顆小光（進度）
     const lights = el("div.resprog", {}, ...qs.map(() => el("span")));
     root.append(lights);
-    if (page) await D.say([{ who: "page", name: "頁頁", text: "井水會問你五個問題。沒有對錯，選你真的會做的就好！" }]);
     for (let i = 0; i < qs.length; i++) {
       const q = qs[i];
       sfx("blip"); D.fx("rise", 192, GY - 10, 24, "#bfe8ff");
@@ -74,10 +71,8 @@ export async function resonanceScene(game, { retest = false } = {}) {
     sfx("level"); D.flash(A.color, 0.9); D.fx("burst", 192, GY - 90, 40, A.color); D.fx("sparkle", 192, GY - 80, 30);
     me.node.style.filter = `drop-shadow(0 0 6px ${A.color})`;
     await D.wait(0.8);
-    await D.say([{ who: null, name: `${A.name}屬性・${A.school}`, text: `你是「${A.type}」。${A.praise}` },
-      { who: null, name: `${A.school}的魔法`, text: `${A.spells}……每次答對都不太一樣，連擊越高越華麗！` },
-      ...(mood >= 2 ? [{ who: "page", name: "頁頁", text: "放輕鬆，我們慢慢來。" }] : [])]);
-    void page;
+    await D.say([{ who: null, name: `${A.name}屬性・${A.school}`, text: `你是「${A.type}」！${A.praise}` },
+      ...(mood >= 2 ? [{ who: null, name: "共鳴之井", text: "放輕鬆，慢慢算也一樣強大。" }] : [])]);
   }, { skippable: false });
   if (retest || s.seenIntro) game.go("map", { from: "well" });
   else game.go("afterResonance");

@@ -6,7 +6,7 @@
 import { daily } from "../world/island-life.js";
 import { el, show, mathText } from "../ui.js";
 import { sfx } from "../audio.js";
-import { BRANCHES, UNIT_NAME } from "../data.js";
+import { UNIT_NAME } from "../data.js";
 import { LESSONS, lessonExamples, ACADEMIES, ACADEMY_OF } from "../practice.js";
 import { writeSave } from "../save.js";
 
@@ -19,7 +19,7 @@ export function lessonList(game) {
   show(el("div.screen.lessons", {},
     el("h2", {}, "魔法教室"),
     el("div.lgrid", {}, ...ids.map((b) => el("button.btn.lbtn", { onclick: () => { sfx("click"); game.go("lesson", { branch: b }); } },
-      el("span.ln", {}, UNIT_NAME[b]), el("span.la", {}, `${BRANCHES[b]}・${ACADEMIES[ACADEMY_OF[b]].name}`), weak.has(b) ? el("span.lweak", {}, "要複習") : null))),
+      el("span.ln", {}, UNIT_NAME[b]), el("span.la", {}, ACADEMIES[ACADEMY_OF[b]].name), weak.has(b) ? el("span.lweak", {}, "要複習") : null))),
     el("button.btn.gold", { onclick: () => game.go("library") }, "回圖書館大廳")));
 }
 
@@ -63,7 +63,7 @@ export async function lessonScene(game, { branch = "big", back = null } = {}) {
     if (done === tries.length) {
       const d = daily(s); d.lesson = (d.lesson ?? 0) + 1;
       writeSave(s);
-      tryBox.append(el("div.lend", {}, ok === tries.length ? "全對！這種魔法你學會了，去學院練習看看吧！" : `答對 ${ok} 題。多看幾次算法，再去學院練習。`));
+      tryBox.append(el("div.lend", {}, ok === tries.length ? "全對！這招你已經掌握了！" : `答對 ${ok} 題，再練一次會更順手！`));
     }
   }
 }
