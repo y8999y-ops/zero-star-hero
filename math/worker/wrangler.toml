@@ -10,7 +10,7 @@ not_found_handling = "none"
 [[d1_databases]]
 binding = "DB"
 database_name = "mosu-db"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "ee33c757-8000-4b8b-bdea-a2691cdb966d"
 
 # 教師後台密碼請用 secret 設定（不要寫死在這裡）：
 #   npx wrangler secret put ADMIN_PASSWORD
