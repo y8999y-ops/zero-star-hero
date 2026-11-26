@@ -332,7 +332,7 @@ export function openLoginModal(game, onDone) {
     const teacher = who === "teacher";
     const input = el("input.cloudinput", teacher
       ? { type: "password", placeholder: "老師密碼", autocomplete: "current-password" }
-      : { type: "text", placeholder: "輸入代碼，例如 402-1-07-K9", autocomplete: "off", autocapitalize: "characters", spellcheck: false });
+      : { type: "text", placeholder: "4 碼代碼", maxlength: 16, autocomplete: "off", autocapitalize: "characters", spellcheck: false });
     if (teacher) input.classList.add("pw");
     const submitBtn = el("button.btn.gold", { onclick: () => submit() }, "登入");
     async function submit() {

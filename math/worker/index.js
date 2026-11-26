@@ -38,14 +38,10 @@ function randToken() {
   return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-function buildLoginCode(classCode, groupName, seatNo) {
-  const parts = [cleanPart(classCode)];
-  const g = cleanPart(groupName);
-  const seat = padSeat(seatNo);
-  if (g) parts.push(g);
-  if (seat) parts.push(seat);
-  parts.push(randChars(2));
-  const loginCode = parts.join("-");
+// 2026-11-26 使用者：學生只要輸入 4 碼代碼就能登入（32 種字 → 約 100 萬組，重複就重抽）
+// 舊的「班級-組別-座號-2碼」代碼照樣能登入（比對 login_key）
+function buildLoginCode() {
+  const loginCode = randChars(4);
   return { loginCode, loginKey: normCode(loginCode) };
 }
 
@@ -331,6 +327,23 @@ async function handleApi(req, env) {
         if (String(e?.message ?? e).includes("UNIQUE")) return err(`班級代碼「${code}」已存在`, 409);
         throw e;
       }
+    }
+
+    // 全班重發 4 碼代碼（舊代碼失效）
+    const clsRegen = p.match(/^\/api\/admin\/classes\/(\d+)\/regen-codes$/);
+    if (m === "POST" && clsRegen) {
+      const { results } = await db.prepare(`SELECT id FROM students WHERE class_id = ?`).bind(Number(clsRegen[1])).all();
+      let n = 0;
+      for (const r of results) {
+        for (let tries = 0; tries < 20; tries++) {
+          const { loginCode, loginKey } = buildLoginCode();
+          try {
+            await db.prepare(`UPDATE students SET login_code = ?, login_key = ?, token = ? WHERE id = ?`).bind(loginCode, loginKey, randToken(), r.id).run();
+            n++; break;
+          } catch (e) { if (!String(e?.message ?? e).includes("UNIQUE")) throw e; }
+        }
+      }
+      return json({ ok: true, count: n });
     }
 
     const clsDel = p.match(/^\/api\/admin\/classes\/(\d+)$/);

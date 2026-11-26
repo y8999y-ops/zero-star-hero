@@ -80,8 +80,8 @@ const bulk = await call("POST", "/api/admin/students/bulk", {
 assert.equal(bulk.status, 200);
 assert.equal(bulk.data.created.length, 2);
 const [st1, st2] = bulk.data.created;
-assert.match(st1.loginCode, /^402-1-07-[A-Z2-9]{2}$/);
-assert.match(st2.loginCode, /^402-08-[A-Z2-9]{2}$/);
+assert.match(st1.loginCode, /^[A-Z2-9]{4}$/);
+assert.match(st2.loginCode, /^[A-Z2-9]{4}$/);
 
 // 5. Student Login（不分大小寫、去連字號與空白也能登）
 const messyCode = st1.loginCode.toLowerCase().replace(/-/g, " ");
@@ -160,7 +160,10 @@ assert.ok(csv2.data.includes("已畢業"));
 // 8. Regen Code & Reset
 const regen = await call("POST", `/api/admin/students/${st1.id}/regen-code`, { token: adminToken });
 assert.equal(regen.status, 200);
-assert.match(regen.data.loginCode, /^402-1-07-[A-Z2-9]{2}$/);
+assert.match(regen.data.loginCode, /^[A-Z2-9]{4}$/);
+const regenAll = await call("POST", `/api/admin/classes/${st1.classId}/regen-codes`, { token: adminToken });
+assert.equal(regenAll.status, 200);
+assert.equal(regenAll.data.count, 2);
 const reset = await call("POST", `/api/admin/students/${st1.id}/reset`, { token: adminToken });
 assert.equal(reset.status, 200);
 const detAfter = await call("GET", `/api/admin/students/${st1.id}`, { token: adminToken });
