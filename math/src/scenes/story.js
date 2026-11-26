@@ -46,6 +46,23 @@ export async function openingStory(game, { replay = false, back = "title" } = {}
       el("button.btn.gold", { onclick: () => { box.remove(); res("boy"); } }, "男生"));
     container.append(box);
   });
+  // 浮空船＋兩位新生（原圖）：整張在後面、船艙前緣再疊一層蓋住新生的腳＝新生站在船艙裡
+  // docked＝已經停好（跳過開場時直接從這裡開始選人，2026-11-26 使用者：跳過後畫面沒跟著換到選人）
+  const Y = 184, H = 176, deck = Y - H * 0.2;
+  // 先載好船的圖：跳過後船和人一起出現（不然人先出來、船晚半秒才冒出來）
+  const shipReady = new Promise((res) => { const im = new Image(); im.src = new URL("../../assets/story/ship.png", import.meta.url).href; im.decode().then(res, res); });
+  const boat = (D, docked) => {
+    const dx = docked ? 322 : 0;
+    const ship = D.img("story/ship.png", { x: -130 + dx, y: Y, h: H, z: 2 });
+    const front = D.img("story/ship.png", { x: -130 + dx, y: Y, h: H, z: 5, clip: "inset(79% 0 0 0)" });
+    const kids = { girl: D.sprite((t) => heroWalkFrame("girl", "down", "idle", t, "#8a7cff"), { x: docked ? 164 : -158, y: deck, z: 3, px: 1.1 }),
+      boy: D.sprite((t) => heroWalkFrame("boy", "down", "idle", t, "#8a7cff"), { x: docked ? 220 : -102, y: deck, z: 3, px: 1.1 }) };
+    const all = [ship, front, kids.girl, kids.boy];
+    for (const a of all) { a.bob(2, 1.6); a.bobP = 0; }
+    for (const k of ["girl", "boy"]) kids[k].node.style.filter = chosen ? (chosen === k ? "none" : SILHOUETTE) : SILHOUETTE;
+    return { ship, front, kids, all };
+  };
+  // 第一段：夜空 → 黎明 → 浮空船開進來（可以跳過）
   const r = await playCutscene(async (D) => {
     root = document.querySelector(".csscr");
     await D.bg("story/night.jpg", { fade: 1.2 });
@@ -59,19 +76,22 @@ export async function openingStory(game, { replay = false, back = "title" } = {}
     D.caption("雲海之上，浮著一座齒輪般的島——魔數學院。");
     await D.cam({ zoom: 1.18, x: 250, y: 104 }, 3.2);
     D.cam({ zoom: 1, x: 192, y: 108 }, 1.6);
-    // 浮空船（原圖）：整張在後面、船艙前緣再疊一層蓋住新生的腳＝新生站在船艙裡
-    const Y = 184, H = 176;
-    const ship = D.img("story/ship.png", { x: -130, y: Y, h: H, z: 2 });
-    const front = D.img("story/ship.png", { x: -130, y: Y, h: H, z: 5, clip: "inset(79% 0 0 0)" });
-    const deck = Y - H * 0.2;
-    const kids = { girl: D.sprite((t) => heroWalkFrame("girl", "down", "idle", t, "#8a7cff"), { x: -158, y: deck, z: 3, px: 1.1 }),
-      boy: D.sprite((t) => heroWalkFrame("boy", "down", "idle", t, "#8a7cff"), { x: -102, y: deck, z: 3, px: 1.1 }) };
-    const all = [ship, front, kids.girl, kids.boy];
-    for (const a of all) { a.bob(2, 1.6); a.bobP = 0; }
-    for (const k of ["girl", "boy"]) kids[k].node.style.filter = chosen ? (chosen === k ? "none" : SILHOUETTE) : SILHOUETTE;
+    const { ship, front, kids } = boat(D, false);
     sfx("whoosh");
     D.caption("今年的新生，乘著浮空船來了。");
     await Promise.all([ship.to({ x: 192 }, 3.4, "out"), front.to({ x: 192 }, 3.4, "out"), kids.girl.to({ x: 164 }, 3.4, "out"), kids.boy.to({ x: 220 }, 3.4, "out")]);
+  });
+  // 重看時跳過＝整段結束
+  const skippedAll = !r.done && chosen;
+  // 第二段：船停好了 → 選人 → 飛向學院島（跳過第一段也會從這裡接上，畫面換成黎明＋停好的船）
+  if (!skippedAll) await playCutscene(async (D) => {
+    root = document.querySelector(".csscr");
+    await shipReady;
+    await D.bg("story/dawn.jpg", { fade: 0.01 });
+    const { ship, front, kids, all } = boat(D, true);
+    for (const a of all) a.alpha = 0;
+    await Promise.all([ship.node, front.node].map((n) => n.decode?.().catch(() => {})));   // 船的圖畫好了，船和人一起出現
+    for (const a of all) a.alpha = 1;
     if (!chosen) {
       D.caption("你是哪一位新生？");
       chosen = await pick(root);
@@ -90,7 +110,7 @@ export async function openingStory(game, { replay = false, back = "title" } = {}
     await Promise.all(all.map((a) => a.to({ x: a.x + 150, y: a.y - 60, scale: 0.35 }, 3.2, "in")));
     await D.fadeOut("#fffaeb", 1);
   });
-  // 跳過的時候還沒選外觀：在同一個畫面上選
+  // 第二段選人前就按跳過：照樣要選
   if (!chosen) { const c = document.querySelector(".csscr") ?? root; const cap = c?.querySelector(".cscap"); if (cap) { cap.hidden = false; cap.textContent = "你是哪一位新生？"; } chosen = await pick(c); s.look = chosen; writeSave(s); }
   void r;
   if (replay) { game.go("settings", { from: back }); return; }
