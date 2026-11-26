@@ -296,6 +296,8 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
       stage.popNumber(printable(shown) && shown.length <= 8 ? shown : "!", combo);
       sfx("hit");
       const crit = perfect || tier >= 3 || dbl || ult || comboTech;
+      // 多段數字：魔法越強段數越多（第 1 級 2 段 … 第 4 級 5 段；分身多 2 段；組合技 6 段；大招 8 段）
+      const segs = ult ? 8 : comboTech ? 6 : Math.min(7, tier + 1 + (dbl ? 2 : 0));
       const roll = (u) => Math.round(u * (TIER_MUL[tier] ?? 1) * (perfect ? 1.25 : 1) * (0.92 + Math.random() * 0.16));
       if (boss) {
         const before = shieldLeft;
@@ -304,7 +306,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
         if (dbl && shieldLeft > 1) shieldLeft--;
         // 王的傷害數字：一格護盾＝bossUnit
         const bu = Math.round((HP_UNIT[gradeId] ?? 50) * 2.2);
-        stage.damage((before - Math.max(0, shieldLeft)) * roll(bu) * (ult ? 2 : 1), crit ? "crit" : "hit");
+        stage.damage((before - Math.max(0, shieldLeft)) * roll(bu) * (ult ? 2 : 1), crit ? "crit" : "hit", segs);
         bossBar.classList.remove("hit"); void bossBar.offsetWidth; bossBar.classList.add("hit");
         stage.shake = 6;
         if (shieldLeft > 0) stage.flinch();
@@ -319,7 +321,7 @@ export async function runBattle(game, gradeId, mode, stageIdx, onEnd, onReady, p
         if (ult || comboTech) dmg = Math.max(Math.round(unit * 3.2), mon.hp);
         else if (mon.qLeft <= 1) dmg = Math.max(dmg, mon.hp);
         mon.hp = Math.max(0, mon.hp - dmg);
-        stage.damage(dmg, crit ? "crit" : "hit");
+        stage.damage(dmg, crit ? "crit" : "hit", segs);
         if (mon.hp <= 0) stage.purify();
         else { stage.flinch(); if (shieldHit) { sfx("shatter"); say("水晶盾碎了！"); } }
       }

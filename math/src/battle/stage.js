@@ -318,7 +318,8 @@ export class Stage {
       if (m.jitter > 0) m.jitter -= dt;
       if (m.barHit > 0) m.barHit -= dt;
       // 血條：紅色很快縮到目前的血、後面白色那段慢慢跟上
-      m.hpShow = m.hpShow == null ? m.hp : m.hpShow + (m.hp - m.hpShow) * Math.min(1, dt * 10);
+      const hpT = m.hpView ?? m.hp;
+      m.hpShow = m.hpShow == null ? hpT : m.hpShow + (hpT - m.hpShow) * Math.min(1, dt * 14);
       m.hpLag = m.hpLag == null ? m.hp : m.hpLag > m.hpShow ? Math.max(m.hpShow, m.hpLag - dt * 0.9 * (m.maxHp ?? 1)) : m.hpShow;
       if (m.state === "walk" && m.target != null) m.x += (m.target - m.x) * Math.min(1, dt * 3);
       if (m.state === "bump") {
@@ -474,11 +475,33 @@ export class Stage {
   }
 
   /** 傷害數字（從怪物身上彈出來、往旁邊落下）。kind：hit 一般、crit 暴擊、heal 補血、block 擋住 */
-  damage(n, kind = "hit") {
+  damage(n, kind = "hit", hits = 1) {
+    // 2026-11-26 使用者：命中的跳字改成多段數字 → 總傷害拆成好幾段，一段一段跳出來（每段錯開一點、越後面越高），血條也一段一段掉
     const m = this.monster;
     const x = (m ? m.x : 270) + 18, y = GROUND - Math.min(60, (HEAD[m?.kind] ?? 42) * scaleOf(m?.kind)) * 0.45;
-    if (m && kind !== "heal") m.barHit = 0.35;
-    this.pops.push(new DmgNumber(kind === "heal" ? `+${n}` : String(n), x, y, kind));
+    if (kind === "heal" || hits <= 1 || n < hits * 2) {
+      if (m) { m.hpView = null; if (kind !== "heal") m.barHit = 0.35; }
+      this.pops.push(new DmgNumber(kind === "heal" ? `+${n}` : String(n), x, y, kind));
+      return;
+    }
+    // 拆段：每段份量差不多但有一點起伏，最後一段比較大（收尾那一下）
+    const w = Array.from({ length: hits }, (_, i) => 0.8 + Math.random() * 0.4 + (i === hits - 1 ? 0.6 : 0));
+    const sum = w.reduce((a, b) => a + b, 0);
+    const parts = w.map((v) => Math.max(1, Math.floor((n * v) / sum)));
+    parts[hits - 1] += n - parts.reduce((a, b) => a + b, 0);
+    if (m) m.hpView = m.hp + n;          // 血條從打之前的血開始，一段一段扣
+    const gap = Math.min(0.11, 0.5 / hits);
+    parts.forEach((v, i) => {
+      const last = i === hits - 1;
+      const d = new DmgNumber(String(v), x + (i % 2 ? 18 : -12), y - i * 12 + (hits > 4 ? Math.floor(i / 4) * 44 : 0), last && kind === "crit" ? "crit" : kind === "crit" ? "hit" : kind, last);
+      d.t = -i * gap; d.vx = 6 + Math.random() * 6;           // 多段：往旁邊飄少一點，數字才不會疊在一起
+      d.onShow = () => {
+        if (m) { m.hpView = Math.max(m.hp, (m.hpView ?? m.hp) - v); m.barHit = 0.3; m.whiteT = 0.08; m.kb = Math.max(m.kb ?? 0, 6); }
+        this.addFx(FX.hitSpark, { x: x - 18 + Math.random() * 12, y: GROUND - 14 - Math.random() * 20, speed: 2.2, opts: { palette: rampOf(ATTRS[this.attr].color).concat("#ffffff"), height: 12, seed: i + 2 } });
+        if (last) this.shake = Math.max(this.shake, 5);
+      };
+      this.pops.push(d);
+    });
   }
 
   /** 恢復色彩：灰色慢慢退掉（打倒王時） */
@@ -574,10 +597,11 @@ function rampOf(c) { return [mix(c, "#000000", 0.85), mix(c, "#000000", 0.6), mi
 // 傷害數字：先放大彈出、往右上跳再落下、最後淡掉；暴擊是金色、比較大，補血是綠色往上飄
 const DMG_COLOR = { hit: ["#ffd23f", "#5a1a08"], crit: ["#ff6a3c", "#2a0800"], heal: ["#9df0b0", "#0e4a22"], block: ["#bfe0ff", "#14306a"] };   // 跟答案數字（白色、頭上）分開：傷害是黃／橘紅、在身體旁邊
 class DmgNumber {
-  constructor(text, x, y, kind) { Object.assign(this, { text, x, y, kind, t: 0, vx: 18 + Math.random() * 14 }); }
-  update(dt) { this.t += dt; }
+  constructor(text, x, y, kind, big = true) { Object.assign(this, { text, x, y, kind, big, t: 0, vx: 18 + Math.random() * 14 }); }
+  update(dt) { const was = this.t; this.t += dt; if (was < 0 && this.t >= 0) this.onShow?.(); }
   get done() { return this.t > 1.0; }
   draw(p) {
+    if (this.t < 0) return;
     p.place(0, 0, false, 0);
     const u = this.t, crit = this.kind === "crit", heal = this.kind === "heal";
     const pop = u < 0.1 ? 1.8 - u * 8 : 1;

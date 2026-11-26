@@ -25,7 +25,6 @@ export function resultScene(game, r) {
   }
   if (r.mode === "exam" && r.passed) tags.push("升階！");
   if (r.ups.length) sfx("level"); else sfx("good");
-  const learn = r.missed?.find((b) => UNIT_NAME[b]);
   const again = r.mode === "challenge" ? { grade: "g34", mode: "challenge" } : r.mode === "practice" ? { grade: r.gradeId, mode: "practice", practice: r.practice } : r.mode === "boss" ? { grade: r.gradeId, mode: "boss" } : r.mode === "exam" ? { grade: r.gradeId, mode: "exam" } : { grade: r.gradeId, mode: "stage", stage: r.stageIdx };
   show(el("div.screen.result", {},
     el("div.rescard", {},
@@ -34,12 +33,8 @@ export function resultScene(game, r) {
       el("div.resstats", {}, ...stats.map(([v, k]) => el("div.resstat", {}, el("b", {}, String(v)), el("span", {}, k)))),
       tags.length ? el("div.restags", {}, ...tags.slice(0, 3).map((t) => el("span", {}, t))) : null,
       el("div.resbtns", {},
-        el("button.btn", { onclick: () => game.go("battle", again) }, "再一次"),
-        r.wrongs?.length ? el("button.btn", { onclick: () => { sfx("click"); wrongPanel(game, r, learn); } }, "錯題講解", el("span.cnt", {}, String(r.wrongs.length))) : null,
-        learn ? el("button.btn", { onclick: () => { game.save.returnTo = null; game.go("lesson", { branch: learn }); } }, "去學一學") : null,
-        r.firstClear && r.gradeId === "jh"
-          ? el("button.btn.gold", { onclick: () => { game.save.returnTo = null; game.go("ending"); } }, "繼續")       // 最終戰打完：接結局
-          : el("button.btn.gold", { onclick: () => { if (r.practice?.review) game.save.returnTo = null; game.go(r.practice?.review ? "library" : "map"); } }, r.practice?.review ? "回圖書館" : r.mode === "practice" ? `回${ACADEMIES[r.practice.academy].name}` : "回去"))),
+        r.wrongs?.length ? el("button.btn", { onclick: () => { sfx("click"); wrongPanel(game, r); } }, "錯題講解", el("span.cnt", {}, String(r.wrongs.length))) : null,
+        ...endButtons(game, r, again))),
   ));
 }
 
@@ -56,4 +51,41 @@ function wrongPanel(game, r) {
       w.explain ? el("div.wexp", {}, mathText(String(w.explain))) : null,
       w.branch && UNIT_NAME[w.branch] ? el("button.btn.small", { onclick: () => { game.save.returnTo = null; game.go("lesson", { branch: w.branch }); } }, "去學一學") : null)));
   document.querySelector("#app").append(p);
+}
+
+// 結算的按鈕（2026-11-26 使用者：改成「完成」與「下一關」）
+//   完成＝回到進來的地方（區域、學院；錯題特訓回圖書館）
+//   下一關：主線＝同一區的下一關 → 王 → 下一區第 1 關；學院＝同一座學院的下一個單元 → 下一座學院；沒過關（或挑戰、考核沒通過）就變成「再挑戰」
+const ORDER = Object.keys(GRADES);
+function nextOf(game, r) {
+  const s = game.save, failed = r.hp <= 0 || (r.mode !== "challenge" && r.mode !== "exam" && !r.stars) || (r.mode === "exam" && !r.passed);
+  if (r.mode === "challenge" || failed) return { label: "再挑戰" };
+  if (r.mode === "practice") {
+    if (r.practice.review) return null;
+    const all = Object.entries(ACADEMIES).flatMap(([id, A]) => A.branches.map((b) => [id, b]));
+    const k = all.findIndex(([, b]) => b === r.practice.branch), nx = all[k + 1];
+    if (!nx) return null;
+    return { label: "下一關", go: () => { s.returnTo = { scene: "academy", academy: nx[0] }; game.go("battle", { grade: r.gradeId, mode: "practice", practice: { ...r.practice, academy: nx[0], branch: nx[1] } }); } };
+  }
+  if (r.mode === "exam") return null;
+  const g = r.gradeId, cleared = [1, 2, 3].map((n) => s.stars[`${g}-${n}`] ?? 0);
+  const othersLeft = g === "jh" ? ["g1", "g2", "g34", "g56"].filter((x) => !(s.stars[`${x}-boss`] > 0)) : [];
+  const stageGo = (grade, stage) => () => { s.returnTo = { scene: "area", grade }; game.go("battle", { grade, mode: "stage", stage }); };
+  if (r.mode === "stage") {
+    const todo = [0, 1, 2].find((i) => i > r.stageIdx && !cleared[i]) ?? [0, 1, 2].find((i) => !cleared[i]);
+    if (todo != null) return { label: "下一關", go: stageGo(g, todo) };
+    if (r.stageIdx < 2) return { label: "下一關", go: stageGo(g, r.stageIdx + 1) };
+    if (othersLeft.length) return null;           // 總複習的王：要先打倒其他區域的王
+    return { label: "下一關", go: () => { s.returnTo = { scene: "area", grade: g }; game.go("battle", { grade: g, mode: "boss" }); } };
+  }
+  // 打倒王：下一區第 1 關（最後一區沒有下一區）
+  const ng = ORDER[ORDER.indexOf(g) + 1];
+  return ng ? { label: "下一關", go: stageGo(ng, 0) } : null;
+}
+function endButtons(game, r, again) {
+  if (r.firstClear && r.gradeId === "jh") return [el("button.btn.gold", { onclick: () => { game.save.returnTo = null; game.go("ending"); } }, "繼續")];   // 最終戰打完：接結局
+  const finish = () => { sfx("click"); if (r.practice?.review) game.save.returnTo = null; game.go(r.practice?.review ? "library" : "map"); };
+  const nx = nextOf(game, r);
+  if (!nx) return [el("button.btn.gold", { onclick: finish }, "完成")];
+  return [el("button.btn", { onclick: finish }, "完成"), el("button.btn.gold", { onclick: () => { sfx("click"); (nx.go ?? (() => game.go("battle", again)))(); } }, nx.label)];
 }
